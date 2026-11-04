@@ -16,7 +16,7 @@ const config: Config = {
       { label: 'Monitor', match: 'HDMI Monitor' },
     ],
   },
-  server: { allowedOrigins: [] },
+  server: { host: '127.0.0.1', allowedOrigins: [] },
 };
 
 function fakeRun() {

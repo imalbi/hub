@@ -1,14 +1,14 @@
 import { TRPCError } from '@trpc/server';
-import { publicProcedure, router } from '../../trpc.ts';
+import { protectedProcedure, router } from '../../trpc.ts';
 import { readAudioState, readSnapshot } from './live.ts';
 import { nextOutput, resolveOutputs } from './pipewire.ts';
 
 export const audioRouter = router({
-  state: publicProcedure.query(({ ctx }) => readAudioState(ctx.run, ctx.config)),
+  state: protectedProcedure.query(({ ctx }) => readAudioState(ctx.run, ctx.config)),
 
-  onState: publicProcedure.subscription(({ ctx, signal }) => ctx.live.audio.subscribe(signal)),
+  onState: protectedProcedure.subscription(({ ctx, signal }) => ctx.live.audio.subscribe(signal)),
 
-  cycleOutput: publicProcedure
+  cycleOutput: protectedProcedure
     .meta({ description: 'Switch the default audio output to the next configured device' })
     .mutation(async ({ ctx }) => {
       const { sinks, defaultName } = await readSnapshot(ctx.run);

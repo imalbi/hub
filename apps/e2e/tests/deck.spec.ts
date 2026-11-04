@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { playPause, restoreDesktop } from './desktop.ts';
+import { expect, test } from './fixtures.ts';
 import { controlSockets } from './sockets.ts';
 
 const audioTile = (page: Page) => page.getByRole('button', { name: /^Uscita audio/ });
@@ -9,8 +10,8 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/deck');
 });
 
-test.afterEach(async ({ request }) => {
-  await restoreDesktop(request);
+test.afterEach(async ({ pc }) => {
+  await restoreDesktop(pc);
 });
 
 test('both tiles show the state of the fake desktop', async ({ page }) => {
@@ -36,12 +37,12 @@ test('tapping the media tile flips the icon and the play state', async ({ page }
   await expect(mediaTile(page).locator('svg.lucide-pause')).toBeVisible();
 });
 
-test('a change made elsewhere reaches the open page without a reload', async ({ page, request }) => {
+test('a change made elsewhere reaches the open page without a reload', async ({ page, pc }) => {
   await expect(mediaTile(page)).toHaveAccessibleName(/in riproduzione/);
   // A second client: the same action over plain HTTP, as a media key or another device would trigger it.
-  expect((await playPause(request)).ok()).toBe(true);
+  expect((await playPause(pc)).ok()).toBe(true);
   await expect(mediaTile(page)).toHaveAccessibleName(/in pausa/);
-  expect((await playPause(request)).ok()).toBe(true);
+  expect((await playPause(pc)).ok()).toBe(true);
   await expect(mediaTile(page)).toHaveAccessibleName(/in riproduzione/);
 });
 

@@ -17,7 +17,13 @@ void test('every mutation carries a description in its meta', () => {
   const mutations = Object.entries<unknown>(appRouter._def.procedures).flatMap(([path, procedure]) =>
     isProcedure(procedure) && procedure._def.type === 'mutation' ? [{ path, procedure }] : [],
   );
-  assert.deepEqual(mutations.map((m) => m.path).toSorted(), ['audio.cycleOutput', 'media.playPause']);
+  assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
+    'audio.cycleOutput',
+    'devices.revoke',
+    'media.playPause',
+    'pairing.createCode',
+    'pairing.redeem',
+  ]);
   for (const { path, procedure } of mutations) {
     assert.ok(metaSchema.safeParse(procedure._def.meta).success, `${path} has no meta.description`);
   }

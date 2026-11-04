@@ -1,0 +1,9 @@
+{
+  "name": "Hub",
+  "short_name": "Hub",
+  "display": "standalone",
+  "start_url": "/deck",
+  "background_color": "#070707",
+  "theme_color": "#070707",
+  "icons": [{ "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+}

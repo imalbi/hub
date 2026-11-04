@@ -15,6 +15,7 @@ pnpm verify       # check + e2e: the gate before a step is done, and the pre-com
 pnpm test:e2e     # Playwright against the fake server (apps/e2e)
 pnpm test:e2e:update  # rewrite screenshot baselines: only for an intended visual change
 pnpm smoke        # read-only check that the real wpctl, pw-dump and playerctl still parse
+pnpm serve        # build the web app, then serve it and the API from the server (no Vite, no watch)
 pnpm --filter @hub/server <script>
 pnpm --filter @hub/web <script>
 ```
@@ -33,7 +34,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - **Public repo, private life stays out.** The repo is public (showcase, all rights reserved). No home paths, hostnames, IPs, device names, tokens or personal data in tracked files. Personal modules (family, study, mail, client sites) live in the gitignored `modules.local/`; personal values in the gitignored `config.local.json`, with a fake `config.example.json` tracked. If a change needs a personal value, read it from config, never hardcode it.
 - **Only registry actions run.** The server never executes arbitrary shell commands, not even when an LLM asks. Every side effect is an action with a zod-validated input. Spawn binaries with an argument array (`execFile`), never a shell string.
 - **Never read secrets.** Do not open, cat or print `.env*` or `config.local.json`.
-- **Loopback until auth exists.** The server binds `127.0.0.1`. Listening on the LAN requires the deck token check to be in place first.
+- **Loopback unless paired.** The server binds `127.0.0.1` by default. `server.host` in the config can open it to the LAN, and then only a PC (loopback) or a paired device token gets past `protectedProcedure` (see "Trust, pairing and the LAN" in `apps/server/AGENTS.md`). Never bind to the LAN or edit the real config yourself: the owner does that.
 
 ## Code style
 

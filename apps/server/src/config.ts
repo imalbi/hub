@@ -16,15 +16,28 @@ const configSchema = z.object({
     .default({ outputs: [] }),
   server: z
     .object({
-      // Extra page origins allowed to open the WebSocket (the deck on the LAN later); dev origins are built in.
+      // Where to listen. Loopback until the deck is paired; `0.0.0.0` (or a LAN address) opens Hub to the home network.
+      host: z.string().min(1).default('127.0.0.1'),
+      // Extra page origins allowed to open the WebSocket (the deck on the LAN); dev origins are built in.
       allowedOrigins: z.array(z.string().min(1)).default([]),
     })
-    .default({ allowedOrigins: [] }),
+    .default({ host: '127.0.0.1', allowedOrigins: [] }),
 });
 
 export type Config = z.infer<typeof configSchema>;
 
 export const emptyConfig: Config = configSchema.parse({});
+
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
+
+/** A host reachable from the LAN with no allowed origin would start fine and then refuse every page, so refuse to start instead. */
+export function assertCanListen({ server }: Config) {
+  if (LOOPBACK_HOSTS.has(server.host) || server.allowedOrigins.length > 0) return;
+  throw new Error(
+    `server.host is ${server.host}, which the LAN can reach, but server.allowedOrigins is empty and every page would be refused. ` +
+      'Add the origin the deck opens, for example http://<pc-name>.local:4180',
+  );
+}
 
 const defaultPath = fileURLToPath(new URL('../../../config.local.json', import.meta.url));
 

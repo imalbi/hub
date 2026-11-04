@@ -9,7 +9,7 @@ process.env.NODE_ENV = 'test';
 
 const app = buildServer({
   dbPath: ':memory:',
-  config: { ...emptyConfig, server: { allowedOrigins: ['https://hub.example'] } },
+  config: { ...emptyConfig, server: { ...emptyConfig.server, allowedOrigins: ['https://hub.example'] } },
 });
 let port = 0;
 

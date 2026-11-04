@@ -19,7 +19,8 @@
     "test:e2e": "pnpm --filter @hub/e2e e2e",
     "test:e2e:update": "pnpm --filter @hub/e2e e2e:update",
     "verify": "pnpm check && pnpm test:e2e",
-    "smoke": "pnpm --filter @hub/server smoke"
+    "smoke": "pnpm --filter @hub/server smoke",
+    "serve": "pnpm --filter @hub/web build && pnpm --filter @hub/server start"
   },
   "devDependencies": {
     "oxlint": "^1.90.0",

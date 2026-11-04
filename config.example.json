@@ -5,5 +5,5 @@
       { "label": "Casse", "match": "Speakers model" }
     ]
   },
-  "server": { "allowedOrigins": [] }
+  "server": { "host": "127.0.0.1", "allowedOrigins": ["http://hub-pc.local:4180"] }
 }
