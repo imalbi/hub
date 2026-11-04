@@ -10,7 +10,7 @@ test('deck taps start, pause and resume the timer shown on the desk', async ({ p
   const phone = await browser.newContext({ storageState: DECK_STATE, viewport: { width: 375, height: 812 } });
   try {
     const deck = await phone.newPage();
-    await page.goto('/desk');
+    await page.goto('/desk/studio');
     await deck.goto(`${PHONE_URL}/deck`);
     const tile = deck.getByRole('button', { name: /^Pomodoro:/ });
     await expect(tile).toHaveAccessibleName(/Pronto/);
@@ -43,7 +43,7 @@ test('deck taps start, pause and resume the timer shown on the desk', async ({ p
 });
 
 test('a real short phase ends, pushes the break and adds a completed focus today', async ({ page }) => {
-  await page.goto('/desk');
+  await page.goto('/desk/studio');
   const count = page.getByText(/Sessioni completate oggi:/);
   const before = Number((await count.innerText()).split(':').at(-1)?.trim());
   await page.getByRole('button', { name: 'Avvia', exact: true }).click();

@@ -2,11 +2,11 @@ import { expect, test } from './fixtures.ts';
 import { pairDevice, revokeDevices } from './desktop.ts';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/desk');
+  await page.goto('/desk/devices');
 });
 
 test('the Dispositivi panel lists the device paired in setup', async ({ page }) => {
-  await expect(page.getByText('Dispositivi')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Dispositivi' })).toBeVisible();
   await expect(page.getByText('iPhone', { exact: true })).toBeVisible();
   await expect(page.getByText(/^Ultimo accesso: /).first()).toBeVisible();
 });

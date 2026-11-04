@@ -58,5 +58,20 @@
   "pomodoro_tile_state": "{phase} {time}",
   "pomodoro_error": "Comando non riuscito. Riprova.",
   "pomodoro_tile_focus": "Studio",
-  "pomodoro_break_paused": "Pausa sospesa"
+  "pomodoro_break_paused": "Pausa sospesa",
+  "zone_overview": "Panoramica",
+  "zone_study": "Studio",
+  "zone_media": "Media",
+  "zone_system": "Sistema",
+  "desk_zones": "Zone",
+  "zone_open": "Apri {zone}",
+  "theme_title": "Aspetto",
+  "theme_ink": "Tema scuro",
+  "theme_paper": "Tema chiaro",
+  "server_panel_title": "Server",
+  "audio_outputs": "Uscite configurate",
+  "audio_output_active": "Attiva",
+  "audio_change": "Cambia uscita",
+  "media_action_pause": "Metti in pausa la musica",
+  "media_action_play": "Riproduci musica"
 }

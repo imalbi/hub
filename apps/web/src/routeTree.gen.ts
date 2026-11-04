@@ -12,6 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DeckRouteImport } from './routes/deck'
 import { Route as DeskRouteImport } from './routes/desk'
+import { Route as DeskIndexRouteImport } from './routes/desk.index'
+import { Route as DeskDevicesRouteImport } from './routes/desk.devices'
+import { Route as DeskMediaRouteImport } from './routes/desk.media'
+import { Route as DeskStudioRouteImport } from './routes/desk.studio'
+import { Route as DeskSystemRouteImport } from './routes/desk.system'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +33,98 @@ const DeskRoute = DeskRouteImport.update({
   path: '/desk',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeskIndexRoute = DeskIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DeskRoute,
+} as any)
+const DeskDevicesRoute = DeskDevicesRouteImport.update({
+  id: '/devices',
+  path: '/devices',
+  getParentRoute: () => DeskRoute,
+} as any)
+const DeskMediaRoute = DeskMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => DeskRoute,
+} as any)
+const DeskStudioRoute = DeskStudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => DeskRoute,
+} as any)
+const DeskSystemRoute = DeskSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => DeskRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/deck': typeof DeckRoute
-  '/desk': typeof DeskRoute
+  '/desk': typeof DeskRouteWithChildren
+  '/desk/devices': typeof DeskDevicesRoute
+  '/desk/media': typeof DeskMediaRoute
+  '/desk/studio': typeof DeskStudioRoute
+  '/desk/system': typeof DeskSystemRoute
+  '/desk/': typeof DeskIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deck': typeof DeckRoute
-  '/desk': typeof DeskRoute
+  '/desk/devices': typeof DeskDevicesRoute
+  '/desk/media': typeof DeskMediaRoute
+  '/desk/studio': typeof DeskStudioRoute
+  '/desk/system': typeof DeskSystemRoute
+  '/desk': typeof DeskIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/deck': typeof DeckRoute
-  '/desk': typeof DeskRoute
+  '/desk': typeof DeskRouteWithChildren
+  '/desk/devices': typeof DeskDevicesRoute
+  '/desk/media': typeof DeskMediaRoute
+  '/desk/studio': typeof DeskStudioRoute
+  '/desk/system': typeof DeskSystemRoute
+  '/desk/': typeof DeskIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/deck' | '/desk'
+  fullPaths:
+    | '/'
+    | '/deck'
+    | '/desk'
+    | '/desk/devices'
+    | '/desk/media'
+    | '/desk/studio'
+    | '/desk/system'
+    | '/desk/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/deck' | '/desk'
-  id: '__root__' | '/' | '/deck' | '/desk'
+  to:
+    | '/'
+    | '/deck'
+    | '/desk/devices'
+    | '/desk/media'
+    | '/desk/studio'
+    | '/desk/system'
+    | '/desk'
+  id:
+    | '__root__'
+    | '/'
+    | '/deck'
+    | '/desk'
+    | '/desk/devices'
+    | '/desk/media'
+    | '/desk/studio'
+    | '/desk/system'
+    | '/desk/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DeckRoute: typeof DeckRoute
-  DeskRoute: typeof DeskRoute
+  DeskRoute: typeof DeskRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -82,13 +150,66 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/desk/': {
+      id: '/desk/'
+      path: '/'
+      fullPath: '/desk/'
+      preLoaderRoute: typeof DeskIndexRouteImport
+      parentRoute: typeof DeskRoute
+    }
+    '/desk/devices': {
+      id: '/desk/devices'
+      path: '/devices'
+      fullPath: '/desk/devices'
+      preLoaderRoute: typeof DeskDevicesRouteImport
+      parentRoute: typeof DeskRoute
+    }
+    '/desk/media': {
+      id: '/desk/media'
+      path: '/media'
+      fullPath: '/desk/media'
+      preLoaderRoute: typeof DeskMediaRouteImport
+      parentRoute: typeof DeskRoute
+    }
+    '/desk/studio': {
+      id: '/desk/studio'
+      path: '/studio'
+      fullPath: '/desk/studio'
+      preLoaderRoute: typeof DeskStudioRouteImport
+      parentRoute: typeof DeskRoute
+    }
+    '/desk/system': {
+      id: '/desk/system'
+      path: '/system'
+      fullPath: '/desk/system'
+      preLoaderRoute: typeof DeskSystemRouteImport
+      parentRoute: typeof DeskRoute
+    }
   }
 }
+
+interface DeskRouteChildren {
+  DeskDevicesRoute: typeof DeskDevicesRoute
+  DeskMediaRoute: typeof DeskMediaRoute
+  DeskStudioRoute: typeof DeskStudioRoute
+  DeskSystemRoute: typeof DeskSystemRoute
+  DeskIndexRoute: typeof DeskIndexRoute
+}
+
+const DeskRouteChildren: DeskRouteChildren = {
+  DeskDevicesRoute: DeskDevicesRoute,
+  DeskMediaRoute: DeskMediaRoute,
+  DeskStudioRoute: DeskStudioRoute,
+  DeskSystemRoute: DeskSystemRoute,
+  DeskIndexRoute: DeskIndexRoute,
+}
+
+const DeskRouteWithChildren = DeskRoute._addFileChildren(DeskRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DeckRoute: DeckRoute,
-  DeskRoute: DeskRoute,
+  DeskRoute: DeskRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

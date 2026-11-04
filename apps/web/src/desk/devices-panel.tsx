@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { Panel } from '../components/panel.tsx';
 import { m } from '../paraglide/messages.js';
 import { useTRPC } from '../trpc.ts';
 
@@ -22,7 +23,7 @@ function lastSeen(at: number, now: number) {
   return hours < 24 ? m.device_seen_hours({ hours }) : m.device_seen_days({ days: Math.floor(hours / 24) });
 }
 
-export function DevicesPanel() {
+export function DevicesPanel({ className = '' }: { className?: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [now, refreshClock] = useClock();
@@ -43,9 +44,7 @@ export function DevicesPanel() {
   );
 
   return (
-    <section className="flex flex-col gap-lg rounded-xl border border-border bg-surface p-lg">
-      <p className="text-caption text-muted-foreground uppercase">{m.devices_title()}</p>
-
+    <Panel title={m.devices_title()} className={className}>
       <div className="flex flex-col items-start gap-md">
         <button type="button" disabled={createCode.isPending} onClick={() => createCode.mutate()} className={button}>
           {m.devices_create_code()}
@@ -102,6 +101,6 @@ export function DevicesPanel() {
           </li>
         ))}
       </ul>
-    </section>
+    </Panel>
   );
 }

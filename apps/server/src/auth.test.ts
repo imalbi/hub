@@ -123,9 +123,10 @@ void test('last seen is refreshed at most once a minute', async () => {
   assert.equal(await lastSeenOf('Clocked phone'), 1_061_000);
 });
 
+const guess = (remoteAddress: string) =>
+  call('POST', 'pairing.redeem', { input: { code: '000000', deviceName: 'Guesser' }, remoteAddress });
+
 void test('five wrong codes from one address end in a 429 for the rest of the minute', async () => {
-  const guess = (remoteAddress: string) =>
-    call('POST', 'pairing.redeem', { input: { code: '000000', deviceName: 'Guesser' }, remoteAddress });
   for (let attempt = 0; attempt < 5; attempt++) assert.deepEqual((await guess('192.168.1.99')).code, 'BAD_REQUEST');
   const locked = await guess('192.168.1.99');
   assert.deepEqual([locked.status, locked.code], [429, 'TOO_MANY_REQUESTS']);

@@ -1,0 +1,116 @@
+import { expect, test } from './fixtures.ts';
+import { restoreDesktop } from './desktop.ts';
+import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
+
+const zones = [
+  ['Panoramica', '/desk'],
+  ['Studio', '/desk/studio'],
+  ['Media', '/desk/media'],
+  ['Sistema', '/desk/system'],
+  ['Dispositivi', '/desk/devices'],
+];
+
+test('the rail navigates every zone and marks exactly the active destination', async ({ page }) => {
+  await page.goto('/desk');
+  const rail = page.getByRole('navigation', { name: 'Zone' });
+  for (const [name, path] of zones) {
+    await rail.getByRole('link', { name, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}/?$`));
+    await expect(page.getByRole('heading', { level: 1, name, exact: true })).toBeVisible();
+    await expect(rail.getByRole('link', { name, exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(rail.locator('[aria-current="page"]')).toHaveCount(1);
+  }
+});
+
+test('number keys switch zones but do not interfere with typing or modified shortcuts', async ({ page }) => {
+  await page.goto('/desk/studio');
+  await expect(page.getByRole('heading', { level: 1, name: 'Studio' })).toBeVisible();
+  for (let i = 0; i < zones.length; i++) {
+    await page.keyboard.press(String(i + 1));
+    await expect(page).toHaveURL(new RegExp(`${zones[i]?.[1]}/?$`));
+  }
+  await page.keyboard.press('Control+1');
+  await expect(page).toHaveURL(/\/desk\/devices$/);
+  await page.evaluate(() => {
+    const input = document.createElement('input');
+    input.setAttribute('aria-label', 'Campo di prova');
+    document.querySelector('main')?.append(input);
+  });
+  await page.getByRole('textbox', { name: 'Campo di prova' }).focus();
+  await page.keyboard.press('1');
+  await expect(page.getByRole('textbox', { name: 'Campo di prova' })).toHaveValue('1');
+  await expect(page).toHaveURL(/\/desk\/devices$/);
+  await page.getByRole('button', { name: 'Genera codice' }).focus();
+  await page.keyboard.press('1');
+  await expect(page).toHaveURL(/\/desk\/?$/);
+});
+
+test('Media controls existing playback and cycles outputs without making the list interactive', async ({
+  page,
+  pc,
+}) => {
+  try {
+    await restoreDesktop(pc);
+    await page.goto('/desk/media');
+    await page.getByRole('button', { name: 'Metti in pausa la musica', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Riproduci musica', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Cambia uscita', exact: true }).click();
+    const outputs = page.getByRole('list', { name: 'Uscite configurate' });
+    await expect(outputs.getByRole('listitem').filter({ hasText: 'Casse' })).toContainText('Attiva');
+    await expect(outputs.getByRole('button')).toHaveCount(0);
+  } finally {
+    await restoreDesktop(pc);
+  }
+});
+
+test('a saved theme survives reload and stays scoped to the desk', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  await expect(page.getByRole('button', { name: 'Tema chiaro', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => window.history.pushState({}, '', '/deck'));
+  await expect(page.getByRole('heading', { name: 'Abbina questo dispositivo' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink');
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Dispositivi' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  await page.goto('/deck');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'oklch(0.13 0 0)');
+});
+
+test('Pomodoro secondary controls remain readable when hovered in paper', async ({ page }) => {
+  await freezePomodoro(page, pausedPomodoro);
+  await page.goto('/desk/devices');
+  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
+  for (const name of ['Salta', 'Ferma']) {
+    const button = page.getByRole('button', { name, exact: true });
+    await button.hover();
+    const ratio = await button.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const canvas = document.createElement('canvas');
+      canvas.width = 2;
+      canvas.height = 1;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('No canvas');
+      context.fillStyle = style.color;
+      context.fillRect(0, 0, 1, 1);
+      context.fillStyle = style.backgroundColor;
+      context.fillRect(1, 0, 1, 1);
+      const colors = context.getImageData(0, 0, 2, 1).data;
+      function luminance(offset: number) {
+        const linear = [0, 1, 2].map((index) => {
+          const value = (colors[offset + index] ?? 0) / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return (linear[0] ?? 0) * 0.2126 + (linear[1] ?? 0) * 0.7152 + (linear[2] ?? 0) * 0.0722;
+      }
+      const a = luminance(0),
+        b = luminance(4);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    });
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  }
+});

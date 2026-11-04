@@ -18,7 +18,6 @@ test.beforeEach(async ({ page }) => {
   );
   await page.goto('/desk');
   await expect(page.getByText('Server attivo da 42s')).toBeVisible();
-  await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
@@ -31,6 +30,7 @@ test('the desk at 4K matches the baseline', async ({ page }) => {
 });
 
 test('the idle progress ring draws no completed arc', async ({ page }) => {
+  await page.goto('/desk/studio');
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
   const png = await page.locator('svg.pomodoro-ring').screenshot();
   const white = await page.evaluate(
@@ -57,7 +57,7 @@ test('the idle progress ring draws no completed arc', async ({ page }) => {
 
 test('the paused Pomodoro panel shows its progress, remaining time and all controls', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
-  await page.reload();
+  await page.goto('/desk/studio');
   await expect(page.getByRole('timer', { name: 'Tempo rimanente' })).toHaveText('12:30');
   await expect(page.getByRole('progressbar', { name: 'Avanzamento Pomodoro' })).toHaveAttribute('value', '0.5');
   await expect(page.getByRole('button', { name: 'Riprendi', exact: true })).toBeVisible();
@@ -69,6 +69,8 @@ test('the desk matches the baseline', async ({ page }) => {
 });
 
 test('the desk with a pairing code matches the baseline', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
   await page.route('**/trpc/pairing.createCode*', (route) =>
     route.fulfill({ json: json({ code: '123456', expiresAt: NOW.getTime() + 120_000 }) }),
   );
@@ -76,4 +78,30 @@ test('the desk with a pairing code matches the baseline', async ({ page }) => {
   await expect(page.getByRole('status', { name: 'Codice di abbinamento' })).toHaveText('123456');
   await expect(page.getByText('Scade tra 120s')).toBeVisible();
   await expect(page).toHaveScreenshot('desk-code.png', { animations: 'disabled' });
+});
+
+for (const zone of [
+  { path: '/desk/studio', name: 'Studio', file: 'desk-studio.png' },
+  { path: '/desk/media', name: 'Media', file: 'desk-media.png' },
+  { path: '/desk/system', name: 'Sistema', file: 'desk-system.png' },
+  { path: '/desk/devices', name: 'Dispositivi', file: 'desk-devices.png' },
+]) {
+  test(`the ${zone.name} zone matches the baseline`, async ({ page }) => {
+    await page.goto(zone.path);
+    await expect(page.getByRole('heading', { level: 1, name: zone.name })).toBeVisible();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    if (zone.name === 'Dispositivi') await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
+    if (zone.name === 'Media') await expect(page.getByText('Title', { exact: true })).toBeVisible();
+    await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled' });
+  });
+}
+
+test('the overview in paper matches the baseline', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  await expect(page).toHaveScreenshot('desk-paper.png', { animations: 'disabled' });
 });

@@ -48,13 +48,16 @@ test('a change made elsewhere reaches the open page without a reload', async ({ 
 
 test('the connection-lost state shows when the socket drops and clears when it is back', async ({ page }) => {
   const sockets = await controlSockets(page);
+  const hotReload = page.waitForEvent('websocket', (socket) => new URL(socket.url()).pathname !== '/trpc');
   await page.goto('/deck');
+  const developmentSocket = await hotReload;
   await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
   await expect(page.getByText('Connessione persa')).toBeHidden();
 
   await sockets.cut();
   // The retry backs off, so the page may need a few seconds: the default 5 s expect timeout is too tight.
   await expect(page.getByText('Connessione persa')).toBeVisible({ timeout: 15_000 });
+  expect(developmentSocket.isClosed()).toBe(false);
   // The last known state stays on the tile.
   await expect(audioTile(page)).toHaveAccessibleName(/Cuffie/);
 

@@ -29,6 +29,9 @@
   --spacing-icon-sm: 1rem;
   --spacing-icon: 1.25rem;
   --spacing-icon-lg: 1.5rem;
+  /* Desk rail: touch target, horizontal padding and border; content leaves one gutter on each side. */
+  --spacing-desk-rail: calc(var(--spacing-touch) + 2 * var(--spacing-xs) + 2 * var(--spacing-px));
+  --spacing-desk-inset: calc(var(--spacing-desk-rail) + 2 * var(--spacing-xl));
   /* The notch and the home indicator of the iPhone, zero everywhere else. Only the deck shell uses them. */
   --spacing-safe-top: env(safe-area-inset-top);
   --spacing-safe-right: env(safe-area-inset-right);
