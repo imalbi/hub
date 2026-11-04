@@ -33,6 +33,9 @@ test('widgets on the same row have the same height, two small ones fill a medium
   const [pomodoro, media, server, audio] = await Promise.all(
     ['pomodoro', 'media', 'server', 'audio'].map((widget) => box(page, widget)),
   );
+  // One row is --spacing-widget-row at the desk's root size (15rem at 24px); a stale read of the root before the desk
+  // layout applied once gave 240px rows that cut the Musica widget.
+  expect(pomodoro.height).toBeCloseTo(360, 0);
   expect(media.height).toBeCloseTo(pomodoro.height, 0);
   expect(media.y).toBeCloseTo(pomodoro.y, 0);
   expect(audio.height).toBeCloseTo(server.height, 0);
