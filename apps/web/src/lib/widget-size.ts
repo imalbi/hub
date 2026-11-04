@@ -4,6 +4,7 @@ export const widgetCells = {
   medium: { w: 6, h: 1 },
   large: { w: 6, h: 2 },
   wide: { w: 12, h: 1 },
+  full: { w: 12, h: 2 },
 } as const;
 
 export type WidgetSize = keyof typeof widgetCells;

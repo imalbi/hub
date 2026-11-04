@@ -6,13 +6,14 @@ import { useTRPC } from '../lib/trpc.ts';
 import { widgetCells, type WidgetSize } from '../lib/widget-size.ts';
 import { m } from '../paraglide/messages.js';
 import { HeaderActions } from './header-slot.tsx';
-import { defaultOverview, widgets, type WidgetItem } from './widgets.ts';
+import { defaultLayouts, widgets, type WidgetItem, type ZoneId } from './widgets.ts';
 
 const sizeLabel: Record<WidgetSize, () => string> = {
   small: m.widget_size_small,
   medium: m.widget_size_medium,
   large: m.widget_size_large,
   wide: m.widget_size_wide,
+  full: m.widget_size_full,
 };
 
 // The grid wants pixels; the tokens are rem so the desk's root scaling applies. Read once the desk layout is in place.
@@ -26,12 +27,12 @@ function gridMetrics() {
 // Reading order (rows top to bottom, then left to right), used for "move before/after" and to keep saves stable.
 const byPosition = (a: WidgetItem, b: WidgetItem) => a.y - b.y || a.x - b.x;
 
-/** Panoramica as a phone-style home screen: fixed sizes, drag to rearrange in edit mode, saved on the server. */
-export function WidgetBoard() {
+/** A desk zone as a phone-style home screen: fixed sizes, drag to rearrange in edit mode, saved on the server. */
+export function WidgetBoard({ zone }: { zone: ZoneId }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const queryKey = trpc.layout.get.queryKey({ zone: 'overview' });
-  const saved = useQuery(trpc.layout.get.queryOptions({ zone: 'overview' }));
+  const queryKey = trpc.layout.get.queryKey({ zone });
+  const saved = useQuery(trpc.layout.get.queryOptions({ zone }));
   const save = useMutation(trpc.layout.save.mutationOptions());
   const reset = useMutation(trpc.layout.reset.mutationOptions());
   const [editing, setEditing] = useState(false);
@@ -39,14 +40,14 @@ export function WidgetBoard() {
 
   const known = new Map(widgets.map((widget) => [widget.id, widget]));
   // Unknown ids (a widget removed since) and sizes a widget no longer has are dropped, never rendered.
-  const items = (saved.data ?? defaultOverview)
+  const items = (saved.data ?? defaultLayouts[zone])
     .filter((item) => known.get(item.widget)?.sizes.includes(item.size))
     .toSorted(byPosition);
 
   function commit(next: WidgetItem[]) {
     const sorted = next.toSorted(byPosition);
     queryClient.setQueryData(queryKey, sorted);
-    save.mutate({ zone: 'overview', items: sorted });
+    save.mutate({ zone, items: sorted });
   }
 
   function fromLayout(layout: Layout) {
@@ -80,9 +81,7 @@ export function WidgetBoard() {
         {editing && (
           <button
             type="button"
-            onClick={() =>
-              reset.mutate({ zone: 'overview' }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })
-            }
+            onClick={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
             className="min-h-touch rounded-full px-md text-label text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent"
           >
             {m.widget_reset()}
@@ -120,7 +119,7 @@ export function WidgetBoard() {
               return (
                 <div key={item.widget} data-widget={item.widget} data-size={item.size} className="widget-cell">
                   {/* While editing the widget is a picture to move: its own buttons must not take the press. */}
-                  <div className="h-full" inert={editing}>
+                  <div className="h-full overflow-y-auto rounded-xl" inert={editing}>
                     <Widget size={item.size} />
                   </div>
                   {editing && (

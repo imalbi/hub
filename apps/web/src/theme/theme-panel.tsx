@@ -114,15 +114,28 @@ export function ThemePanel({ className = '' }: { className?: string }) {
       </fieldset>
       <p className="text-caption text-muted-foreground">{m.theme_help()}</p>
       {editing && (
-        <ThemeEditor
-          key={`${editing.id ?? 'new'}-${editing.base}`}
-          draft={editing}
-          onSaved={(id) => {
-            setTheme(customId(id));
+        // A modal side sheet: the editor never grows the widget's cell and the page stays visible as the live preview.
+        <dialog
+          ref={(element) => {
+            if (element && !element.open) element.showModal();
+          }}
+          onCancel={(event) => {
+            event.preventDefault();
             closeEditor();
           }}
-          onCancel={closeEditor}
-        />
+          aria-label={editing.id === undefined ? m.theme_editor_new() : m.theme_editor_edit()}
+          className="theme-sheet m-0 ml-auto h-dvh max-h-dvh border-l border-border bg-surface p-lg text-foreground backdrop:bg-transparent"
+        >
+          <ThemeEditor
+            key={`${editing.id ?? 'new'}-${editing.base}`}
+            draft={editing}
+            onSaved={(id) => {
+              setTheme(customId(id));
+              closeEditor();
+            }}
+            onCancel={closeEditor}
+          />
+        </dialog>
       )}
     </Panel>
   );
@@ -309,7 +322,7 @@ function ThemeEditor({
   return (
     <form
       aria-labelledby={formId}
-      className="flex flex-col gap-md border-t border-dashed border-border pt-md"
+      className="flex flex-col gap-md"
       onSubmit={(event) => {
         event.preventDefault();
         if (failures.length > 0) return;
@@ -319,7 +332,7 @@ function ThemeEditor({
       <h3 id={formId} className="text-label">
         {draft.id === undefined ? m.theme_editor_new() : m.theme_editor_edit()}
       </h3>
-      <div className="grid grid-cols-2 gap-md">
+      <div className="flex flex-col gap-md">
         <label className="flex flex-col gap-2xs text-caption text-muted-foreground">
           {m.theme_name()}
           <input
@@ -342,7 +355,7 @@ function ThemeEditor({
           </select>
         </label>
       </div>
-      <div className="grid grid-cols-3 gap-sm">
+      <div className="grid grid-cols-2 gap-sm">
         {roles.map((role) => (
           <label key={role} className="flex items-center gap-xs text-caption">
             <input

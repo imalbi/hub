@@ -126,4 +126,4 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 ## Layout
 
-- `modules/layout/router.ts`: `layout.get/save/reset` for desk widget boards, one `desk_layouts` row per zone (only `overview` today). The server validates the shape (widget id pattern, size enum, integer positions on 12 columns, at most 40 items), not the widget ids: those belong to the web app and later to modules.
+- `modules/layout/router.ts`: `layout.get/save/reset` for desk widget boards, one `desk_layouts` row per zone (`overview`, `study`, `media`, `system`, `devices`, the ids of `apps/web/src/shell/zones.ts`). The server validates the shape (widget id pattern, size enum, integer positions on 12 columns, at most 40 items), not the widget ids: those belong to the web app and later to modules.

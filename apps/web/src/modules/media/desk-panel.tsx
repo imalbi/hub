@@ -43,7 +43,7 @@ export function MediaPanel({ compact = false, className = '' }: { compact?: bool
   return (
     <Panel
       title={m.tile_media()}
-      className={`relative ${!compact ? 'mb-2xl' : ''} ${media.connectionLost ? 'opacity-60' : ''} ${className}`}
+      className={`relative ${media.connectionLost ? 'opacity-60' : ''} ${className}`}
       action={
         compact ? (
           <Link to="/desk/media" className="text-caption text-muted-foreground hover:text-foreground">

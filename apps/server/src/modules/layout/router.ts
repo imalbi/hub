@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { protectedProcedure, router } from '../../core/trpc.ts';
 import { deskLayouts } from '../../db/schema.ts';
 
-const zone = z.enum(['overview']);
+// The desk zones (`apps/web/src/shell/zones.ts`); each is a board of widgets.
+const zone = z.enum(['overview', 'study', 'media', 'system', 'devices']);
 
 // The server knows the shape, not the widgets: those are defined by the web app (and later by modules), which drops ids
 // it does not know. Positions are grid units on 12 columns.
@@ -11,7 +12,7 @@ export const layoutItemsSchema = z
   .array(
     z.object({
       widget: z.string().regex(/^[a-z][a-z\d-]{0,39}$/),
-      size: z.enum(['small', 'medium', 'large', 'wide']),
+      size: z.enum(['small', 'medium', 'large', 'wide', 'full']),
       x: z.number().int().min(0).max(11),
       y: z.number().int().min(0).max(200),
     }),

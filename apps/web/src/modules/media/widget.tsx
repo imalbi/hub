@@ -9,6 +9,13 @@ import { useMedia } from './media-provider.tsx';
 export function MediaWidget({ size }: { size: WidgetSize }) {
   if (size === 'small') return <SmallMedia />;
   if (size === 'large') return <LargeMedia />;
+  // The hero with its floating player; the padding keeps the half of the player that overhangs inside the cell.
+  if (size === 'full')
+    return (
+      <div className="h-full pb-xl">
+        <MediaPanel className="h-full" />
+      </div>
+    );
   return <MediaPanel compact className="h-full" />;
 }
 

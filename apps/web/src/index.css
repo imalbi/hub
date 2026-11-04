@@ -35,6 +35,8 @@
   /* Cover grows with the viewport but leaves room for the track's title. */
   /* One widget row: a small widget (3 of 12 columns) is about square on the desk, and the compact panels fit. */
   --spacing-widget-row: 15rem;
+  /* The theme editor's side sheet: narrow enough to leave most of the page visible as the live preview. */
+  --spacing-sheet: 28rem;
   --spacing-media-cover: clamp(14rem, 24vw, 24rem);
   /* The notch and the home indicator of the iPhone, zero everywhere else. Only the deck shell uses them. */
   --spacing-safe-top: env(safe-area-inset-top);
@@ -467,4 +469,9 @@ html {
   .widget-board .react-grid-item {
     transition: none;
   }
+}
+
+.theme-sheet {
+  width: var(--spacing-sheet);
+  max-width: 100vw;
 }

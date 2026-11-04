@@ -146,9 +146,7 @@ test('the theme editor flags unreadable text and matches the baseline', async ({
   await editor.getByLabel('Testo secondario', { exact: true }).fill(surface);
   await expect(editor.getByText(/^Testo secondario su Pannelli/)).toBeVisible();
   await page.mouse.move(0, 0);
-  await expect(page.getByRole('region', { name: 'Aspetto' })).toHaveScreenshot('desk-theme-editor.png', {
-    animations: 'disabled',
-  });
+  await expect(page).toHaveScreenshot('desk-theme-editor.png', { animations: 'disabled' });
 });
 
 test('the widget board in edit mode matches the baseline', async ({ page }) => {
