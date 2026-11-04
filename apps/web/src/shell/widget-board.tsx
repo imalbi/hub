@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
 import { SplitPill } from '../components/split-pill.tsx';
 import { useTRPC } from '../lib/trpc.ts';
@@ -17,12 +17,19 @@ const sizeLabel: Record<WidgetSize, () => string> = {
   full: m.widget_size_full,
 };
 
-// The grid wants pixels; the tokens are rem so the desk's root scaling applies. Read once the desk layout is in place.
-function gridMetrics() {
+// The grid wants pixels; the tokens are rem so the desk's root scaling applies. The root font size is outside React
+// (the desk shell sets it), so it is read as an external store: React re-reads it after commit and on resize.
+function readGridMetrics() {
   const root = getComputedStyle(document.documentElement);
   const rem = Number.parseFloat(root.fontSize);
   const token = (name: string) => Number.parseFloat(root.getPropertyValue(name)) * rem;
-  return { rowHeight: token('--spacing-widget-row'), gap: token('--spacing-lg') };
+  // A primitive snapshot, so an unchanged size never re-renders.
+  return `${token('--spacing-widget-row')} ${token('--spacing-lg')}`;
+}
+
+function subscribeToResize(onChange: () => void) {
+  window.addEventListener('resize', onChange);
+  return () => window.removeEventListener('resize', onChange);
 }
 
 // Reading order (rows top to bottom, then left to right), used for "move before/after" and to keep saves stable.
@@ -77,7 +84,7 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
 
   const layout: Layout = items.map((item) => ({ i: item.widget, x: item.x, y: item.y, ...widgetCells[item.size] }));
   const missing = [...known.values()].filter((widget) => !items.some((item) => item.widget === widget.id));
-  const metrics = mounted ? gridMetrics() : null;
+  const [rowHeight = 0, gap = 0] = useSyncExternalStore(subscribeToResize, readGridMetrics).split(' ').map(Number);
 
   return (
     <section aria-label={m.widget_board()} className="col-span-12 flex flex-col gap-md">
@@ -91,14 +98,14 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
         />
       </HeaderActions>
       <div ref={containerRef} className={editing ? 'widget-board editing' : 'widget-board'}>
-        {metrics && (
+        {mounted && (
           <ReactGridLayout
             layout={layout}
             width={width}
             gridConfig={{
               cols: 12,
-              rowHeight: metrics.rowHeight,
-              margin: [metrics.gap, metrics.gap],
+              rowHeight,
+              margin: [gap, gap],
               containerPadding: [0, 0],
             }}
             dragConfig={{ enabled: editing, cancel: '.widget-tools' }}

@@ -1,9 +1,18 @@
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import react from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
+
+// HUB_COMPILER_LOG=1 lists the components the compiler skips and why (run once after a big change).
+const compilerLogger = {
+  logEvent(filename: string | null, event: { kind: string; detail?: unknown; reason?: string }) {
+    if (event.kind !== 'CompileSuccess')
+      console.warn('[react-compiler]', event.kind, filename, JSON.stringify(event.detail ?? event.reason));
+  },
+};
 
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
@@ -11,6 +20,8 @@ export default defineConfig({
     // Must run before react() or route generation and code splitting fail silently.
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),
+    // React Compiler: components are memoized for us, so no hand-written useMemo/useCallback/memo.
+    babel({ presets: [reactCompilerPreset(process.env.HUB_COMPILER_LOG ? { logger: compilerLogger } : undefined)] }),
     tailwindcss(),
     paraglideVitePlugin({
       project: './project.inlang',
