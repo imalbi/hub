@@ -7,7 +7,7 @@ Hub is a personal control center: one Fastify server on the desktop (CachyOS, Hy
 ```bash
 pnpm dev          # server on 127.0.0.1:4180 + Vite (proxies /trpc to the server)
 pnpm typecheck    # tsc in every workspace
-pnpm test         # node:test in apps/server
+pnpm test         # node:test in apps/server and deploy
 pnpm lint         # oxlint --type-aware + the design-token guard
 pnpm format       # prettier --write (format:check to verify)
 pnpm check        # typecheck + lint + format:check + test: fast, run while working
@@ -16,6 +16,7 @@ pnpm test:e2e     # Playwright against the fake server (apps/e2e)
 pnpm test:e2e:update  # rewrite screenshot baselines: only for an intended visual change
 pnpm smoke        # read-only check that the real wpctl, pw-dump and playerctl still parse
 pnpm serve        # build the web app, then serve it and the API from the server (no Vite, no watch)
+pnpm desktop:install # preview desktop integration; --apply installs, --uninstall previews removal
 pnpm --filter @hub/server <script>
 pnpm --filter @hub/web <script>
 ```
@@ -27,6 +28,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - `apps/server` (`@hub/server`): Fastify 5 + tRPC 11 + zod. Runs TypeScript directly with Node type stripping, no build step. See `apps/server/AGENTS.md`.
 - `apps/web` (`@hub/web`): React 19 + Vite + TanStack Query + tRPC client + Tailwind v4. See `apps/web/AGENTS.md`.
 - `apps/e2e` (`@hub/e2e`): Playwright specs and screenshot baselines against a fake server. See `apps/e2e/AGENTS.md`.
+- `deploy/`: desktop templates and installer, no personal values. See `deploy/AGENTS.md`. Deployment TypeScript shares the server's Node typecheck; root `pnpm test` also runs its tests.
 - End-to-end types: the web app imports `type AppRouter` from `@hub/server`. Never import runtime code from the server into the web app, only types.
 
 ## Hard rules
@@ -35,6 +37,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - **Only registry actions run.** The server never executes arbitrary shell commands, not even when an LLM asks. Every side effect is an action with a zod-validated input. Spawn binaries with an argument array (`execFile`), never a shell string.
 - **Never read secrets.** Do not open, cat or print `.env*` or `config.local.json`.
 - **Loopback unless paired.** The server binds `127.0.0.1` by default. `server.host` in the config can open it to the LAN, and then only a PC (loopback) or a paired device token gets past `protectedProcedure` (see "Trust, pairing and the LAN" in `apps/server/AGENTS.md`). Never bind to the LAN or edit the real config yourself: the owner does that.
+- **Desktop install is opt-in.** `pnpm desktop:install` never writes or starts services without `--apply`; removal needs `--uninstall --apply`. Only the owner applies on the real desktop. The active Hyprland configuration uses Lua: edit the managed block in `hypr-user.lua`, never the legacy `hypr-user.conf`.
 
 ## Code style
 

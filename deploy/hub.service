@@ -1,0 +1,15 @@
+# >>> hub
+[Unit]
+Description=Hub desktop control center
+PartOf=hyprland-session.target
+After=hyprland-session.target
+
+[Service]
+Type=simple
+ExecStart=:"@NODE@" "@REPO@/apps/server/src/index.ts"
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=hyprland-session.target
+# <<< hub

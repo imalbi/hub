@@ -1,0 +1,8 @@
+{
+  "chrome": {
+    "enable": true,
+    "match": [{ "class": "chrome-127.0.0.1__desk-", "initialTitle": "127.0.0.1_/desk" }],
+    "command": ["google-chrome-stable", "--app=http://127.0.0.1:4180/desk"],
+    "move": true
+  }
+}
