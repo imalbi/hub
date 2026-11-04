@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { execFileSync, spawnSync } from 'node:child_process';
-import type { Run } from '../../exec.ts';
+import type { Run } from '../../core/exec.ts';
 import { createMediaArt } from './art.ts';
 
 const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');

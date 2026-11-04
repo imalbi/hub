@@ -1,4 +1,4 @@
-import { run as realRun, type Run, type RunResult } from './exec.ts';
+import { run as realRun, type Run, type RunResult } from './core/exec.ts';
 import { parsePwDump } from './modules/audio/pipewire.ts';
 import { MEDIA_FORMAT, parseMediaState } from './modules/media/playerctl.ts';
 

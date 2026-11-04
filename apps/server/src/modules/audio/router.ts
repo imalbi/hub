@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure, router } from '../../trpc.ts';
+import { protectedProcedure, router } from '../../core/trpc.ts';
 import { readAudioState, readSnapshot } from './live.ts';
 import { nextOutput, resolveOutputs } from './pipewire.ts';
 

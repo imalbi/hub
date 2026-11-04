@@ -1,4 +1,4 @@
-import type { Config } from '../../config.ts';
+import type { Config } from '../../core/config.ts';
 
 export type TimerAction = 'start' | 'pause' | 'resume' | 'skip' | 'stop' | 'complete';
 type Active = {

@@ -1,4 +1,4 @@
-import type { Run } from '../../exec.ts';
+import type { Run } from '../../core/exec.ts';
 import { open } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { MEDIA_FORMAT, parseMediaMetadata } from './playerctl.ts';

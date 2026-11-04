@@ -1,10 +1,10 @@
 import { TRPCError } from '@trpc/server';
 import { and, count, eq, gte, lt } from 'drizzle-orm';
-import type { Config } from '../../config.ts';
+import type { Config } from '../../core/config.ts';
 import type { Db } from '../../db/index.ts';
 import { pomodoroSessions } from '../../db/schema.ts';
-import type { Run } from '../../exec.ts';
-import { createLiveHub } from '../../live.ts';
+import type { Run } from '../../core/exec.ts';
+import { createLiveHub } from '../../core/live.ts';
 import { createTimer, localMidnight, nextMidnight, timerState, transition, type TimerAction } from './timer.ts';
 
 export function createPomodoro(

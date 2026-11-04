@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { emptyConfig, type Config } from '../../config.ts';
-import type { Run } from '../../exec.ts';
+import { emptyConfig, type Config } from '../../core/config.ts';
+import type { Run } from '../../core/exec.ts';
 import { buildServer } from '../../server.ts';
 
 process.env.NODE_ENV = 'test';

@@ -39,7 +39,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'node ../server/src/fake.ts',
+      command: 'node ../server/src/testing/fake.ts',
       env: { HUB_PORT: String(SERVER_PORT) },
       // The fake answers 401 here (not the PC), which counts as up.
       url: `http://127.0.0.1:${SERVER_PORT}/trpc/health`,

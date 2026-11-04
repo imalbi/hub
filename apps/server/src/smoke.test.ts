@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFakeDesktop } from './fake-desktop.ts';
-import type { Run, RunResult } from './exec.ts';
+import { createFakeDesktop } from './testing/fake-desktop.ts';
+import type { Run, RunResult } from './core/exec.ts';
 import { runSmoke } from './smoke.ts';
 
 const ok = (stdout: string): RunResult => ({ stdout, stderr: '', code: 0 });

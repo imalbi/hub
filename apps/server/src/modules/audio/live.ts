@@ -1,6 +1,6 @@
-import type { Config } from '../../config.ts';
-import type { Run } from '../../exec.ts';
-import { createLiveHub } from '../../live.ts';
+import type { Config } from '../../core/config.ts';
+import type { Run } from '../../core/exec.ts';
+import { createLiveHub } from '../../core/live.ts';
 import { currentOutput, parsePwDump, resolveOutputs } from './pipewire.ts';
 
 export async function readSnapshot(run: Run) {

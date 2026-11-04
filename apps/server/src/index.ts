@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertCanListen, loadConfig } from './config.ts';
+import { assertCanListen, loadConfig } from './core/config.ts';
 import { buildServer } from './server.ts';
 
 // XDG state dir: personal data stays out of the repo and survives reinstalls of it.

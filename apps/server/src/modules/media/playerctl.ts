@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
-import type { RunResult } from '../../exec.ts';
+import type { RunResult } from '../../core/exec.ts';
 
 /** playerctl does not expand `\t` in --format, so the separators are real tabs. */
 export const MEDIA_FORMAT = '{{status}}\t{{artist}}\t{{title}}\t{{mpris:artUrl}}\t{{mpris:length}}';

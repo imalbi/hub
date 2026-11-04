@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { setImmediate as flush } from 'node:timers/promises';
-import { emptyConfig } from '../../config.ts';
+import { emptyConfig } from '../../core/config.ts';
 import { openDb } from '../../db/index.ts';
 import { pomodoroSessions } from '../../db/schema.ts';
-import { createFakeDesktop } from '../../fake-desktop.ts';
+import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 import { createPomodoro } from './live.ts';
 
 afterEach(() => mock.timers.reset());

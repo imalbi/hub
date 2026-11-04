@@ -1,14 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useToken } from '../auth.ts';
-import { AudioOutputTile } from '../deck/audio-output-tile.tsx';
-import { DeckFrame } from '../deck/deck-frame.tsx';
-import { MediaTile } from '../deck/media-tile.tsx';
-import { PairingScreen } from '../deck/pairing-screen.tsx';
-import { PomodoroTile } from '../deck/pomodoro-tile.tsx';
+import { useToken } from '../lib/auth.ts';
+import { AudioOutputTile } from '../modules/audio/deck-tile.tsx';
+import { DeckFrame } from '../shell/deck-frame.tsx';
+import { MediaTile } from '../modules/media/deck-tile.tsx';
+import { PairingScreen } from '../modules/devices/pairing-screen.tsx';
+import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import { m } from '../paraglide/messages.js';
-import { ServerStatus } from '../server-status.tsx';
-import { useConnectionLost } from '../trpc.ts';
-import { useLayout } from '../use-layout.ts';
+import { ServerStatus } from '../modules/system/server-status.tsx';
+import { useConnectionLost } from '../lib/trpc.ts';
+import { useLayout } from '../shell/use-layout.ts';
 
 export const Route = createFileRoute('/deck')({ component: Deck });
 

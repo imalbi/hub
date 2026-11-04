@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { devices } from '../../db/schema.ts';
-import { loopbackProcedure, router } from '../../trpc.ts';
+import { loopbackProcedure, router } from '../../core/trpc.ts';
 
 export const devicesRouter = router({
   list: loopbackProcedure.query(async ({ ctx }) =>

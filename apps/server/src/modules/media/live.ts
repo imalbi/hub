@@ -1,5 +1,5 @@
-import type { Run } from '../../exec.ts';
-import { createLiveHub } from '../../live.ts';
+import type { Run } from '../../core/exec.ts';
+import { createLiveHub } from '../../core/live.ts';
 import { MEDIA_FORMAT, parseMediaState } from './playerctl.ts';
 
 export const readMediaState = async (run: Run) =>

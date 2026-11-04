@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AudioPanel } from '../desk/audio-panel.tsx';
-import { MediaPanel } from '../desk/media-panel.tsx';
+import { AudioPanel } from '../modules/audio/desk-panel.tsx';
+import { MediaPanel } from '../modules/media/desk-panel.tsx';
 export const Route = createFileRoute('/desk/media')({ component: Media });
 function Media() {
   return (

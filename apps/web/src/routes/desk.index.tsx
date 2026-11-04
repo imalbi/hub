@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AudioPanel } from '../desk/audio-panel.tsx';
-import { MediaPanel } from '../desk/media-panel.tsx';
-import { PomodoroPanel } from '../desk/pomodoro-panel.tsx';
-import { StatusPanel } from '../desk/status-panel.tsx';
+import { AudioPanel } from '../modules/audio/desk-panel.tsx';
+import { MediaPanel } from '../modules/media/desk-panel.tsx';
+import { PomodoroPanel } from '../modules/pomodoro/desk-panel.tsx';
+import { StatusPanel } from '../modules/system/desk-panel.tsx';
 export const Route = createFileRoute('/desk/')({ component: Overview });
 function Overview() {
   return (

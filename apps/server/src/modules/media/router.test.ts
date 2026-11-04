@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFakeDesktop } from '../../fake-desktop.ts';
-import type { Run } from '../../exec.ts';
+import { createFakeDesktop } from '../../testing/fake-desktop.ts';
+import type { Run } from '../../core/exec.ts';
 import { buildServer } from '../../server.ts';
 const failingRun: Run = () => Promise.resolve({ stdout: '', stderr: 'untrusted private diagnostic', code: 1 });
 

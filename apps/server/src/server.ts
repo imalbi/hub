@@ -8,16 +8,23 @@ import {
   type CreateFastifyContextOptions,
   type FastifyTRPCPluginOptions,
 } from '@trpc/server/adapters/fastify';
-import { createDeviceSockets, extractToken, isLoopbackPeer, isSocket, resolveClient, type IsLoopback } from './auth.ts';
-import { emptyConfig, type Config } from './config.ts';
+import {
+  createDeviceSockets,
+  extractToken,
+  isLoopbackPeer,
+  isSocket,
+  resolveClient,
+  type IsLoopback,
+} from './core/auth.ts';
+import { emptyConfig, type Config } from './core/config.ts';
 import { openDb } from './db/index.ts';
-import { run as realRun, type Run } from './exec.ts';
+import { run as realRun, type Run } from './core/exec.ts';
 import { createAudioLive } from './modules/audio/live.ts';
 import { createMediaLive } from './modules/media/live.ts';
 import { createMediaArt } from './modules/media/art.ts';
-import { createPairingCodes } from './modules/pairing/codes.ts';
+import { createPairingCodes } from './modules/devices/codes.ts';
 import { createPomodoro } from './modules/pomodoro/live.ts';
-import { allowedOrigins, isAllowedOrigin } from './origin.ts';
+import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
 import { appRouter, type AppRouter } from './router.ts';
 
 // `run` and `config` default to the real system and an empty config so tests never touch the desktop or personal files.

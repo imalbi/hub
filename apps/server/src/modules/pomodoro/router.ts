@@ -1,4 +1,4 @@
-import { protectedProcedure, router } from '../../trpc.ts';
+import { protectedProcedure, router } from '../../core/trpc.ts';
 
 export const pomodoroRouter = router({
   state: protectedProcedure.query(({ ctx }) => ctx.live.pomodoro.state()),

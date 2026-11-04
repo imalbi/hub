@@ -6,8 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { mock, test } from 'node:test';
 import { setImmediate as flush } from 'node:timers/promises';
 import { z } from 'zod';
-import { emptyConfig } from '../../config.ts';
-import { createFakeDesktop } from '../../fake-desktop.ts';
+import { emptyConfig } from '../../core/config.ts';
+import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 import { buildServer } from '../../server.ts';
 
 process.env.NODE_ENV = 'test';

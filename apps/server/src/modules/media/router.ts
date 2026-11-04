@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure, router } from '../../trpc.ts';
+import { protectedProcedure, router } from '../../core/trpc.ts';
 import { readMediaState } from './live.ts';
-import type { Context } from '../../trpc.ts';
+import type { Context } from '../../core/trpc.ts';
 
 async function control(ctx: Context, action: 'play-pause' | 'next' | 'previous') {
   const { code } = await ctx.run('playerctl', [action]);
