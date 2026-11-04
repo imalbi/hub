@@ -7,7 +7,7 @@ import { useTRPC } from '../lib/trpc.ts';
 import { widgetCells, type WidgetSize } from '../lib/widget-size.ts';
 import { m } from '../paraglide/messages.js';
 import { HeaderActions } from './header-slot.tsx';
-import { defaultLayouts, widgets, type WidgetItem, type ZoneId } from './widgets.ts';
+import { defaultLayouts, widgets, zoneWidgets, type WidgetItem, type ZoneId } from './widgets.ts';
 
 const sizeLabel: Record<WidgetSize, () => string> = {
   small: m.widget_size_small,
@@ -39,7 +39,10 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
   const [editing, setEditing] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth();
 
-  const known = new Map(widgets.map((widget) => [widget.id, widget]));
+  const allowed = zoneWidgets[zone];
+  const known = new Map(
+    widgets.filter((widget) => allowed === 'all' || allowed.includes(widget.id)).map((widget) => [widget.id, widget]),
+  );
   // Unknown ids (a widget removed since) and sizes a widget no longer has are dropped, never rendered.
   const items = (saved.data ?? defaultLayouts[zone])
     .filter((item) => known.get(item.widget)?.sizes.includes(item.size))
@@ -73,7 +76,7 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
   }
 
   const layout: Layout = items.map((item) => ({ i: item.widget, x: item.x, y: item.y, ...widgetCells[item.size] }));
-  const missing = widgets.filter((widget) => !items.some((item) => item.widget === widget.id));
+  const missing = [...known.values()].filter((widget) => !items.some((item) => item.widget === widget.id));
   const metrics = mounted ? gridMetrics() : null;
 
   return (
@@ -123,7 +126,7 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
               return (
                 <div key={item.widget} data-widget={item.widget} data-size={item.size} className="widget-cell">
                   {/* While editing the widget is a picture to move: its own buttons must not take the press. */}
-                  <div className="h-full overflow-y-auto rounded-xl" inert={editing}>
+                  <div className="h-full overflow-hidden rounded-xl" inert={editing}>
                     <Widget size={item.size} />
                   </div>
                   {editing && (

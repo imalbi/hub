@@ -25,7 +25,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ pc }) => {
-  await pc.post('/trpc/layout.reset', { data: { zone: 'overview' }, headers: { 'content-type': 'application/json' } });
+  for (const zone of ['overview', 'media'])
+    await pc.post('/trpc/layout.reset', { data: { zone }, headers: { 'content-type': 'application/json' } });
 });
 
 test('widgets on the same row have the same height, two small ones fill a medium width', async ({ page }) => {
@@ -95,4 +96,15 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
   await page.mouse.up();
   expect(await box(page, 'audio')).toEqual(from);
   await expect(cell(page, 'pomodoro').getByRole('button', { name: 'Avvia' })).toBeEnabled();
+});
+
+test('a zone offers only its own widgets; Panoramica offers them all', async ({ page }) => {
+  await page.goto('/desk/media');
+  await page.getByRole('button', { name: 'Modifica' }).click();
+  await andSaved(page, () => page.getByRole('button', { name: 'Rimuovi Uscita audio' }).click());
+  await expect(page.getByRole('button', { name: /^Aggiungi / })).toHaveText(['Uscita audio']);
+  await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Uscita audio' }).click());
+  // The player hero is part of the page, not a widget: it never shows edit tools.
+  await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible();
+  await expect(page.locator('[data-widget="media"]')).toHaveCount(0);
 });

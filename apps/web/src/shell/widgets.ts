@@ -18,7 +18,7 @@ export const widgets: Array<{
   component: ComponentType<{ size: WidgetSize }>;
 }> = [
   { id: 'pomodoro', label: m.pomodoro_title, sizes: ['small', 'medium', 'large', 'wide'], component: PomodoroWidget },
-  { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide', 'full'], component: MediaWidget },
+  { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide'], component: MediaWidget },
   { id: 'server', label: m.server_panel_title, sizes: ['small', 'medium', 'wide'], component: ServerWidget },
   { id: 'audio', label: m.tile_audio_output, sizes: ['small', 'medium', 'wide'], component: AudioWidget },
   // Lists that grow scroll inside their cell, so they only come in sizes tall enough to show a few rows.
@@ -28,7 +28,16 @@ export const widgets: Array<{
 
 export type ZoneId = 'overview' | 'study' | 'media' | 'system' | 'devices';
 
-/** What each zone shows until the owner rearranges it; every zone offers every widget in "Aggiungi widget". */
+/** Which widgets a zone may hold: Panoramica is the home screen and takes them all, a zone only its own domain's. */
+export const zoneWidgets: Record<ZoneId, readonly string[] | 'all'> = {
+  overview: 'all',
+  study: ['pomodoro'],
+  media: ['audio'],
+  system: ['server'],
+  devices: ['devices', 'theme'],
+};
+
+/** What each zone shows until the owner rearranges it. */
 export const defaultLayouts: Record<ZoneId, WidgetItem[]> = {
   overview: [
     { widget: 'pomodoro', size: 'medium', x: 0, y: 0 },
@@ -37,10 +46,7 @@ export const defaultLayouts: Record<ZoneId, WidgetItem[]> = {
     { widget: 'audio', size: 'small', x: 3, y: 1 },
   ],
   study: [{ widget: 'pomodoro', size: 'large', x: 0, y: 0 }],
-  media: [
-    { widget: 'media', size: 'full', x: 0, y: 0 },
-    { widget: 'audio', size: 'medium', x: 0, y: 2 },
-  ],
+  media: [{ widget: 'audio', size: 'medium', x: 0, y: 0 }],
   system: [{ widget: 'server', size: 'medium', x: 0, y: 0 }],
   devices: [
     { widget: 'devices', size: 'large', x: 0, y: 0 },
