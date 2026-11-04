@@ -14,6 +14,12 @@ const configSchema = z.object({
       ),
     })
     .default({ outputs: [] }),
+  server: z
+    .object({
+      // Extra page origins allowed to open the WebSocket (the deck on the LAN later); dev origins are built in.
+      allowedOrigins: z.array(z.string().min(1)).default([]),
+    })
+    .default({ allowedOrigins: [] }),
 });
 
 export type Config = z.infer<typeof configSchema>;

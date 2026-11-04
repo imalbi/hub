@@ -10,9 +10,11 @@ type TileProps = {
   pending?: boolean;
   /** The last action failed: the state line gives way to an error until the next tap. */
   error?: boolean;
+  /** The live connection is down: the state shown is the last one received, so the tile dims. */
+  stale?: boolean;
 };
 
-export function Tile({ icon: Icon, label, state, onPress, pending = false, error = false }: TileProps) {
+export function Tile({ icon: Icon, label, state, onPress, pending = false, error = false, stale = false }: TileProps) {
   const shownState = error ? m.tile_error() : state;
   return (
     <button
@@ -23,7 +25,7 @@ export function Tile({ icon: Icon, label, state, onPress, pending = false, error
       onClick={onPress}
       className={`flex flex-col items-start gap-xs rounded-lg border p-md text-left active:bg-surface-raised disabled:opacity-60 ${
         error ? 'border-danger' : 'border-border'
-      } bg-surface`}
+      } ${stale ? 'opacity-60' : ''} bg-surface`}
     >
       <Icon className="size-icon" aria-hidden />
       <span className="text-label">{label}</span>

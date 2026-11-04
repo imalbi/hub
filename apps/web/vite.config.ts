@@ -17,5 +17,6 @@ export default defineConfig({
       strategy: ['baseLocale'],
     }),
   ],
-  server: { proxy: { '/trpc': `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` } },
+  // `ws: true` forwards the WebSocket upgrade of the tRPC subscriptions along with the Origin header the server checks.
+  server: { proxy: { '/trpc': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}`, ws: true } } },
 });

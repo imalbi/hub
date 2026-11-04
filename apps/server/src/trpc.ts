@@ -2,6 +2,8 @@ import { initTRPC } from '@trpc/server';
 import type { Config } from './config.ts';
 import type { Db } from './db/index.ts';
 import type { Run } from './exec.ts';
+import type { AudioLive } from './modules/audio/live.ts';
+import type { MediaLive } from './modules/media/live.ts';
 
 /** Registry metadata for an action (a mutation). Later steps derive LLM tools and the danger check from it. */
 export type ActionMeta = {
@@ -10,7 +12,10 @@ export type ActionMeta = {
   danger?: boolean;
 };
 
-export type Context = { db: Db; run: Run; config: Config };
+/** One state hub per module, shared by every connection of a server (see `src/live.ts`). */
+export type Live = { audio: AudioLive; media: MediaLive };
+
+export type Context = { db: Db; run: Run; config: Config; live: Live };
 
 const t = initTRPC.context<Context>().meta<ActionMeta>().create();
 

@@ -47,6 +47,21 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - UI changes are not done until checked in a real browser (desk at 4K, deck at iPhone X size, 375x812).
 - Design references for this project are in `~/swipefile_0.1/refs.json`, entries with `project: "hub"`; read each `note` before using it.
 
+## Verification and tests
+
+Nothing is done until it is verified, and nothing verified once stays unguarded.
+
+- **Every planned change ships with its checks.** A plan's Acceptance lists the tests to add by behaviour (not "add tests") and the manual or visual checks to make. The executor records in the plan's Progress notes what each check actually showed.
+- **Where tests go:**
+  - pure logic (parsers, pickers, state reducers) gets unit tests next to the code (`*.test.ts`, `node:test`);
+  - server behaviour gets integration tests through `buildServer(...).inject` with a fake `run` and fixture config;
+  - UI behaviour and layout get e2e specs and screenshot baselines in `apps/e2e` (Playwright against the fake server), from step 03 on.
+- **Tests never touch the real desktop or personal data.** System commands go through an injected fake; fixtures use generic device names. The only exception is `pnpm smoke`, which is read-only by design.
+- **Every bug gets a regression test first**: write the test that fails on the bug, then fix it, and keep the test.
+- **Never weaken a test to get green.** Do not delete, skip or loosen a failing test, and do not update screenshot baselines, unless the change in behaviour or look is intended; say which and why in the Progress notes.
+- **The gate:** `pnpm check` while working; `pnpm verify` (check + e2e) before a step is called done. From step 03 the pre-commit hook runs `pnpm verify`, so a regression blocks the commit; `--no-verify` only with the user's explicit OK.
+- **System drift:** `pnpm smoke` checks that the real `pw-dump`, `playerctl` and friends still produce output Hub can parse. Run it after system updates and whenever a module that wraps a system tool changes.
+
 ## Keeping these files current
 
 `AGENTS.md` is the single source of rules for every agent (Claude Code, Codex, opencode, Antigravity); each `CLAUDE.md` only imports it with `@AGENTS.md`. Edit `AGENTS.md`, never the `CLAUDE.md` stubs.

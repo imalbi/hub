@@ -1,21 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import { useSubscription } from '@trpc/tanstack-react-query';
 import { Pause, Play } from 'lucide-react';
 import { Tile } from '../components/tile.tsx';
 import { m } from '../paraglide/messages.js';
-import { STATE_REFETCH_MS, useTRPC } from '../trpc.ts';
+import { useConnectionLost, useTRPC } from '../trpc.ts';
 
 export function MediaTile() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  const media = useQuery({ ...trpc.media.state.queryOptions(), refetchInterval: STATE_REFETCH_MS });
-  const playPause = useMutation(
-    trpc.media.playPause.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.media.state.queryKey() }),
-    }),
-  );
+  const connectionLost = useConnectionLost();
+  const media = useSubscription(trpc.media.onState.subscriptionOptions());
+  // The server pushes the new state after the action, so there is nothing to invalidate here.
+  const playPause = useMutation(trpc.media.playPause.mutationOptions());
 
   function stateText() {
-    if (media.data === undefined) return media.isError ? m.tile_unavailable() : m.tile_loading();
+    if (media.data === undefined) return connectionLost ? m.tile_unavailable() : m.tile_loading();
     if (media.data === null || !media.data.title) return m.media_nothing_playing();
     return media.data.artist ? m.media_track(media.data) : media.data.title;
   }
@@ -28,6 +26,7 @@ export function MediaTile() {
       state={stateText()}
       pending={playPause.isPending}
       error={playPause.isError}
+      stale={connectionLost}
       onPress={() => playPause.mutate()}
     />
   );

@@ -16,6 +16,7 @@ const config: Config = {
       { label: 'Monitor', match: 'HDMI Monitor' },
     ],
   },
+  server: { allowedOrigins: [] },
 };
 
 function fakeRun() {
@@ -58,7 +59,7 @@ void test('audio.cycleOutput sets the next available sink as default', async () 
 
 void test('audio.cycleOutput fails without touching wpctl when no configured output is available', async () => {
   const { run, calls } = fakeRun();
-  const res = await buildServer({ dbPath: ':memory:', run, config: { audio: { outputs: [] } } }).inject({
+  const res = await buildServer({ dbPath: ':memory:', run, config: { ...config, audio: { outputs: [] } } }).inject({
     method: 'POST',
     url: '/trpc/audio.cycleOutput',
     headers: { 'content-type': 'application/json' },

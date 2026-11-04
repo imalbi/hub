@@ -15,7 +15,15 @@ function configFile(content: string) {
 }
 
 void test('a missing config file is an empty config', () => {
-  assert.deepEqual(loadConfig(join(dir, 'missing.json')), { audio: { outputs: [] } });
+  assert.deepEqual(loadConfig(join(dir, 'missing.json')), {
+    audio: { outputs: [] },
+    server: { allowedOrigins: [] },
+  });
+});
+
+void test('server.allowedOrigins is read from the config', () => {
+  const path = configFile('{ "server": { "allowedOrigins": ["https://hub.example"] } }');
+  assert.deepEqual(loadConfig(path).server.allowedOrigins, ['https://hub.example']);
 });
 
 void test('an invalid config fails with a message naming the file and the field', () => {

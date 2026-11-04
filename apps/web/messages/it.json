@@ -3,6 +3,7 @@
   "server_connecting": "Connessione in corso",
   "server_unreachable": "Server non raggiungibile",
   "server_up": "Server attivo da {seconds}s",
+  "connection_lost": "Connessione persa",
   "desk_title": "Hub",
   "deck_title": "Hub",
   "tile_loading": "Caricamento",

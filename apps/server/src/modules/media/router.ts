@@ -1,11 +1,11 @@
 import { TRPCError } from '@trpc/server';
 import { publicProcedure, router } from '../../trpc.ts';
-import { MEDIA_FORMAT, parseMediaState } from './playerctl.ts';
+import { readMediaState } from './live.ts';
 
 export const mediaRouter = router({
-  state: publicProcedure.query(async ({ ctx }) =>
-    parseMediaState(await ctx.run('playerctl', ['metadata', '--format', MEDIA_FORMAT])),
-  ),
+  state: publicProcedure.query(({ ctx }) => readMediaState(ctx.run)),
+
+  onState: publicProcedure.subscription(({ ctx, signal }) => ctx.live.media.subscribe(signal)),
 
   playPause: publicProcedure
     .meta({ description: 'Toggle play/pause on the current media player' })
@@ -13,5 +13,6 @@ export const mediaRouter = router({
       const { code, stderr } = await ctx.run('playerctl', ['play-pause']);
       if (code !== 0)
         throw new TRPCError({ code: 'PRECONDITION_FAILED', message: `playerctl play-pause failed: ${stderr.trim()}` });
+      void ctx.live.media.notify();
     }),
 });

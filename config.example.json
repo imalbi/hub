@@ -4,5 +4,6 @@
       { "label": "Cuffie", "match": "Headphones model" },
       { "label": "Casse", "match": "Speakers model" }
     ]
-  }
+  },
+  "server": { "allowedOrigins": [] }
 }
