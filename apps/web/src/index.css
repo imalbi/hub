@@ -337,13 +337,95 @@ body {
   stroke-width: var(--spacing-px);
 }
 
-/* Theme changes cross-fade the whole page (see ThemeProvider); slower than the default so dark to light is gentle. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--motion-standard);
-  animation-timing-function: var(--ease-in-out);
+/*
+ * Theme changes glide instead of cutting: the color variables are registered as colors, so the browser interpolates
+ * them when `data-theme` changes, and a change in mid-glide starts from the current color (no snapshot, no flash).
+ * Every element reads them through var(), so the whole page follows. Instant with reduced motion.
+ */
+@property --background {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
 }
-/* The fade's overlay would swallow the pointer, so leaving a card mid-fade would never end its preview. */
-::view-transition {
-  pointer-events: none;
+@property --foreground {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --surface {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --surface-raised {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --muted {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --muted-foreground {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --border {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --primary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --primary-foreground {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --success {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --danger {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --glass {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --glass-border {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --backdrop-glow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+html {
+  transition-property:
+    --background, --foreground, --surface, --surface-raised, --muted, --muted-foreground, --border, --primary,
+    --primary-foreground, --accent, --success, --danger, --glass, --glass-border, --backdrop-glow;
+  transition-duration: var(--motion-standard);
+  transition-timing-function: var(--ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
 }

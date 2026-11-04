@@ -26,18 +26,37 @@ type Card = {
 };
 
 export function ThemePanel({ className = '' }: { className?: string }) {
-  const { theme, setTheme, setPreview, custom, caelestia, caelestiaStatus } = useTheme();
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const { theme, setTheme, setPreview, setDraft, custom, caelestia, caelestiaStatus } = useTheme();
+  const [editing, setEditing] = useState<Draft | null>(null);
   // Try a theme only when the pointer rests on its card, so sweeping across the cards does not flash the page.
   const intent = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(intent.current), []);
+  // Leaving the zone with the editor open or a preview pending must not leave the whole desk in that theme.
+  useEffect(
+    () => () => {
+      clearTimeout(intent.current);
+      setDraft(null);
+      setPreview(null);
+    },
+    [setDraft, setPreview],
+  );
   function tryTheme(id: string) {
     clearTimeout(intent.current);
     intent.current = setTimeout(() => setPreview(id), hoverIntentMs);
   }
   function endTry() {
     clearTimeout(intent.current);
-    setPreview(draft ? 'draft' : null);
+    setPreview(editing ? 'draft' : null);
+  }
+  // Opening and closing the editor drive the page preview from the same event, not from an effect watching state.
+  function openEditor(next: Draft) {
+    setEditing(next);
+    setDraft(next.values);
+    setPreview('draft');
+  }
+  function closeEditor() {
+    setEditing(null);
+    setDraft(null);
+    setPreview(null);
   }
   const fallbackName = caelestia?.mode === 'light' ? m.theme_paper() : m.theme_ink();
   const cards: Card[] = [
@@ -80,11 +99,11 @@ export function ThemePanel({ className = '' }: { className?: string }) {
                 onChoose={() => setTheme(card.id)}
                 onTry={() => tryTheme(card.id)}
                 onDuplicate={(copied) =>
-                  setDraft({ name: m.theme_copy_name({ name: card.label }), base: card.id, values: copied })
+                  openEditor({ name: m.theme_copy_name({ name: card.label }), base: card.id, values: copied })
                 }
                 onEdit={
                   editId !== undefined && values
-                    ? () => setDraft({ id: editId, name: card.label, base: card.id, values })
+                    ? () => openEditor({ id: editId, name: card.label, base: card.id, values })
                     : undefined
                 }
                 onDeleted={() => theme === card.id && setTheme('ink')}
@@ -94,15 +113,15 @@ export function ThemePanel({ className = '' }: { className?: string }) {
         </div>
       </fieldset>
       <p className="text-caption text-muted-foreground">{m.theme_help()}</p>
-      {draft && (
+      {editing && (
         <ThemeEditor
-          key={`${draft.id ?? 'new'}-${draft.base}`}
-          draft={draft}
+          key={`${editing.id ?? 'new'}-${editing.base}`}
+          draft={editing}
           onSaved={(id) => {
             setTheme(customId(id));
-            setDraft(null);
+            closeEditor();
           }}
-          onCancel={() => setDraft(null)}
+          onCancel={closeEditor}
         />
       )}
     </Panel>
@@ -268,33 +287,23 @@ function ThemeEditor({
   onCancel: () => void;
 }) {
   const trpc = useTRPC();
-  const { setDraft, setPreview } = useTheme();
+  const { setDraft } = useTheme();
   const save = useMutation(trpc.theme.save.mutationOptions());
   const [name, setName] = useState(draft.name);
   const [values, setValues] = useState(draft.values);
   const failures = contrastFailures(values.colors);
   const formId = useId();
 
-  // The whole page shows the theme being edited, and goes back to the chosen one when the editor closes.
-  useEffect(() => {
-    setDraft(values);
-    setPreview('draft');
-  }, [values, setDraft, setPreview]);
-  useEffect(
-    () => () => {
-      setDraft(null);
-      setPreview(null);
-    },
-    [setDraft, setPreview],
-  );
+  function change(next: ThemeValues) {
+    setValues(next);
+    setDraft(next);
+  }
 
   function setColor(role: keyof Colors, hex: string) {
-    setValues((current) => {
-      const colors = { ...current.colors, [role]: hex };
-      // The hairline follows the text color at low opacity, as in the built-in themes.
-      if (role === 'foreground') colors.border = `${hex}1a`;
-      return { ...current, colors };
-    });
+    const colors = { ...values.colors, [role]: hex };
+    // The hairline follows the text color at low opacity, as in the built-in themes.
+    if (role === 'foreground') colors.border = `${hex}1a`;
+    change({ ...values, colors });
   }
 
   return (
@@ -325,9 +334,7 @@ function ThemeEditor({
           {m.theme_mode()}
           <select
             value={values.mode}
-            onChange={(event) =>
-              setValues((current) => ({ ...current, mode: event.target.value === 'light' ? 'light' : 'dark' }))
-            }
+            onChange={(event) => change({ ...values, mode: event.target.value === 'light' ? 'light' : 'dark' })}
             className="min-h-touch rounded-md border border-border bg-background px-sm text-body text-foreground"
           >
             <option value="dark">{m.theme_mode_dark()}</option>

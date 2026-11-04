@@ -64,16 +64,8 @@ export function ThemeProvider({ remote, children }: { remote: boolean; children:
 
   const applied = resolve(preview ?? theme);
   useLayoutEffect(() => {
-    const root = document.documentElement;
-    if (root.dataset.theme === applied) return;
-    const apply = () => {
-      root.dataset.theme = applied;
-    };
-    // A cross-fade instead of a hard cut: a whole page flipping between dark and light is harsh on the eyes. The first
-    // paint and reduced motion switch at once; a new switch mid-fade simply replaces the running one.
-    const fade = root.dataset.theme !== undefined && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (fade && 'startViewTransition' in document) document.startViewTransition(apply);
-    else apply();
+    // The colors glide to the new theme by themselves (registered properties in index.css), so this is a plain switch.
+    document.documentElement.dataset.theme = applied;
   }, [applied]);
   useLayoutEffect(
     () => () => {

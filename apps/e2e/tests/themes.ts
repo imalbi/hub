@@ -7,6 +7,12 @@ import { expect, type Page } from '@playwright/test';
 export async function chooseTheme(page: Page, name: string) {
   await page.locator('fieldset label', { hasText: new RegExp(`^${name}$`) }).click();
   await expect(page.getByRole('radio', { name, exact: true })).toBeChecked();
+  await themeSettled(page);
+}
+
+/** Theme colors glide over --motion-standard; measuring contrast mid-glide would read blended colors. */
+export async function themeSettled(page: Page) {
+  await page.waitForFunction(() => document.documentElement.getAnimations().length === 0);
 }
 
 // The fake server reads this copy of the fixture (see `apps/server/src/testing/fake.ts`).

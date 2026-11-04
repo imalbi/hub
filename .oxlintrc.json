@@ -12,6 +12,8 @@
     "typescript/no-misused-promises": "error",
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "error",
+    "react/set-state-in-effect": "error",
+    "react/no-deriving-state-in-effects": "error",
     "no-console": [
       "warn",
       {
