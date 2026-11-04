@@ -33,6 +33,8 @@
   --spacing-desk-rail: calc(var(--spacing-touch) + 2 * var(--spacing-xs) + 2 * var(--spacing-px));
   --spacing-desk-inset: calc(var(--spacing-desk-rail) + 2 * var(--spacing-xl));
   /* Cover grows with the viewport but leaves room for the track's title. */
+  /* One widget row: a small widget (3 of 12 columns) is about square on the desk, and the compact panels fit. */
+  --spacing-widget-row: 15rem;
   --spacing-media-cover: clamp(14rem, 24vw, 24rem);
   /* The notch and the home indicator of the iPhone, zero everywhere else. Only the deck shell uses them. */
   --spacing-safe-top: env(safe-area-inset-top);
@@ -426,6 +428,43 @@ html {
 }
 @media (prefers-reduced-motion: reduce) {
   html {
+    transition: none;
+  }
+}
+
+/* Widget board (react-grid-layout positions items with inline transforms; only what we use is styled here). */
+/* Layout changes happen only in edit mode, so only there do they animate: no widgets growing in on page load. */
+.widget-board .react-grid-layout {
+  position: relative;
+}
+.widget-board.editing .react-grid-layout {
+  transition: height var(--motion-standard) var(--ease-out);
+}
+.widget-board.editing .react-grid-item {
+  transition-property: transform, width, height;
+  transition-duration: var(--motion-standard);
+  transition-timing-function: var(--ease-out);
+}
+.widget-board .react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+  scale: 1.02;
+}
+.widget-board .react-grid-item.react-grid-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--muted);
+  opacity: 0.5;
+}
+.widget-board.editing .widget-cell {
+  cursor: grab;
+}
+.widget-board.editing .widget-cell > [inert] {
+  opacity: 0.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-board .react-grid-layout,
+  .widget-board .react-grid-item {
     transition: none;
   }
 }

@@ -8,7 +8,7 @@ React 19 SPA built with Vite. In dev, `/trpc` is proxied to the server (`vite.co
 src/
   main.tsx, index.css, routeTree.gen.ts
   routes/      file routes only: compose shell and module components, no logic of their own
-  shell/       the frame around modules: desk.tsx (DeskShell), rail, zones.ts, backdrop, header-activity, deck-frame, use-layout
+  shell/       the frame around modules: desk.tsx (DeskShell), rail, zones.ts, widgets.ts, widget-board.tsx, header-slot.tsx, backdrop, header-activity, deck-frame, use-layout
   theme/       theme.tsx (ThemeProvider), themes.ts, contrast.ts (+ test), theme-panel.tsx (Aspetto picker and editor)
   lib/         trpc.ts, auth.ts, auth-link.ts: client plumbing used everywhere
   components/  flat list of shared primitives (panel, tile, registry-button); ui/ = Hairline sources
@@ -129,3 +129,10 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - Contrast (`theme/contrast.ts`, unit tests via `pnpm --filter @hub/web test`): 4.5:1 for foreground on background and surface, muted text on surface, button text on button; 3:1 for the accent on surface (focus ring). Borders are decorative hairlines and are not checked. The editor blocks saving below these, the Caelestia theme falls back when foreground on background fails.
 - Theme changes glide: the color variables are registered with `@property` (`<color>`, end of `index.css`) and `html` transitions them over `--motion-standard`, so the browser interpolates every color and a change in mid-glide starts from the current one. The View Transitions API was tried first and dropped: it applies the theme asynchronously and skips a running fade when a new one starts, which flashed the wrong theme while moving between cards. A new color variable used by themes must be registered there too. Hover previews start after the pointer rests 200 ms on a card.
 - Aspetto (`theme/theme-panel.tsx`, in Dispositivi): a radio group of cards, each a miniature desk scoped with `data-theme`; duplicate any theme (a built-in one is read from its rendered preview through a 1px canvas, which converts oklch to hex), edit with live preview of the whole page, delete with hold-to-confirm. e2e chooses a theme by clicking its name (`apps/e2e/tests/themes.ts`).
+
+## Widgets (Panoramica)
+
+- Panoramica is a phone-style board (`shell/widget-board.tsx`, react-grid-layout 2.3.0, chosen over @dnd-kit + motion and gridstack). Sizes in `lib/widget-size.ts`: Piccolo 3x1, Medio 6x1, Grande 6x2, Largo 12x1 on 12 columns; a row is `--spacing-widget-row` (15rem) and the gap `--spacing-lg`, read as pixels from the root at runtime, so widgets on a row are the same height by construction. Vertical compaction fills gaps, so two Piccoli sit in a Medio's width.
+- A widget is `modules/<name>/widget.tsx` exporting a component that takes `size` and renders a variant per size, listed in `shell/widgets.ts` with its allowed sizes (the default layout is there too). A widget fills its cell (`h-full`); small variants put the label on top and the one figure large at the bottom.
+- Edit mode ("Modifica" in the header, through `HeaderActions` and the shell's header slot): items drag (whole cell, `.widget-tools` excluded), the content is `inert`, a size pill (P/M/G/L, full names as radio labels) sits bottom left and move-before/after (the keyboard path; the library has no keyboard drag) plus remove top right; "Aggiungi widget" lists missing ones; "Ripristina" resets. Layout animations run only in edit mode (no widgets growing in on load) and never with reduced motion.
+- Saved on the server (`layout.get/save/reset`, `desk_layouts`); the client updates the query cache and saves, and drops ids or sizes it does not know. e2e waits for `layout.save` before a reload and for the grid's animations before measuring (`apps/e2e/tests/widgets.spec.ts`).

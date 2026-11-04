@@ -38,7 +38,7 @@ test('the visible countdown ticks without changing its live announcement', async
       element.setAttribute('data-mutations', String(Number(element.getAttribute('data-mutations')) + records.length)),
     ).observe(element, { childList: true, characterData: true, subtree: true });
   });
-  const activity = header.getByRole('button');
+  const activity = header.getByRole('button', { name: /Studio/ });
   const before = await activity.innerText();
   await page.clock.fastForward(1000);
   await expect.poll(() => activity.innerText()).not.toBe(before);

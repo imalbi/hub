@@ -34,6 +34,7 @@ export default defineConfig({
         'zones.spec.ts',
         'design.spec.ts',
         'themes.spec.ts',
+        'widgets.spec.ts',
       ],
       use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
     },

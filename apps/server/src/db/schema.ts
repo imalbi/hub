@@ -27,3 +27,10 @@ export const themes = sqliteTable('themes', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+// The widget board of a desk zone, one row per zone. `items` is validated by `layoutItemsSchema` on the way in and out.
+export const deskLayouts = sqliteTable('desk_layouts', {
+  zone: text('zone').primaryKey(),
+  items: text('items', { mode: 'json' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});

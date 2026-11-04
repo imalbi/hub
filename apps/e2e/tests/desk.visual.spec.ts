@@ -18,7 +18,7 @@ test.beforeEach(async ({ page }) => {
     }),
   );
   await page.goto('/desk');
-  await expect(page.getByText('Server attivo da 42s')).toBeVisible();
+  await expect(page.getByText('42 s', { exact: true })).toBeVisible();
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
@@ -149,4 +149,11 @@ test('the theme editor flags unreadable text and matches the baseline', async ({
   await expect(page.getByRole('region', { name: 'Aspetto' })).toHaveScreenshot('desk-theme-editor.png', {
     animations: 'disabled',
   });
+});
+
+test('the widget board in edit mode matches the baseline', async ({ page }) => {
+  await page.getByRole('button', { name: 'Modifica' }).click();
+  await expect(page.getByRole('group', { name: 'Dimensione di Pomodoro' })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-widgets-edit.png', { animations: 'disabled' });
 });
