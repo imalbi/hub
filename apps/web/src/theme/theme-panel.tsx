@@ -9,6 +9,9 @@ import { contrastFailures, type Colors } from './contrast.ts';
 import { useTheme } from './theme.tsx';
 import { builtInThemes, caelestiaId, customId, readThemeValues, type ThemeValues } from './themes.ts';
 
+// Long enough to tell resting on a card from passing over it, short enough to feel immediate.
+const hoverIntentMs = 200;
+
 type Draft = { id?: number; name: string; base: string; values: ThemeValues };
 
 type Card = {
@@ -25,6 +28,17 @@ type Card = {
 export function ThemePanel({ className = '' }: { className?: string }) {
   const { theme, setTheme, setPreview, custom, caelestia, caelestiaStatus } = useTheme();
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Try a theme only when the pointer rests on its card, so sweeping across the cards does not flash the page.
+  const intent = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(intent.current), []);
+  function tryTheme(id: string) {
+    clearTimeout(intent.current);
+    intent.current = setTimeout(() => setPreview(id), hoverIntentMs);
+  }
+  function endTry() {
+    clearTimeout(intent.current);
+    setPreview(draft ? 'draft' : null);
+  }
   const fallbackName = caelestia?.mode === 'light' ? m.theme_paper() : m.theme_ink();
   const cards: Card[] = [
     ...builtInThemes.map(({ id, label, mode }) => ({ id, label: label(), mode })),
@@ -55,7 +69,7 @@ export function ThemePanel({ className = '' }: { className?: string }) {
       <fieldset>
         <legend className="sr-only">{m.theme_title()}</legend>
         {/* Leaving the cards ends the try-on: back to the chosen theme, or to the draft while editing. */}
-        <div className="grid grid-cols-3 gap-md" onMouseLeave={() => setPreview(draft ? 'draft' : null)}>
+        <div className="grid grid-cols-3 gap-md" onMouseLeave={endTry}>
           {cards.map((card) => {
             const { customId: editId, values } = card;
             return (
@@ -64,7 +78,7 @@ export function ThemePanel({ className = '' }: { className?: string }) {
                 card={card}
                 checked={theme === card.id}
                 onChoose={() => setTheme(card.id)}
-                onTry={() => setPreview(card.id)}
+                onTry={() => tryTheme(card.id)}
                 onDuplicate={(copied) =>
                   setDraft({ name: m.theme_copy_name({ name: card.label }), base: card.id, values: copied })
                 }

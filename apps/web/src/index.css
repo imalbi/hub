@@ -336,3 +336,14 @@ body {
   fill: none;
   stroke-width: var(--spacing-px);
 }
+
+/* Theme changes cross-fade the whole page (see ThemeProvider); slower than the default so dark to light is gentle. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-standard);
+  animation-timing-function: var(--ease-in-out);
+}
+/* The fade's overlay would swallow the pointer, so leaving a card mid-fade would never end its preview. */
+::view-transition {
+  pointer-events: none;
+}
