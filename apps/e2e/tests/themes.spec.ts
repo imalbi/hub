@@ -7,7 +7,10 @@ const builtIn = ['Scuro', 'Chiaro', 'Muschio', 'Pietra', 'Caelestia'];
 async function deleteCustomThemes(pc: APIRequestContext) {
   const list = await (await pc.get('/trpc/theme.list')).json();
   for (const { id } of list.result.data)
-    await pc.post('/trpc/theme.delete', { data: { id }, headers: { 'content-type': 'application/json' } });
+    await pc.post('/trpc/theme.delete', {
+      data: { id, confirmed: true },
+      headers: { 'content-type': 'application/json' },
+    });
 }
 
 const backgroundOf = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).backgroundColor);

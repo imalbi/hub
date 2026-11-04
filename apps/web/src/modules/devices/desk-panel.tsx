@@ -1,22 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useTRPC } from '../../lib/trpc.ts';
 import { Smartphone } from 'lucide-react';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
-
-const button = 'min-h-touch rounded-full border border-border px-lg text-label disabled:opacity-60';
-
-function useClock() {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return [now, () => setNow(Date.now())] as const;
-}
+import { HoldButton } from '../../components/hold-button.tsx';
+import { useNow } from '../../lib/use-now.ts';
 
 function lastSeen(at: number, now: number) {
   const minutes = Math.floor((now - at) / 60_000);
@@ -29,20 +19,15 @@ function lastSeen(at: number, now: number) {
 export function DevicesPanel({ className = '' }: { className?: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [now, refreshClock] = useClock();
-  const [confirming, setConfirming] = useState<number | null>(null);
-
-  // The tick can be a second old: refresh the clock when the code arrives, or a fresh two-minute code reads 121 s.
-  const createCode = useMutation(trpc.pairing.createCode.mutationOptions({ onSuccess: refreshClock }));
+  const createCode = useMutation(trpc.pairing.createCode.mutationOptions());
+  // Ticks on the code's own seconds while one is shown, on the clock's otherwise (for "last seen").
+  const now = useNow(createCode.data?.expiresAt ?? 'clock');
   const remaining = createCode.data ? Math.max(0, Math.ceil((createCode.data.expiresAt - now) / 1000)) : 0;
   // The list changes only when someone pairs, so it refreshes while a code is on screen instead of by push.
   const devices = useQuery({ ...trpc.devices.list.queryOptions(), refetchInterval: remaining > 0 ? 2000 : false });
   const revoke = useMutation(
     trpc.devices.revoke.mutationOptions({
-      onSuccess: () => {
-        setConfirming(null);
-        return queryClient.invalidateQueries({ queryKey: trpc.devices.list.queryKey() });
-      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.devices.list.queryKey() }),
     }),
   );
 
@@ -86,29 +71,12 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
                 {m.device_last_seen({ when: lastSeen(device.lastSeenAt, now) })}
               </span>
             </div>
-            {confirming === device.id ? (
-              <div className="flex gap-xs">
-                <RegistryButton
-                  secondary
-                  label={m.device_revoke_confirm()}
-                  action={() => revoke.mutateAsync({ id: device.id })}
-                  disabled={revoke.isPending}
-                  className="border-danger text-danger"
-                />
-                <button type="button" onClick={() => setConfirming(null)} className={button}>
-                  {m.device_revoke_cancel()}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                aria-label={`${m.device_revoke()} ${device.name}`}
-                onClick={() => setConfirming(device.id)}
-                className={button}
-              >
-                {m.device_revoke()}
-              </button>
-            )}
+            <HoldButton
+              label={m.device_revoke_hold({ name: device.name })}
+              idle={m.device_revoke()}
+              done={m.device_revoked()}
+              onConfirm={() => revoke.mutateAsync({ id: device.id, confirmed: true })}
+            />
           </li>
         ))}
       </ul>

@@ -40,6 +40,30 @@ test.describe('the deck', () => {
     await expect(page).toHaveScreenshot('deck-pomodoro-paused.png', { animations: 'disabled' });
   });
 
+  for (const deckPage of [
+    { name: 'Studio', file: 'deck-studio.png' },
+    { name: 'Sistema', file: 'deck-system.png' },
+  ]) {
+    test(`the ${deckPage.name} page matches the baseline`, async ({ page }) => {
+      await freezePomodoro(page);
+      await page.route('**/trpc/health*', (route) =>
+        route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
+      );
+      await page.goto('/deck');
+      await page.getByRole('button', { name: `Vai a ${deckPage.name}` }).click();
+      await expect(page.getByRole('button', { name: `Vai a ${deckPage.name}` })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+      await expect(page.getByRole('region', { name: deckPage.name })).toBeInViewport({ ratio: 1 });
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        localStorage.removeItem('hub.deck.page');
+      });
+      await expect(page).toHaveScreenshot(deckPage.file, { animations: 'disabled' });
+    });
+  }
+
   test.describe('unpaired', () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 

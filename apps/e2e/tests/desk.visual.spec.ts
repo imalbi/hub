@@ -60,7 +60,7 @@ test('the idle progress ring draws no completed arc', async ({ page }) => {
 test('the paused Pomodoro panel shows its progress, remaining time and all controls', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
   await page.goto('/desk/studio');
-  await expect(page.getByRole('timer', { name: 'Tempo rimanente' })).toHaveAccessibleDescription('12:30');
+  await expect(page.getByRole('timer', { name: 'Tempo rimanente' }).locator(':scope > .sr-only')).toHaveText('12:30');
   await expect(page.getByRole('progressbar', { name: 'Avanzamento Pomodoro' })).toHaveAttribute('value', '0.5');
   await expect(page.getByRole('button', { name: 'Riprendi', exact: true })).toBeVisible();
   await page.mouse.move(0, 0);
@@ -154,4 +154,31 @@ test('the widget board in edit mode matches the baseline', async ({ page }) => {
   await expect(page.getByRole('group', { name: 'Dimensione di Pomodoro' })).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-widgets-edit.png', { animations: 'disabled' });
+});
+
+test('a HoldButton half way through the hold matches the baseline', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
+  // Timers stop, so the hold never completes; the ring is a WAAPI animation, set to half of its 800 ms.
+  await page.clock.pauseAt(NOW);
+  const revoke = page.getByRole('button', { name: 'Tieni premuto per revocare iPhone' });
+  await revoke.hover();
+  await page.mouse.down();
+  await expect(revoke).toContainText('Continua a tenere');
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      animation.pause();
+      animation.currentTime = 400;
+    }
+  });
+  await expect(revoke).toHaveScreenshot('hold-button-mid-hold.png');
+  await page.mouse.up();
+});
+
+test('the Pomodoro settings popover matches the baseline', async ({ page }) => {
+  await page.goto('/desk/studio');
+  await page.getByRole('button', { name: 'Impostazioni Pomodoro' }).click();
+  await expect(page.getByRole('radio', { name: /^25 minuti di studio/ })).toBeChecked();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-pomodoro-settings.png', { animations: 'disabled' });
 });

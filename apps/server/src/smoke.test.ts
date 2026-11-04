@@ -29,6 +29,7 @@ void test('every check is ok on a healthy desktop', async () => {
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'ok'],
     ['notify-send --help', 'ok'],
+    ['pw-play --version', 'ok'],
   ]);
 });
 
@@ -45,6 +46,7 @@ void test('only read-only commands are run', async () => {
     'playerctl --version',
     'playerctl metadata',
     'pw-dump',
+    'pw-play --version',
     'wpctl --help',
   ]);
 });
@@ -59,6 +61,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'missing'],
     ['notify-send --help', 'ok'],
+    ['pw-play --version', 'ok'],
   ]);
 });
 

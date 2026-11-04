@@ -92,6 +92,67 @@ test('the deck applies the theme chosen on this device, a custom one included', 
     await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(16, 20, 24)');
   } finally {
     await page.evaluate(() => localStorage.removeItem('hub.theme'));
-    await pc.post('/trpc/theme.delete', { data: { id }, headers: { 'content-type': 'application/json' } });
+    await pc.post('/trpc/theme.delete', {
+      data: { id, confirmed: true },
+      headers: { 'content-type': 'application/json' },
+    });
   }
+});
+
+test('the dots and a swipe move between pages, and the page shown survives a reload', async ({ page }) => {
+  const pages = page.getByRole('navigation', { name: 'Pagine' });
+  const dot = (name: string) => pages.getByRole('button', { name: `Vai a ${name}` });
+  try {
+    await expect(dot('Scrivania')).toHaveAttribute('aria-current', 'page');
+    await dot('Studio').click();
+    await expect(dot('Studio')).toHaveAttribute('aria-current', 'page');
+    await expect(
+      page.getByRole('region', { name: 'Studio' }).getByRole('button', { name: /^Pomodoro:/ }),
+    ).toBeVisible();
+    // A swipe is a horizontal scroll of the page strip.
+    await page.locator('.deck-pages').evaluate((strip) => strip.scrollTo({ left: 2 * strip.clientWidth }));
+    await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
+    await page.reload();
+    await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('group', { name: 'Aspetto' })).toBeInViewport();
+  } finally {
+    await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+  }
+});
+
+test('the Sistema page chooses the theme of this device', async ({ page }) => {
+  await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+  try {
+    await page.getByRole('group', { name: 'Aspetto' }).getByText('Chiaro', { exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  } finally {
+    await page.evaluate(() => {
+      localStorage.removeItem('hub.theme');
+      localStorage.removeItem('hub.deck.page');
+    });
+  }
+});
+
+test('the player bar shows the track on every page and plays or pauses it', async ({ page }) => {
+  const player = page.getByRole('region', { name: 'In riproduzione' });
+  await expect(player.getByText('Title', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+  await expect(player).toBeVisible();
+  await player.getByRole('button', { name: 'Metti in pausa la musica' }).click();
+  await expect(mediaTile(page)).toHaveAccessibleName(/in pausa/);
+  await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+});
+
+test('the player bar is hidden when no player is running', async ({ page }) => {
+  // Media state null is "no player"; the fake desktop always has one, so replace its pushes on this page.
+  await page.routeWebSocket(/\/trpc/, (socket) => {
+    const server = socket.connectToServer();
+    server.onMessage((message) => {
+      const text = message.toString();
+      socket.send(text.includes('"artKey"') ? text.replace(/"data":\{[^}]*"artKey"[^}]*\}/, '"data":null') : text);
+    });
+  });
+  await page.goto('/deck');
+  await expect(mediaTile(page)).toHaveAccessibleName('Musica: Niente in riproduzione');
+  await expect(page.getByRole('region', { name: 'In riproduzione' })).toHaveCount(0);
 });

@@ -94,7 +94,7 @@ void test('a revoked device is refused at once', async () => {
   const token = await pair('Revoked phone');
   const device = (await deviceList()).find((d) => d.name === 'Revoked phone');
   assert.ok(device);
-  assert.equal((await call('POST', 'devices.revoke', { input: { id: device.id } })).status, 200);
+  assert.equal((await call('POST', 'devices.revoke', { input: { id: device.id, confirmed: true } })).status, 200);
   assert.equal((await call('GET', 'health', { remoteAddress: LAN, token })).status, 401);
 });
 

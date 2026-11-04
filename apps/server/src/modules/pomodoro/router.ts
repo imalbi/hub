@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { pomodoroDurationsSchema } from '../../core/config.ts';
 import { protectedProcedure, router } from '../../core/trpc.ts';
 
 export const pomodoroRouter = router({
@@ -18,4 +20,11 @@ export const pomodoroRouter = router({
   stop: protectedProcedure
     .meta({ description: 'Stop Pomodoro and return to idle without completing the current phase' })
     .mutation(({ ctx }) => ctx.live.pomodoro.act('stop')),
+  configure: protectedProcedure
+    .meta({
+      description:
+        'Set the Pomodoro durations in minutes (longBreakEvery 0 means no long break) and whether a chime plays at the end of a phase; applies from the next phase',
+    })
+    .input(pomodoroDurationsSchema.extend({ sound: z.boolean() }))
+    .mutation(({ ctx, input }) => ctx.live.pomodoro.configure(input)),
 });

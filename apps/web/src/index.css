@@ -508,3 +508,70 @@ html {
     transition: none;
   }
 }
+
+/* Deck pages: one viewport wide each, swiped with scroll snap. The scrollbar is hidden; the dots show the position. */
+.deck-pages {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.deck-pages > * {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.deck-dot {
+  background: var(--color-muted-foreground);
+  opacity: 0.4;
+  transition:
+    opacity var(--motion-standard),
+    background-color var(--motion-standard);
+}
+[aria-current='page'] > .deck-dot {
+  background: var(--color-foreground);
+  opacity: 1;
+}
+
+/* An on/off switch from a native checkbox (role="switch"): a pill track with a sliding thumb. */
+.switch {
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: calc(2 * var(--spacing-lg));
+  height: var(--spacing-lg);
+  border-radius: var(--radius-full);
+  background: var(--color-muted);
+  cursor: pointer;
+  transition: background-color var(--motion-standard);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: var(--spacing-3xs);
+  left: var(--spacing-3xs);
+  width: calc(var(--spacing-lg) - 2 * var(--spacing-3xs));
+  height: calc(var(--spacing-lg) - 2 * var(--spacing-3xs));
+  border-radius: var(--radius-full);
+  background: var(--color-foreground);
+  transition:
+    transform var(--motion-standard),
+    background-color var(--motion-standard);
+}
+.switch:checked {
+  background: var(--color-primary);
+}
+.switch:checked::after {
+  background: var(--color-primary-foreground);
+  transform: translateX(var(--spacing-lg));
+}
+.switch:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::after {
+    transition: none;
+  }
+}

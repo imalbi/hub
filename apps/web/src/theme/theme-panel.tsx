@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Copy, Pencil } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
-import { HoldToConfirm } from '../components/ui/hold-to-confirm.tsx';
+import { HoldButton } from '../components/hold-button.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
 import { contrastFailures, type Colors } from './contrast.ts';
@@ -217,19 +217,14 @@ function ThemeCard({
         </span>
       )}
       {card.customId !== undefined && (
-        <HoldToConfirm
-          aria-label={m.theme_delete({ name: card.label })}
+        <HoldButton
+          label={m.theme_delete({ name: card.label })}
+          idle={m.theme_delete_idle()}
+          done={m.theme_deleted()}
           className="self-start"
-          labels={{
-            idle: m.theme_delete_idle(),
-            holding: m.theme_delete_holding(),
-            pending: m.theme_deleting(),
-            success: m.theme_deleted(),
-            error: m.theme_delete_failed(),
-          }}
           onConfirm={async () => {
             if (card.customId === undefined) return;
-            await remove.mutateAsync({ id: card.customId });
+            await remove.mutateAsync({ id: card.customId, confirmed: true });
             onDeleted();
           }}
         />

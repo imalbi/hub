@@ -42,7 +42,14 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 ## Desk design pass (step 07b)
 
 - design.spec.ts verifies Media artwork and transport, shared-track restoration, rail movement, theme-dependent backdrop blur, no active player animations under reduced motion, per-button error status, connection badge dimming, the empty device list and the focus activity opening Studio. contrast.ts measures rendered colors in a canvas; both rail-label and Pomodoro hover regressions require 4.5:1.
-- NumberRoll adds decorative digit strips to the desk timer. Read its nested output for exact functional time; aria-describedby points to that output and the timer's accessible description is the remaining time. Never compare the entire decorative DOM text. Deck text assertions stay unchanged.
+- NumberRoll adds decorative digit strips to the desk timer. Read the timer's direct `:scope > .sr-only` child for the exact time (step 08 removed the hidden output and the description). Never compare the entire decorative DOM text. Deck text assertions stay unchanged.
 - All existing desk baselines intentionally change in 07b; Media in paper adds desk-media-paper.png. Move the pointer away before normal screenshots so the focused/hovered rail label cannot leak into a page baseline; hover readability has its own functional test. Continue freezing uptime, devices, pairing code, clock and Pomodoro; disable animations and await artwork when present.
 - The deck baseline files are unchanged by 07b; do not update them for desk work. Only desk images are regenerated during this pass. A global CSS or shared-hook change must still pass the existing deck screenshots in verify.
 - Artwork recovery tests return null or another key once, then the valid fake cover; both must recover with one retry. A frozen Pomodoro plus page.clock verifies that visible time changes while a MutationObserver sees no updates to the phase-only polite announcement. These regressions guard against infinite freshness of failures and a screen reader announcing every second.
+
+## Deck pages, hold and clock (step 08)
+
+- The deck has three pages; a test that switches page clears `hub.deck.page` (and `hub.theme`) in `finally`. A swipe is `.deck-pages` `scrollTo`. Tiles on pages off screen are hidden from role queries, so `getByRole('button', { name: /^Pomodoro:/ })` still finds one.
+- Holding: hover, `page.mouse.down()`, advance `page.clock`, `mouse.up()`. The mid-hold baseline pauses timers (`clock.pauseAt`) and pins every WAAPI animation at 400 ms. Danger mutations from test helpers pass `confirmed: true`.
+- Pomodoro clock checks install `page.clock`: a MutationObserver on the timer's direct `.sr-only` child records each second once; a client an hour ahead still shows the server's time (the offset from `serverNow`). The timer's text is its direct `:scope > .sr-only` child (NumberRoll has its own sr-only nodes). `pomodoro.configure` changes the fake server for later tests: a test that calls it restores the fixture durations in `finally`.
+- New baselines: deck-studio.png, deck-system.png, desk-pomodoro-settings.png, hold-button-mid-hold.png.

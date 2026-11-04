@@ -1,4 +1,7 @@
-import type { Config } from '../../core/config.ts';
+import type { z } from 'zod';
+import type { pomodoroDurationsSchema } from '../../core/config.ts';
+
+export type Durations = z.infer<typeof pomodoroDurationsSchema>;
 
 export type TimerAction = 'start' | 'pause' | 'resume' | 'skip' | 'stop' | 'complete';
 type Active = {
@@ -49,13 +52,15 @@ export function timerState(timer: Timer, now: number) {
     pausedRemainingMs: timer.pausedRemainingMs,
     durationMs: timer.durationMs,
     completedFocusToday: timer.dayStartedAt === localMidnight(now) ? timer.completedFocusToday : 0,
+    // Clients count down against this clock, not their own: a phone whose clock drifts still shows the right time.
+    serverNow: now,
   };
 }
 
 export function transition(
   timer: Timer,
   action: TimerAction,
-  config: Config['pomodoro'],
+  config: Durations,
   now: number,
 ): { timer: Timer; ended: EndedPhase | null } | null {
   const today = timerState(timer, now).completedFocusToday;
@@ -88,7 +93,7 @@ export function transition(
     action !== 'stop' && current.phase === 'focus'
       ? active(
           'break',
-          completed && current.completedFocusCount % config.longBreakEvery === 0
+          completed && config.longBreakEvery > 0 && current.completedFocusCount % config.longBreakEvery === 0
             ? config.longBreakMinutes
             : config.shortBreakMinutes,
         )

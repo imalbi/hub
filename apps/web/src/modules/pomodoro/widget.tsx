@@ -26,7 +26,7 @@ function SmallPomodoro() {
         <RegistryButton
           iconOnly
           label={timer.primaryLabel}
-          action={() => timer.actAsync(timer.primaryAction)}
+          action={() => timer.act(timer.primaryAction)}
           disabled={timer.pending || timer.state === undefined || timer.connectionLost}
           icon={<Icon className="size-icon" aria-hidden />}
         />

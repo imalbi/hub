@@ -36,23 +36,27 @@ test('a code shows six digits and a countdown, and a device that redeems it appe
   }
 });
 
-test('revoking needs a confirmation, then the device is gone and its token stops working', async ({
-  page,
-  pc,
-  phone,
-}) => {
+test('revoking needs a hold, then the device is gone and its token stops working', async ({ page, pc, phone }) => {
   const token = await pairDevice(pc, 'Doomed phone');
   const health = () => phone.get('/trpc/health', { headers: { authorization: `Bearer ${token}` } });
   try {
     expect((await health()).status()).toBe(200);
     await page.reload();
-    await page.getByRole('button', { name: 'Revoca Doomed phone' }).click();
-    // Cancel backs out without revoking.
-    await page.getByRole('button', { name: 'Annulla' }).click();
+    const revoke = page.getByRole('button', { name: 'Tieni premuto per revocare Doomed phone' });
+    await page.clock.install();
+    // A tap, or a release before 800 ms, revokes nothing.
+    await revoke.click();
+    await revoke.hover();
+    await page.mouse.down();
+    await page.clock.runFor(500);
+    await page.mouse.up();
+    await page.clock.runFor(1000);
     await expect(page.getByText('Doomed phone', { exact: true })).toBeVisible();
+    expect((await health()).status()).toBe(200);
 
-    await page.getByRole('button', { name: 'Revoca Doomed phone' }).click();
-    await page.getByRole('button', { name: 'Conferma revoca' }).click();
+    await page.mouse.down();
+    await page.clock.runFor(900);
+    await page.mouse.up();
     await expect(page.getByText('Doomed phone', { exact: true })).toHaveCount(0);
     expect((await health()).status()).toBe(401);
   } finally {

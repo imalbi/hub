@@ -53,6 +53,7 @@ const checks = [
   { name: 'pw-dump', bin: 'pw-dump', args: [], judge: judgePwDump },
   { name: 'playerctl metadata', bin: 'playerctl', args: ['metadata', '--format', MEDIA_FORMAT], judge: judgeMetadata },
   { name: 'notify-send --help', bin: 'notify-send', args: ['--help'], judge: judgeNotifyHelp },
+  { name: 'pw-play --version', bin: 'pw-play', args: ['--version'], judge: judgeVersion },
 ];
 
 /** Runs the read-only commands Hub depends on and feeds their output through the real parsers. */

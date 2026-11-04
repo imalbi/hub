@@ -31,5 +31,6 @@ export async function pairDevice(pc: APIRequestContext, deviceName: string): Pro
 /** Revokes every device with this name; a test that paired one cleans up with it. */
 export async function revokeDevices(pc: APIRequestContext, name: string) {
   const devices: Array<{ id: number; name: string }> = await result(await pc.get('/trpc/devices.list'));
-  for (const device of devices.filter((d) => d.name === name)) await post(pc, 'devices.revoke', { id: device.id });
+  for (const device of devices.filter((d) => d.name === name))
+    await post(pc, 'devices.revoke', { id: device.id, confirmed: true });
 }

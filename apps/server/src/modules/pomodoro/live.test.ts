@@ -145,3 +145,52 @@ void test('completed history from earlier days restores the long-break cycle', (
   assert.equal(timer.state().durationMs, 900_000);
   assert.equal(timer.state().completedFocusToday, 1);
 });
+
+void test('the chime plays through pw-play on natural endings only, and not with sound off', (t) => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: new Date(2026, 10, 4, 10) });
+  const db = openDb(':memory:');
+  const sounds: string[] = [];
+  const timer = createPomodoro(db, createFakeDesktop({ sounds }), {
+    ...emptyConfig.pomodoro,
+    focusMinutes: 0.05,
+  });
+  t.after(() => {
+    timer.close();
+    db.$client.close();
+  });
+  timer.act('start');
+  timer.act('skip');
+  timer.act('stop');
+  assert.deepEqual(sounds, []);
+  timer.act('start');
+  mock.timers.tick(3000);
+  assert.equal(sounds.length, 1);
+  assert.match(sounds[0] ?? '', /chime\.wav$/);
+  assert.equal(timer.state().lastCompletedAt, Date.now());
+  timer.act('stop');
+  timer.configure({ ...timer.state().settings, sound: false });
+  timer.act('start');
+  mock.timers.tick(3000);
+  assert.equal(timer.state().phase, 'break');
+  assert.equal(sounds.length, 1);
+});
+
+void test('configure persists across a restart and applies from the next phase', (t) => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: new Date(2026, 10, 4, 10) });
+  const db = openDb(':memory:');
+  const first = createPomodoro(db, createFakeDesktop(), emptyConfig.pomodoro);
+  t.after(() => db.$client.close());
+  first.act('start');
+  const fiftyTen = { focusMinutes: 50, shortBreakMinutes: 10, longBreakMinutes: 15, longBreakEvery: 0, sound: true };
+  first.configure(fiftyTen);
+  assert.equal(first.state().durationMs, 25 * 60_000);
+  assert.deepEqual(first.state().settings, fiftyTen);
+  first.act('skip');
+  assert.equal(first.state().durationMs, 10 * 60_000);
+  first.close();
+  const second = createPomodoro(db, createFakeDesktop(), emptyConfig.pomodoro);
+  t.after(() => second.close());
+  assert.deepEqual(second.state().settings, fiftyTen);
+  second.act('start');
+  assert.equal(second.state().durationMs, 50 * 60_000);
+});

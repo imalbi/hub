@@ -83,7 +83,7 @@ void test('revoking a device closes its open socket', async () => {
     method: 'POST',
     url: '/trpc/devices.revoke',
     headers: { 'content-type': 'application/json', 'x-test-pc': '1' },
-    payload: JSON.stringify({ id: device.id }),
+    payload: JSON.stringify({ id: device.id, confirmed: true }),
   });
   await client.until(() => client.isClosed());
 });

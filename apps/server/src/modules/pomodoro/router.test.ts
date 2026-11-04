@@ -101,3 +101,26 @@ void test('a missing notification binary never interrupts a completed phase', as
   assert.equal(data.phase, 'break');
   assert.equal(data.completedFocusToday, 1);
 });
+
+void test('configure validates the limits of the config schema', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config: emptyConfig });
+  t.after(() => app.close());
+  const configure = (input: object) =>
+    app.inject({
+      method: 'POST',
+      url: '/trpc/pomodoro.configure',
+      headers: { 'content-type': 'application/json' },
+      payload: input,
+    });
+  const valid = { focusMinutes: 50, shortBreakMinutes: 10, longBreakMinutes: 15, longBreakEvery: 0, sound: true };
+  assert.equal((await configure(valid)).statusCode, 200);
+  for (const invalid of [
+    { focusMinutes: 0 },
+    { shortBreakMinutes: 1441 },
+    { longBreakEvery: -1 },
+    { longBreakEvery: 1.5 },
+    { sound: 'yes' },
+  ]) {
+    assert.equal((await configure({ ...valid, ...invalid })).statusCode, 400, JSON.stringify(invalid));
+  }
+});

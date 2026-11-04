@@ -84,7 +84,7 @@ export const themeRouter = router({
       description: 'Delete a custom color theme; devices using it fall back to the default dark theme',
       danger: true,
     })
-    .input(z.object({ id }))
+    .input(z.object({ id, confirmed: z.literal(true) }))
     .mutation(({ ctx, input }) => {
       const removed = ctx.db.delete(themes).where(eq(themes.id, input.id)).returning({ id: themes.id }).all();
       if (removed.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such theme' });

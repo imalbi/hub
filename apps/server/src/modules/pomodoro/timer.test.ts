@@ -4,8 +4,8 @@ import { createTimer, timerState, transition, type Timer, type TimerAction } fro
 
 const config = { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 };
 const now = new Date(2026, 10, 4, 10).getTime();
-function move(timer: Timer, action: TimerAction, at: number) {
-  const result = transition(timer, action, config, at);
+function move(timer: Timer, action: TimerAction, at: number, settings = config) {
+  const result = transition(timer, action, settings, at);
   assert.ok(result, `${timer.phase}: ${action}`);
   return result;
 }
@@ -106,4 +106,17 @@ void test('today resets at local midnight, and a focus finishing after midnight 
   assert.equal(timerState(running, midnight).completedFocusToday, 0);
   assert.equal(move(running, 'complete', late + 1_500_000).timer.completedFocusToday, 1);
   assert.equal(move(running, 'complete', late + 1_500_000).timer.durationMs, 900_000);
+});
+
+void test('longBreakEvery 0 never schedules a long break', () => {
+  const settings = { focusMinutes: 50, shortBreakMinutes: 10, longBreakMinutes: 15, longBreakEvery: 0 };
+  let timer = createTimer(now);
+  let at = now;
+  for (let completed = 1; completed <= 8; completed++) {
+    timer = move(timer, 'start', at, settings).timer;
+    at += 3_000_000;
+    timer = move(timer, 'complete', at, settings).timer;
+    assert.equal(timer.durationMs, 600_000);
+    timer = move(timer, 'stop', at, settings).timer;
+  }
 });

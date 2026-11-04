@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const pomodoroSessions = sqliteTable('pomodoro_sessions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -6,6 +6,17 @@ export const pomodoroSessions = sqliteTable('pomodoro_sessions', {
   startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
   endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+});
+
+// The Pomodoro settings saved from the UI, one row (id 1). Absent means the config defaults and sound on.
+export const pomodoroSettings = sqliteTable('pomodoro_settings', {
+  id: integer('id').primaryKey(),
+  focusMinutes: real('focus_minutes').notNull(),
+  shortBreakMinutes: real('short_break_minutes').notNull(),
+  longBreakMinutes: real('long_break_minutes').notNull(),
+  longBreakEvery: integer('long_break_every').notNull(),
+  sound: integer('sound', { mode: 'boolean' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
 // A paired phone or tablet. Only the SHA-256 of its token is stored, so a leaked database cannot be replayed.

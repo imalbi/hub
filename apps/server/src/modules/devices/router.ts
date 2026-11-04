@@ -19,7 +19,7 @@ export const devicesRouter = router({
       description: 'Revoke a paired device: its token stops working and its open connections are closed',
       danger: true,
     })
-    .input(z.object({ id: z.number().int() }))
+    .input(z.object({ id: z.number().int(), confirmed: z.literal(true) }))
     .mutation(async ({ ctx, input }) => {
       const removed = await ctx.db.delete(devices).where(eq(devices.id, input.id)).returning({ id: devices.id });
       if (removed.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such device' });

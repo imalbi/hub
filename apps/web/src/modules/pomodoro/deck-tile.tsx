@@ -5,13 +5,12 @@ import { usePomodoro } from './use-pomodoro.ts';
 
 export function PomodoroTile() {
   const timer = usePomodoro();
-  const focus =
-    timer.state?.pausedRemainingMs !== null
-      ? m.pomodoro_paused({ phase: m.pomodoro_tile_focus() })
-      : m.pomodoro_tile_focus();
-  const phase = timer.state?.phase === 'focus' ? focus : timer.phaseLabel;
+  const focus = timer.paused ? m.pomodoro_paused({ phase: m.pomodoro_tile_focus() }) : m.pomodoro_tile_focus();
+  const phase = timer.phase === 'focus' ? focus : timer.phaseLabel;
   const state = timer.state
-    ? m.pomodoro_tile_state({ phase, time: timer.time })
+    ? timer.phase === 'idle'
+      ? m.pomodoro_tile_idle({ preset: timer.preset })
+      : m.pomodoro_tile_state({ phase, time: timer.time })
     : timer.connectionLost
       ? m.tile_unavailable()
       : m.tile_loading();
@@ -24,7 +23,8 @@ export function PomodoroTile() {
       pending={timer.pending}
       error={timer.error}
       stale={timer.connectionLost}
-      onPress={() => timer.act(timer.primaryAction)}
+      // A failure shows on the tile through `timer.error`.
+      onPress={() => void timer.act(timer.primaryAction).catch(() => {})}
     />
   );
 }

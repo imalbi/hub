@@ -56,9 +56,9 @@ void test('custom themes are saved, listed, renamed, updated and deleted', async
   assert.equal(row.name, 'Mezzanotte');
   assert.equal(row.values.colors.accent, '#aaddff');
 
-  assert.equal((await call(app, 'theme.delete', { id })).status, 200);
+  assert.equal((await call(app, 'theme.delete', { id, confirmed: true })).status, 200);
   assert.deepEqual((await call(app, 'theme.list')).body.result.data, []);
-  assert.equal((await call(app, 'theme.delete', { id })).status, 404);
+  assert.equal((await call(app, 'theme.delete', { id, confirmed: true })).status, 404);
   await app.close();
 });
 

@@ -20,6 +20,8 @@ export interface HoldToConfirmProps extends Omit<
   icon?: React.ReactNode;
   /** Every change of state: holding, pending, success, error, back to idle. */
   onStatusChange?: (status: HoldStatus) => void;
+  /** How to use it, for screen readers. Hub passes its Italian copy. */
+  hint?: string;
 }
 const LABELS = {
   idle: 'Hold to confirm',
@@ -37,6 +39,7 @@ export function HoldToConfirm({
   labels,
   icon,
   onStatusChange,
+  hint: hintText,
   disabled = false,
   className = '',
   ...props
@@ -163,7 +166,8 @@ export function HoldToConfirm({
         <TextMorph>{text}</TextMorph>
       </button>
       <span id={hint} className="sr-only">
-        Hold the pointer, Space or Enter for {delay / 1000} seconds. Release early or press Escape to cancel.
+        {hintText ??
+          `Hold the pointer, Space or Enter for ${delay / 1000} seconds. Release early or press Escape to cancel.`}
       </span>
       <output className="sr-only">{status === 'idle' ? '' : text}</output>
     </>

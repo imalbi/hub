@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
 
+const settings = { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4, sound: true };
+
 export const idlePomodoro = {
   phase: 'idle',
   startedAt: null,
@@ -7,6 +9,9 @@ export const idlePomodoro = {
   pausedRemainingMs: null,
   durationMs: 0,
   completedFocusToday: 0,
+  serverNow: 1_793_792_400_000,
+  settings,
+  lastCompletedAt: null,
 };
 export const pausedPomodoro = {
   phase: 'focus',
@@ -15,6 +20,9 @@ export const pausedPomodoro = {
   pausedRemainingMs: 750_000,
   durationMs: 1_500_000,
   completedFocusToday: 2,
+  serverNow: 1_793_793_150_000,
+  settings,
+  lastCompletedAt: null,
 };
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
