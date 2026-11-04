@@ -186,6 +186,10 @@
   /* Translucency belongs to floating chrome; content panels stay opaque. */
   --glass: oklch(0.18 0 0 / 0.72);
   --glass-border: oklch(1 0 0 / 0.16);
+  /* Dark themes frost the floating chrome and glow behind the grid; light ones (below) switch both off. */
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: var(--muted);
+  --backdrop-art-display: block;
 }
 
 /* Light paper theme: warm grey ground, black and white contrast cards. */
@@ -204,15 +208,61 @@
   --danger: oklch(0.55 0.19 25);
   --glass: var(--surface);
   --glass-border: var(--border);
+  --glass-filter: none;
+  --backdrop-glow: var(--background);
+  --backdrop-art-display: none;
+}
+
+/* Muschio: a deep moss ground with a slight green tint, bone ink and one sage accent (chosen with the taste skills). */
+[data-theme='moss'] {
+  --background: oklch(0.17 0.012 150);
+  --foreground: oklch(0.93 0.012 95);
+  --surface: oklch(0.21 0.014 150);
+  --surface-raised: oklch(0.25 0.015 150);
+  --muted: oklch(0.29 0.016 150);
+  --muted-foreground: oklch(0.74 0.018 120);
+  --border: oklch(0.93 0.012 95 / 0.1);
+  --primary: oklch(0.93 0.012 95);
+  --primary-foreground: oklch(0.17 0.012 150);
+  --accent: oklch(0.8 0.07 145);
+  --success: oklch(0.78 0.11 150);
+  --danger: oklch(0.7 0.15 30);
+  --glass: oklch(0.21 0.014 150 / 0.72);
+  --glass-border: oklch(0.93 0.012 95 / 0.16);
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: var(--muted);
+  --backdrop-art-display: block;
+}
+
+/* Pietra: cool stone ground, slate ink, white cards and an oxblood accent (chosen with the taste skills). */
+[data-theme='stone'] {
+  --background: oklch(0.94 0.005 240);
+  --foreground: oklch(0.22 0.02 250);
+  --surface: oklch(0.99 0.002 240);
+  --surface-raised: oklch(0.22 0.02 250);
+  --muted: oklch(0.9 0.006 240);
+  --muted-foreground: oklch(0.48 0.015 250);
+  --border: oklch(0.22 0.02 250 / 0.12);
+  --primary: oklch(0.22 0.02 250);
+  --primary-foreground: oklch(0.99 0.002 240);
+  --accent: oklch(0.47 0.13 22);
+  --success: oklch(0.5 0.12 155);
+  --danger: oklch(0.5 0.17 25);
+  --glass: var(--surface);
+  --glass-border: var(--border);
+  --glass-filter: none;
+  --backdrop-glow: var(--background);
+  --backdrop-art-display: none;
 }
 
 html[data-layout='desk'] body {
   isolation: isolate;
 }
 .desk-backdrop {
-  background: radial-gradient(ellipse at top right, var(--muted), var(--background) 70%);
+  background: radial-gradient(ellipse at top right, var(--backdrop-glow), var(--background) 70%);
 }
 .desk-backdrop img {
+  display: var(--backdrop-art-display);
   filter: blur(var(--blur-art));
   opacity: 0.3;
   transform: scale(1.15);
@@ -220,16 +270,7 @@ html[data-layout='desk'] body {
 .desk-glass {
   background: var(--glass);
   border-color: var(--glass-border);
-  backdrop-filter: blur(var(--blur-glass));
-}
-[data-theme='paper'] .desk-glass {
-  backdrop-filter: none;
-}
-[data-theme='paper'] .desk-backdrop {
-  background: var(--background);
-}
-[data-theme='paper'] .desk-backdrop img {
-  display: none;
+  backdrop-filter: var(--glass-filter);
 }
 .media-cover {
   width: var(--spacing-media-cover);

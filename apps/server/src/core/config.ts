@@ -30,6 +30,12 @@ const configSchema = z.object({
       allowedOrigins: z.array(z.string().min(1)).default([]),
     })
     .default({ host: '127.0.0.1', allowedOrigins: [] }),
+  theme: z
+    .object({
+      // Caelestia's color scheme file. Unset means the Caelestia theme is off; `src/index.ts` fills in the usual path.
+      caelestiaScheme: z.string().min(1).optional(),
+    })
+    .default({}),
 });
 
 export type Config = z.infer<typeof configSchema>;

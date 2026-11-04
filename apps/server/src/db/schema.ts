@@ -16,3 +16,14 @@ export const devices = sqliteTable('devices', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+// The owner's own themes. `values` is validated by `themeValuesSchema` on the way in and out; only hex colors reach CSS.
+export const themes = sqliteTable('themes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  // The theme it was duplicated from (`ink`, `paper`, `moss`, `stone`, `caelestia` or a custom id), for the picker only.
+  base: text('base').notNull(),
+  values: text('values', { mode: 'json' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});

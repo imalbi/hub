@@ -1,0 +1,21 @@
+{
+  "name": "fixture",
+  "flavour": "test",
+  "mode": "dark",
+  "variant": "tonalspot",
+  "colours": {
+    "background": "101418",
+    "onBackground": "E0E3E8",
+    "surfaceContainer": "1C2024",
+    "surfaceContainerHigh": "262A2F",
+    "surfaceContainerHighest": "31353A",
+    "onSurface": "E0E3E8",
+    "onSurfaceVariant": "C0C7CD",
+    "outlineVariant": "40484C",
+    "surface": "101418",
+    "primary": "8ECFF2",
+    "success": "7DD69A",
+    "error": "FFB4AB",
+    "term0": "000000"
+  }
+}

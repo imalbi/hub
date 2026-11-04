@@ -5,8 +5,8 @@ export const Route = createFileRoute('/desk/devices')({ component: Devices });
 function Devices() {
   return (
     <>
-      <DevicesPanel className="col-span-8" />
-      <ThemePanel className="col-span-4" />
+      <DevicesPanel className="col-span-5" />
+      <ThemePanel className="col-span-7" />
     </>
   );
 }

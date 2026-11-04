@@ -30,6 +30,9 @@ void test('every mutation carries a description in its meta', () => {
     'pomodoro.skip',
     'pomodoro.start',
     'pomodoro.stop',
+    'theme.delete',
+    'theme.rename',
+    'theme.save',
   ]);
   for (const { path, procedure } of mutations) {
     assert.ok(metaSchema.safeParse(procedure._def.meta).success, `${path} has no meta.description`);

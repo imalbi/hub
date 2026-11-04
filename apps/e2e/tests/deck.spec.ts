@@ -64,3 +64,34 @@ test('the connection-lost state shows when the socket drops and clears when it i
   await sockets.restore();
   await expect(page.getByText('Connessione persa')).toBeHidden({ timeout: 15_000 });
 });
+
+test('the deck applies the theme chosen on this device, a custom one included', async ({ page, pc }) => {
+  const colors = {
+    background: '#101418',
+    foreground: '#e0e3e8',
+    surface: '#1c2024',
+    surfaceRaised: '#262a2f',
+    muted: '#31353a',
+    mutedForeground: '#c0c7cd',
+    border: '#e0e3e81a',
+    primary: '#e0e3e8',
+    primaryForeground: '#101418',
+    accent: '#8ecff2',
+    success: '#7dd69a',
+    danger: '#ffb4ab',
+  };
+  const saved = await pc.post('/trpc/theme.save', {
+    data: { name: 'Deck', base: 'ink', values: { mode: 'dark', colors } },
+    headers: { 'content-type': 'application/json' },
+  });
+  const { id } = (await saved.json()).result.data;
+  try {
+    await page.evaluate((value) => localStorage.setItem('hub.theme', value), `custom-${id}`);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', `custom-${id}`);
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(16, 20, 24)');
+  } finally {
+    await page.evaluate(() => localStorage.removeItem('hub.theme'));
+    await pc.post('/trpc/theme.delete', { data: { id }, headers: { 'content-type': 'application/json' } });
+  }
+});

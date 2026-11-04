@@ -12,7 +12,12 @@ const dbPath = process.env.HUB_DB ?? join(homedir(), '.local/state/hub/hub.db');
 const dist = fileURLToPath(new URL('../../web/dist', import.meta.url));
 const webRoot = existsSync(join(dist, 'index.html')) ? dist : undefined;
 
-const config = loadConfig();
+const loaded = loadConfig();
+// Caelestia's own state file; the theme stays off when it does not exist.
+const config = {
+  ...loaded,
+  theme: { caelestiaScheme: loaded.theme.caelestiaScheme ?? join(homedir(), '.local/state/caelestia/scheme.json') },
+};
 assertCanListen(config);
 
 // Loopback unless the config opens it, and then only with an origin allowlist and device pairing in place.

@@ -24,6 +24,8 @@ import { createMediaLive } from './modules/media/live.ts';
 import { createMediaArt } from './modules/media/art.ts';
 import { createPairingCodes } from './modules/devices/codes.ts';
 import { createPomodoro } from './modules/pomodoro/live.ts';
+import { createCaelestiaTheme } from './modules/theme/caelestia.ts';
+import { createCustomThemesLive } from './modules/theme/router.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
 import { appRouter, type AppRouter } from './router.ts';
 
@@ -52,7 +54,13 @@ export function buildServer({
     app.log.error({ err }, 'Pomodoro deadline failed'),
   );
   app.addHook('onClose', () => pomodoro.close());
-  const live = { audio: createAudioLive(run, config), media: createMediaLive(run), pomodoro };
+  const live = {
+    audio: createAudioLive(run, config),
+    media: createMediaLive(run),
+    pomodoro,
+    caelestia: createCaelestiaTheme(config.theme.caelestiaScheme),
+    customThemes: createCustomThemesLive(db),
+  };
   const mediaArt = createMediaArt(run, { fetch: mediaFetch });
   const pairing = createPairingCodes();
   const sockets = createDeviceSockets();

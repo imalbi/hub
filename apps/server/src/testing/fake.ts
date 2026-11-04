@@ -1,7 +1,15 @@
+import { copyFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { IsLoopback } from '../core/auth.ts';
 import { emptyConfig, type Config } from '../core/config.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
 import { buildServer } from '../server.ts';
+
+// A copy of the fixture scheme in the temp dir, so e2e can rewrite it to check that the Caelestia theme follows live.
+// `apps/e2e/tests/themes.ts` writes the same path.
+const caelestiaScheme = join(tmpdir(), 'hub-e2e-caelestia-scheme.json');
+copyFileSync(new URL('../modules/theme/fixtures/scheme.json', import.meta.url), caelestiaScheme);
 
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
 // of the real server, so its origins go on the allowlist or every WebSocket upgrade is refused.
@@ -15,6 +23,7 @@ const config: Config = {
     ],
   },
   server: { host: '127.0.0.1', allowedOrigins: ['http://localhost:5190', 'http://127.0.0.1:5190'] },
+  theme: { caelestiaScheme },
 };
 
 // The e2e browser runs on this machine, so every request really is loopback. The suite needs one page to play the PC

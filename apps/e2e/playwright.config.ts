@@ -33,6 +33,7 @@ export default defineConfig({
         'pomodoro.spec.ts',
         'zones.spec.ts',
         'design.spec.ts',
+        'themes.spec.ts',
       ],
       use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
     },

@@ -3,6 +3,7 @@ import { restoreDesktop } from './desktop.ts';
 import { controlSockets } from './sockets.ts';
 import { contrastRatio } from './contrast.ts';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
+import { chooseTheme } from './themes.ts';
 
 test.afterEach(async ({ pc }) => restoreDesktop(pc));
 
@@ -47,8 +48,8 @@ test('the visible countdown ticks without changing its live announcement', async
 
 test('rail labels remain readable when the active link is hovered in either theme', async ({ page }) => {
   await page.goto('/desk/devices');
-  for (const theme of ['Tema scuro', 'Tema chiaro']) {
-    await page.getByRole('button', { name: theme, exact: true }).click();
+  for (const theme of ['Scuro', 'Chiaro']) {
+    await chooseTheme(page, theme);
     const active = page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Dispositivi' });
     await active.hover();
     const label = active.locator('.desk-rail-label');
@@ -102,7 +103,7 @@ test('rail selection moves, glass follows the theme and reduced motion stops tra
   await expect(player).not.toHaveCSS('backdrop-filter', 'none');
   await rail.getByRole('link', { name: 'Dispositivi' }).click();
   await expect.poll(() => indicator.evaluate((element) => getComputedStyle(element).transform)).not.toBe(before);
-  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await chooseTheme(page, 'Chiaro');
   await expect(rail.locator('.desk-glass')).toHaveCSS('backdrop-filter', 'none');
   await rail.getByRole('link', { name: 'Media', exact: true }).click();
   await expect(player).toHaveCSS('backdrop-filter', 'none');

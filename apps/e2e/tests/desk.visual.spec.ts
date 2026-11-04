@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
+import { chooseTheme } from './themes.ts';
 
 // A fixed clock and fixed answers for everything that moves: uptime, the countdown, "last seen", the random code.
 const NOW = new Date('2026-11-04T12:00:00Z');
@@ -105,7 +106,7 @@ for (const zone of [
 
 test('the overview in paper matches the baseline', async ({ page }) => {
   await page.goto('/desk/devices');
-  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   await page.mouse.move(0, 0);
@@ -114,10 +115,38 @@ test('the overview in paper matches the baseline', async ({ page }) => {
 
 test('Media in paper uses solid floating controls and matches the baseline', async ({ page }) => {
   await page.goto('/desk/devices');
-  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Media', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Player musicale' })).toHaveCSS('backdrop-filter', 'none');
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-media-paper.png', { animations: 'disabled' });
+});
+
+for (const theme of [
+  { name: 'Muschio', id: 'moss', file: 'desk-moss.png' },
+  { name: 'Pietra', id: 'stone', file: 'desk-stone.png' },
+  { name: 'Caelestia', id: 'caelestia', file: 'desk-caelestia.png' },
+]) {
+  test(`the overview in ${theme.name} matches the baseline`, async ({ page }) => {
+    await page.goto('/desk/devices');
+    await chooseTheme(page, theme.name);
+    await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id);
+    await page.mouse.move(0, 0);
+    await expect(page).toHaveScreenshot(theme.file, { animations: 'disabled' });
+  });
+}
+
+test('the theme editor flags unreadable text and matches the baseline', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await page.getByRole('button', { name: 'Duplica Pietra' }).click();
+  const editor = page.getByRole('form', { name: 'Nuovo tema' });
+  const surface = await editor.getByLabel('Pannelli', { exact: true }).inputValue();
+  await editor.getByLabel('Testo secondario', { exact: true }).fill(surface);
+  await expect(editor.getByText(/^Testo secondario su Pannelli/)).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page.getByRole('region', { name: 'Aspetto' })).toHaveScreenshot('desk-theme-editor.png', {
+    animations: 'disabled',
+  });
 });

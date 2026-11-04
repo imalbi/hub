@@ -2,6 +2,7 @@ import { contrastRatio } from './contrast.ts';
 import { expect, test } from './fixtures.ts';
 import { restoreDesktop } from './desktop.ts';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
+import { chooseTheme } from './themes.ts';
 
 const zones = [
   ['Panoramica', '/desk'],
@@ -64,27 +65,23 @@ test('Media controls existing playback and cycles outputs without making the lis
   }
 });
 
-test('a saved theme survives reload and stays scoped to the desk', async ({ page }) => {
+test('a chosen theme survives reload and the deck follows it', async ({ page }) => {
   await page.goto('/desk/devices');
-  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await chooseTheme(page, 'Chiaro');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
-  await expect(page.getByRole('button', { name: 'Tema chiaro', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.evaluate(() => window.history.pushState({}, '', '/deck'));
-  await expect(page.getByRole('heading', { name: 'Abbina questo dispositivo' })).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink');
-  await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Dispositivi' })).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  await expect(page.getByRole('radio', { name: 'Chiaro', exact: true })).toBeChecked();
+  // The theme is a per-device choice since step 07c: the deck on the same browser uses it too, even unpaired.
   await page.goto('/deck');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'oklch(0.13 0 0)');
+  await expect(page.getByRole('heading', { name: 'Abbina questo dispositivo' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
 });
 
 test('Pomodoro secondary controls remain readable when hovered in paper', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
   await page.goto('/desk/devices');
-  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
   for (const name of ['Salta', 'Ferma']) {
     const button = page.getByRole('button', { name, exact: true });

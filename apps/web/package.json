@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "pnpm i18n && tsr generate && tsc -p .",
-    "test": "true",
+    "test": "node --test 'src/**/*.test.ts'",
     "i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
     "lint:tokens": "! rg -n '(^|[\" :])(-?[a-z]+(-[a-z]+)*)-\\[' src --glob '*.tsx' --glob '!src/paraglide/**' --glob '!src/components/ui/**'"
   },

@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { DeskTheme } from '../theme/theme.tsx';
+import { ThemeProvider } from '../theme/theme.tsx';
 import { zones } from './zones.ts';
 import { m } from '../paraglide/messages.js';
 import { useLayout } from './use-layout.ts';
@@ -34,7 +34,7 @@ export function DeskShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate]);
   return (
-    <DeskTheme>
+    <ThemeProvider remote>
       <MediaProvider>
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
@@ -48,6 +48,6 @@ export function DeskShell() {
           </div>
         </main>
       </MediaProvider>
-    </DeskTheme>
+    </ThemeProvider>
   );
 }
