@@ -13,12 +13,16 @@ const refused: RunResult = { stdout: '', stderr: 'fake desktop: command not supp
  * track whose status flips on play-pause. Only the commands Hub's actions use are answered; everything else is
  * refused, so nothing here can reach a real binary.
  */
-export function createFakeDesktop(): Run {
+export function createFakeDesktop({ notifications = [] }: { notifications?: string[][] } = {}): Run {
   let sinkName = defaultName ?? '';
   let status = 'Playing';
 
   return (bin, args) => {
     const [command, target] = args;
+    if (bin === 'notify-send' && args.length === 4 && command === '--app-name' && target === 'Hub') {
+      notifications.push([...args]);
+      return Promise.resolve(ok());
+    }
     if (bin === 'pw-dump' && args.length === 0) {
       return Promise.resolve(ok(dump.replace(/("default\.audio\.sink"[^}]*"name"\s*:\s*")[^"]+/, `$1${sinkName}`)));
     }

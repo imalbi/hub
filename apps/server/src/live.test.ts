@@ -112,6 +112,20 @@ void test('notify() without subscribers does not read', async () => {
   assert.equal(reads(), 0);
 });
 
+void test('a push-only hub reads on subscribe and notify but never polls', async () => {
+  const { read, reads } = fakeRead(['idle', 'focus']);
+  const hub = createLiveHub(read, null);
+  const sub = hub.subscribe();
+  assert.equal((await sub.next()).value, 'idle');
+  mock.timers.tick(10_000);
+  await flush();
+  assert.equal(reads(), 1);
+  const next = sub.next();
+  await hub.notify();
+  assert.equal((await next).value, 'focus');
+  await sub.return();
+});
+
 void test('a failing read ends the subscription with that error', async () => {
   const hub = createLiveHub(() => Promise.reject(new Error('boom')), POLL_MS);
   await assert.rejects(hub.subscribe().next(), { message: 'boom' });

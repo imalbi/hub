@@ -15,6 +15,7 @@ import { run as realRun, type Run } from './exec.ts';
 import { createAudioLive } from './modules/audio/live.ts';
 import { createMediaLive } from './modules/media/live.ts';
 import { createPairingCodes } from './modules/pairing/codes.ts';
+import { createPomodoro } from './modules/pomodoro/live.ts';
 import { allowedOrigins, isAllowedOrigin } from './origin.ts';
 import { appRouter, type AppRouter } from './router.ts';
 
@@ -37,7 +38,11 @@ export function buildServer({
   const db = openDb(dbPath);
   const app = fastify({ logger: process.env.NODE_ENV !== 'test' });
   app.addHook('onClose', () => db.$client.close());
-  const live = { audio: createAudioLive(run, config), media: createMediaLive(run) };
+  const pomodoro = createPomodoro(db, run, config.pomodoro, (err) =>
+    app.log.error({ err }, 'Pomodoro deadline failed'),
+  );
+  app.addHook('onClose', () => pomodoro.close());
+  const live = { audio: createAudioLive(run, config), media: createMediaLive(run), pomodoro };
   const pairing = createPairingCodes();
   const sockets = createDeviceSockets();
   const allowlist = allowedOrigins(config);

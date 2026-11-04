@@ -2,9 +2,9 @@ import { EventEmitter, on } from 'node:events';
 
 /**
  * One poller shared by every subscriber of a piece of state. It polls `read` only while someone is subscribed and
- * emits only when the JSON of the state changed. `read` must not throw on expected conditions (`run` never does).
+ * emits only when the JSON of the state changed. A null interval makes it push-only. `read` must not throw on expected conditions (`run` never does).
  */
-export function createLiveHub<T>(read: () => Promise<T>, intervalMs = 1000) {
+export function createLiveHub<T>(read: () => Promise<T>, intervalMs: number | null = 1000) {
   const events = new EventEmitter();
   let subscribers = 0;
   let timer: NodeJS.Timeout | undefined;
@@ -45,7 +45,7 @@ export function createLiveHub<T>(read: () => Promise<T>, intervalMs = 1000) {
     // Listening starts synchronously, so no change can slip in between reading `latest` and waiting for the next one.
     const changes = on(events, 'change', { signal });
     subscribers++;
-    timer ??= setInterval(() => void refresh(), intervalMs);
+    if (intervalMs !== null) timer ??= setInterval(() => void refresh(), intervalMs);
     try {
       if (latest) yield latest.value;
       else if (!reading) void refresh(); // a read already in flight will reach this subscriber through `changes`

@@ -24,3 +24,10 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - Baselines are committed in `__screenshots__/<project>/<name>.png` (CSS pixel size, no platform suffix: they are made on the owner's Linux machine). The default tolerance is zero, so any pixel change fails.
 - The visual specs fulfil `/trpc/health` with a fixed uptime and wait for `document.fonts.ready`. The desk ones also pin `page.clock.setFixedTime`, `devices.list` and `pairing.createCode` (the code is random, the countdown and "last seen" depend on the clock): fix whatever moves, or mask it. Baselines: `deck/deck.png`, `deck/pairing.png`, `desk/desk.png`, `desk/desk-code.png`.
 - A failure writes `test-results/` (actual, expected, diff; gitignored). Look at the diff. Update with `pnpm test:e2e:update` only when the visual change is intended, review the new PNGs by eye, and say so in the plan's Progress notes.
+
+## Pomodoro checks
+
+- `pomodoro.spec.ts` runs in the desk project and opens a second authenticated 375x812 deck context. It exercises tile start/pause/resume, running/paused synchronization, desk skip/stop, and a real 6-second focus completion with today's count increasing. afterEach stops any active phase; completed history is intentionally retained.
+- `pomodoro-visual.ts` forwards the real fake-server WebSocket and replaces only Pomodoro state for screenshots, so history and wall time cannot leak between specs. Idle and half-completed paused fixtures are explicit; functional specs never pin the subscription.
+- Intended baselines now include the third deck tile and desk panel: deck.png, desk.png, desk-code.png; new deck-pomodoro-paused.png, desk-pomodoro-paused.png, desk-4k.png. Pairing.png stays unchanged. Desk is checked at 1920x1080 and 3840x2160; deck at 375x812.
+- The idle-ring regression counts bright foreground pixels in a screenshot of the SVG (must be zero). The paused tile's text must stay inside its padding. These checks guard real rendered behavior, not just SVG attributes or source strings.

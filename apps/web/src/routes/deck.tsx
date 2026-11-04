@@ -4,6 +4,7 @@ import { AudioOutputTile } from '../deck/audio-output-tile.tsx';
 import { DeckFrame } from '../deck/deck-frame.tsx';
 import { MediaTile } from '../deck/media-tile.tsx';
 import { PairingScreen } from '../deck/pairing-screen.tsx';
+import { PomodoroTile } from '../deck/pomodoro-tile.tsx';
 import { m } from '../paraglide/messages.js';
 import { ServerStatus } from '../server-status.tsx';
 import { useConnectionLost } from '../trpc.ts';
@@ -25,6 +26,7 @@ function PairedDeck() {
       <div className="grid grid-cols-3 gap-md">
         <AudioOutputTile />
         <MediaTile />
+        <PomodoroTile />
       </div>
     </DeckFrame>
   );

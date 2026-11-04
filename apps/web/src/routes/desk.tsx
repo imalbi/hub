@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { DevicesPanel } from '../desk/devices-panel.tsx';
+import { PomodoroPanel } from '../desk/pomodoro-panel.tsx';
 import { m } from '../paraglide/messages.js';
 import { ServerStatus } from '../server-status.tsx';
 import { useLayout } from '../use-layout.ts';
@@ -18,6 +19,7 @@ function Desk() {
         </p>
       </section>
       <DevicesPanel />
+      <PomodoroPanel />
     </main>
   );
 }

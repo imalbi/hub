@@ -68,3 +68,9 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - Relative imports keep the `.tsx`/`.ts` extension, like the server.
 - Touch targets on the deck at least 44px; icon-only buttons carry an accessible label (`aria-label`). Every action button shows pending, done and error states.
 - Destructive actions use hold-to-confirm, never a single tap.
+
+## Pomodoro
+
+- `src/pomodoro.ts` combines the state subscription, five mutation options, action/error state, and one client-only interval per mounted view, cleared on unmount. Countdown comes from endsAt or pausedRemainingMs; durationMs keeps progress correct across pauses and late joins. Refresh the local clock on each push to avoid a stale initial second. Never complete a phase on the client.
+- `deck/pomodoro-tile.tsx` reuses Tile (Timer icon), tap start/pause/resume only. Compact `Studio` copy keeps phase and remaining time visible in two lines at 375px; skip and stop live only in `desk/pomodoro-panel.tsx`. The panel uses existing tokens, text-display numerals, a native accessible progress element plus a decorative SVG ring, and today's count.
+- SVG ring geometry uses pathLength=100 and dash offset from progress. Do not combine pathLength with non-scaling-stroke: Chrome renders a completed arc even at zero. The existing spacing-px token sets the stroke. Tile state text stretches to its content width so long words cannot overflow padding. Both regressions have Playwright checks.

@@ -14,7 +14,7 @@ pnpm check        # typecheck + lint + format:check + test: fast, run while work
 pnpm verify       # check + e2e: the gate before a step is done, and the pre-commit hook
 pnpm test:e2e     # Playwright against the fake server (apps/e2e)
 pnpm test:e2e:update  # rewrite screenshot baselines: only for an intended visual change
-pnpm smoke        # read-only check that the real wpctl, pw-dump and playerctl still parse
+pnpm smoke        # read-only check that the real audio/media tools and notify-send help still parse
 pnpm serve        # build the web app, then serve it and the API from the server (no Vite, no watch)
 pnpm desktop:install # preview desktop integration; --apply installs, --uninstall previews removal
 pnpm --filter @hub/server <script>

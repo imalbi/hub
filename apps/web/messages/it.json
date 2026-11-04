@@ -41,5 +41,22 @@
   "device_seen_days": "{days} g fa",
   "device_revoke": "Revoca",
   "device_revoke_confirm": "Conferma revoca",
-  "device_revoke_cancel": "Annulla"
+  "device_revoke_cancel": "Annulla",
+  "pomodoro_title": "Pomodoro",
+  "pomodoro_idle": "Pronto",
+  "pomodoro_focus": "Concentrazione",
+  "pomodoro_break": "Pausa",
+  "pomodoro_paused": "{phase} in pausa",
+  "pomodoro_start": "Avvia",
+  "pomodoro_pause": "Metti in pausa",
+  "pomodoro_resume": "Riprendi",
+  "pomodoro_skip": "Salta",
+  "pomodoro_stop": "Ferma",
+  "pomodoro_today": "Sessioni completate oggi: {count}",
+  "pomodoro_progress": "Avanzamento Pomodoro",
+  "pomodoro_remaining": "Tempo rimanente",
+  "pomodoro_tile_state": "{phase} {time}",
+  "pomodoro_error": "Comando non riuscito. Riprova.",
+  "pomodoro_tile_focus": "Studio",
+  "pomodoro_break_paused": "Pausa sospesa"
 }

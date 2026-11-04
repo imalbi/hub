@@ -3,6 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 const configSchema = z.object({
+  pomodoro: z
+    .object({
+      focusMinutes: z.number().positive().max(1440).default(25),
+      shortBreakMinutes: z.number().positive().max(1440).default(5),
+      longBreakMinutes: z.number().positive().max(1440).default(15),
+      longBreakEvery: z.number().int().positive().default(4),
+    })
+    .default({ focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 }),
   audio: z
     .object({
       outputs: z.array(

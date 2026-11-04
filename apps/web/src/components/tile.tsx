@@ -40,7 +40,9 @@ export function Tile({
     >
       <Icon className="size-icon" aria-hidden />
       <span className="text-label">{label}</span>
-      <span className={`line-clamp-2 text-caption break-words ${error ? 'text-danger' : 'text-muted-foreground'}`}>
+      <span
+        className={`line-clamp-2 self-stretch text-caption break-words tabular-nums ${error ? 'text-danger' : 'text-muted-foreground'}`}
+      >
         {shownState}
       </span>
     </button>

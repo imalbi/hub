@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import type { Config } from '../../config.ts';
+import { emptyConfig, type Config } from '../../config.ts';
 import type { Run } from '../../exec.ts';
 import { buildServer } from '../../server.ts';
 
@@ -9,6 +9,7 @@ process.env.NODE_ENV = 'test';
 
 const dump = readFileSync(new URL('./fixtures/pw-dump.json', import.meta.url), 'utf8');
 const config: Config = {
+  ...emptyConfig,
   audio: {
     outputs: [
       { label: 'Cuffie', match: 'USB Headset' },

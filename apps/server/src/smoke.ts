@@ -23,6 +23,12 @@ function judgeWpctlHelp(result: RunResult): Verdict {
     : { status: 'unparseable', detail: 'set-default not listed in the help' };
 }
 
+function judgeNotifyHelp(result: RunResult): Verdict {
+  return result.code === 0 && result.stdout.includes('--app-name')
+    ? { status: 'ok', detail: 'app-name option listed' }
+    : { status: 'unparseable', detail: result.code === 0 ? 'app-name not listed in the help' : exitDetail(result) };
+}
+
 function judgePwDump(result: RunResult): Verdict {
   if (result.code !== 0) return { status: 'unparseable', detail: exitDetail(result) };
   const { sinks, defaultName } = parsePwDump(result.stdout);
@@ -46,6 +52,7 @@ const checks = [
   { name: 'playerctl --version', bin: 'playerctl', args: ['--version'], judge: judgeVersion },
   { name: 'pw-dump', bin: 'pw-dump', args: [], judge: judgePwDump },
   { name: 'playerctl metadata', bin: 'playerctl', args: ['metadata', '--format', MEDIA_FORMAT], judge: judgeMetadata },
+  { name: 'notify-send --help', bin: 'notify-send', args: ['--help'], judge: judgeNotifyHelp },
 ];
 
 /** Runs the read-only commands Hub depends on and feeds their output through the real parsers. */

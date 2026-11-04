@@ -2,6 +2,7 @@ import { audioRouter } from './modules/audio/router.ts';
 import { devicesRouter } from './modules/devices/router.ts';
 import { mediaRouter } from './modules/media/router.ts';
 import { pairingRouter } from './modules/pairing/router.ts';
+import { pomodoroRouter } from './modules/pomodoro/router.ts';
 import { protectedProcedure, router } from './trpc.ts';
 
 export const appRouter = router({
@@ -10,6 +11,7 @@ export const appRouter = router({
   media: mediaRouter,
   pairing: pairingRouter,
   devices: devicesRouter,
+  pomodoro: pomodoroRouter,
 });
 
 export type AppRouter = typeof appRouter;

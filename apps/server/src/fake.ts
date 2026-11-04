@@ -1,11 +1,13 @@
 import type { IsLoopback } from './auth.ts';
-import type { Config } from './config.ts';
+import { emptyConfig, type Config } from './config.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
 import { buildServer } from './server.ts';
 
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
 // of the real server, so its origins go on the allowlist or every WebSocket upgrade is refused.
 const config: Config = {
+  ...emptyConfig,
+  pomodoro: { ...emptyConfig.pomodoro, focusMinutes: 0.1, shortBreakMinutes: 0.05, longBreakMinutes: 0.1 },
   audio: {
     outputs: [
       { label: 'Cuffie', match: 'USB Headset' },

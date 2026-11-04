@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import type { Config } from './config.ts';
+import { emptyConfig, type Config } from './config.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
 import { buildServer } from './server.ts';
 
 process.env.NODE_ENV = 'test';
 
 const config: Config = {
+  ...emptyConfig,
   audio: {
     outputs: [
       { label: 'Cuffie', match: 'USB Headset' },

@@ -46,3 +46,12 @@ void test('two fake desktops do not share state', async () => {
   await a('playerctl', ['play-pause']);
   assert.equal(await mediaStatus(), 'Playing');
 });
+
+void test('Hub notifications are accepted and recorded without invoking a binary', async () => {
+  const notifications: string[][] = [];
+  const run = createFakeDesktop({ notifications });
+  const args = ['--app-name', 'Hub', 'Pausa terminata', 'Puoi iniziare una nuova sessione.'];
+  assert.equal((await run('notify-send', args)).code, 0);
+  assert.deepEqual(notifications, [args]);
+  assert.notEqual((await run('notify-send', ['--wait', 'unrecognized'])).code, 0);
+});

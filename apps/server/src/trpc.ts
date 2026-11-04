@@ -6,6 +6,7 @@ import type { Run } from './exec.ts';
 import type { AudioLive } from './modules/audio/live.ts';
 import type { MediaLive } from './modules/media/live.ts';
 import type { PairingCodes } from './modules/pairing/codes.ts';
+import type { PomodoroLive } from './modules/pomodoro/live.ts';
 
 /** Registry metadata for an action (a mutation). Later steps derive LLM tools and the danger check from it. */
 export type ActionMeta = {
@@ -15,7 +16,7 @@ export type ActionMeta = {
 };
 
 /** One state hub per module, shared by every connection of a server (see `src/live.ts`). */
-export type Live = { audio: AudioLive; media: MediaLive };
+export type Live = { audio: AudioLive; media: MediaLive; pomodoro: PomodoroLive };
 
 export type Context = {
   db: Db;

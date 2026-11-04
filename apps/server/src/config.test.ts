@@ -18,7 +18,20 @@ void test('a missing config file is an empty config', () => {
   assert.deepEqual(loadConfig(join(dir, 'missing.json')), {
     audio: { outputs: [] },
     server: { host: '127.0.0.1', allowedOrigins: [] },
+    pomodoro: { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },
   });
+});
+
+void test('Pomodoro durations accept fractions for fixtures and reject non-positive values', () => {
+  assert.equal(loadConfig(configFile('{"pomodoro":{"focusMinutes":0.05}}')).pomodoro.focusMinutes, 0.05);
+  for (const pomodoro of [
+    { focusMinutes: 0 },
+    { shortBreakMinutes: -1 },
+    { longBreakMinutes: 0 },
+    { longBreakEvery: 1.5 },
+  ]) {
+    assert.throws(() => loadConfig(configFile(JSON.stringify({ pomodoro }))), /pomodoro/);
+  }
 });
 
 void test('server.allowedOrigins is read from the config', () => {

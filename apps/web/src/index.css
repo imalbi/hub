@@ -143,3 +143,12 @@ html[data-layout='desk'] {
 body {
   @apply bg-background font-sans text-body text-foreground antialiased;
 }
+
+.pomodoro-ring {
+  transform: rotate(-90deg);
+}
+
+.pomodoro-ring circle {
+  fill: none;
+  stroke-width: var(--spacing-px);
+}

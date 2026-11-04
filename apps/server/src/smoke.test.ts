@@ -14,6 +14,8 @@ function healthy(override: (bin: string, args: string[]) => RunResult | undefine
     const forced = override(bin, args);
     if (forced) return Promise.resolve(forced);
     if (bin === 'wpctl' && args[0] === '--help') return Promise.resolve(ok('Commands:\n  status\n  set-default ID\n'));
+    if (bin === 'notify-send' && args[0] === '--help')
+      return Promise.resolve(ok('Usage: notify-send --app-name=APP_NAME SUMMARY BODY'));
     if (args[0] === '--version') return Promise.resolve(ok(`${bin} 1.0\n`));
     return desktop(bin, args);
   };
@@ -26,6 +28,7 @@ void test('every check is ok on a healthy desktop', async () => {
     ['playerctl --version', 'ok'],
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'ok'],
+    ['notify-send --help', 'ok'],
   ]);
 });
 
@@ -38,6 +41,7 @@ void test('only read-only commands are run', async () => {
     }),
   );
   assert.deepEqual(seen.map((line) => line.split(' ').slice(0, 2).join(' ')).toSorted(), [
+    'notify-send --help',
     'playerctl --version',
     'playerctl metadata',
     'pw-dump',
@@ -54,6 +58,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['playerctl --version', 'missing'],
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'missing'],
+    ['notify-send --help', 'ok'],
   ]);
 });
 

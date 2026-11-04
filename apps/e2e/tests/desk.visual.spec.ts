@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 
 // A fixed clock and fixed answers for everything that moves: uptime, the countdown, "last seen", the random code.
 const NOW = new Date('2026-11-04T12:00:00Z');
 const json = (data: unknown) => [{ result: { data } }];
 
 test.beforeEach(async ({ page }) => {
+  await freezePomodoro(page);
   await page.clock.setFixedTime(NOW);
   await page.route('**/trpc/health*', (route) => route.fulfill({ json: json({ ok: true, uptime: 42 }) }));
   await page.route('**/trpc/devices.list*', (route) =>
@@ -20,6 +22,46 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
+});
+
+test('the desk at 4K matches the baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot('desk-4k.png', { animations: 'disabled' });
+});
+
+test('the idle progress ring draws no completed arc', async ({ page }) => {
+  await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
+  const png = await page.locator('svg.pomodoro-ring').screenshot();
+  const white = await page.evaluate(
+    async (url) => {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Missing canvas context');
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, image.width, image.height).data;
+      let total = 0;
+      for (let i = 0; i < pixels.length; i += 4)
+        if ((pixels[i] ?? 0) > 200 && (pixels[i + 1] ?? 0) > 200 && (pixels[i + 2] ?? 0) > 200) total++;
+      return total;
+    },
+    `data:image/png;base64,${png.toString('base64')}`,
+  );
+  expect(white).toBe(0);
+});
+
+test('the paused Pomodoro panel shows its progress, remaining time and all controls', async ({ page }) => {
+  await freezePomodoro(page, pausedPomodoro);
+  await page.reload();
+  await expect(page.getByRole('timer', { name: 'Tempo rimanente' })).toHaveText('12:30');
+  await expect(page.getByRole('progressbar', { name: 'Avanzamento Pomodoro' })).toHaveAttribute('value', '0.5');
+  await expect(page.getByRole('button', { name: 'Riprendi', exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot('desk-pomodoro-paused.png', { animations: 'disabled' });
 });
 
 test('the desk matches the baseline', async ({ page }) => {
