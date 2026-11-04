@@ -14,7 +14,12 @@
     "lint": "oxlint --type-aware && pnpm --filter @hub/web lint:tokens",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "prepare": "git config core.hooksPath .githooks",
+    "test:e2e": "pnpm --filter @hub/e2e e2e",
+    "test:e2e:update": "pnpm --filter @hub/e2e e2e:update",
+    "verify": "pnpm check && pnpm test:e2e",
+    "smoke": "pnpm --filter @hub/server smoke"
   },
   "devDependencies": {
     "oxlint": "^1.90.0",

@@ -5,6 +5,8 @@ type TileProps = {
   icon: LucideIcon;
   label: string;
   state: string;
+  /** Read by screen readers after the state, not shown: for a fact the icon alone carries (playing or paused). */
+  status?: string;
   onPress: () => void;
   /** The action is running: the tile dims and ignores taps. */
   pending?: boolean;
@@ -14,12 +16,21 @@ type TileProps = {
   stale?: boolean;
 };
 
-export function Tile({ icon: Icon, label, state, onPress, pending = false, error = false, stale = false }: TileProps) {
+export function Tile({
+  icon: Icon,
+  label,
+  state,
+  status,
+  onPress,
+  pending = false,
+  error = false,
+  stale = false,
+}: TileProps) {
   const shownState = error ? m.tile_error() : state;
   return (
     <button
       type="button"
-      aria-label={`${label}: ${shownState}`}
+      aria-label={`${label}: ${shownState}${status ? `, ${status}` : ''}`}
       aria-busy={pending}
       disabled={pending}
       onClick={onPress}

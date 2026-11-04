@@ -1,0 +1,3 @@
+#!/bin/sh
+# A regression blocks the commit. Skip with --no-verify only when the owner says so.
+exec pnpm verify

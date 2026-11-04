@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { after, before, test } from 'node:test';
 import type { Config } from './config.ts';
-import type { Run } from './exec.ts';
+import { createFakeDesktop } from './fake-desktop.ts';
 import { buildServer } from './server.ts';
 
 process.env.NODE_ENV = 'test';
 
-const dump = readFileSync(new URL('./modules/audio/fixtures/pw-dump.json', import.meta.url), 'utf8');
 const config: Config = {
   audio: {
     outputs: [
@@ -18,22 +16,7 @@ const config: Config = {
   server: { allowedOrigins: [] },
 };
 
-// A desktop that remembers what the actions did, so the state read after a mutation differs from the one before.
-function fakeDesktop() {
-  let status = 'Playing';
-  let sink = 'alsa_output.usb-headset.analog-stereo';
-  const run: Run = (bin, args) => {
-    let stdout = '';
-    if (bin === 'pw-dump') stdout = dump.replace(/("default\.audio\.sink"[^}]*"name"\s*:\s*")[^"]+/, `$1${sink}`);
-    if (bin === 'playerctl' && args[0] === 'metadata') stdout = `${status}\tArtist\tTitle\n`;
-    if (bin === 'playerctl' && args[0] === 'play-pause') status = status === 'Playing' ? 'Paused' : 'Playing';
-    if (bin === 'wpctl') sink = 'alsa_output.hdmi-monitor.hdmi-stereo';
-    return Promise.resolve({ stdout, stderr: '', code: 0 });
-  };
-  return run;
-}
-
-const app = buildServer({ dbPath: ':memory:', run: fakeDesktop(), config });
+const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config });
 let port = 0;
 
 before(async () => {

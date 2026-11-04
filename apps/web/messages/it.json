@@ -13,5 +13,8 @@
   "audio_output_none": "Nessuna uscita",
   "tile_media": "Musica",
   "media_nothing_playing": "Niente in riproduzione",
-  "media_track": "{artist} - {title}"
+  "media_track": "{artist} - {title}",
+  "media_playing": "in riproduzione",
+  "media_paused": "in pausa",
+  "media_stopped": "fermo"
 }

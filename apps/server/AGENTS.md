@@ -47,6 +47,12 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 `HUB_PORT` moves both the server and the Vite proxy target, so a second dev stack can run next to one that is already on 4180.
 
+## Fake desktop and smoke check
+
+- `src/fake-desktop.ts` (`createFakeDesktop()`) is the one fake `Run`: the `pw-dump` fixture with a default sink that `wpctl set-default <id>` moves, and one track (`Artist` / `Title`) whose status flips on `playerctl play-pause`. Anything else, including an unknown sink id, is answered with a non-zero code and no state change, so it can never reach a real binary (`fake-desktop.test.ts`). Each call makes a new desktop; tests and `fake.ts` share this module, do not write a second fake.
+- `src/fake.ts` is the server for the e2e suite: `buildServer` with that fake, an in-memory DB and a fixture config (outputs `Cuffie` and `Casse`, the e2e Vite origins on the allowlist). Loopback, port `HUB_PORT` (default 4190). Never point it at a real config.
+- `src/smoke.ts` (`pnpm smoke`): `runSmoke(run)` checks `wpctl --help` lists `set-default` (wpctl has no `--version`), `playerctl --version`, `pw-dump` through `parsePwDump` (needs a sink and a default sink) and `playerctl metadata` through `parseMediaState` ("No players found" is ok). Read-only by test (`smoke.test.ts` lists the commands it runs); the report says ok, missing or unparseable per check and the exit code is non-zero if any is not ok. `run` returns -1 for both a missing binary and a timeout.
+
 ## Database: Drizzle v1 + SQLite (`node:sqlite`)
 
 - One local file, no database server: single user, single writer, small data. Postgres would only earn its place if several machines wrote to the same store.
@@ -71,6 +77,6 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 - A POST through `inject` needs `content-type: application/json` (and a body such as `{}`), or tRPC answers 415. The tRPC client always sends it.
 - `appRouter._def.procedures` is a flat path-to-procedure map at runtime but typed as the nested tree: widen with `Object.entries<unknown>` and a type guard (see `src/router.test.ts`).
-- WebSocket tests use a real server on `listen({ port: 0 })` (`const port = Number(new URL(await app.listen(...)).port)`). Node's global `WebSocket` accepts `{ headers: { Origin } }` and sends no `Origin` by default; `src/live-state.test.ts` drives the tRPC wire protocol with it (`{ id, method: 'subscription', params: { path } }`, answers `started` then `data`) against a stateful fake `run`; `src/upgrade.test.ts` sends raw upgrades with `node:http` to read the status code. `tsconfig.json` sets `lib: ["es2023"]` on purpose: without it TypeScript pulls in the DOM typings, whose `WebSocket` constructor has no `headers` option. `@types/ws` is not importable from this package, so the `verifyClient` callback is annotated structurally.
+- WebSocket tests use a real server on `listen({ port: 0 })` (`const port = Number(new URL(await app.listen(...)).port)`). Node's global `WebSocket` accepts `{ headers: { Origin } }` and sends no `Origin` by default; `src/live-state.test.ts` drives the tRPC wire protocol with it (`{ id, method: 'subscription', params: { path } }`, answers `started` then `data`) against the shared fake desktop; `src/upgrade.test.ts` sends raw upgrades with `node:http` to read the status code. `tsconfig.json` sets `lib: ["es2023"]` on purpose: without it TypeScript pulls in the DOM typings, whose `WebSocket` constructor has no `headers` option. `@types/ws` is not importable from this package, so the `verifyClient` callback is annotated structurally.
 - Hub tests use `mock.timers.enable({ apis: ['setInterval'] })` and flush promises with `setImmediate` from `node:timers/promises` (not mocked); end a parked subscription with its `AbortController`, not `return()` (see "Live state").
-- Never call a real mutation (`audio.cycleOutput`, `media.playPause`) against the live system to check it: they change the user's audio. Drive them through a server built with a fake `run`.
+- Never call a real mutation (`audio.cycleOutput`, `media.playPause`) against the live system to check it: they change the user's audio. Drive them through a server built with `createFakeDesktop()`.

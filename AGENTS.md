@@ -10,7 +10,11 @@ pnpm typecheck    # tsc in every workspace
 pnpm test         # node:test in apps/server
 pnpm lint         # oxlint --type-aware + the design-token guard
 pnpm format       # prettier --write (format:check to verify)
-pnpm check        # typecheck + lint + format:check + test: run before calling any change done
+pnpm check        # typecheck + lint + format:check + test: fast, run while working
+pnpm verify       # check + e2e: the gate before a step is done, and the pre-commit hook
+pnpm test:e2e     # Playwright against the fake server (apps/e2e)
+pnpm test:e2e:update  # rewrite screenshot baselines: only for an intended visual change
+pnpm smoke        # read-only check that the real wpctl, pw-dump and playerctl still parse
 pnpm --filter @hub/server <script>
 pnpm --filter @hub/web <script>
 ```
@@ -21,6 +25,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 
 - `apps/server` (`@hub/server`): Fastify 5 + tRPC 11 + zod. Runs TypeScript directly with Node type stripping, no build step. See `apps/server/AGENTS.md`.
 - `apps/web` (`@hub/web`): React 19 + Vite + TanStack Query + tRPC client + Tailwind v4. See `apps/web/AGENTS.md`.
+- `apps/e2e` (`@hub/e2e`): Playwright specs and screenshot baselines against a fake server. See `apps/e2e/AGENTS.md`.
 - End-to-end types: the web app imports `type AppRouter` from `@hub/server`. Never import runtime code from the server into the web app, only types.
 
 ## Hard rules
@@ -55,12 +60,12 @@ Nothing is done until it is verified, and nothing verified once stays unguarded.
 - **Where tests go:**
   - pure logic (parsers, pickers, state reducers) gets unit tests next to the code (`*.test.ts`, `node:test`);
   - server behaviour gets integration tests through `buildServer(...).inject` with a fake `run` and fixture config;
-  - UI behaviour and layout get e2e specs and screenshot baselines in `apps/e2e` (Playwright against the fake server), from step 03 on.
+  - UI behaviour and layout get e2e specs and screenshot baselines in `apps/e2e` (Playwright against the fake server, see `apps/e2e/AGENTS.md`). A UI change ships with its spec: assert by role and accessible name, and add or update the baseline only when the look change is intended.
 - **Tests never touch the real desktop or personal data.** System commands go through an injected fake; fixtures use generic device names. The only exception is `pnpm smoke`, which is read-only by design.
 - **Every bug gets a regression test first**: write the test that fails on the bug, then fix it, and keep the test.
 - **Never weaken a test to get green.** Do not delete, skip or loosen a failing test, and do not update screenshot baselines, unless the change in behaviour or look is intended; say which and why in the Progress notes.
-- **The gate:** `pnpm check` while working; `pnpm verify` (check + e2e) before a step is called done. From step 03 the pre-commit hook runs `pnpm verify`, so a regression blocks the commit; `--no-verify` only with the user's explicit OK.
-- **System drift:** `pnpm smoke` checks that the real `pw-dump`, `playerctl` and friends still produce output Hub can parse. Run it after system updates and whenever a module that wraps a system tool changes.
+- **The gate:** `pnpm check` while working; `pnpm verify` (check + e2e) before a step is called done. The pre-commit hook (`.githooks/pre-commit`, set up by the root `prepare` script on `pnpm install`) runs `pnpm verify`, so a regression blocks the commit; `--no-verify` only with the user's explicit OK.
+- **System drift:** `pnpm smoke` (`apps/server/src/smoke.ts`) runs only read-only commands on the real machine, feeds them through the real parsers and exits non-zero when a binary is missing or its output no longer parses. It is not part of `pnpm verify`. Run it after system updates and whenever a module that wraps a system tool changes; a new wrapped tool gets a check there.
 
 ## Keeping these files current
 

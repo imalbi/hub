@@ -18,12 +18,19 @@ export function MediaTile() {
     return media.data.artist ? m.media_track(media.data) : media.data.title;
   }
 
+  // The icon alone says whether it plays, so the accessible name spells it out.
+  function statusText() {
+    if (!media.data?.title) return undefined;
+    return { Playing: m.media_playing, Paused: m.media_paused, Stopped: m.media_stopped }[media.data.status]();
+  }
+
   return (
     <Tile
       // The icon is the action a tap performs, like a transport control.
       icon={media.data?.status === 'Playing' ? Pause : Play}
       label={m.tile_media()}
       state={stateText()}
+      status={statusText()}
       pending={playPause.isPending}
       error={playPause.isError}
       stale={connectionLost}
