@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
-import { TextMorph } from '../components/ui/text-morph.tsx';
+import { SplitPill } from '../components/split-pill.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { widgetCells, type WidgetSize } from '../lib/widget-size.ts';
 import { m } from '../paraglide/messages.js';
@@ -82,26 +82,13 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
   return (
     <section aria-label={m.widget_board()} className="col-span-12 flex flex-col gap-md">
       <HeaderActions>
-        {/* One pill that splits into Ripristina and Fine while editing, and merges back (see .split-pill). */}
-        <div className="split-pill flex items-center" data-open={editing || undefined}>
-          <button
-            type="button"
-            inert={!editing}
-            onClick={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
-            className="split-pill-extra min-h-touch rounded-full border-border text-label text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent"
-          >
-            {m.widget_reset()}
-          </button>
-          <button
-            type="button"
-            aria-label={editing ? m.widget_done() : m.widget_edit()}
-            data-editing={editing || undefined}
-            onClick={() => setEditing((value) => !value)}
-            className="min-h-touch rounded-full border border-border px-lg text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent data-editing:bg-primary data-editing:text-primary-foreground"
-          >
-            <TextMorph aria-hidden>{editing ? m.widget_done() : m.widget_edit()}</TextMorph>
-          </button>
-        </div>
+        <SplitPill
+          open={editing}
+          label={editing ? m.widget_done() : m.widget_edit()}
+          onClick={() => setEditing((value) => !value)}
+          extraLabel={m.widget_reset()}
+          onExtra={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
+        />
       </HeaderActions>
       <div ref={containerRef} className={editing ? 'widget-board editing' : 'widget-board'}>
         {metrics && (

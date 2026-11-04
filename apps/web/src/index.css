@@ -476,10 +476,7 @@ html {
   max-width: 100vw;
 }
 
-/*
- * Edit button that splits like a drop: Ripristina grows out of the Modifica pill's left edge, its label sharpening
- * from a blur, while the gap opens; closing runs it backwards. Ripristina stays mounted (inert) so it can animate out.
- */
+/* SplitPill (components/split-pill.tsx): the extra action's wrapper opens from zero width, blurred and squeezed. */
 .split-pill {
   gap: 0;
   transition: gap var(--motion-standard) var(--ease-out);
@@ -490,22 +487,17 @@ html {
 .split-pill-extra {
   max-width: 0;
   overflow: hidden;
-  white-space: nowrap;
-  padding-inline: 0;
-  border-width: 0;
   opacity: 0;
   filter: blur(var(--spacing-2xs));
   scale: 0.6 1;
   transform-origin: right;
-  transition-property: max-width, padding-inline, border-width, opacity, filter, scale;
+  transition-property: max-width, opacity, filter, scale;
   transition-duration: var(--motion-standard);
   transition-timing-function: var(--ease-out);
 }
 .split-pill[data-open] .split-pill-extra {
-  /* Any width above the label's: max-width transitions where width: auto cannot. */
-  max-width: 12rem;
-  padding-inline: var(--spacing-md);
-  border-width: 1px;
+  /* Any width above the extra button's: max-width transitions where width: auto cannot. */
+  max-width: 16rem;
   opacity: 1;
   filter: none;
   scale: 1;
