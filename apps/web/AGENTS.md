@@ -54,7 +54,7 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - The UI is Italian only, by choice: there is no English locale and none is planned. Paraglide is used to keep copy out of components and in one place, not to translate.
 - `project.inlang/settings.json` has the single locale `it`; messages live in `messages/it.json`. Every user-facing string goes through `m.key()` from `src/paraglide/messages.js`, never hardcoded.
 - Keys are snake_case English (`server_up`), values Italian, parameters in braces (`{seconds}`). Code, identifiers and comments stay English.
-- Modules in `modules.local/` keep their copy next to them; how module messages plug into Paraglide is still to be decided when the first module lands.
+- Modules in `modules.local/` keep their copy next to them; how module messages plug into Paraglide is still to be decided when the first module lands. <!-- guard-private: allow Repository-local module directory -->
 - `src/paraglide/` is generated (Vite plugin in dev, `pnpm --filter @hub/web i18n` before typecheck) and gitignored: never edit it.
 
 ## No magic values
@@ -81,6 +81,6 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - Content uses a 12-column grid, gap-lg and p-xl; panels declare col-span utilities. Existing root font scaling remains the only desk-wide scale. Named desk-rail and desk-inset spacing tokens reserve a touch target, rail padding/border and content gutters; no arbitrary margin to clear the rail.
 - `components/panel.tsx` owns the shared surface/border/radius/padding and optional semantic h2/action row, with a unique heading id. DevicesPanel and PomodoroPanel use it; compact Pomodoro/Media/Audio and Status panels link to their zones. Studio has full Pomodoro, Media has playback plus all outputs, Sistema is status-only for now.
 - The audio router has cycleOutput only. `desk/audio-panel.tsx` shows outputs read-only, marks the active output in text and with a check, and exposes one Cambia uscita action in the Media zone. Never add per-output buttons without a registry action. Mutations/subscriptions still use the existing typed options proxy.
-- Keys 1-5 navigate desk zones. The handler ignores modifiers, repeats, prevented events and input/textarea/select/contenteditable targets; it is removed on unmount. No deck shortcuts were added.
+- Keys 1-5 navigate desk zones. The handler ignores modifiers, repeats, prevented events and input, textarea, select and contenteditable targets; it is removed on unmount. No deck shortcuts were added.
 - `desk/theme.tsx` applies the desk-only ink/paper preference from localStorage hub.theme and resets to ink when leaving the layout; fresh deck documents use the existing root ink defaults. ThemePanel lives in Dispositivi. Storage failures keep the current-view switch usable. Paper hover must use a light neutral token such as muted: surface-raised is dark in paper and makes dark secondary text disappear. Active/inactive rail hover classes are separate for the same reason.
 - Full Pomodoro draws its entire border-token track under the progress arc; compact overview omits ring/daily statistics/skip-stop. Preserve the normalized SVG fix described above.

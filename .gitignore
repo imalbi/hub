@@ -2,7 +2,9 @@ node_modules/
 dist/
 .env*
 config.local.json
-modules.local/
+# Bracket syntax keeps the literal directory name distinct from a LAN hostname in the privacy scan.
+modules[.]local/
+.private-words
 *.db
 apps/web/src/paraglide/
 

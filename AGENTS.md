@@ -7,10 +7,11 @@ Hub is a personal control center: one Fastify server on the desktop (CachyOS, Hy
 ```bash
 pnpm dev          # server on 127.0.0.1:4180 + Vite (proxies /trpc to the server)
 pnpm typecheck    # tsc in every workspace
-pnpm test         # node:test in apps/server and deploy
+pnpm test         # node:test in apps/server, deploy and scripts
+pnpm guard        # scan tracked files for private data; --staged scans the index
 pnpm lint         # oxlint --type-aware + the design-token guard
 pnpm format       # prettier --write (format:check to verify)
-pnpm check        # typecheck + lint + format:check + test: fast, run while working
+pnpm check        # guard + typecheck + lint + format:check + test: fast, run while working
 pnpm verify       # check + e2e: the gate before a step is done, and the pre-commit hook
 pnpm test:e2e     # Playwright against the fake server (apps/e2e)
 pnpm test:e2e:update  # rewrite screenshot baselines: only for an intended visual change
@@ -29,11 +30,12 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - `apps/web` (`@hub/web`): React 19 + Vite + TanStack Query + tRPC client + Tailwind v4. See `apps/web/AGENTS.md`.
 - `apps/e2e` (`@hub/e2e`): Playwright specs and screenshot baselines against a fake server. See `apps/e2e/AGENTS.md`.
 - `deploy/`: desktop templates and installer, no personal values. See `deploy/AGENTS.md`. Deployment TypeScript shares the server's Node typecheck; root `pnpm test` also runs its tests.
+- `scripts/`: repository checks, included in the server's Node typecheck and root tests. Its local tsconfig reuses the server's Node typings so oxlint also checks it. `guard-private.ts` reads Git snapshots; `private-scanner.ts` is the pure detector and returns masked findings only.
 - End-to-end types: the web app imports `type AppRouter` from `@hub/server`. Never import runtime code from the server into the web app, only types.
 
 ## Hard rules
 
-- **Public repo, private life stays out.** The repo is public (showcase, all rights reserved). No home paths, hostnames, IPs, device names, tokens or personal data in tracked files. Personal modules (family, study, mail, client sites) live in the gitignored `modules.local/`; personal values in the gitignored `config.local.json`, with a fake `config.example.json` tracked. If a change needs a personal value, read it from config, never hardcode it.
+- **Public repo, private life stays out.** The repo is public (showcase, all rights reserved). No home paths, hostnames, IPs, device names, tokens or personal data in tracked files. Personal modules (family, study, mail, client sites) live in the gitignored `modules.local/`; personal values in the gitignored `config.local.json`, with a fake `config.example.json` tracked. If a change needs a personal value, read it from config, never hardcode it. `pnpm guard` enforces built-in patterns and an optional gitignored `.private-words` list; only the owner fills that list. Never open or print it. <!-- guard-private: allow Repository-local module directory -->
 - **Only registry actions run.** The server never executes arbitrary shell commands, not even when an LLM asks. Every side effect is an action with a zod-validated input. Spawn binaries with an argument array (`execFile`), never a shell string.
 - **Never read secrets.** Do not open, cat or print `.env*` or `config.local.json`.
 - **Loopback unless paired.** The server binds `127.0.0.1` by default. `server.host` in the config can open it to the LAN, and then only a PC (loopback) or a paired device token gets past `protectedProcedure` (see "Trust, pairing and the LAN" in `apps/server/AGENTS.md`). Never bind to the LAN or edit the real config yourself: the owner does that.
@@ -52,7 +54,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 
 - Read `plans/VISION.md` (the project's purpose and principles) before planning or executing. Work arrives as a plan file in `plans/` (gitignored, never committed). Follow it: do not reopen decisions it records as taken; if one turns out wrong, stop and say so instead of improvising. A step is done only when its acceptance criteria are met. Keep the plan's `## Progress` checklist current as you go (tick + one-line note per item), so another agent can resume from it and `git diff` if the session stops. **Every handoff writes forward:** before calling a step done, append a `## Handoff from step NN` section to the next plan file (create a stub with just that section if the next plan does not exist yet): what now exists that the next step builds on (names, files, context shape), deviations from the plan and why, gotchas found, limits left open. The reviewing session adds its own review notes there too.
 - Library and system APIs are checked before use, not recalled: Context7 for docs (TanStack, tRPC, Fastify, Tailwind), the installed source in `node_modules` or `/usr` for behaviour, `--help` for CLIs (`wpctl`, `playerctl`, `hyprctl`, `caelestia`).
-- Git is local only. Start a step from a clean tree; executors never commit or push; the reviewing session makes one local commit per step after review. At the end of a step, after `pnpm check` is green, stage everything with `git add -A` and check the staged file list for anything that must not be tracked. Details in `plans/README.md`. No `Co-Authored-By` or session trailers.
+- Git is local only. Start a step from a clean tree; executors never commit or push; the reviewing session makes one local commit per step after review. At the end of a step, after `pnpm check` is green, stage everything with `git add -A` and check the staged file list for anything that must not be tracked. The guard runs in the hook; still read the staged list. Details in `plans/README.md`. No `Co-Authored-By` or session trailers.
 - UI changes are not done until checked in a real browser (desk at 4K, deck at iPhone X size, 375x812).
 - Design references for this project are in `~/swipefile_0.1/refs.json`, entries with `project: "hub"`; read each `note` before using it.
 
@@ -69,6 +71,7 @@ Nothing is done until it is verified, and nothing verified once stays unguarded.
 - **Every bug gets a regression test first**: write the test that fails on the bug, then fix it, and keep the test.
 - **Never weaken a test to get green.** Do not delete, skip or loosen a failing test, and do not update screenshot baselines, unless the change in behaviour or look is intended; say which and why in the Progress notes.
 - **The gate:** `pnpm check` while working; `pnpm verify` (check + e2e) before a step is called done. The pre-commit hook (`.githooks/pre-commit`, set up by the root `prepare` script on `pnpm install`) runs `pnpm verify`, so a regression blocks the commit; `--no-verify` only with the user's explicit OK.
+- **Private-data guard:** manual guard/check/verify scan every tracked worktree file; the pre-commit hook exports `HUB_GUARD_STAGED=1` so the same guard reads only staged blobs, including partially staged files. `pnpm guard --staged` selects that mode explicitly. Binary detection checks the first 8 KiB; leaf symlinks are scanned as link text and symlinked parent directories are refused before opening a file. Accidentally tracked config/secret files fail without opening their contents. Deliberate generic matches need a trailing `//`, `#`, `--` or HTML comment `guard-private: allow <reason>` on the same line; use documentation IP ranges in fixtures. Guard failures report masked matches, not source lines. This heuristic does not inspect image contents or rewrite history.
 - **System drift:** `pnpm smoke` (`apps/server/src/smoke.ts`) runs only read-only commands on the real machine, feeds them through the real parsers and exits non-zero when a binary is missing or its output no longer parses. It is not part of `pnpm verify`. Run it after system updates and whenever a module that wraps a system tool changes; a new wrapped tool gets a check there.
 
 ## Keeping these files current

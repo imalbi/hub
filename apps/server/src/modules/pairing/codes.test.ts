@@ -4,7 +4,7 @@ import { createPairingCodes } from './codes.ts';
 
 afterEach(() => mock.timers.reset());
 
-const ADDRESS = '192.168.1.20';
+const ADDRESS = '192.0.2.20';
 
 void test('a code is six digits and redeems once', () => {
   const codes = createPairingCodes();
@@ -47,7 +47,7 @@ void test('five failures lock the address out for the rest of the minute, even f
   for (let i = 0; i < 5; i++) assert.equal(codes.redeem(ADDRESS, wrong), 'wrong');
   assert.equal(codes.redeem(ADDRESS, code), 'limited');
   // Another address is not affected.
-  assert.equal(codes.redeem('192.168.1.21', wrong), 'wrong');
+  assert.equal(codes.redeem('192.0.2.21', wrong), 'wrong');
   mock.timers.tick(60_000);
   assert.equal(codes.redeem(ADDRESS, code), 'ok');
 });

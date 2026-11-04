@@ -12,7 +12,7 @@ import { buildServer } from './server.ts';
 
 process.env.NODE_ENV = 'test';
 
-const LAN = '192.168.1.20';
+const LAN = '192.0.2.20';
 // No `isLoopback` option: this is the server `index.ts` builds, so it proves the production default.
 const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop() });
 after(() => app.close());
@@ -127,11 +127,11 @@ const guess = (remoteAddress: string) =>
   call('POST', 'pairing.redeem', { input: { code: '000000', deviceName: 'Guesser' }, remoteAddress });
 
 void test('five wrong codes from one address end in a 429 for the rest of the minute', async () => {
-  for (let attempt = 0; attempt < 5; attempt++) assert.deepEqual((await guess('192.168.1.99')).code, 'BAD_REQUEST');
-  const locked = await guess('192.168.1.99');
+  for (let attempt = 0; attempt < 5; attempt++) assert.deepEqual((await guess('192.0.2.99')).code, 'BAD_REQUEST');
+  const locked = await guess('192.0.2.99');
   assert.deepEqual([locked.status, locked.code], [429, 'TOO_MANY_REQUESTS']);
   // Another address still gets the plain answer.
-  assert.equal((await guess('192.168.1.98')).code, 'BAD_REQUEST');
+  assert.equal((await guess('192.0.2.98')).code, 'BAD_REQUEST');
 });
 
 void test('redeeming returns the token once and the database keeps only its hash', async () => {

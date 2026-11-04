@@ -1,0 +1,4 @@
+# Copy to .private-words locally; never commit the real word list.
+# One private word or phrase per line. Matching ignores case and respects whole words.
+Sample Person
+Example Client
