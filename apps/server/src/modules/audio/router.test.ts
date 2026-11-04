@@ -72,3 +72,23 @@ void test('audio.cycleOutput fails without touching wpctl when no configured out
     false,
   );
 });
+
+void test('audio.setOutput switches to the output with that label, and refuses unknown or unavailable ones', async () => {
+  const { run, calls } = fakeRun();
+  const app = buildServer({ dbPath: ':memory:', run, config });
+  const set = (label: string) =>
+    app.inject({
+      method: 'POST',
+      url: '/trpc/audio.setOutput',
+      headers: { 'content-type': 'application/json' },
+      payload: { label },
+    });
+  assert.equal((await set('Monitor')).statusCode, 200);
+  assert.deepEqual(calls.at(-1), ['wpctl', ['set-default', '51']]);
+  const before = calls.length;
+  assert.equal((await set('Nessuna')).statusCode, 404);
+  // Casse matches no sink in the fixture.
+  assert.equal((await set('Casse')).statusCode, 412);
+  assert.equal((await set('')).statusCode, 400);
+  assert.ok(calls.slice(before).every(([bin]) => bin !== 'wpctl'));
+});

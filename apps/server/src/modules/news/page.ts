@@ -43,7 +43,7 @@ export function createNewsLive({ page, stateFile }: { page?: string; stateFile?:
       if (!cached.parsed) return null;
       const refreshedAt = stateFile
         ? await stat(stateFile).then(
-            (s) => s.mtimeMs,
+            (s) => Math.round(s.mtimeMs),
             () => null,
           )
         : null;

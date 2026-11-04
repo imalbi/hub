@@ -25,6 +25,7 @@ const mutations = Object.entries<unknown>(appRouter._def.procedures).flatMap(([p
 void test('every mutation carries a description in its meta', () => {
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
     'audio.cycleOutput',
+    'audio.setOutput',
     'devices.revoke',
     'layout.reset',
     'layout.save',

@@ -47,19 +47,17 @@ test('number keys switch zones but do not interfere with typing or modified shor
   await expect(page).toHaveURL(/\/desk\/?$/);
 });
 
-test('Media controls existing playback and cycles outputs without making the list interactive', async ({
-  page,
-  pc,
-}) => {
+test('Media controls existing playback and switches outputs with the output switch', async ({ page, pc }) => {
   try {
     await restoreDesktop(pc);
     await page.goto('/desk/media');
     await page.getByRole('button', { name: 'Metti in pausa la musica', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Riproduci musica', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Cambia uscita', exact: true }).click();
-    const outputs = page.getByRole('list', { name: 'Uscite configurate' });
-    await expect(outputs.getByRole('listitem').filter({ hasText: 'Casse' })).toContainText('Attiva');
-    await expect(outputs.getByRole('button')).toHaveCount(0);
+    const outputs = page.getByRole('main').getByRole('toolbar', { name: 'Uscite configurate' });
+    await expect(outputs.getByRole('button', { name: 'Cuffie' })).toHaveAttribute('aria-pressed', 'true');
+    await outputs.getByRole('button', { name: 'Casse' }).click();
+    await expect(outputs.getByRole('button', { name: 'Casse' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(outputs.getByRole('button', { name: 'Cuffie' })).toHaveAttribute('aria-pressed', 'false');
   } finally {
     await restoreDesktop(pc);
   }

@@ -145,10 +145,11 @@ export function ButtonGroup({
   };
 
   const fill = vertical
-    ? 'rounded-[8px] bg-accent'
+    ? 'rounded-sm bg-accent'
     : solid
       ? 'rounded-full bg-primary-foreground/20'
-      : 'rounded-full bg-accent';
+      : // Hub: the selected pill is the primary fill, as everywhere else on the desk; the accent is too low in contrast.
+        'rounded-full bg-primary';
   const hover = solid ? 'hover:bg-primary-foreground/10' : 'hover:bg-muted/60';
 
   return (
@@ -161,7 +162,7 @@ export function ButtonGroup({
       onPointerLeave={() => setHoveredId(null)}
       className={`relative isolate inline-flex max-w-full shrink-0 select-none ${
         vertical
-          ? 'w-48 flex-col gap-3xs rounded-[12px] bg-surface p-2xs text-foreground shadow-[inset_0_0_0_1px_var(--border)]'
+          ? 'w-48 flex-col gap-3xs rounded-md bg-surface p-2xs text-foreground shadow-[inset_0_0_0_1px_var(--border)]'
           : `flex-row items-center rounded-full p-3xs ${
               solid
                 ? 'bg-primary text-primary-foreground'
@@ -237,20 +238,21 @@ export function ButtonGroup({
           ? 'h-xl w-full justify-start px-xs'
           : item.icon && !custom
             ? sm
-              ? 'h-lg px-[5px]'
-              : 'h-xl px-[9px]'
+              ? 'h-lg px-2xs'
+              : 'h-xl px-xs'
             : sm
               ? 'h-lg px-xs'
-              : 'h-xl px-sm';
+              : // Hub: md segments are a full touch target, like every other pill on the desk and the deck.
+                'h-touch px-lg';
         const tone = active
-          ? solid
+          ? solid || !vertical
             ? 'text-primary-foreground'
             : 'text-foreground'
           : solid
             ? `text-primary-foreground/85 hover:text-primary-foreground ${hover}`
             : `text-muted-foreground hover:text-foreground ${hover}`;
         const itemClass = `relative z-10 inline-flex items-center justify-center whitespace-nowrap font-medium cursor-pointer disabled:cursor-default disabled:opacity-40 ${
-          vertical ? 'rounded-[8px]' : 'rounded-full'
+          vertical ? 'rounded-sm' : 'rounded-full'
         } ${sm ? 'text-caption' : 'text-label'} ${pad} ${tone} ${INTERACTION_FOCUS}`;
         const pressable = !custom || !!item.onClick || !!item.href;
 

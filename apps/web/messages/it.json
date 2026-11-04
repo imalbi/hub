@@ -67,8 +67,6 @@
   "theme_paper": "Chiaro",
   "server_panel_title": "Server",
   "audio_outputs": "Uscite configurate",
-  "audio_output_active": "Attiva",
-  "audio_change": "Cambia uscita",
   "media_action_pause": "Metti in pausa la musica",
   "media_action_play": "Riproduci musica",
   "action_pending": "In corso",

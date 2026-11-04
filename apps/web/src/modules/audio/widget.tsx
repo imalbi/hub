@@ -4,6 +4,7 @@ import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
 import type { WidgetSize } from '../../lib/widget-size.ts';
 import { m } from '../../paraglide/messages.js';
 import { AudioPanel } from './desk-panel.tsx';
+import { OutputSwitch } from './output-switch.tsx';
 
 /** Small shows the current output large; medium has room for the list and the switch; wide is the compact panel. */
 export function AudioWidget({ size }: { size: WidgetSize }) {
@@ -24,6 +25,7 @@ function SmallAudio() {
             ? m.tile_unavailable()
             : m.tile_loading()}
       </p>
+      <OutputSwitch />
     </Panel>
   );
 }
