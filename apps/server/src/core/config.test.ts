@@ -21,6 +21,7 @@ void test('a missing config file is an empty config', () => {
     pomodoro: { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },
     theme: {},
     system: {},
+    news: {},
   });
 });
 

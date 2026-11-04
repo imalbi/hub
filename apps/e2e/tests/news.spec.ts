@@ -1,0 +1,14 @@
+import { expect, test } from './fixtures.ts';
+
+// The fake config names the digest `webdigest` and the fake desktop only records it: a real run marks news seen.
+test('the Notizie widget shows the digest count and refreshes and opens it on the PC', async ({ page }) => {
+  await page.goto('/desk');
+  const news = page.getByRole('region', { name: 'Notizie' });
+  await expect(news.getByText('22', { exact: true })).toBeVisible();
+  await expect(news.getByText('Aggiornato 4 nov, 08:30')).toBeVisible();
+  for (const name of ['Aggiorna', 'Apri']) {
+    const button = news.getByRole('button', { name, exact: true });
+    await button.click();
+    await expect(button).toHaveAttribute('data-status', 'success');
+  }
+});

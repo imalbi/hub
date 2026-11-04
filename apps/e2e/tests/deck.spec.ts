@@ -179,3 +179,12 @@ test('the Sistema page locks with a tap and powers off only after a hold', async
     await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
   }
 });
+
+test('the Notizie tile shows the count as a badge and opens the digest on the PC', async ({ page }) => {
+  const tile = page.getByRole('button', { name: /^Notizie:/ });
+  await expect(tile).toHaveAccessibleName('Notizie: Apri sul PC, 22 voci nuove');
+  await expect(tile.getByText('22', { exact: true })).toBeVisible();
+  await tile.click();
+  await expect(tile).toBeEnabled();
+  await expect(tile).not.toHaveAccessibleName(/Errore/);
+});

@@ -31,6 +31,8 @@ void test('every mutation carries a description in its meta', () => {
     'media.next',
     'media.playPause',
     'media.previous',
+    'news.open',
+    'news.refresh',
     'pairing.createCode',
     'pairing.redeem',
     'pomodoro.configure',

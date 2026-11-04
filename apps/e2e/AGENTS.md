@@ -58,3 +58,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 - `system.spec.ts` (desk) and the Sistema test in `deck.spec.ts`: consumption from the fake powerstat dir (212 W, 0,15 kWh oggi), lock and workspace buttons reach success, power off fires only after the hold. The argv of each command is a server test, the fake never runs them.
 - Baselines: desk-system.png (Comandi wide, Consumo and Server small), deck-system.png, and the HoldButton height fix (now `min-h-touch`) in desk-devices, desk-code, desk-theme-editor and hold-button-mid-hold; desk-widgets-edit lists the new widgets.
+
+## Notizie (step 10)
+
+- The fake config copies `modules/news/fixtures/latest.html` (22 items) to the temp dir with a fixed mtime (4 Nov 08:30), which is the "Aggiornato" line in the baselines. `news.spec.ts` (desk) and the Notizie test in `deck.spec.ts` check count, badge and that Aggiorna/Apri succeed; argv is a server test.
+- Baselines with the Notizie widget or tile: desk, desk-4k, desk-paper, desk-moss, desk-stone, desk-caelestia, desk-widgets-edit, deck, deck-pomodoro-paused.

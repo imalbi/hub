@@ -2,6 +2,7 @@ import { audioRouter } from './modules/audio/router.ts';
 import { devicesRouter } from './modules/devices/router.ts';
 import { layoutRouter } from './modules/layout/router.ts';
 import { mediaRouter } from './modules/media/router.ts';
+import { newsRouter } from './modules/news/router.ts';
 import { pairingRouter } from './modules/devices/pairing-router.ts';
 import { pomodoroRouter } from './modules/pomodoro/router.ts';
 import { systemRouter } from './modules/system/router.ts';
@@ -12,6 +13,7 @@ export const appRouter = router({
   health: protectedProcedure.query(() => ({ ok: true, uptime: Math.round(process.uptime()) })),
   audio: audioRouter,
   media: mediaRouter,
+  news: newsRouter,
   layout: layoutRouter,
   pairing: pairingRouter,
   devices: devicesRouter,

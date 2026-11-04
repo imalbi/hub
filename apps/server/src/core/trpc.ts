@@ -7,6 +7,7 @@ import type { AudioLive } from '../modules/audio/live.ts';
 import type { MediaLive } from '../modules/media/live.ts';
 import type { MediaArt } from '../modules/media/art.ts';
 import type { PairingCodes } from '../modules/devices/codes.ts';
+import type { NewsLive } from '../modules/news/page.ts';
 import type { PomodoroLive } from '../modules/pomodoro/live.ts';
 import type { PowerLive } from '../modules/system/power.ts';
 import type { CaelestiaTheme } from '../modules/theme/caelestia.ts';
@@ -25,6 +26,7 @@ export type Live = {
   audio: AudioLive;
   media: MediaLive;
   pomodoro: PomodoroLive;
+  news: NewsLive;
   power: PowerLive;
   caelestia: CaelestiaTheme;
   customThemes: CustomThemesLive;

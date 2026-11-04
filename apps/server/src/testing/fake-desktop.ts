@@ -17,7 +17,8 @@ export function createFakeDesktop({
   notifications = [],
   sounds = [],
   system = [],
-}: { notifications?: string[][]; sounds?: string[]; system?: string[][] } = {}): Run {
+  news = [],
+}: { notifications?: string[][]; sounds?: string[]; system?: string[][]; news?: string[][] } = {}): Run {
   let sinkName = defaultName ?? '';
   let status = 'Playing';
   let track = 0;
@@ -47,6 +48,14 @@ export function createFakeDesktop({
       ].includes(systemCommand)
     ) {
       system.push([bin, ...args]);
+      return Promise.resolve(ok());
+    }
+    // The digest as the fake config names it, and opening its page: recorded, never run (a real run marks news seen).
+    if (
+      (bin === 'webdigest' && systemCommand === 'webdigest --no-open') ||
+      (bin === 'xdg-open' && args.length === 1 && command?.endsWith('.html'))
+    ) {
+      news.push([bin, ...args]);
       return Promise.resolve(ok());
     }
     if (bin === 'pw-dump' && args.length === 0) {

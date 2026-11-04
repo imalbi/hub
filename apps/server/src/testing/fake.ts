@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { IsLoopback } from '../core/auth.ts';
@@ -25,6 +25,13 @@ const samples = Array.from(
 );
 writeFileSync(join(powerstatDir, 'samples.csv'), ['iso,total_w', ...samples].join('\n'));
 
+// The digest page from the news fixture, under a name of its own; the fake desktop answers `webdigest --no-open`.
+const newsPage = join(tmpdir(), 'hub-e2e-news.html');
+copyFileSync(new URL('../modules/news/fixtures/latest.html', import.meta.url), newsPage);
+// Its mtime is "last updated" on screen: a fixed one keeps the screenshots stable.
+const newsUpdated = new Date(2026, 10, 4, 8, 30);
+utimesSync(newsPage, newsUpdated, newsUpdated);
+
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
 // of the real server, so its origins go on the allowlist or every WebSocket upgrade is refused.
 const config: Config = {
@@ -39,6 +46,7 @@ const config: Config = {
   server: { host: '127.0.0.1', allowedOrigins: ['http://localhost:5190', 'http://127.0.0.1:5190'] },
   theme: { caelestiaScheme },
   system: { powerstatDir },
+  news: { page: newsPage, command: 'webdigest' },
 };
 
 // The e2e browser runs on this machine, so every request really is loopback. The suite needs one page to play the PC

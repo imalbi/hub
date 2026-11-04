@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { AudioOutputTile } from '../modules/audio/deck-tile.tsx';
 import { MediaTile } from '../modules/media/deck-tile.tsx';
+import { NewsTile } from '../modules/news/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import {
   CommunicationTile,
@@ -25,7 +26,7 @@ type Page = {
 
 /** The deck's pages, mirroring the desk zones, in swipe order. */
 export const pages: Page[] = [
-  { id: 'desk', label: m.page_desk, tiles: [AudioOutputTile, MediaTile, PomodoroTile] },
+  { id: 'desk', label: m.page_desk, tiles: [AudioOutputTile, MediaTile, PomodoroTile, NewsTile] },
   { id: 'study', label: m.zone_study, tiles: [PomodoroTile] },
   {
     id: 'system',

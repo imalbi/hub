@@ -35,6 +35,8 @@ void test('every other command is refused and changes nothing', async () => {
     ['systemctl', ['poweroff', '--force']],
     ['systemctl', ['halt']],
     ['caelestia', ['toggle', 'hub']],
+    ['webdigest', []],
+    ['xdg-open', ['https://example.com']],
   ] as const;
   for (const [bin, args] of refused) {
     const { code } = await run(bin, [...args]);

@@ -180,5 +180,14 @@
   "power_today": "{kwh} kWh oggi",
   "power_not_measured": "Non misurato ora",
   "power_off": "Non configurato",
-  "hold_short": "Tieni premuto"
+  "hold_short": "Tieni premuto",
+  "news_title": "Notizie",
+  "news_fresh": "voci nuove",
+  "news_last_page": "nell'ultima pagina, niente di nuovo dopo",
+  "news_updated": "Aggiornato {when}",
+  "news_refresh": "Aggiorna",
+  "news_open": "Apri",
+  "news_open_on_pc": "Apri sul PC",
+  "news_count": "{count} voci nuove",
+  "news_off": "Non configurato"
 }

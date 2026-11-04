@@ -53,6 +53,15 @@ const configSchema = z.object({
       powerstatDir: z.string().min(1).optional(),
     })
     .default({}),
+  // The owner's web dev digest. `page` is the HTML it writes, `stateFile` the JSON it keeps (its mtime is the last
+  // run), `command` the script, run with --no-open. Unset `page` hides news.
+  news: z
+    .object({
+      page: z.string().min(1).optional(),
+      stateFile: z.string().min(1).optional(),
+      command: z.string().min(1).optional(),
+    })
+    .default({}),
 });
 
 export type Config = z.infer<typeof configSchema>;

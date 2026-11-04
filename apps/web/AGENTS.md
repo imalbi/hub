@@ -141,6 +141,10 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 
 - Widgets `controls` (Comandi: Blocca, Chat, Lettore as buttons; Sospendi, Riavvia, Spegni as outline `HoldButton`s; wide or large) and `power` (Consumo: watts as the big figure, today's kWh above; small or medium), with `server` in the Sistema zone. Deck tiles in `modules/system/deck-tile.tsx`; the consumption tile is not a button. `power-text.ts` formats both (Italian decimals).
 
+## Notizie
+
+- `modules/news/widget.tsx` (Panoramica, small or medium: last run, item count as the big figure, Aggiorna and Apri on the PC) and `deck-tile.tsx` (Scrivania: the count as the tile badge, a tap opens the digest on the PC). `Tile` has an optional decorative `badge`; the number is also in `status` for screen readers. Dates are formatted with the day always shown: comparing with today would read the clock during render.
+
 ## Widgets (every zone)
 
 - Every desk zone is a phone-style board (each route renders `WidgetBoard zone=...`; defaults per zone in `shell/widgets.ts`; `zoneWidgets` limits a zone to its own domain's widgets, only Panoramica takes them all). Page UI that is the zone itself, such as the Media hero with its floating player, is not a widget: the route renders it above the board (`shell/widget-board.tsx`, react-grid-layout 2.3.0, chosen over @dnd-kit + motion and gridstack). Sizes in `lib/widget-size.ts`: Piccolo 3x1, Medio 6x1, Grande 6x2, Largo 12x1, Esteso 12x2 on 12 columns; a row is `--spacing-widget-row` (15rem) and the gap `--spacing-lg`, read as pixels from the root at runtime, so widgets on a row are the same height by construction. Vertical compaction fills gaps, so two Piccoli sit in a Medio's width.

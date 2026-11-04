@@ -14,6 +14,8 @@ type TileProps = {
   error?: boolean;
   /** The live connection is down: the state shown is the last one received, so the tile dims. */
   stale?: boolean;
+  /** A count in the corner, like an app icon's. Decorative: say the number in `status` too. */
+  badge?: number;
 };
 
 export function Tile({
@@ -25,6 +27,7 @@ export function Tile({
   pending = false,
   error = false,
   stale = false,
+  badge,
 }: TileProps) {
   const shownState = error ? m.tile_error() : state;
   return (
@@ -34,11 +37,19 @@ export function Tile({
       aria-busy={pending}
       disabled={pending}
       onClick={onPress}
-      className={`flex flex-col items-start gap-xs rounded-lg border p-md text-left active:bg-surface-raised disabled:opacity-60 ${
+      className={`relative flex flex-col items-start gap-xs rounded-lg border p-md text-left active:bg-surface-raised disabled:opacity-60 ${
         error ? 'border-danger' : 'border-border'
       } ${stale ? 'opacity-60' : ''} bg-surface`}
     >
       <Icon className="size-icon" aria-hidden />
+      {badge !== undefined && (
+        <span
+          aria-hidden
+          className="absolute top-sm right-sm flex min-w-icon items-center justify-center rounded-full bg-primary px-2xs text-caption text-primary-foreground tabular-nums"
+        >
+          {badge}
+        </span>
+      )}
       <span className="text-label">{label}</span>
       <span
         className={`line-clamp-2 self-stretch text-caption break-words tabular-nums ${error ? 'text-danger' : 'text-muted-foreground'}`}

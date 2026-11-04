@@ -25,6 +25,7 @@ import { createMediaArt } from './modules/media/art.ts';
 import { createPairingCodes } from './modules/devices/codes.ts';
 import { createPomodoro } from './modules/pomodoro/live.ts';
 import { createPowerLive } from './modules/system/power.ts';
+import { createNewsLive } from './modules/news/page.ts';
 import { createCaelestiaTheme } from './modules/theme/caelestia.ts';
 import { createCustomThemesLive } from './modules/theme/router.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
@@ -60,6 +61,7 @@ export function buildServer({
     media: createMediaLive(run),
     pomodoro,
     power: createPowerLive(config.system.powerstatDir),
+    news: createNewsLive(config.news),
     caelestia: createCaelestiaTheme(config.theme.caelestiaScheme),
     customThemes: createCustomThemesLive(db),
   };

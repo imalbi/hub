@@ -6,3 +6,5 @@ apps/server/drizzle/
 apps/web/project.inlang/.lix/
 apps/web/project.inlang/.meta.json
 apps/web/project.inlang/README.md
+# The digest page as the owner's script writes it: one line per block, which the parser relies on.
+apps/server/src/modules/news/fixtures/
