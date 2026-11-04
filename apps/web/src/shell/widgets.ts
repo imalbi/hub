@@ -4,6 +4,8 @@ import { AudioWidget } from '../modules/audio/widget.tsx';
 import { DevicesWidget } from '../modules/devices/widget.tsx';
 import { MediaWidget } from '../modules/media/widget.tsx';
 import { PomodoroWidget } from '../modules/pomodoro/widget.tsx';
+import { ControlsWidget } from '../modules/system/controls-widget.tsx';
+import { PowerWidget } from '../modules/system/power-widget.tsx';
 import { ServerWidget } from '../modules/system/widget.tsx';
 import { m } from '../paraglide/messages.js';
 import { ThemeWidget } from '../theme/widget.tsx';
@@ -20,6 +22,8 @@ export const widgets: Array<{
   { id: 'pomodoro', label: m.pomodoro_title, sizes: ['small', 'medium', 'large', 'wide'], component: PomodoroWidget },
   { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide'], component: MediaWidget },
   { id: 'server', label: m.server_panel_title, sizes: ['small', 'medium', 'wide'], component: ServerWidget },
+  { id: 'controls', label: m.system_controls, sizes: ['wide', 'large'], component: ControlsWidget },
+  { id: 'power', label: m.power_title, sizes: ['small', 'medium'], component: PowerWidget },
   { id: 'audio', label: m.tile_audio_output, sizes: ['small', 'medium', 'wide'], component: AudioWidget },
   // Lists that grow scroll inside their cell, so they only come in sizes tall enough to show a few rows.
   { id: 'devices', label: m.devices_title, sizes: ['large', 'full'], component: DevicesWidget },
@@ -33,7 +37,7 @@ export const zoneWidgets: Record<ZoneId, readonly string[] | 'all'> = {
   overview: 'all',
   study: ['pomodoro'],
   media: ['audio'],
-  system: ['server'],
+  system: ['controls', 'power', 'server'],
   devices: ['devices', 'theme'],
 };
 
@@ -47,7 +51,11 @@ export const defaultLayouts: Record<ZoneId, WidgetItem[]> = {
   ],
   study: [{ widget: 'pomodoro', size: 'large', x: 0, y: 0 }],
   media: [{ widget: 'audio', size: 'medium', x: 0, y: 0 }],
-  system: [{ widget: 'server', size: 'medium', x: 0, y: 0 }],
+  system: [
+    { widget: 'controls', size: 'wide', x: 0, y: 0 },
+    { widget: 'power', size: 'small', x: 0, y: 1 },
+    { widget: 'server', size: 'small', x: 3, y: 1 },
+  ],
   devices: [
     { widget: 'devices', size: 'large', x: 0, y: 0 },
     { widget: 'theme', size: 'large', x: 6, y: 0 },

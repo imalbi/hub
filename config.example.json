@@ -6,5 +6,6 @@
     ]
   },
   "server": { "host": "127.0.0.1", "allowedOrigins": ["http://hub.example.test:4180"] },
+  "system": { "powerstatDir": "/path/to/powerstat/state" },
   "pomodoro": { "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15, "longBreakEvery": 4 }
 }

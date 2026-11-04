@@ -53,3 +53,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - Holding: hover, `page.mouse.down()`, advance `page.clock`, `mouse.up()`. The mid-hold baseline pauses timers (`clock.pauseAt`) and pins every WAAPI animation at 400 ms. Danger mutations from test helpers pass `confirmed: true`.
 - Pomodoro clock checks install `page.clock`: a MutationObserver on the timer's direct `.sr-only` child records each second once; a client an hour ahead still shows the server's time (the offset from `serverNow`). The timer's text is its direct `:scope > .sr-only` child (NumberRoll has its own sr-only nodes). `pomodoro.configure` changes the fake server for later tests: a test that calls it restores the fixture durations in `finally`.
 - New baselines: deck-studio.png, deck-system.png, desk-pomodoro-settings.png, hold-button-mid-hold.png.
+
+## Sistema (step 09)
+
+- `system.spec.ts` (desk) and the Sistema test in `deck.spec.ts`: consumption from the fake powerstat dir (212 W, 0,15 kWh oggi), lock and workspace buttons reach success, power off fires only after the hold. The argv of each command is a server test, the fake never runs them.
+- Baselines: desk-system.png (Comandi wide, Consumo and Server small), deck-system.png, and the HoldButton height fix (now `min-h-touch`) in desk-devices, desk-code, desk-theme-editor and hold-button-mid-hold; desk-widgets-edit lists the new widgets.

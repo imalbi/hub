@@ -1,6 +1,8 @@
 import { run as realRun, type Run, type RunResult } from './core/exec.ts';
 import { parsePwDump } from './modules/audio/pipewire.ts';
+import { loadConfig } from './core/config.ts';
 import { MEDIA_FORMAT, parseMediaState } from './modules/media/playerctl.ts';
+import { createPowerLive } from './modules/system/power.ts';
 
 export type SmokeResult = { name: string; status: 'ok' | 'missing' | 'unparseable'; detail: string };
 type Verdict = Pick<SmokeResult, 'status' | 'detail'>;
@@ -12,7 +14,7 @@ const exitDetail = ({ code, stderr }: RunResult) => `exit ${code}${stderr.trim()
 
 const judgeVersion = (result: RunResult): Verdict =>
   result.code === 0
-    ? { status: 'ok', detail: result.stdout.trim() }
+    ? { status: 'ok', detail: result.stdout.trim().split('\n')[0] ?? '' }
     : { status: 'unparseable', detail: exitDetail(result) };
 
 // wpctl has no --version. Its help is a cheap, read-only proof that the one subcommand Hub mutates with is still there.
@@ -27,6 +29,18 @@ function judgeNotifyHelp(result: RunResult): Verdict {
   return result.code === 0 && result.stdout.includes('--app-name')
     ? { status: 'ok', detail: 'app-name option listed' }
     : { status: 'unparseable', detail: result.code === 0 ? 'app-name not listed in the help' : exitDetail(result) };
+}
+
+function judgeLockTarget(result: RunResult): Verdict {
+  return result.code === 0 && /target lock\n(\s+function .*\n)*\s+function lock\(\)/.test(result.stdout)
+    ? { status: 'ok', detail: 'lock IPC target listed' }
+    : { status: 'unparseable', detail: result.code === 0 ? 'no lock() in the lock target' : exitDetail(result) };
+}
+
+function judgeToggleHelp(result: RunResult): Verdict {
+  return result.code === 0 && result.stdout.includes('workspace')
+    ? { status: 'ok', detail: 'toggle takes a workspace' }
+    : { status: 'unparseable', detail: result.code === 0 ? 'workspace argument not listed' : exitDetail(result) };
 }
 
 function judgePwDump(result: RunResult): Verdict {
@@ -54,23 +68,37 @@ const checks = [
   { name: 'playerctl metadata', bin: 'playerctl', args: ['metadata', '--format', MEDIA_FORMAT], judge: judgeMetadata },
   { name: 'notify-send --help', bin: 'notify-send', args: ['--help'], judge: judgeNotifyHelp },
   { name: 'pw-play --version', bin: 'pw-play', args: ['--version'], judge: judgeVersion },
+  { name: 'systemctl --version', bin: 'systemctl', args: ['--version'], judge: judgeVersion },
+  // Lists the shell's IPC targets without calling one: the lock action needs `lock lock`.
+  { name: 'caelestia shell -s', bin: 'caelestia', args: ['shell', '-s'], judge: judgeLockTarget },
+  { name: 'caelestia toggle --help', bin: 'caelestia', args: ['toggle', '--help'], judge: judgeToggleHelp },
 ];
 
+async function checkPowerstat(dir: string): Promise<SmokeResult> {
+  const state = await createPowerLive(dir).read();
+  const name = 'powerstat dir';
+  if (state === null) return { name, status: 'missing', detail: 'no readable status.json or samples.csv' };
+  return state.watts === null
+    ? { name, status: 'unparseable', detail: 'status.json is stale or not in the expected shape' }
+    : { name, status: 'ok', detail: 'status and samples parse' };
+}
+
 /** Runs the read-only commands Hub depends on and feeds their output through the real parsers. */
-export function runSmoke(run: Run): Promise<SmokeResult[]> {
-  return Promise.all(
-    checks.map(async ({ name, bin, args, judge }): Promise<SmokeResult> => {
+export function runSmoke(run: Run, { powerstatDir }: { powerstatDir?: string } = {}): Promise<SmokeResult[]> {
+  return Promise.all([
+    ...checks.map(async ({ name, bin, args, judge }): Promise<SmokeResult> => {
       const result = await run(bin, args);
       const verdict: Verdict =
         result.code === NOT_RUN ? { status: 'missing', detail: 'binary not found or timed out' } : judge(result);
       return { name, ...verdict };
     }),
-  );
+    ...(powerstatDir ? [checkPowerstat(powerstatDir)] : []),
+  ]);
 }
 
 if (import.meta.main) {
-  const results = await runSmoke(realRun);
+  const results = await runSmoke(realRun, loadConfig().system);
   for (const { name, status, detail } of results)
-    process.stdout.write(`${status.padEnd(12)}${name.padEnd(22)}${detail}\n`);
+    process.stdout.write(`${status.padEnd(12)}${name.padEnd(26)}${detail}\n`);
   process.exitCode = results.every((r) => r.status === 'ok') ? 0 : 1;
 }

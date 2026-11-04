@@ -114,7 +114,7 @@ test('the dots and a swipe move between pages, and the page shown survives a rel
     await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
     await page.reload();
     await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByRole('group', { name: 'Aspetto' })).toBeInViewport();
+    await expect(page.getByRole('combobox', { name: 'Aspetto' })).toBeInViewport();
   } finally {
     await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
   }
@@ -123,7 +123,7 @@ test('the dots and a swipe move between pages, and the page shown survives a rel
 test('the Sistema page chooses the theme of this device', async ({ page }) => {
   await page.getByRole('button', { name: 'Vai a Sistema' }).click();
   try {
-    await page.getByRole('group', { name: 'Aspetto' }).getByText('Chiaro', { exact: true }).click();
+    await page.getByRole('combobox', { name: 'Aspetto' }).selectOption({ label: 'Chiaro' });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   } finally {
     await page.evaluate(() => {
@@ -155,4 +155,27 @@ test('the player bar is hidden when no player is running', async ({ page }) => {
   await page.goto('/deck');
   await expect(mediaTile(page)).toHaveAccessibleName('Musica: Niente in riproduzione');
   await expect(page.getByRole('region', { name: 'In riproduzione' })).toHaveCount(0);
+});
+
+test('the Sistema page locks with a tap and powers off only after a hold', async ({ page }) => {
+  await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+  try {
+    const system = page.getByRole('region', { name: 'Sistema' });
+    await expect(system.getByText('212 W')).toBeVisible();
+    await system.getByRole('button', { name: /^Blocca:/ }).click();
+    await expect(system.getByRole('button', { name: /^Blocca:/ })).toBeEnabled();
+    const powerOff = system.getByRole('button', { name: 'Tieni premuto per spegnere il PC' });
+    await page.clock.install();
+    await powerOff.hover();
+    await page.mouse.down();
+    await page.clock.runFor(400);
+    await page.mouse.up();
+    await expect(powerOff).toContainText('Tieni premuto');
+    await page.mouse.down();
+    await page.clock.runFor(900);
+    await page.mouse.up();
+    await expect(powerOff).toContainText('Inviato');
+  } finally {
+    await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+  }
 });

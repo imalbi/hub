@@ -2,7 +2,7 @@ import { m } from '../paraglide/messages.js';
 import { useTheme } from './theme.tsx';
 import { builtInThemes, caelestiaId, customId } from './themes.ts';
 
-/** The phone's theme choice: a compact radio group of every theme, no editor (that is on the desk). */
+/** The phone's theme choice in one line: a native select (the iOS picker), no editor (that is on the desk). */
 export function DeckThemeList() {
   const { theme, setTheme, custom, caelestiaStatus } = useTheme();
   const options = [
@@ -11,25 +11,19 @@ export function DeckThemeList() {
     ...(custom ?? []).map((item) => ({ id: customId(item.id), label: item.name })),
   ];
   return (
-    <fieldset className="flex flex-col gap-sm">
-      <legend className="mb-sm text-label">{m.theme_title()}</legend>
-      <div className="flex flex-wrap gap-xs">
+    <label className="flex min-h-touch items-center justify-between gap-md text-label">
+      {m.theme_title()}
+      <select
+        value={theme}
+        onChange={(event) => setTheme(event.target.value)}
+        className="min-h-touch rounded-full border border-border bg-surface px-md text-label text-foreground"
+      >
         {options.map((option) => (
-          <label
-            key={option.id}
-            className="flex min-h-touch cursor-pointer items-center rounded-full border border-border px-md text-label has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline has-focus-visible:outline-accent"
-          >
-            <input
-              type="radio"
-              name="deck-theme"
-              checked={theme === option.id}
-              onChange={() => setTheme(option.id)}
-              className="sr-only"
-            />
+          <option key={option.id} value={option.id}>
             {option.label}
-          </label>
+          </option>
         ))}
-      </div>
-    </fieldset>
+      </select>
+    </label>
   );
 }

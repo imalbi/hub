@@ -14,6 +14,10 @@ function healthy(override: (bin: string, args: string[]) => RunResult | undefine
     const forced = override(bin, args);
     if (forced) return Promise.resolve(forced);
     if (bin === 'wpctl' && args[0] === '--help') return Promise.resolve(ok('Commands:\n  status\n  set-default ID\n'));
+    if (bin === 'caelestia' && args.join(' ') === 'shell -s')
+      return Promise.resolve(ok('target lock\n  function unlock(): void\n  function lock(): void\n'));
+    if (bin === 'caelestia' && args.join(' ') === 'toggle --help')
+      return Promise.resolve(ok('usage: caelestia toggle [-h] workspace\n'));
     if (bin === 'notify-send' && args[0] === '--help')
       return Promise.resolve(ok('Usage: notify-send --app-name=APP_NAME SUMMARY BODY'));
     if (args[0] === '--version') return Promise.resolve(ok(`${bin} 1.0\n`));
@@ -30,6 +34,9 @@ void test('every check is ok on a healthy desktop', async () => {
     ['playerctl metadata', 'ok'],
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
+    ['systemctl --version', 'ok'],
+    ['caelestia shell -s', 'ok'],
+    ['caelestia toggle --help', 'ok'],
   ]);
 });
 
@@ -42,11 +49,14 @@ void test('only read-only commands are run', async () => {
     }),
   );
   assert.deepEqual(seen.map((line) => line.split(' ').slice(0, 2).join(' ')).toSorted(), [
+    'caelestia shell',
+    'caelestia toggle',
     'notify-send --help',
     'playerctl --version',
     'playerctl metadata',
     'pw-dump',
     'pw-play --version',
+    'systemctl --version',
     'wpctl --help',
   ]);
 });
@@ -62,6 +72,9 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['playerctl metadata', 'missing'],
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
+    ['systemctl --version', 'ok'],
+    ['caelestia shell -s', 'ok'],
+    ['caelestia toggle --help', 'ok'],
   ]);
 });
 
@@ -90,4 +103,13 @@ void test('a playerctl status the parser does not know is reported as unparseabl
     healthy((bin, args) => (args[0] === 'metadata' ? ok('Buffering\tA\tT\n') : undefined)),
   );
   assert.equal(results.find((r) => r.name === 'playerctl metadata')?.status, 'unparseable');
+});
+
+void test('a configured powerstat dir is checked through the real parser', async () => {
+  const dir = new URL('modules/system/fixtures/powerstat', import.meta.url).pathname;
+  const results = await runSmoke(healthy(), { powerstatDir: dir });
+  // The fixture status is old, so it reads as stale: the check sees the files but says so.
+  assert.equal(results.find((r) => r.name === 'powerstat dir')?.status, 'unparseable');
+  const missing = await runSmoke(healthy(), { powerstatDir: '/nonexistent/powerstat' });
+  assert.equal(missing.find((r) => r.name === 'powerstat dir')?.status, 'missing');
 });

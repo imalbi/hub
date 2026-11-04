@@ -35,6 +35,7 @@ export default defineConfig({
         'design.spec.ts',
         'themes.spec.ts',
         'widgets.spec.ts',
+        'system.spec.ts',
       ],
       use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
     },

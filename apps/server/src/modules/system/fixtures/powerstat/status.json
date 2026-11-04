@@ -1,0 +1,16 @@
+{
+  "ts": 1793782800.0,
+  "rapl_ok": true,
+  "cpu_w": 40.0,
+  "gpu_w": 60.0,
+  "baseline_w": 30.0,
+  "monitor_w": 20.0,
+  "total_w": 150.0,
+  "session_start": 1793779200.0,
+  "session_seconds": 3600.0,
+  "session_wh": 150.0,
+  "avg_w": 150.0,
+  "peak_w": 300.0,
+  "session_eur": 0.04,
+  "eur_per_kwh": 0.25
+}

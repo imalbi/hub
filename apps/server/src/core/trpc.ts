@@ -8,6 +8,7 @@ import type { MediaLive } from '../modules/media/live.ts';
 import type { MediaArt } from '../modules/media/art.ts';
 import type { PairingCodes } from '../modules/devices/codes.ts';
 import type { PomodoroLive } from '../modules/pomodoro/live.ts';
+import type { PowerLive } from '../modules/system/power.ts';
 import type { CaelestiaTheme } from '../modules/theme/caelestia.ts';
 import type { CustomThemesLive } from '../modules/theme/router.ts';
 
@@ -24,6 +25,7 @@ export type Live = {
   audio: AudioLive;
   media: MediaLive;
   pomodoro: PomodoroLive;
+  power: PowerLive;
   caelestia: CaelestiaTheme;
   customThemes: CustomThemesLive;
 };

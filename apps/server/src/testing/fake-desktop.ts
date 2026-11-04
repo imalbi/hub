@@ -16,7 +16,8 @@ const refused: RunResult = { stdout: '', stderr: 'fake desktop: command not supp
 export function createFakeDesktop({
   notifications = [],
   sounds = [],
-}: { notifications?: string[][]; sounds?: string[] } = {}): Run {
+  system = [],
+}: { notifications?: string[][]; sounds?: string[]; system?: string[][] } = {}): Run {
   let sinkName = defaultName ?? '';
   let status = 'Playing';
   let track = 0;
@@ -31,6 +32,21 @@ export function createFakeDesktop({
     }
     if (bin === 'pw-play' && args.length === 1 && command?.endsWith('.wav')) {
       sounds.push(command);
+      return Promise.resolve(ok());
+    }
+    // Lock, power and workspace toggles: recorded, never run. The power actions are only ever tried by the owner by hand.
+    const systemCommand = [bin, ...args].join(' ');
+    if (
+      [
+        'caelestia shell lock lock',
+        'caelestia toggle communication',
+        'caelestia toggle music',
+        'systemctl suspend',
+        'systemctl reboot',
+        'systemctl poweroff',
+      ].includes(systemCommand)
+    ) {
+      system.push([bin, ...args]);
       return Promise.resolve(ok());
     }
     if (bin === 'pw-dump' && args.length === 0) {

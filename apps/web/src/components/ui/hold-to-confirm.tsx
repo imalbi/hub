@@ -22,6 +22,8 @@ export interface HoldToConfirmProps extends Omit<
   onStatusChange?: (status: HoldStatus) => void;
   /** How to use it, for screen readers. Hub passes its Italian copy. */
   hint?: string;
+  /** Hub: `outline` for a row of several, where a filled pill each would shout. */
+  variant?: 'primary' | 'outline';
 }
 const LABELS = {
   idle: 'Hold to confirm',
@@ -40,6 +42,7 @@ export function HoldToConfirm({
   icon,
   onStatusChange,
   hint: hintText,
+  variant = 'primary',
   disabled = false,
   className = '',
   ...props
@@ -110,7 +113,7 @@ export function HoldToConfirm({
           }
         }}
         onClick={(event) => event.preventDefault()}
-        className={`h-11 relative inline-flex cursor-pointer items-center justify-center gap-xs overflow-clip rounded-full border px-md text-label font-medium transition-colors select-none disabled:cursor-default disabled:opacity-40 aria-disabled:cursor-default ${status === 'error' ? 'border-destructive/40 bg-destructive/5 text-destructive' : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'} ${INTERACTION_FOCUS} ${className}`}
+        className={`relative inline-flex min-h-touch cursor-pointer items-center justify-center gap-xs overflow-clip rounded-full border px-md text-label font-medium transition-colors select-none disabled:cursor-default disabled:opacity-40 aria-disabled:cursor-default ${status === 'error' ? 'border-destructive/40 bg-destructive/5 text-destructive' : variant === 'outline' ? 'border-border text-foreground hover:bg-muted' : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'} ${INTERACTION_FOCUS} ${className}`}
         style={{ touchAction: 'none', ...props.style }}
       >
         <span aria-hidden="true" className="relative size-md shrink-0">

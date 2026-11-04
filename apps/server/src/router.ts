@@ -4,6 +4,7 @@ import { layoutRouter } from './modules/layout/router.ts';
 import { mediaRouter } from './modules/media/router.ts';
 import { pairingRouter } from './modules/devices/pairing-router.ts';
 import { pomodoroRouter } from './modules/pomodoro/router.ts';
+import { systemRouter } from './modules/system/router.ts';
 import { themeRouter } from './modules/theme/router.ts';
 import { protectedProcedure, router } from './core/trpc.ts';
 
@@ -15,6 +16,7 @@ export const appRouter = router({
   pairing: pairingRouter,
   devices: devicesRouter,
   pomodoro: pomodoroRouter,
+  system: systemRouter,
   theme: themeRouter,
 });
 

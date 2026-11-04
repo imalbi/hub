@@ -10,6 +10,7 @@ export function HoldButton({
   idle,
   done,
   onConfirm,
+  outline = false,
   className = '',
 }: {
   /** The accessible name; it says the button needs a hold ("Tieni premuto per ..."). */
@@ -17,12 +18,14 @@ export function HoldButton({
   idle: string;
   done: string;
   onConfirm: () => Promise<unknown>;
+  outline?: boolean;
   className?: string;
 }) {
   return (
     <HoldToConfirm
       aria-label={label}
       duration={800}
+      variant={outline ? 'outline' : 'primary'}
       hint={m.hold_hint()}
       labels={{ idle, holding: m.hold_holding(), pending: m.hold_pending(), success: done, error: m.hold_failed() }}
       onConfirm={async () => {

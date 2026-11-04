@@ -47,6 +47,12 @@ const configSchema = z.object({
       caelestiaScheme: z.string().min(1).optional(),
     })
     .default({}),
+  system: z
+    .object({
+      // Where the owner's powerstat tracker writes status.json and samples.csv. Unset hides consumption.
+      powerstatDir: z.string().min(1).optional(),
+    })
+    .default({}),
 });
 
 export type Config = z.infer<typeof configSchema>;

@@ -575,3 +575,16 @@ html {
     transition: none;
   }
 }
+
+/* The hold ring of a deck tile: around the icon, visible only while held (the fill is a WAAPI animation). */
+.hold-tile {
+  touch-action: none;
+}
+.hold-tile-ring {
+  inset: calc(-1 * var(--spacing-2xs));
+  opacity: 0;
+  transition: opacity var(--motion-standard);
+}
+.hold-tile-ring[data-on='true'] {
+  opacity: 1;
+}

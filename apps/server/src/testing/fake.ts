@@ -1,4 +1,4 @@
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { IsLoopback } from '../core/auth.ts';
@@ -10,6 +10,20 @@ import { buildServer } from '../server.ts';
 // `apps/e2e/tests/themes.ts` writes the same path.
 const caelestiaScheme = join(tmpdir(), 'hub-e2e-caelestia-scheme.json');
 copyFileSync(new URL('../modules/theme/fixtures/scheme.json', import.meta.url), caelestiaScheme);
+
+// A powerstat directory with fixed readings: the status is dated far ahead so it never goes stale, and today has an
+// hour of samples at 150 W from 08:00 (0.15 kWh), so screenshots read the same whenever the suite runs.
+const powerstatDir = join(tmpdir(), 'hub-e2e-powerstat');
+mkdirSync(powerstatDir, { recursive: true });
+writeFileSync(join(powerstatDir, 'status.json'), JSON.stringify({ ts: 4_102_444_800, total_w: 212.4 }));
+const today = new Date();
+const pad = (n: number) => String(n).padStart(2, '0');
+const day = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+const samples = Array.from(
+  { length: 61 },
+  (_, minute) => `${day}T${pad(8 + Math.floor(minute / 60))}:${pad(minute % 60)}:00,150.0`,
+);
+writeFileSync(join(powerstatDir, 'samples.csv'), ['iso,total_w', ...samples].join('\n'));
 
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
 // of the real server, so its origins go on the allowlist or every WebSocket upgrade is refused.
@@ -24,6 +38,7 @@ const config: Config = {
   },
   server: { host: '127.0.0.1', allowedOrigins: ['http://localhost:5190', 'http://127.0.0.1:5190'] },
   theme: { caelestiaScheme },
+  system: { powerstatDir },
 };
 
 // The e2e browser runs on this machine, so every request really is loopback. The suite needs one page to play the PC

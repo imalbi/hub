@@ -32,6 +32,9 @@ void test('every other command is refused and changes nothing', async () => {
     ['wpctl', ['set-volume', '@DEFAULT_SINK@', '0']],
     ['playerctl', ['shuffle']],
     ['pw-dump', ['--unknown']],
+    ['systemctl', ['poweroff', '--force']],
+    ['systemctl', ['halt']],
+    ['caelestia', ['toggle', 'hub']],
   ] as const;
   for (const [bin, args] of refused) {
     const { code } = await run(bin, [...args]);

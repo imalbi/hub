@@ -39,6 +39,11 @@ void test('every mutation carries a description in its meta', () => {
     'pomodoro.skip',
     'pomodoro.start',
     'pomodoro.stop',
+    'system.lock',
+    'system.powerOff',
+    'system.reboot',
+    'system.suspend',
+    'system.toggleWorkspace',
     'theme.delete',
     'theme.rename',
     'theme.save',
@@ -54,10 +59,13 @@ void test('every danger mutation is refused without confirmed: true and runs wit
   const danger = mutations.filter(
     ({ procedure }) => z.object({ danger: z.literal(true) }).safeParse(procedure._def.meta).success,
   );
-  assert.deepEqual(
-    danger.map((m) => m.path),
-    ['devices.revoke', 'theme.delete'],
-  );
+  assert.deepEqual(danger.map((m) => m.path).toSorted(), [
+    'devices.revoke',
+    'system.powerOff',
+    'system.reboot',
+    'system.suspend',
+    'theme.delete',
+  ]);
   for (const { path } of danger) {
     const call = (input: object) =>
       app.inject({
@@ -66,9 +74,10 @@ void test('every danger mutation is refused without confirmed: true and runs wit
         headers: { 'content-type': 'application/json' },
         payload: input,
       });
-    // From the PC, so only the missing confirmation can refuse it; the ids do not exist, so a run answers 404.
+    // From the PC, so only the missing confirmation can refuse it. The ids do not exist (a delete answers 404) and the
+    // fake desktop only records power commands (200): either way the action ran.
     assert.equal((await call({ id: 999 })).statusCode, 412, path);
     assert.equal((await call({ id: 999, confirmed: false })).statusCode, 412, path);
-    assert.equal((await call({ id: 999, confirmed: true })).statusCode, 404, path);
+    assert.ok([200, 404].includes((await call({ id: 999, confirmed: true })).statusCode), path);
   }
 });
