@@ -1,0 +1,65 @@
+[
+  {
+    "id": 31,
+    "type": "PipeWire:Interface:Metadata",
+    "props": { "metadata.name": "settings" },
+    "metadata": [{ "subject": 0, "key": "clock.rate", "type": "Spa:String:JSON", "value": 48000 }]
+  },
+  {
+    "id": 40,
+    "type": "PipeWire:Interface:Metadata",
+    "props": { "metadata.name": "default" },
+    "metadata": [
+      {
+        "subject": 0,
+        "key": "default.audio.sink",
+        "type": "Spa:String:JSON",
+        "value": { "name": "alsa_output.usb-headset.analog-stereo" }
+      },
+      {
+        "subject": 0,
+        "key": "default.audio.source",
+        "type": "Spa:String:JSON",
+        "value": { "name": "alsa_input.usb-headset.mono-fallback" }
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "type": "PipeWire:Interface:Device",
+    "info": { "props": { "device.description": "USB Headset" } }
+  },
+  {
+    "id": 50,
+    "type": "PipeWire:Interface:Node",
+    "info": {
+      "props": {
+        "media.class": "Audio/Sink",
+        "node.name": "alsa_output.usb-headset.analog-stereo",
+        "node.description": "USB Headset"
+      }
+    }
+  },
+  {
+    "id": 51,
+    "type": "PipeWire:Interface:Node",
+    "info": {
+      "props": {
+        "media.class": "Audio/Sink",
+        "node.name": "alsa_output.hdmi-monitor.hdmi-stereo",
+        "node.description": "HDMI Monitor"
+      }
+    }
+  },
+  {
+    "id": 52,
+    "type": "PipeWire:Interface:Node",
+    "info": {
+      "props": {
+        "media.class": "Audio/Source",
+        "node.name": "alsa_input.usb-headset.mono-fallback",
+        "node.description": "USB Headset"
+      }
+    }
+  }
+]

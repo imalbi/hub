@@ -1,0 +1,140 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/urbanist';
+
+/*
+ * Design tokens. Every size in the UI comes from a named step below; Tailwind's open numeric
+ * scales are switched off so p-7 or text-[13px] cannot sneak in. Sizes are in rem, so the desk
+ * can scale the whole system with one root font size (see [data-layout]).
+ */
+@theme {
+  /* Spacing: 4px base. Pick by relationship, not by eye:
+     3xs-2xs inside a control (icon nudges), xs icon to label, sm between rows of a list,
+     md padding of a deck tile and gap between related items, lg padding of a desk panel and gap
+     between panels, xl between sections, 2xl+ page margins and hero breathing room. */
+  --spacing: initial;
+  --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-3xs: 0.125rem;
+  --spacing-2xs: 0.25rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  --spacing-4xl: 6rem;
+  /* Fixed sizes that are not gaps: minimum touch target and icon boxes. */
+  --spacing-touch: 2.75rem;
+  --spacing-icon-sm: 1rem;
+  --spacing-icon: 1.25rem;
+  --spacing-icon-lg: 1.5rem;
+
+  /* Type: major third (x1.25) from a 1rem body. Each step carries its line height, tracking and
+     weight, so a component picks a role and never sets those by hand. */
+  --font-*: initial;
+  --font-sans: 'Urbanist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', monospace;
+
+  --text-*: initial;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--letter-spacing: 0.01em;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.25rem;
+  --text-label--font-weight: 500;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-title--font-weight: 600;
+  --text-heading: 1.5625rem;
+  --text-heading--line-height: 2rem;
+  --text-heading--font-weight: 600;
+  --text-heading--letter-spacing: -0.01em;
+  /* Big light numerals for the one value a panel is about (watts, countdown, clock). */
+  --text-display: 2.4375rem;
+  --text-display--line-height: 1.1;
+  --text-display--font-weight: 300;
+  --text-display--letter-spacing: -0.02em;
+  --text-hero: 3.8125rem;
+  --text-hero--line-height: 1;
+  --text-hero--font-weight: 300;
+  --text-hero--letter-spacing: -0.03em;
+
+  /* Radii: nested shapes step down one level so inner corners stay concentric. */
+  --radius-*: initial;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 2rem;
+  --radius-full: 9999px;
+
+  --blur-*: initial;
+  --blur-glass: 1.5rem;
+
+  --ease-*: initial;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Colors: shadcn variable names so Hairline UI components pick them up unchanged. */
+@theme inline {
+  --color-*: initial;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+}
+
+/* Dark ink theme (default): near-black surfaces, color only from content and one accent. */
+:root,
+[data-theme='ink'] {
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.96 0 0);
+  --surface: oklch(0.18 0 0);
+  --surface-raised: oklch(0.23 0 0);
+  --muted: oklch(0.27 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+  --border: oklch(1 0 0 / 0.1);
+  --primary: oklch(0.96 0 0);
+  --primary-foreground: oklch(0.13 0 0);
+  --accent: oklch(0.8 0.05 190);
+  --success: oklch(0.75 0.12 155);
+  --danger: oklch(0.68 0.17 25);
+}
+
+/* Light paper theme: warm grey ground, black and white contrast cards. */
+[data-theme='paper'] {
+  --background: oklch(0.94 0.003 100);
+  --foreground: oklch(0.18 0 0);
+  --surface: oklch(0.99 0 0);
+  --surface-raised: oklch(0.18 0 0);
+  --muted: oklch(0.9 0.003 100);
+  --muted-foreground: oklch(0.5 0.005 100);
+  --border: oklch(0 0 0 / 0.1);
+  --primary: oklch(0.18 0 0);
+  --primary-foreground: oklch(0.99 0 0);
+  --accent: oklch(0.55 0.08 190);
+  --success: oklch(0.55 0.13 155);
+  --danger: oklch(0.55 0.19 25);
+}
+
+/* The desk runs on a 3840px wide viewport at scale 1; one root size scales every token. */
+html[data-layout='desk'] {
+  font-size: 150%;
+}
+
+body {
+  @apply bg-background font-sans text-body text-foreground antialiased;
+}

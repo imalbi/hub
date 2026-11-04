@@ -1,0 +1,8 @@
+{
+  "audio": {
+    "outputs": [
+      { "label": "Cuffie", "match": "Headphones model" },
+      { "label": "Casse", "match": "Speakers model" }
+    ]
+  }
+}

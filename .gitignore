@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env*
+config.local.json
+modules.local/
+*.db
+apps/web/src/paraglide/
+
+# Planning artifacts and local agent state: never committed
+plans/
+.claude/settings.local.json
+.codex/
+.agent/
+.opencode/
+apps/web/project.inlang/cache/

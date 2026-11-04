@@ -1,0 +1,16 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "server_connecting": "Connessione in corso",
+  "server_unreachable": "Server non raggiungibile",
+  "server_up": "Server attivo da {seconds}s",
+  "desk_title": "Hub",
+  "deck_title": "Hub",
+  "tile_loading": "Caricamento",
+  "tile_unavailable": "Non disponibile",
+  "tile_error": "Non riuscito",
+  "tile_audio_output": "Uscita audio",
+  "audio_output_none": "Nessuna uscita",
+  "tile_media": "Musica",
+  "media_nothing_playing": "Niente in riproduzione",
+  "media_track": "{artist} - {title}"
+}
