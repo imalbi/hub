@@ -20,7 +20,9 @@ void test('every mutation carries a description in its meta', () => {
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
     'audio.cycleOutput',
     'devices.revoke',
+    'media.next',
     'media.playPause',
+    'media.previous',
     'pairing.createCode',
     'pairing.redeem',
     'pomodoro.pause',

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 import type { AppRouter } from '@hub/server';
 import { getToken, setToken } from './auth.ts';
 
-export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
+export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
 
 // Derived from `location` so it works through the Vite proxy in dev and straight from the server on the LAN later.
 // The browser sends the page origin with the upgrade; the server refuses origins that are not Hub's.

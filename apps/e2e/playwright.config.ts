@@ -26,7 +26,14 @@ export default defineConfig({
     {
       name: 'desk',
       dependencies: ['setup'],
-      testMatch: ['desk.spec.ts', 'devices.spec.ts', 'desk.visual.spec.ts', 'pomodoro.spec.ts', 'zones.spec.ts'],
+      testMatch: [
+        'desk.spec.ts',
+        'devices.spec.ts',
+        'desk.visual.spec.ts',
+        'pomodoro.spec.ts',
+        'zones.spec.ts',
+        'design.spec.ts',
+      ],
       use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
     },
   ],

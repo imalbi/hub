@@ -73,5 +73,16 @@
   "audio_output_active": "Attiva",
   "audio_change": "Cambia uscita",
   "media_action_pause": "Metti in pausa la musica",
-  "media_action_play": "Riproduci musica"
+  "media_action_play": "Riproduci musica",
+  "action_pending": "In corso",
+  "action_done": "Fatto",
+  "media_previous": "Brano precedente",
+  "media_next": "Brano successivo",
+  "media_player": "Player musicale",
+  "media_cover": "Copertina di {title}",
+  "media_duration": "Durata {duration}",
+  "server_connection": "Connessione al server",
+  "connection_ready": "Connesso",
+  "pomodoro_activity": "{phase} · {time}",
+  "devices_empty_hint": "Il deck si collega con un codice temporaneo."
 }

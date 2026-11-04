@@ -1,3 +1,4 @@
+import { contrastRatio } from './contrast.ts';
 import { expect, test } from './fixtures.ts';
 import { restoreDesktop } from './desktop.ts';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
@@ -88,29 +89,7 @@ test('Pomodoro secondary controls remain readable when hovered in paper', async 
   for (const name of ['Salta', 'Ferma']) {
     const button = page.getByRole('button', { name, exact: true });
     await button.hover();
-    const ratio = await button.evaluate((element) => {
-      const style = getComputedStyle(element);
-      const canvas = document.createElement('canvas');
-      canvas.width = 2;
-      canvas.height = 1;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('No canvas');
-      context.fillStyle = style.color;
-      context.fillRect(0, 0, 1, 1);
-      context.fillStyle = style.backgroundColor;
-      context.fillRect(1, 0, 1, 1);
-      const colors = context.getImageData(0, 0, 2, 1).data;
-      function luminance(offset: number) {
-        const linear = [0, 1, 2].map((index) => {
-          const value = (colors[offset + index] ?? 0) / 255;
-          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-        });
-        return (linear[0] ?? 0) * 0.2126 + (linear[1] ?? 0) * 0.7152 + (linear[2] ?? 0) * 0.0722;
-      }
-      const a = luminance(0),
-        b = luminance(4);
-      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-    });
+    const ratio = await contrastRatio(button);
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
 });

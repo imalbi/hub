@@ -47,6 +47,12 @@ export function usePomodoro() {
     actions[action].mutate();
   }
 
+  async function actAsync(action: keyof typeof actions) {
+    if (!state || connectionLost) throw new Error('Pomodoro unavailable');
+    for (const mutation of Object.values(actions)) mutation.reset();
+    await actions[action].mutateAsync();
+  }
+
   return {
     state,
     time,
@@ -54,6 +60,7 @@ export function usePomodoro() {
     primaryAction,
     primaryLabel,
     act,
+    actAsync,
     connectionLost,
     progress: state?.durationMs ? Math.min(1, Math.max(0, 1 - remainingMs / state.durationMs)) : 0,
     pending: Object.values(actions).some((action) => action.isPending),

@@ -30,7 +30,7 @@ void test('every other command is refused and changes nothing', async () => {
     ['rm', ['-rf', '/']],
     ['wpctl', ['set-default', '999']],
     ['wpctl', ['set-volume', '@DEFAULT_SINK@', '0']],
-    ['playerctl', ['next']],
+    ['playerctl', ['shuffle']],
     ['pw-dump', ['--unknown']],
   ] as const;
   for (const [bin, args] of refused) {
@@ -45,6 +45,18 @@ void test('two fake desktops do not share state', async () => {
   const a = createFakeDesktop();
   await a('playerctl', ['play-pause']);
   assert.equal(await mediaStatus(), 'Playing');
+});
+
+void test('next/previous move the fake track and preserve play status and fixture artwork', async () => {
+  const run = createFakeDesktop();
+  await run('playerctl', ['play-pause']);
+  await run('playerctl', ['next']);
+  const next = await run('playerctl', ['metadata', '--format', MEDIA_FORMAT]);
+  assert.equal(parseMediaState(next)?.title, 'Second Title');
+  assert.equal(parseMediaState(next)?.status, 'Paused');
+  assert.match(parseMediaState(next)?.artKey ?? '', /^[a-f0-9]{16}$/);
+  await run('playerctl', ['previous']);
+  assert.equal(parseMediaState(await run('playerctl', ['metadata', '--format', MEDIA_FORMAT]))?.title, 'Title');
 });
 
 void test('Hub notifications are accepted and recorded without invoking a binary', async () => {

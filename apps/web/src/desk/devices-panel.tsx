@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
 import { m } from '../paraglide/messages.js';
 import { useTRPC } from '../trpc.ts';
+import { Smartphone } from 'lucide-react';
+import { EmptyState } from '../components/ui/empty-state.tsx';
+import { RegistryButton } from './registry-button.tsx';
 
 const button = 'min-h-touch rounded-full border border-border px-lg text-label disabled:opacity-60';
 
@@ -46,9 +49,12 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
   return (
     <Panel title={m.devices_title()} className={className}>
       <div className="flex flex-col items-start gap-md">
-        <button type="button" disabled={createCode.isPending} onClick={() => createCode.mutate()} className={button}>
-          {m.devices_create_code()}
-        </button>
+        <RegistryButton
+          secondary
+          label={m.devices_create_code()}
+          action={() => createCode.mutateAsync()}
+          disabled={createCode.isPending}
+        />
         {createCode.data && remaining > 0 && (
           <div className="flex flex-col gap-xs">
             <output aria-label={m.devices_code_label()} className="text-display tabular-nums">
@@ -64,7 +70,13 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
         )}
       </div>
 
-      {devices.data?.length === 0 && <p className="text-caption text-muted-foreground">{m.devices_empty()}</p>}
+      {devices.data?.length === 0 && (
+        <EmptyState
+          illustration={<Smartphone className="size-3xl text-muted-foreground" aria-hidden />}
+          title={m.devices_empty()}
+          description={m.devices_empty_hint()}
+        />
+      )}
       <ul className="flex flex-col gap-sm">
         {devices.data?.map((device) => (
           <li key={device.id} className="flex items-center justify-between gap-lg">
@@ -76,14 +88,13 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
             </div>
             {confirming === device.id ? (
               <div className="flex gap-xs">
-                <button
-                  type="button"
+                <RegistryButton
+                  secondary
+                  label={m.device_revoke_confirm()}
+                  action={() => revoke.mutateAsync({ id: device.id })}
                   disabled={revoke.isPending}
-                  onClick={() => revoke.mutate({ id: device.id })}
-                  className={`${button} border-danger text-danger`}
-                >
-                  {m.device_revoke_confirm()}
-                </button>
+                  className="border-danger text-danger"
+                />
                 <button type="button" onClick={() => setConfirming(null)} className={button}>
                   {m.device_revoke_cancel()}
                 </button>

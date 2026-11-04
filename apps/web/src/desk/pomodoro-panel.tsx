@@ -2,9 +2,13 @@ import { Link } from '@tanstack/react-router';
 import { Panel } from '../components/panel.tsx';
 import { m } from '../paraglide/messages.js';
 import { usePomodoro } from '../pomodoro.ts';
+import { NumberRoll } from '../components/ui/number-roll.tsx';
+import { RegistryButton } from './registry-button.tsx';
+import { useId } from 'react';
 
 export function PomodoroPanel({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   const timer = usePomodoro();
+  const timeId = useId();
   const disabled = timer.pending || timer.state === undefined || timer.connectionLost;
   return (
     <Panel
@@ -38,8 +42,31 @@ export function PomodoroPanel({ compact = false, className = '' }: { compact?: b
           <p className="text-caption text-muted-foreground">
             {timer.state ? timer.phaseLabel : timer.connectionLost ? m.tile_unavailable() : m.tile_loading()}
           </p>
-          <p role="timer" aria-label={m.pomodoro_remaining()} aria-live="off" className="text-display tabular-nums">
-            {timer.time}
+          <p
+            role="timer"
+            aria-label={m.pomodoro_remaining()}
+            aria-describedby={timeId}
+            aria-live="off"
+            className="text-display tabular-nums"
+          >
+            <output id={timeId} aria-label={timer.time} aria-live="off" className="sr-only">
+              {timer.time}
+            </output>
+            <span aria-hidden className="select-none">
+              <NumberRoll
+                value={Number(timer.time.split(':')[0])}
+                format={{ minimumIntegerDigits: 2, useGrouping: false }}
+                locales="it"
+                direction="down"
+              />
+              :
+              <NumberRoll
+                value={Number(timer.time.split(':')[1])}
+                format={{ minimumIntegerDigits: 2, useGrouping: false }}
+                locales="it"
+                direction="down"
+              />
+            </span>
           </p>
         </div>
       </div>
@@ -49,33 +76,25 @@ export function PomodoroPanel({ compact = false, className = '' }: { compact?: b
         </p>
       )}
       <div className="flex flex-wrap gap-xs">
-        <button
-          type="button"
+        <RegistryButton
+          label={timer.primaryLabel}
+          action={() => timer.actAsync(timer.primaryAction)}
           disabled={disabled}
-          aria-busy={timer.pending}
-          onClick={() => timer.act(timer.primaryAction)}
-          className="min-h-touch rounded-full bg-primary px-md py-xs text-label text-primary-foreground hover:opacity-80 focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-        >
-          {timer.primaryLabel}
-        </button>
+        />
         {!compact && timer.state?.phase !== 'idle' && timer.state !== undefined && (
           <>
-            <button
-              type="button"
+            <RegistryButton
+              secondary
+              label={m.pomodoro_skip()}
+              action={() => timer.actAsync('skip')}
               disabled={disabled}
-              onClick={() => timer.act('skip')}
-              className="min-h-touch rounded-full border border-border px-md py-xs text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-            >
-              {m.pomodoro_skip()}
-            </button>
-            <button
-              type="button"
+            />
+            <RegistryButton
+              secondary
+              label={m.pomodoro_stop()}
+              action={() => timer.actAsync('stop')}
               disabled={disabled}
-              onClick={() => timer.act('stop')}
-              className="min-h-touch rounded-full border border-border px-md py-xs text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-            >
-              {m.pomodoro_stop()}
-            </button>
+            />
           </>
         )}
       </div>

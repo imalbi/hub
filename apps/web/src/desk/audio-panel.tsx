@@ -5,6 +5,7 @@ import { Check } from 'lucide-react';
 import { Panel } from '../components/panel.tsx';
 import { m } from '../paraglide/messages.js';
 import { useConnectionLost, useTRPC } from '../trpc.ts';
+import { RegistryButton } from './registry-button.tsx';
 export function AudioPanel({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   const trpc = useTRPC();
   const audio = useSubscription(trpc.audio.onState.subscriptionOptions());
@@ -46,15 +47,13 @@ export function AudioPanel({ compact = false, className = '' }: { compact?: bool
               </li>
             ))}
           </ul>
-          <button
-            type="button"
+          <RegistryButton
+            secondary
+            label={m.audio_change()}
+            action={() => cycle.mutateAsync()}
             disabled={cycle.isPending || stale || !audio.data?.outputs.some((output) => output.available)}
-            aria-busy={cycle.isPending}
-            onClick={() => cycle.mutate()}
-            className="min-h-touch self-start rounded-full border border-border px-md py-xs text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-          >
-            {m.audio_change()}
-          </button>
+            className="self-start"
+          />
           {cycle.isError && (
             <p role="alert" className="text-caption text-danger">
               {m.tile_error()}

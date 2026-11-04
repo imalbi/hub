@@ -5,6 +5,7 @@ import type { Db } from './db/index.ts';
 import type { Run } from './exec.ts';
 import type { AudioLive } from './modules/audio/live.ts';
 import type { MediaLive } from './modules/media/live.ts';
+import type { MediaArt } from './modules/media/art.ts';
 import type { PairingCodes } from './modules/pairing/codes.ts';
 import type { PomodoroLive } from './modules/pomodoro/live.ts';
 
@@ -23,6 +24,7 @@ export type Context = {
   run: Run;
   config: Config;
   live: Live;
+  mediaArt: MediaArt;
   /** Who is calling, decided once per request (per connection for a WebSocket) in `createContext`. */
   client: Client;
   remoteAddress: string;

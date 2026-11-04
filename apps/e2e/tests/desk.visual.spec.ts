@@ -26,6 +26,7 @@ test.beforeEach(async ({ page }) => {
 test('the desk at 4K matches the baseline', async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-4k.png', { animations: 'disabled' });
 });
 
@@ -58,13 +59,15 @@ test('the idle progress ring draws no completed arc', async ({ page }) => {
 test('the paused Pomodoro panel shows its progress, remaining time and all controls', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
   await page.goto('/desk/studio');
-  await expect(page.getByRole('timer', { name: 'Tempo rimanente' })).toHaveText('12:30');
+  await expect(page.getByRole('timer', { name: 'Tempo rimanente' })).toHaveAccessibleDescription('12:30');
   await expect(page.getByRole('progressbar', { name: 'Avanzamento Pomodoro' })).toHaveAttribute('value', '0.5');
   await expect(page.getByRole('button', { name: 'Riprendi', exact: true })).toBeVisible();
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-pomodoro-paused.png', { animations: 'disabled' });
 });
 
 test('the desk matches the baseline', async ({ page }) => {
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk.png', { animations: 'disabled' });
 });
 
@@ -77,6 +80,7 @@ test('the desk with a pairing code matches the baseline', async ({ page }) => {
   await page.getByRole('button', { name: 'Genera codice' }).click();
   await expect(page.getByRole('status', { name: 'Codice di abbinamento' })).toHaveText('123456');
   await expect(page.getByText('Scade tra 120s')).toBeVisible();
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-code.png', { animations: 'disabled' });
 });
 
@@ -93,7 +97,8 @@ for (const zone of [
       await document.fonts.ready;
     });
     if (zone.name === 'Dispositivi') await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
-    if (zone.name === 'Media') await expect(page.getByText('Title', { exact: true })).toBeVisible();
+    if (zone.name === 'Media') await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
+    await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled' });
   });
 }
@@ -103,5 +108,16 @@ test('the overview in paper matches the baseline', async ({ page }) => {
   await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-paper.png', { animations: 'disabled' });
+});
+
+test('Media in paper uses solid floating controls and matches the baseline', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await page.getByRole('button', { name: 'Tema chiaro', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Media', exact: true }).click();
+  await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Player musicale' })).toHaveCSS('backdrop-filter', 'none');
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-media-paper.png', { animations: 'disabled' });
 });

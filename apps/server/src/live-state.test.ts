@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { emptyConfig, type Config } from './config.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
@@ -57,12 +58,19 @@ function connect() {
 
 const data = (value: unknown) => ({ id: 1, result: { type: 'data', data: value } });
 const started = { id: 1, result: { type: 'started' } };
+const artKey = createHash('sha256')
+  .update(new URL('./modules/media/fixtures/cover.png', import.meta.url).href)
+  .digest('hex')
+  .slice(0, 16);
 
 void test('media.onState pushes the current state, then the new one right after play/pause', async () => {
   const client = connect();
   await client.subscribe('media.onState');
   assert.deepEqual(await client.next(), started);
-  assert.deepEqual(await client.next(), data({ status: 'Playing', artist: 'Artist', title: 'Title' }));
+  assert.deepEqual(
+    await client.next(),
+    data({ status: 'Playing', artist: 'Artist', title: 'Title', lengthMs: 213000, artKey }),
+  );
 
   // The poll interval is 1 s and `next` gives up after 0.5 s: only the refresh after the mutation can win.
   const res = await app.inject({
@@ -72,7 +80,10 @@ void test('media.onState pushes the current state, then the new one right after 
     payload: '{}',
   });
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(await client.next(), data({ status: 'Paused', artist: 'Artist', title: 'Title' }));
+  assert.deepEqual(
+    await client.next(),
+    data({ status: 'Paused', artist: 'Artist', title: 'Title', lengthMs: 213000, artKey }),
+  );
   client.close();
 });
 

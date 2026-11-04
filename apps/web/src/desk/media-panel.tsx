@@ -1,24 +1,108 @@
 import { Link } from '@tanstack/react-router';
-import { useMutation } from '@tanstack/react-query';
-import { useSubscription } from '@trpc/tanstack-react-query';
-import { Pause, Play } from 'lucide-react';
+import { Music2, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { Panel } from '../components/panel.tsx';
+import { IconMorph } from '../components/ui/icon-morph.tsx';
 import { m } from '../paraglide/messages.js';
-import { useConnectionLost, useTRPC } from '../trpc.ts';
+import { useMedia } from './media.tsx';
+import { RegistryButton } from './registry-button.tsx';
+
+function PlaybackIcon() {
+  const media = useMedia();
+  return (
+    <IconMorph
+      from={<Play className="size-icon" aria-hidden />}
+      to={<Pause className="size-icon" aria-hidden />}
+      active={media.playing}
+      style={{ width: 'var(--spacing-icon)', height: 'var(--spacing-icon)' }}
+    />
+  );
+}
+function Cover({ large = false }: { large?: boolean }) {
+  const media = useMedia();
+  return media.art ? (
+    <img
+      src={media.art.dataUrl}
+      alt={large ? m.media_cover({ title: media.state?.title ?? '' }) : ''}
+      className={large ? 'media-cover rounded-xl object-cover' : 'size-3xl shrink-0 rounded-md object-cover'}
+    />
+  ) : (
+    <div
+      aria-hidden
+      className={`flex shrink-0 items-center justify-center rounded-xl border border-border bg-muted ${large ? 'media-cover' : 'size-3xl'}`}
+    >
+      <Music2 className="size-icon-lg text-muted-foreground" />
+    </div>
+  );
+}
+function Transport() {
+  const media = useMedia();
+  return (
+    <div className="flex items-center gap-xs">
+      <RegistryButton
+        iconOnly
+        secondary
+        label={m.media_previous()}
+        action={() => media.previous.mutateAsync()}
+        disabled={media.disabled}
+        icon={<SkipBack className="size-icon" aria-hidden />}
+      />
+      <RegistryButton
+        iconOnly
+        label={media.playing ? m.media_action_pause() : m.media_action_play()}
+        action={() => media.playPause.mutateAsync()}
+        disabled={media.disabled}
+        icon={<PlaybackIcon />}
+      />
+      <RegistryButton
+        iconOnly
+        secondary
+        label={m.media_next()}
+        action={() => media.next.mutateAsync()}
+        disabled={media.disabled}
+        icon={<SkipForward className="size-icon" aria-hidden />}
+      />
+    </div>
+  );
+}
+function PlayerPill() {
+  const media = useMedia();
+  const length = media.state?.lengthMs;
+  const seconds = length === null || length === undefined ? null : Math.floor(length / 1000);
+  const duration = seconds === null ? null : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  return (
+    <section
+      aria-label={m.media_player()}
+      className="desk-glass player-pill absolute right-lg bottom-0 left-lg flex min-w-0 translate-y-1/2 items-center gap-lg rounded-full border px-lg py-sm"
+    >
+      <Transport />
+      <Cover />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-label">{media.state?.title || m.media_nothing_playing()}</p>
+        <p className="truncate text-caption text-muted-foreground">{media.state?.artist}</p>
+      </div>
+      {duration && (
+        <span className="text-caption text-muted-foreground tabular-nums" aria-label={m.media_duration({ duration })}>
+          {duration}
+        </span>
+      )}
+    </section>
+  );
+}
 export function MediaPanel({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
-  const trpc = useTRPC();
-  const media = useSubscription(trpc.media.onState.subscriptionOptions());
-  const action = useMutation(trpc.media.playPause.mutationOptions());
-  const stale = useConnectionLost();
-  const playing = media.data?.status === 'Playing';
-  const Icon = playing ? Pause : Play;
-  const status = media.data
-    ? { Playing: m.media_playing, Paused: m.media_paused, Stopped: m.media_stopped }[media.data.status]()
-    : undefined;
+  const media = useMedia();
+  const status = media.state
+    ? { Playing: m.media_playing, Paused: m.media_paused, Stopped: m.media_stopped }[media.state.status]()
+    : null;
+  const title =
+    media.state === undefined
+      ? media.connectionLost
+        ? m.tile_unavailable()
+        : m.tile_loading()
+      : media.state?.title || m.media_nothing_playing();
   return (
     <Panel
       title={m.tile_media()}
-      className={`${className} ${stale ? 'opacity-60' : ''}`}
+      className={`relative ${!compact ? 'mb-2xl' : ''} ${media.connectionLost ? 'opacity-60' : ''} ${className}`}
       action={
         compact ? (
           <Link to="/desk/media" className="text-caption text-muted-foreground hover:text-foreground">
@@ -27,33 +111,26 @@ export function MediaPanel({ compact = false, className = '' }: { compact?: bool
         ) : undefined
       }
     >
-      <div className="flex min-w-0 flex-col gap-xs">
-        <p className={`${compact ? 'text-title' : 'text-display'} break-words`}>
-          {media.data === undefined
-            ? stale
-              ? m.tile_unavailable()
-              : m.tile_loading()
-            : media.data?.title || m.media_nothing_playing()}
-        </p>
-        {media.data?.artist && <p className="text-body text-muted-foreground">{media.data.artist}</p>}
-        {status && <p className="text-caption text-muted-foreground">{status}</p>}
+      <div className={`flex min-w-0 items-center ${compact ? 'gap-md' : 'media-hero gap-xl pb-2xl'}`}>
+        <Cover large />
+        <div className="flex min-w-0 flex-1 flex-col gap-sm">
+          <p className={`${compact ? 'text-title' : 'text-hero'} break-words`}>{title}</p>
+          {media.state?.artist && (
+            <p className={`${compact ? 'text-body' : 'text-title'} text-muted-foreground`}>{media.state.artist}</p>
+          )}
+          {status && <p className="text-caption text-muted-foreground">{status}</p>}
+        </div>
+        {compact && (
+          <RegistryButton
+            iconOnly
+            label={media.playing ? m.media_action_pause() : m.media_action_play()}
+            action={() => media.playPause.mutateAsync()}
+            disabled={media.disabled}
+            icon={<PlaybackIcon />}
+          />
+        )}
       </div>
-      <button
-        type="button"
-        disabled={!media.data || action.isPending || stale}
-        aria-busy={action.isPending}
-        onClick={() => action.mutate()}
-        aria-label={playing ? m.media_action_pause() : m.media_action_play()}
-        className="flex min-h-touch items-center gap-xs self-start rounded-full bg-primary px-md py-xs text-label text-primary-foreground hover:opacity-80 focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-      >
-        <Icon className="size-icon" aria-hidden />
-        {playing ? m.media_action_pause() : m.media_action_play()}
-      </button>
-      {action.isError && (
-        <p role="alert" className="text-caption text-danger">
-          {m.tile_error()}
-        </p>
-      )}
+      {!compact && <PlayerPill />}
     </Panel>
   );
 }

@@ -14,6 +14,7 @@ import { openDb } from './db/index.ts';
 import { run as realRun, type Run } from './exec.ts';
 import { createAudioLive } from './modules/audio/live.ts';
 import { createMediaLive } from './modules/media/live.ts';
+import { createMediaArt } from './modules/media/art.ts';
 import { createPairingCodes } from './modules/pairing/codes.ts';
 import { createPomodoro } from './modules/pomodoro/live.ts';
 import { allowedOrigins, isAllowedOrigin } from './origin.ts';
@@ -27,6 +28,7 @@ export function buildServer({
   config = emptyConfig,
   isLoopback = isLoopbackPeer,
   webRoot,
+  mediaFetch,
 }: {
   dbPath: string;
   run?: Run;
@@ -34,6 +36,7 @@ export function buildServer({
   isLoopback?: IsLoopback;
   /** The built web app (`apps/web/dist`). Without it the server answers the API only. */
   webRoot?: string;
+  mediaFetch?: typeof fetch;
 }) {
   const db = openDb(dbPath);
   const app = fastify({ logger: process.env.NODE_ENV !== 'test' });
@@ -43,6 +46,7 @@ export function buildServer({
   );
   app.addHook('onClose', () => pomodoro.close());
   const live = { audio: createAudioLive(run, config), media: createMediaLive(run), pomodoro };
+  const mediaArt = createMediaArt(run, { fetch: mediaFetch });
   const pairing = createPairingCodes();
   const sockets = createDeviceSockets();
   const allowlist = allowedOrigins(config);
@@ -76,7 +80,17 @@ export function buildServer({
         );
         // For a WebSocket `res` is the socket, whatever the typings say.
         if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res);
-        return { db, run, config, live, client, remoteAddress: req.socket.remoteAddress ?? '', pairing, sockets };
+        return {
+          db,
+          run,
+          config,
+          live,
+          mediaArt,
+          client,
+          remoteAddress: req.socket.remoteAddress ?? '',
+          pairing,
+          sockets,
+        };
       },
       keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
     } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],

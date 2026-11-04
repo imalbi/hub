@@ -32,7 +32,24 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - **No arbitrary values**: `p-[13px]`, `text-[#fff]` and friends are rejected by `pnpm --filter @hub/web lint:tokens` (part of `pnpm lint`). A missing value becomes a new token with a reason, not a one-off. When shadcn/Hairline components land in `src/components/ui/`, exclude that folder from the guard and map their sizes onto these tokens.
 - Font: Urbanist (variable, OFL, self-hosted via `@fontsource-variable/urbanist`), provisional until the font decision in the design doc is closed.
 - Components will come from Hairline UI via the shadcn CLI (`npx shadcn@latest add https://hairlineui.com/r/<name>.json`). Generated component code is ours to edit.
-- Aesthetic: monochrome hairline UI, color only from content (cover art, photos, the one highlighted value), 1px low-opacity borders, large radii, pill controls, floating pill nav and player. References: swipefile entries with `project: "hub"`.
+
+## Aesthetic
+
+- Neutrals only, one theme accent for active state and the main figure; other color comes from cover art and photos. Keep the font, Urbanist, and a few weight roles; main figures are large and light.
+- Borders are low-opacity 1px hairlines; separators inside panels are dashed. Panels use large radii, nested shapes step down one radius, controls/nav/filters/badges/player are pills. Lots of air and few elements per panel.
+- Nav and player float above content and may overlap a panel edge. Only those layers use `.desk-glass`: translucent surface, backdrop blur and hairline in ink; solid surface without blur in paper. Panels stay `bg-surface`. Media backdrop uses blurred/darkened cover art; other zones use a quiet neutral radial gradient; paper uses plain background.
+- Charts are greyscale, with the current value solid or in the accent. Do not invent metrics or player features the server cannot provide.
+- State changes get short, purposeful motion: selection slides, labels reveal, numbers roll, icons morph. Nothing loops without purpose; the explicitly planned connected badge may breathe, stopping on disconnection/reduced motion. Reduced motion makes transitions instant, including WAAPI icon transitions.
+- Every UI step compares its new baselines with the hub references by eye and writes one comparison line per screen in its plan Progress, stating what matches and what deliberately differs.
+
+## Hairline components
+
+- Vendored MIT sources and LICENSE live in `src/components/ui/`. Install via the shadcn CLI and the local `components.json`, preview with --dry-run/--diff, target src/components/ui and inspect dependencies first. Never let the CLI replace our tokens. Preserve upstream notices; generated code must pass the same types/lint/format/privacy checks as app code.
+- Only `src/components/ui/` is excluded from the arbitrary-class guard, alongside generated Paraglide. Map visible spacing/type/colors to named tokens; upstream geometry/keyframes/timings can stay. Keyframes used through inline animation names must survive Tailwind compilation. Components are ours to adapt for semantics and accessibility; no broad lint exceptions.
+- `desk/registry-button.tsx` supplies Italian action labels and accessible names to ActionButton; it uses async mutations so pending/success/error represent the actual request. `data-status` exposes the current feedback state. A failure is handled by the component, not an unhandled rejection. Keep non-action navigation buttons separate.
+- Desk shell owns MediaProvider: one media subscription and a typed artwork query cached by artKey. Only a matching successful image earns infinite stale time; null/mismatched replies throw for two bounded retries and remain eligible for ordinary query recovery on remount/focus/reconnect. The raw artwork URL is never in the browser. MediaPanel/Backdrop/PlayerPill share it. DeskRail keeps Link semantics and uses the Hairline motion primitive for a single transform-based indicator; routes, names and number shortcuts are unchanged.
+- ThemeToggle is controlled with two Italian options mapped to ink/paper; it never writes a dark class or its own storage over DeskTheme. NumberRoll digits are decorative inside the desk timer; an output preserves readable/copyable time and supplies the timer description. Deck digits remain unchanged. Hold-to-confirm is installed for step 08; its wrapper must supply Italian copy and verify the full pointer/keyboard interaction.
+- Header LiveActivity separates its changing visual countdown from a stable phase-only live announcement and the Apri Studio trigger name. A clock tick must not mutate the polite announcement; the main timer/output keep aria-live off. Do not put the ticking label back in a live region.
 
 ## Deck tiles
 

@@ -16,6 +16,9 @@ const refused: RunResult = { stdout: '', stderr: 'fake desktop: command not supp
 export function createFakeDesktop({ notifications = [] }: { notifications?: string[][] } = {}): Run {
   let sinkName = defaultName ?? '';
   let status = 'Playing';
+  let track = 0;
+  const titles = ['Title', 'Second Title', 'Third Title'];
+  const artUrl = new URL('./modules/media/fixtures/cover.png', import.meta.url).href;
 
   return (bin, args) => {
     const [command, target] = args;
@@ -32,7 +35,12 @@ export function createFakeDesktop({ notifications = [] }: { notifications?: stri
       sinkName = sink.name;
       return Promise.resolve(ok());
     }
-    if (bin === 'playerctl' && command === 'metadata') return Promise.resolve(ok(`${status}\tArtist\tTitle\n`));
+    if (bin === 'playerctl' && command === 'metadata')
+      return Promise.resolve(ok(`${status}\tArtist\t${titles[track]}\t${artUrl}\t213000000\n`));
+    if (bin === 'playerctl' && args.length === 1 && (command === 'next' || command === 'previous')) {
+      track = (track + (command === 'next' ? 1 : titles.length - 1)) % titles.length;
+      return Promise.resolve(ok());
+    }
     if (bin === 'playerctl' && command === 'play-pause') {
       status = status === 'Playing' ? 'Paused' : 'Playing';
       return Promise.resolve(ok());

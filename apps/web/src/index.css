@@ -32,6 +32,8 @@
   /* Desk rail: touch target, horizontal padding and border; content leaves one gutter on each side. */
   --spacing-desk-rail: calc(var(--spacing-touch) + 2 * var(--spacing-xs) + 2 * var(--spacing-px));
   --spacing-desk-inset: calc(var(--spacing-desk-rail) + 2 * var(--spacing-xl));
+  /* Cover grows with the viewport but leaves room for the track's title. */
+  --spacing-media-cover: clamp(14rem, 24vw, 24rem);
   /* The notch and the home indicator of the iPhone, zero everywhere else. Only the deck shell uses them. */
   --spacing-safe-top: env(safe-area-inset-top);
   --spacing-safe-right: env(safe-area-inset-right);
@@ -80,10 +82,12 @@
 
   --blur-*: initial;
   --blur-glass: 1.5rem;
+  --blur-art: 4rem;
 
   --ease-*: initial;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-standard: 380ms;
 }
 
 /* Colors: shadcn variable names so Hairline UI components pick them up unchanged. */
@@ -103,6 +107,65 @@
   --color-danger: var(--danger);
   --color-transparent: transparent;
   --color-current: currentColor;
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-card: var(--surface);
+  --color-ring: var(--accent);
+  --color-destructive: var(--danger);
+  @keyframes ui-col-in {
+    from {
+      max-width: 0;
+      opacity: 0;
+    }
+    to {
+      max-width: 1em;
+      opacity: 1;
+    }
+  }
+  @keyframes ui-col-out {
+    from {
+      max-width: 1em;
+      opacity: 1;
+    }
+    to {
+      max-width: 0;
+      opacity: 0;
+    }
+  }
+  @keyframes ui-ping {
+    from {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    to {
+      transform: scale(2.6);
+      opacity: 0;
+    }
+  }
+  @keyframes ui-empty-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+  @keyframes ui-empty-out {
+    from {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-4px);
+      filter: blur(4px);
+    }
+  }
 }
 
 /* Dark ink theme (default): near-black surfaces, color only from content and one accent. */
@@ -120,6 +183,9 @@
   --accent: oklch(0.8 0.05 190);
   --success: oklch(0.75 0.12 155);
   --danger: oklch(0.68 0.17 25);
+  /* Translucency belongs to floating chrome; content panels stay opaque. */
+  --glass: oklch(0.18 0 0 / 0.72);
+  --glass-border: oklch(1 0 0 / 0.16);
 }
 
 /* Light paper theme: warm grey ground, black and white contrast cards. */
@@ -136,6 +202,80 @@
   --accent: oklch(0.55 0.08 190);
   --success: oklch(0.55 0.13 155);
   --danger: oklch(0.55 0.19 25);
+  --glass: var(--surface);
+  --glass-border: var(--border);
+}
+
+html[data-layout='desk'] body {
+  isolation: isolate;
+}
+.desk-backdrop {
+  background: radial-gradient(ellipse at top right, var(--muted), var(--background) 70%);
+}
+.desk-backdrop img {
+  filter: blur(var(--blur-art));
+  opacity: 0.3;
+  transform: scale(1.15);
+}
+.desk-glass {
+  background: var(--glass);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(var(--blur-glass));
+}
+[data-theme='paper'] .desk-glass {
+  backdrop-filter: none;
+}
+[data-theme='paper'] .desk-backdrop {
+  background: var(--background);
+}
+[data-theme='paper'] .desk-backdrop img {
+  display: none;
+}
+.media-cover {
+  width: var(--spacing-media-cover);
+  height: var(--spacing-media-cover);
+  flex-shrink: 0;
+}
+.media-transport {
+  padding-inline: var(--spacing-sm);
+}
+.media-transport [data-action-label] {
+  display: none;
+}
+.media-transport > span:first-child {
+  margin-right: 0 !important;
+}
+section:has(> .media-hero) {
+  min-height: calc(var(--spacing-media-cover) + 2 * var(--spacing-3xl));
+}
+section:has(> .media-hero) + section li + li {
+  border-top: var(--spacing-px) dashed var(--border);
+  padding-top: var(--spacing-sm);
+}
+section:has(> .media-hero) .player-pill .size-3xl {
+  width: var(--spacing-touch);
+  height: var(--spacing-touch);
+}
+section:not(:has(> .media-hero)) > div > .media-cover {
+  width: var(--spacing-4xl);
+  height: var(--spacing-4xl);
+  border-radius: var(--radius-lg);
+}
+html[data-layout='desk'] ::selection {
+  background: var(--accent);
+  color: var(--background);
+}
+html[data-layout='desk'] * {
+  scrollbar-color: var(--muted-foreground) var(--background);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-layout='desk'] *,
+  html[data-layout='desk'] *::before,
+  html[data-layout='desk'] *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* The desk runs on a 3840px wide viewport at scale 1; one root size scales every token. */

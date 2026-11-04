@@ -8,7 +8,7 @@
     "typecheck": "pnpm i18n && tsr generate && tsc -p .",
     "test": "true",
     "i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
-    "lint:tokens": "! grep -rnE \"(^|[\\\" :])(-?[a-z]+(-[a-z]+)*)-\\\\[\" src --include=*.tsx --exclude-dir=paraglide"
+    "lint:tokens": "! rg -n '(^|[\" :])(-?[a-z]+(-[a-z]+)*)-\\[' src --glob '*.tsx' --glob '!src/paraglide/**' --glob '!src/components/ui/**'"
   },
   "dependencies": {
     "@fontsource-variable/urbanist": "^5.3.0",
