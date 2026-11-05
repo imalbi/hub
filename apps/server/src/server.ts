@@ -80,13 +80,13 @@ export function buildServer({
   });
   // Registered after @fastify/websocket on purpose: the tRPC plugin's WebSocket route needs it.
   app.register(async (scope) => {
-    const moduleDeps = {
-      db,
+    const discoveredDeps = {
       run,
       fetch: deps.fetch ?? fetch,
       log: app.log,
       zones: new Set(publicModules.flatMap((m) => m.zones ?? [])),
     };
+    const moduleDeps = { ...discoveredDeps, db };
     const onClose = (close: () => void | Promise<void>) => {
       scope.addHook('onClose', close);
     };
@@ -94,7 +94,8 @@ export function buildServer({
       roots: moduleRoots,
       examples: exampleModules,
       reserved: [...publicModules.map((m) => m.name), 'registry'],
-      deps: moduleDeps,
+      deps: discoveredDeps,
+      dbPath,
       config: config.modules ?? {},
       onClose,
     });

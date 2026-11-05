@@ -85,12 +85,20 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 - One local file, no database server: single user, single writer, small data. Postgres would only earn its place if several machines wrote to the same store.
 - Path: `$HUB_DB`, default `~/.local/state/hub/hub.db` (outside the repo). WAL mode and foreign keys are set on open.
-- `openDb()` in `src/db/index.ts` applies pending migrations synchronously at startup, before the server listens. Tests use `openDb(':memory:')`.
+- `openDb()` in `src/db/index.ts` applies pending migrations synchronously at startup, before the server listens. Tests use `openDb(':memory:')`. It is `openDatabase(path, migrationsFolder)` with the tracked `drizzle/` folder; the same function opens a module's file (see "Core and module databases"), and closes the handle again when a migration throws.
 - Primary keys: `integer` autoincrement for rows that live and die on this machine (sessions, devices, themes). A table whose ids leave it (synced to another store, shown to an agent or a third party, created offline on a device) uses a text UUID from `crypto.randomUUID()` instead, decided when that table is planned.
 - Schema in `src/db/schema.ts`, explicit snake_case column names (`integer('started_at', ...)`). Timestamps are `integer` with `mode: 'timestamp_ms'`, booleans `integer` with `mode: 'boolean'`.
 - Change the schema, then `pnpm --filter @hub/server db:generate` and commit the folder it writes under `drizzle/`. Never edit a migration that has already run; add a new one. `db:studio` opens Drizzle Studio.
 - Drizzle is v1 (release candidate, `drizzle-orm@rc`): the `node-sqlite` driver only exists there. Check the installed typings in `node_modules/drizzle-orm/` before trusting 0.x examples from the web. Relational queries use the v2 object syntax (`where: { id: 1 }`), as in the Efebia projects.
-- The db reaches procedures through the tRPC context (`ctx.db`), never as a module-level singleton.
+- The core db reaches procedures through the tRPC context (`ctx.db`), never as a module-level singleton.
+
+### Core and module databases
+
+- Two kinds of file. The **core** database (`hub.db`) belongs to the public modules: devices, layouts, themes, Pomodoro history. A **module** database belongs to one discovered module that declared `migrations` in `defineModule`: `<dirname(dbPath)>/modules/<name>.db`, opened by `discoverModules` through `openDatabase(moduleDbPath(dbPath, name), migrations)`, `:memory:` when the core is. It reaches the module only as `deps.db` in its factory, by closure; `ctx.db` is always the core one, and a module's procedures never read it.
+- Isolation is by type and by construction: `discoverModules` takes `DiscoveredDeps` (no `db`), `buildServer` passes it a separate object from the public `ModuleDeps`, and a discovered definition with `coreDb` is refused. `defineModule` types `db` from the options: `migrations` gives it, `coreDb: true` gives the core one, neither gives none (`server-modules-db.test.ts` has a `@ts-expect-error` for that). `pomodoro` and `theme` are the two public modules that declare `coreDb`.
+- Failures stay local: the database is opened after the name and zone checks and before `create`; if opening, `create` or the instance check throws, the module's `close` and the database handle are closed and the module is skipped.
+- Close order: Fastify runs `onClose` hooks last in, first out, so the database hook is registered before the module's `close` and runs after it (a module can still write in `close`; the same reason the core database hook is registered first in `buildServer`).
+- Generating a module's migrations is in "Writing a module" of the root `AGENTS.md`; `pnpm --filter @hub/server db:generate` is for the core only.
 
 ## Security invariants
 
@@ -108,6 +116,7 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 - A POST through `inject` needs `content-type: application/json` (and a body such as `{}`), or tRPC answers 415. The tRPC client always sends it.
 - `appRouter._def.procedures` is a flat path-to-procedure map at runtime but typed as the nested tree: widen with `Object.entries<unknown>` and a type guard (see `src/router.test.ts`).
+- File-backed module databases are tested in `src/server-modules-db.test.ts`: fixtures in a `mkdtemp` directory (module folders with hand-written `migration.sql`, the core database in a sibling `state/` folder), removed with `t.after`; the e2e fake and every other test use `:memory:`.
 - WebSocket tests use a real server on `listen({ port: 0 })` (`const port = Number(new URL(await app.listen(...)).port)`). Node's global `WebSocket` accepts `{ headers: { Origin } }` and sends no `Origin` by default; `src/server-live.test.ts` drives the tRPC wire protocol with it (`{ id, method: 'subscription', params: { path } }`, answers `started` then `data`) against the shared fake desktop; `src/core/origin-ws.test.ts` sends raw upgrades with `node:http` to read the status code. `tsconfig.json` sets `lib: ["es2023"]` on purpose: without it TypeScript pulls in the DOM typings, whose `WebSocket` constructor has no `headers` option. `@types/ws` is not importable from this package, so the `verifyClient` callback is annotated structurally.
 - Hub tests use `mock.timers.enable({ apis: ['setInterval'] })` and flush promises with `setImmediate` from `node:timers/promises` (not mocked); end a parked subscription with its `AbortController`, not `return()` (see "Live state").
 - Auth tests: `core/auth.test.ts` (HTTP through `inject({ remoteAddress })`, pairing, hash storage, last seen with `mock.timers.enable({ apis: ['Date'] })`), `modules/devices/codes.test.ts` (the store, expiry and rate limit on a mocked `Date`), `core/auth-ws.test.ts` (a real socket with connection params; its `isLoopback` option says the PC only by a header, so a socket from `127.0.0.1` can act as a phone). `server-static.test.ts` builds the server on a temp directory. `inject` answers `127.0.0.1` unless `remoteAddress` is given; zod 4 needs `z.unknown().optional()` for a void result in a response envelope.
