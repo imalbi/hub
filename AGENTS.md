@@ -48,6 +48,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - No IIFEs; extract a named function.
 - No em-dashes and no filler phrasing in UI copy, README or commit messages. No emoji.
 - Prefer the platform and what is already installed over a new dependency; ask before adding one that only saves a few lines.
+- Before writing or vendoring a non-trivial component (an animation primitive, a widget, anything past ~100 lines), list maintained libraries that already do it, with size, maintenance and fit, and let the owner choose: owning it versus a dependency is their call, not the agent's.
 - Comment only the why the code cannot show.
 
 ## Workflow
