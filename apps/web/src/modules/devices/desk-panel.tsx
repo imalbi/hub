@@ -55,7 +55,8 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
         )}
       </div>
 
-      {devices.data?.length === 0 && (
+      {/* A live code takes the empty state's place: its hint is "pair with a code", and both overflow the cell. */}
+      {devices.data?.length === 0 && !(createCode.data && remaining > 0) && (
         <EmptyState
           illustration={<DeviceMobileIcon className="size-3xl text-muted-foreground" aria-hidden />}
           title={m.devices_empty()}
