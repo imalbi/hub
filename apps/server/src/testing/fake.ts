@@ -2,8 +2,11 @@ import { copyFileSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { IsLoopback } from '../core/auth.ts';
+import { z } from 'zod';
 import { emptyConfig, type Config } from '../core/config.ts';
+import { hueStateSchema } from '../integrations/hue/contracts.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
+import { getFakeHue } from './fake-hue.ts';
 import { buildServer } from '../server.ts';
 
 // A copy of the fixture scheme in the temp dir, so e2e can rewrite it to check that the Caelestia theme follows live.
@@ -56,13 +59,31 @@ const config: Config = {
 const isLoopback: IsLoopback = ({ headers }) => headers.host?.split(':')[0] === 'localhost';
 
 // Loopback only and a port of its own, so it never reaches the LAN or collides with `pnpm dev` on 4180.
-await buildServer({
+const app = buildServer({
   dbPath: ':memory:',
   moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
   deps: { run: createFakeDesktop() },
   config,
   isLoopback,
-}).listen({
+});
+
+// Test hook for the Hue example module's fake light, so a spec can change it the way Echo or a power cut would and
+// read the writes it received. Only this e2e server has it; there is no such route in `index.ts`.
+const hueHook = z.union([z.object({ reset: z.literal(true) }), hueStateSchema.partial()]);
+app.get('/__fake/hue', (_request, reply) => {
+  const fake = getFakeHue();
+  return fake ? { state: fake.state(), writes: fake.writes, watchers: fake.watchers } : reply.code(404).send();
+});
+app.post('/__fake/hue', (request, reply) => {
+  const fake = getFakeHue();
+  const body = hueHook.safeParse(request.body);
+  if (!fake || !body.success) return reply.code(fake ? 400 : 404).send();
+  if ('reset' in body.data) fake.reset();
+  else fake.patch(body.data);
+  return { state: fake.state() };
+});
+
+await app.listen({
   host: '127.0.0.1',
   port: Number(process.env.HUB_PORT ?? 4190),
 });

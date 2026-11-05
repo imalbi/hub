@@ -30,6 +30,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - `apps/web` (`@hub/web`): React 19 + Vite + TanStack Query + tRPC client + Tailwind v4. See `apps/web/AGENTS.md`.
 - `apps/e2e` (`@hub/e2e`): Playwright specs and screenshot baselines against a fake server. See `apps/e2e/AGENTS.md`.
 - `deploy/`: desktop templates and installer, no personal values. See `deploy/AGENTS.md`. Deployment TypeScript shares the server's Node typecheck; root `pnpm test` also runs its tests.
+- The Hue Bluetooth light is TypeScript only: `apps/server/src/integrations/hue/` (BlueZ through `busctl` and `ctx.run`, with a README for pairing and setup) and `apps/web/src/integrations/hue/`; the module itself is private wiring in `modules.local/hue/`. <!-- guard-private: allow Repository-local module directory -->
 - `scripts/`: repository checks, included in the server's Node typecheck and root tests. Its local tsconfig reuses the server's Node typings so oxlint also checks it. `guard-private.ts` reads Git snapshots; `private-scanner.ts` is the pure detector and returns masked findings only.
 - End-to-end types: the web app imports `type AppRouter` from `@hub/server`. Never import runtime code from the server into the web app, only types.
 

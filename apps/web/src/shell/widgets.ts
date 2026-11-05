@@ -68,6 +68,8 @@ export const defaultLayouts: Record<ZoneId, WidgetItem[]> = {
 
 for (const module of moduleUIs) {
   widgets.push(...(module.widgets ?? []));
+  // Below the built-in rows; the board's vertical compaction closes any gap.
+  if (module.overview) defaultLayouts.overview?.push({ ...module.overview, x: 0, y: 2 });
   if (module.zone) {
     zoneWidgets[module.zone.id] = (module.widgets ?? []).map((widget) => widget.id);
     defaultLayouts[module.zone.id] = module.zone.layout;

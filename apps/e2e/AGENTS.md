@@ -68,3 +68,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 - `pnpm test:e2e` runs Playwright twice. The second pass sets `HUB_EXAMPLE_MODULES=1` in the test process only: `playwright.config.ts` then points `HUB_MODULES_ROOT` of the fake server and Vite at `modules.example/` and runs only `modules.spec.ts`, so the example travels the private-module path (server discovery plus the `@hub-private-modules` glob). The first pass uses an empty root and checks the example is absent.
 - Baselines `desk/desk-example-4k.png` and `desk/deck-example.png`; the deck one pins `health` like the other visual specs. Size radios are visually hidden in their labels: click the `label`, never `check()` the radio (it waits forever).
+
+## Hue light (step 11a)
+
+- `hue.spec.ts` runs in the desk project in both passes: with `HUB_EXAMPLE_MODULES=1` it drives the example module's fake light (desk and deck sync both ways, an outside change, Bluetooth lost and back, brightness on release, capabilities), without it only checks the light is absent. It changes the fake through `POST http://127.0.0.1:4190/__fake/hue` (`apps/server/src/testing/fake.ts`; the Vite proxy forwards only `/trpc`) and `afterEach` posts `{ reset: true }`.
+- Baselines (all in `desk/`, since the spec runs in the desk project, deck shots included): `desk-lights`, `desk-lights-unavailable`, `desk-lights-power-only`, `desk-lights-paper`, `desk-lights-4k` (media and server masked), `deck-lights`, `deck-lights-unavailable`.

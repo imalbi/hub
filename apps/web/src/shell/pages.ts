@@ -37,4 +37,10 @@ export const pages: Page[] = [
   },
 ];
 
-for (const module of moduleUIs) if (module.deck) pages.push(module.deck);
+for (const module of moduleUIs) {
+  const { deck } = module;
+  if (!deck) continue;
+  const target = pages.find((page) => page.id === deck.page);
+  if (target) target.tiles.push(...deck.tiles);
+  else pages.push(deck);
+}

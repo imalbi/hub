@@ -70,6 +70,8 @@ const checks = [
   { name: 'notify-send --help', bin: 'notify-send', args: ['--help'], judge: judgeNotifyHelp },
   { name: 'pw-play --version', bin: 'pw-play', args: ['--version'], judge: judgeVersion },
   { name: 'systemctl --version', bin: 'systemctl', args: ['--version'], judge: judgeVersion },
+  // The Hue light is driven through BlueZ with busctl; this only proves the binary is there.
+  { name: 'busctl --version', bin: 'busctl', args: ['--version'], judge: judgeVersion },
   // Lists the shell's IPC targets without calling one: the lock action needs `lock lock`.
   { name: 'caelestia shell -s', bin: 'caelestia', args: ['shell', '-s'], judge: judgeLockTarget },
   { name: 'caelestia toggle --help', bin: 'caelestia', args: ['toggle', '--help'], judge: judgeToggleHelp },
@@ -102,7 +104,10 @@ async function checkNewsPage(page: string): Promise<SmokeResult> {
     : { name: 'news page', status: 'ok', detail: `${state.sections.length} sections parse` };
 }
 
-type SmokeConfig = { powerstatDir?: string; news?: { page?: string; command?: string } };
+type SmokeConfig = {
+  powerstatDir?: string;
+  news?: { page?: string; command?: string };
+};
 
 /** Runs the read-only commands Hub depends on and feeds their output through the real parsers. */
 export function runSmoke(run: Run, { powerstatDir, news = {} }: SmokeConfig = {}): Promise<SmokeResult[]> {

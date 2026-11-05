@@ -35,6 +35,7 @@ void test('every check is ok on a healthy desktop', async () => {
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
     ['systemctl --version', 'ok'],
+    ['busctl --version', 'ok'],
     ['caelestia shell -s', 'ok'],
     ['caelestia toggle --help', 'ok'],
   ]);
@@ -49,6 +50,7 @@ void test('only read-only commands are run', async () => {
     }),
   );
   assert.deepEqual(seen.map((line) => line.split(' ').slice(0, 2).join(' ')).toSorted(), [
+    'busctl --version',
     'caelestia shell',
     'caelestia toggle',
     'notify-send --help',
@@ -73,6 +75,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
     ['systemctl --version', 'ok'],
+    ['busctl --version', 'ok'],
     ['caelestia shell -s', 'ok'],
     ['caelestia toggle --help', 'ok'],
   ]);

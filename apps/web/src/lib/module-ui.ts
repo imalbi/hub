@@ -19,5 +19,8 @@ export type ModuleUI = {
     layout: Array<{ widget: string; size: WidgetSize; x: number; y: number }>;
     page?: ComponentType;
   };
-  deck?: { id: string; label: () => string; tiles: ComponentType[] };
+  /** `page` names an existing deck page to add the tiles to, instead of a page of their own. */
+  deck?: { id: string; label: () => string; tiles: ComponentType[]; page?: string };
+  /** Where one of this module's widgets sits in Panoramica until the owner rearranges it. */
+  overview?: { widget: string; size: WidgetSize };
 };

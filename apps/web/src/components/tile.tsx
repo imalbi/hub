@@ -10,6 +10,8 @@ type TileProps = {
   onPress: () => void;
   /** The action is running: the tile dims and ignores taps. */
   pending?: boolean;
+  /** The action cannot run now (its target is unreachable): the tile dims and ignores taps. */
+  disabled?: boolean;
   /** The last action failed: the state line gives way to an error until the next tap. */
   error?: boolean;
   /** The live connection is down: the state shown is the last one received, so the tile dims. */
@@ -25,6 +27,7 @@ export function Tile({
   status,
   onPress,
   pending = false,
+  disabled = false,
   error = false,
   stale = false,
   badge,
@@ -35,7 +38,7 @@ export function Tile({
       type="button"
       aria-label={`${label}: ${shownState}${status ? `, ${status}` : ''}`}
       aria-busy={pending}
-      disabled={pending}
+      disabled={pending || disabled}
       onClick={onPress}
       className={`relative flex flex-col items-start gap-xs rounded-lg border p-md text-left active:bg-surface-raised disabled:opacity-60 ${
         error ? 'border-danger' : 'border-border'
