@@ -35,8 +35,11 @@ export default defineConfig({
       name: 'desk',
       dependencies: ['setup'],
       testMatch: examples
-        ? ['modules.spec.ts', 'hue.spec.ts']
+        ? ['modules.spec.ts', 'hue.spec.ts', 'palette.spec.ts']
         : [
+            'palette.spec.ts',
+            'palette-regressions.spec.ts',
+            'palette.visual.spec.ts',
             'modules.spec.ts',
             'hue.spec.ts',
             'desk.spec.ts',

@@ -16,7 +16,7 @@ export default defineModule({
     return {
       router: router({
         copyFile: protectedProcedure
-          .meta({ description: 'Return a copy of an uploaded example file' })
+          .meta({ label: 'Copia file di esempio', description: 'Return a copy of an uploaded example file' })
           .input(z.object({ fileId: z.string().uuid() }))
           .mutation(async ({ ctx, input }) => {
             const original = await ctx.files.get(input.fileId);
@@ -24,10 +24,12 @@ export default defineModule({
           }),
         state: protectedProcedure.query(state),
         onState: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
-        greet: protectedProcedure.meta({ description: 'Increment the example greeting counter' }).mutation(() => {
-          count++;
-          void live.notify();
-        }),
+        greet: protectedProcedure
+          .meta({ label: 'Saluta', description: 'Increment the example greeting counter' })
+          .mutation(() => {
+            count++;
+            void live.notify();
+          }),
       }),
     };
   },

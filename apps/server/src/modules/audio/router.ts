@@ -20,7 +20,10 @@ export function createAudioRouter(audio: AudioLive, config: z.output<typeof conf
     onState: protectedProcedure.subscription(({ signal }) => audio.subscribe(signal)),
 
     cycleOutput: protectedProcedure
-      .meta({ description: 'Switch the default audio output to the next configured device' })
+      .meta({
+        label: 'Cambia uscita audio',
+        description: 'Switch the default audio output to the next configured device',
+      })
       .mutation(async ({ ctx }) => {
         const { sinks, defaultName } = await readSnapshot(ctx.run);
         const next = nextOutput(resolveOutputs(sinks, config.outputs), defaultName);
@@ -32,7 +35,10 @@ export function createAudioRouter(audio: AudioLive, config: z.output<typeof conf
       }),
 
     setOutput: protectedProcedure
-      .meta({ description: 'Switch the default audio output to the configured device with this label' })
+      .meta({
+        label: 'Seleziona uscita audio',
+        description: 'Switch the default audio output to the configured device with this label',
+      })
       // The label is one of the owner's configured outputs (`audio.state` lists them), never a raw sink id or name.
       .input(z.object({ label: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {

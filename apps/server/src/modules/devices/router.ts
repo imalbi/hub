@@ -16,6 +16,7 @@ export const devicesRouter = router({
 
   revoke: loopbackProcedure
     .meta({
+      label: 'Revoca dispositivo',
       description: 'Revoke a paired device: its token stops working and its open connections are closed',
       danger: true,
     })

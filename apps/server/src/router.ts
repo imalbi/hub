@@ -1,4 +1,6 @@
+/* oxlint-disable no-underscore-dangle -- Compose the existing typed router record with registry discovery. */
 import { router } from './core/trpc.ts';
+import { createRegistryRouter } from './core/registry.ts';
 import type { ModuleDefinition, ModuleDeps, ModuleInstance } from './core/module.ts';
 import type { publicModules } from './modules.ts';
 
@@ -17,7 +19,8 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   });
   // fromEntries erases the literal name/router association; extra routers remain runtime-only.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tRPC consumes the mapped record proven by each factory.
-  return router({ ...Object.fromEntries(entries), ...extra } as Entries);
+  const app = router({ ...Object.fromEntries(entries), ...extra } as Entries);
+  return router({ ...app._def.record, registry: createRegistryRouter(() => app) });
 }
 
 export type AppRouter = ReturnType<typeof createAppRouter<typeof publicModules>>;

@@ -40,7 +40,10 @@ export function createThemeRouter(caelestia: CaelestiaTheme, customThemes: Custo
     onList: protectedProcedure.subscription(({ signal }) => customThemes.subscribe(signal)),
 
     save: protectedProcedure
-      .meta({ description: 'Create a custom color theme, or replace the colors and name of an existing one' })
+      .meta({
+        label: 'Salva tema',
+        description: 'Create a custom color theme, or replace the colors and name of an existing one',
+      })
       .input(z.object({ id: id.optional(), name, base: z.string().min(1).max(40), values: themeValuesSchema }))
       .mutation(({ ctx, input }) => {
         const now = new Date();
@@ -68,7 +71,7 @@ export function createThemeRouter(caelestia: CaelestiaTheme, customThemes: Custo
       }),
 
     rename: protectedProcedure
-      .meta({ description: 'Rename a custom color theme' })
+      .meta({ label: 'Rinomina tema', description: 'Rename a custom color theme' })
       .input(z.object({ id, name }))
       .mutation(({ ctx, input }) => {
         const updated = ctx.db
@@ -83,6 +86,7 @@ export function createThemeRouter(caelestia: CaelestiaTheme, customThemes: Custo
 
     delete: protectedProcedure
       .meta({
+        label: 'Elimina tema',
         description: 'Delete a custom color theme; devices using it fall back to the default dark theme',
         danger: true,
       })

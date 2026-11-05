@@ -14,6 +14,7 @@ export function createNewsRouter(news: NewsLive, config: z.output<typeof configS
 
     refresh: protectedProcedure
       .meta({
+        label: 'Aggiorna notizie',
         description:
           "Fetch the owner's web development news feeds and regenerate the digest page, without opening it; marks the new items as seen",
       })
@@ -27,7 +28,10 @@ export function createNewsRouter(news: NewsLive, config: z.output<typeof configS
         void news.notify();
       }),
     open: protectedProcedure
-      .meta({ description: 'Open the latest web development news digest in the browser on the PC' })
+      .meta({
+        label: 'Apri notizie',
+        description: 'Open the latest web development news digest in the browser on the PC',
+      })
       .mutation(async ({ ctx }) => {
         const { page } = config;
         if (!page) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'News is not configured' });

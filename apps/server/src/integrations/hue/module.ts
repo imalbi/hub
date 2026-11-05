@@ -47,11 +47,14 @@ export function createHueInstance(transport: HueTransport) {
         }
       }),
       setPower: protectedProcedure
-        .meta({ description: 'Switch the Hue light on or off' })
+        .meta({ label: 'Imposta luce', description: 'Switch the Hue light on or off' })
         .input(setPowerInput)
         .mutation(({ input }) => act({ type: 'setPower', on: input.on })),
       setBrightness: protectedProcedure
-        .meta({ description: 'Set the Hue light brightness as a whole percentage from 1 to 100' })
+        .meta({
+          label: 'Regola luminosità',
+          description: 'Set the Hue light brightness as a whole percentage from 1 to 100',
+        })
         .input(setBrightnessInput)
         .mutation(({ input }) => act({ type: 'setBrightness', percent: input.percent })),
     });

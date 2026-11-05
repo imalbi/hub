@@ -6,6 +6,8 @@ import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
 /** Registry metadata for an action (a mutation). Later steps derive LLM tools and the danger check from it. */
 export type ActionMeta = {
+  /** Short Italian label shared by registry interfaces. */
+  label: string;
   /** English, written for an LLM: what the action does, not how it is labelled in the UI. */
   description: string;
   /** Refused unless the input carries `confirmed: true`, set only by a hold-to-confirm (see `confirmDanger`). */
@@ -23,7 +25,7 @@ export type Context = {
   sockets: DeviceSockets;
 };
 
-const t = initTRPC.context<Context>().meta<ActionMeta>().create();
+const t = initTRPC.context<Context>().meta<ActionMeta>().create({ isDev: false });
 
 export const router = t.router;
 

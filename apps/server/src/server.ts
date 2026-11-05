@@ -93,7 +93,7 @@ export function buildServer({
     const extra = await discoverModules({
       roots: moduleRoots,
       examples: exampleModules,
-      reserved: publicModules.map((m) => m.name),
+      reserved: [...publicModules.map((m) => m.name), 'registry'],
       deps: moduleDeps,
       config: config.modules ?? {},
       onClose,

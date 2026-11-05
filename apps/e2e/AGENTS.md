@@ -74,3 +74,11 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - `hue.spec.ts` runs in the desk project in both passes: with `HUB_EXAMPLE_MODULES=1` it drives the example module's fake light (desk and deck sync both ways, an outside change, Bluetooth lost and back, brightness on release, capabilities), without it only checks the light is absent. It changes the fake through `POST http://127.0.0.1:4190/__fake/hue` (`apps/server/src/testing/fake.ts`; the Vite proxy forwards only `/trpc`) and `afterEach` posts `{ reset: true }`.
 - Hue specs also check the `Luce: <state>` icon toggle's `aria-pressed`, bulb weights, one write per tap, pending/success/error feedback, and disabled/recovery on Hub socket loss.
 - Baselines (all in `desk/`, since the spec runs in the desk project, deck shots included): `desk-lights`, `desk-lights-unavailable`, `desk-lights-power-only`, `desk-lights-paper`, `desk-lights-4k` (Dispositivi with Luci under the device list, device list masked; Panoramica checked to have no Luci by default), `deck-lights`, `deck-lights-unavailable`.
+
+## Command palette (step 12)
+
+- Ports 4190/5190 belong exclusively to automated Playwright runs. Do not leave manual fake/Vite servers there; use the registered 4K specs for inspection, and stop owned servers by PID.
+- `palette.spec.ts` runs in both passes: Ctrl+K, fuzzy label/English-description filtering, arrows/Enter, Escape/focus return, recent paths, flat schema forms, generic errors and HoldButton-only danger execution. The example pass runs Hue brightness and explicit boolean power through registry discovery; it resets the fake light afterward. Wait for the requested option before pressing Enter: the registry query loads on open. No real desktop command is used.
+- `palette.visual.spec.ts` adds only three intentional baselines on a 3840x2160 desk: full palette, generated form and danger confirmation. Existing desk/deck baselines are unchanged.
+
+- `palette-regressions.spec.ts` guards review findings: focus transfers to form/hold, an old slow action cannot close a new form, and layout reset refreshes the visible board without reload. Its layouts are reset in finally.

@@ -8,11 +8,17 @@ import { loopbackProcedure, publicProcedure, router } from '../../core/trpc.ts';
 export function createPairingRouter(pairing: PairingCodes) {
   return router({
     createCode: loopbackProcedure
-      .meta({ description: 'Create a one-time six-digit code, valid for two minutes, that pairs one new device' })
+      .meta({
+        label: 'Genera codice di abbinamento',
+        description: 'Create a one-time six-digit code, valid for two minutes, that pairs one new device',
+      })
       .mutation(() => pairing.create()),
 
     redeem: publicProcedure
-      .meta({ description: 'Exchange a valid pairing code for the token of a new paired device' })
+      .meta({
+        label: 'Abbina dispositivo',
+        description: 'Exchange a valid pairing code for the token of a new paired device',
+      })
       .input(z.object({ code: z.string().regex(/^\d{6}$/), deviceName: z.string().trim().min(1).max(40) }))
       .mutation(async ({ ctx, input }) => {
         const result = pairing.redeem(ctx.remoteAddress, input.code);

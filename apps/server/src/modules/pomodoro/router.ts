@@ -8,22 +8,32 @@ export function createPomodoroRouter(pomodoro: PomodoroLive) {
     state: protectedProcedure.query(() => pomodoro.state()),
     onState: protectedProcedure.subscription(({ signal }) => pomodoro.subscribe(signal)),
     start: protectedProcedure
-      .meta({ description: 'Start a Pomodoro focus session from idle' })
+      .meta({ label: 'Avvia Pomodoro', description: 'Start a Pomodoro focus session from idle' })
       .mutation(() => pomodoro.act('start')),
     pause: protectedProcedure
-      .meta({ description: 'Pause the current Pomodoro phase, preserving its remaining time' })
+      .meta({
+        label: 'Metti in pausa Pomodoro',
+        description: 'Pause the current Pomodoro phase, preserving its remaining time',
+      })
       .mutation(() => pomodoro.act('pause')),
     resume: protectedProcedure
-      .meta({ description: 'Resume the paused Pomodoro phase' })
+      .meta({ label: 'Riprendi Pomodoro', description: 'Resume the paused Pomodoro phase' })
       .mutation(() => pomodoro.act('resume')),
     skip: protectedProcedure
-      .meta({ description: 'Skip the current Pomodoro phase without marking it completed' })
+      .meta({
+        label: 'Salta fase Pomodoro',
+        description: 'Skip the current Pomodoro phase without marking it completed',
+      })
       .mutation(() => pomodoro.act('skip')),
     stop: protectedProcedure
-      .meta({ description: 'Stop Pomodoro and return to idle without completing the current phase' })
+      .meta({
+        label: 'Ferma Pomodoro',
+        description: 'Stop Pomodoro and return to idle without completing the current phase',
+      })
       .mutation(() => pomodoro.act('stop')),
     configure: protectedProcedure
       .meta({
+        label: 'Configura Pomodoro',
         description:
           'Set the Pomodoro durations in minutes (longBreakEvery 0 means no long break) and whether a chime plays at the end of a phase; applies from the next phase',
       })

@@ -20,13 +20,13 @@ export function createMediaRouter(media: MediaLive, mediaArt: MediaArt) {
     art: protectedProcedure.query(() => mediaArt()),
 
     playPause: protectedProcedure
-      .meta({ description: 'Toggle play/pause on the current media player' })
+      .meta({ label: 'Riproduci o metti in pausa', description: 'Toggle play/pause on the current media player' })
       .mutation(({ ctx }) => control(ctx, 'play-pause', media)),
     next: protectedProcedure
-      .meta({ description: 'Play the next track on the current media player' })
+      .meta({ label: 'Traccia successiva', description: 'Play the next track on the current media player' })
       .mutation(({ ctx }) => control(ctx, 'next', media)),
     previous: protectedProcedure
-      .meta({ description: 'Play the previous track on the current media player' })
+      .meta({ label: 'Traccia precedente', description: 'Play the previous track on the current media player' })
       .mutation(({ ctx }) => control(ctx, 'previous', media)),
   });
 }

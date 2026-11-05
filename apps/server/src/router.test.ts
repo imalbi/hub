@@ -32,14 +32,19 @@ after(async () => {
   db.$client.close();
 });
 
-const metaSchema = z.object({ description: z.string().min(1) });
+const metaSchema = z.object({ label: z.string().trim().min(1), description: z.string().min(1) });
+
+void test('metadata validation refuses missing or blank action labels', () => {
+  assert.equal(metaSchema.safeParse({ description: 'Run an action' }).success, false);
+  assert.equal(metaSchema.safeParse({ label: '  ', description: 'Run an action' }).success, false);
+});
 
 const mutations = Object.entries<unknown>(appRouter._def.procedures).flatMap(([path, procedure]) =>
   isProcedure(procedure) && procedure._def.type === 'mutation' ? [{ path, procedure }] : [],
 );
 
 // Later steps derive LLM tools from this meta, so no action may lack it.
-void test('every mutation carries a description in its meta', () => {
+void test('every mutation carries an Italian label and an English description in its meta', () => {
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
     'audio.cycleOutput',
     'audio.setOutput',
@@ -69,7 +74,7 @@ void test('every mutation carries a description in its meta', () => {
     'theme.save',
   ]);
   for (const { path, procedure } of mutations) {
-    assert.ok(metaSchema.safeParse(procedure._def.meta).success, `${path} has no meta.description`);
+    assert.ok(metaSchema.safeParse(procedure._def.meta).success, `${path} has no meta.label or meta.description`);
   }
 });
 

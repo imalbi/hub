@@ -132,14 +132,16 @@ void test('an unsupported feature is refused and an unreachable light is a class
   assert.equal(state.result.data.power, true, 'the last observed value stays, marked by the availability');
 });
 
-void test('every Hue mutation carries a description for the registry', () => {
+void test('every Hue mutation carries a label and description for the registry', () => {
   const instance = createHueInstance(createFakeHue().transport);
   const mutations = Object.entries<unknown>(instance.router._def.procedures).flatMap(([path, procedure]) =>
     isProcedure(procedure) && procedure._def.type === 'mutation' ? [{ path, procedure }] : [],
   );
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), ['setBrightness', 'setPower']);
   for (const { procedure } of mutations)
-    assert.ok(z.object({ description: z.string().min(1) }).safeParse(procedure._def.meta).success);
+    assert.ok(
+      z.object({ label: z.string().min(1), description: z.string().min(1) }).safeParse(procedure._def.meta).success,
+    );
 });
 
 void test('config: nothing is required, and an address, when given, must not be empty', () => {

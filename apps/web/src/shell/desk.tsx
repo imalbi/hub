@@ -9,6 +9,7 @@ import { MediaProvider } from '../modules/media/media-provider.tsx';
 import { DeskBackdrop } from './backdrop.tsx';
 import { HeaderActivity } from './header-activity.tsx';
 import { HeaderSlot } from './header-slot.tsx';
+import { DeskCommandPalette } from './command-palette.tsx';
 
 /** The desk frame: theme, backdrop, rail, header, keys 1-5 and the zone grid the child routes render into. */
 export function DeskShell() {
@@ -39,6 +40,7 @@ export function DeskShell() {
   return (
     <ThemeProvider remote>
       <MediaProvider>
+        <DeskCommandPalette />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
         <main className="min-h-dvh p-xl pl-desk-inset">

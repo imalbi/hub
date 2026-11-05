@@ -18,22 +18,23 @@ export function createSystemRouter(power: PowerLive) {
     // Caelestia's own lock screen, the one Super+L opens. `loginctl lock-session` needs a login session, which a user
     // service does not have.
     lock: protectedProcedure
-      .meta({ description: 'Lock the screen of the PC' })
+      .meta({ label: 'Blocca schermo', description: 'Lock the screen of the PC' })
       .mutation(({ ctx }) => command(ctx, 'caelestia', ['shell', 'lock', 'lock'])),
     suspend: protectedProcedure
-      .meta({ description: 'Suspend the PC to RAM', danger: true })
+      .meta({ label: 'Sospendi PC', description: 'Suspend the PC to RAM', danger: true })
       .input(confirmed)
       .mutation(({ ctx }) => command(ctx, 'systemctl', ['suspend'])),
     reboot: protectedProcedure
-      .meta({ description: 'Reboot the PC', danger: true })
+      .meta({ label: 'Riavvia PC', description: 'Reboot the PC', danger: true })
       .input(confirmed)
       .mutation(({ ctx }) => command(ctx, 'systemctl', ['reboot'])),
     powerOff: protectedProcedure
-      .meta({ description: 'Shut down and power off the PC', danger: true })
+      .meta({ label: 'Spegni PC', description: 'Shut down and power off the PC', danger: true })
       .input(confirmed)
       .mutation(({ ctx }) => command(ctx, 'systemctl', ['poweroff'])),
     toggleWorkspace: protectedProcedure
       .meta({
+        label: 'Apri spazio di lavoro',
         description:
           'Show or hide a special workspace on the PC: communication (chat apps) or music (the music player)',
       })

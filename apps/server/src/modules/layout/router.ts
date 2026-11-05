@@ -30,7 +30,10 @@ export function createLayoutRouter(zones: ReadonlySet<string>) {
     }),
 
     save: protectedProcedure
-      .meta({ description: 'Save the arrangement of widgets on a desk zone: which widgets, their size and position' })
+      .meta({
+        label: 'Salva disposizione widget',
+        description: 'Save the arrangement of widgets on a desk zone: which widgets, their size and position',
+      })
       .input(z.object({ zone, items: layoutItemsSchema }))
       .mutation(({ ctx, input }) => {
         ctx.db
@@ -41,7 +44,10 @@ export function createLayoutRouter(zones: ReadonlySet<string>) {
       }),
 
     reset: protectedProcedure
-      .meta({ description: 'Put the widgets of a desk zone back to the default arrangement' })
+      .meta({
+        label: 'Ripristina disposizione widget',
+        description: 'Put the widgets of a desk zone back to the default arrangement',
+      })
       .input(z.object({ zone }))
       .mutation(({ ctx, input }) => {
         ctx.db.delete(deskLayouts).where(eq(deskLayouts.zone, input.zone)).run();
