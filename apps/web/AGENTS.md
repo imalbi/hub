@@ -49,6 +49,7 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - **Desk scaling**: `html[data-layout="desk"]` raises the root font size to 150% for the 3840px viewport at scale 1; everything is in rem, so the whole system scales together. Tune that one number after looking at the real monitor, never individual sizes.
 - **No arbitrary values**: `p-[13px]`, `text-[#fff]` and friends are rejected by `pnpm --filter @hub/web lint:tokens` (part of `pnpm lint`). A missing value becomes a new token with a reason, not a one-off. When shadcn/Hairline components land in `src/components/ui/`, exclude that folder from the guard and map their sizes onto these tokens.
 - Font: Urbanist (variable, OFL, self-hosted via `@fontsource-variable/urbanist`), provisional until the font decision in the design doc is closed.
+- Third-party notices: `vite build` writes `dist/third-party-licenses.md` (served at `/third-party-licenses.md`) from exactly the packages in the bundle (`build.license` in `vite.config.ts`, with license texts). Vite skips code outside `node_modules` and packages that arrive only through CSS, so `extraNotices` in the same file appends the Urbanist OFL and the vendored Hairline MIT; a new self-hosted font, CSS-only package or vendored source goes in that list.
 - Components will come from Hairline UI via the shadcn CLI (`npx shadcn@latest add https://hairlineui.com/r/<name>.json`). Generated component code is ours to edit.
 
 ## Aesthetic

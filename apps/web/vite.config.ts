@@ -4,7 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import babel from '@rolldown/plugin-babel';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // HUB_COMPILER_LOG=1 lists the components the compiler skips and why (run once after a big change).
@@ -15,6 +16,33 @@ const compilerLogger = {
   },
 };
 
+const licensesFile = 'third-party-licenses.md';
+
+// Vite lists only packages with JS from node_modules. These ship too: the self-hosted font arrives through CSS (the
+// OFL asks for its notice to travel with the font), and the Hairline components are vendored into src.
+const extraNotices = [
+  { title: '@fontsource-variable/urbanist (OFL-1.1)', file: './node_modules/@fontsource-variable/urbanist/LICENSE' },
+  { title: 'Hairline UI, vendored in src/components/ui (MIT)', file: './src/components/ui/LICENSE' },
+];
+
+function extraLicenses(): Plugin {
+  return {
+    name: 'hub:extra-licenses',
+    apply: 'build',
+    generateBundle: {
+      order: 'post',
+      handler(_, bundle) {
+        const notices = bundle[licensesFile];
+        if (notices?.type !== 'asset') return;
+        const sections = extraNotices.map(
+          ({ title, file }) => `\n## ${title}\n\n${readFileSync(new URL(file, import.meta.url), 'utf8').trim()}\n`,
+        );
+        notices.source = String(notices.source) + sections.join('');
+      },
+    },
+  };
+}
+
 export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
@@ -24,6 +52,8 @@ export default defineConfig({
       '@hub-private-modules': process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0],
     },
   },
+  // Notices for the packages shipped in the bundle, generated from exactly what was bundled (plus the font below).
+  build: { license: { fileName: licensesFile } },
   define: { 'import.meta.env.HUB_EXAMPLE_MODULES': JSON.stringify(process.env.HUB_EXAMPLE_MODULES ?? '0') },
   plugins: [
     // Must run before react() or route generation and code splitting fail silently.
@@ -32,6 +62,7 @@ export default defineConfig({
     // React Compiler: components are memoized for us, so no hand-written useMemo/useCallback/memo.
     babel({ presets: [reactCompilerPreset(process.env.HUB_COMPILER_LOG ? { logger: compilerLogger } : undefined)] }),
     tailwindcss(),
+    extraLicenses(),
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/paraglide',
