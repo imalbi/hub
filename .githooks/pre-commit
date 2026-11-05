@@ -1,3 +1,10 @@
 #!/bin/sh
 # A regression blocks the commit. Skip with --no-verify only when the owner says so.
+# The staged guard always runs. The full gate is skipped only when the index is exactly the tree a green
+# `pnpm verify` last tested (scripts/verify-stamp.ts); any other change runs it in full.
+HUB_GUARD_STAGED=1 pnpm guard || exit 1
+if node scripts/verify-stamp.ts check; then
+  echo "pre-commit: this exact tree already passed pnpm verify; full gate skipped, staged guard ran"
+  exit 0
+fi
 HUB_GUARD_STAGED=1 exec pnpm verify
