@@ -45,7 +45,9 @@ function LargeMedia() {
   const title = useTitle();
   return (
     <Panel title={m.tile_media()} className={`h-full ${media.connectionLost ? 'opacity-60' : ''}`}>
-      <Cover large />
+      <div className="min-h-0 flex-1">
+        <Cover large fill />
+      </div>
       <div className="flex min-w-0 flex-col gap-2xs">
         <p className="truncate text-title">{title}</p>
         {media.state?.artist && <p className="truncate text-body text-muted-foreground">{media.state.artist}</p>}

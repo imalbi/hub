@@ -57,6 +57,19 @@ test('a size chosen in edit mode resizes the widget and survives a reload', asyn
   await expect(cell(page, 'pomodoro').getByText(/^Sessioni completate oggi/)).toBeVisible();
 });
 
+test('the large Musica widget fits its cell: the hero-sized cover once pushed the title and controls out', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'Modifica' }).click();
+  const sizes = page.getByRole('group', { name: 'Dimensione di Musica' });
+  await andSaved(page, () => sizes.locator('label', { has: page.getByRole('radio', { name: 'Grande' }) }).click());
+  await page.getByRole('button', { name: 'Fine' }).click();
+  await box(page, 'media');
+  const panel = cell(page, 'media').locator('section').first();
+  const overflow = await panel.evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test('a widget is removed, offered in Aggiungi widget, and added back', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
   await andSaved(page, () => page.getByRole('button', { name: 'Rimuovi Server' }).click());

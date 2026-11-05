@@ -15,18 +15,20 @@ export function PlaybackIcon() {
     />
   );
 }
-export function Cover({ large = false }: { large?: boolean }) {
+/** `fill`: as tall as the parent allows (a widget cell), instead of the hero's fixed size. */
+export function Cover({ large = false, fill = false }: { large?: boolean; fill?: boolean }) {
   const media = useMedia();
+  const size = fill ? 'aspect-square h-full max-w-full' : 'media-cover';
   return media.art ? (
     <img
       src={media.art.dataUrl}
       alt={large ? m.media_cover({ title: media.state?.title ?? '' }) : ''}
-      className={large ? 'media-cover rounded-xl object-cover' : 'size-3xl shrink-0 rounded-md object-cover'}
+      className={large ? `${size} rounded-xl object-cover` : 'size-3xl shrink-0 rounded-md object-cover'}
     />
   ) : (
     <div
       aria-hidden
-      className={`flex shrink-0 items-center justify-center rounded-xl border border-border bg-muted ${large ? 'media-cover' : 'size-3xl'}`}
+      className={`flex shrink-0 items-center justify-center rounded-xl border border-border bg-muted ${large ? size : 'size-3xl'}`}
     >
       <Music2 className="size-icon-lg text-muted-foreground" />
     </div>
