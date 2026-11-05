@@ -21,6 +21,9 @@ export type ModuleUI = {
   };
   /** `page` names an existing deck page to add the tiles to, instead of a page of their own. */
   deck?: { id: string; label: () => string; tiles: ComponentType[]; page?: string };
-  /** Where one of this module's widgets sits in Panoramica until the owner rearranges it. */
-  overview?: { widget: string; size: WidgetSize };
+  /**
+   * Built-in zones a widget of this module joins (Panoramica takes every widget anyway), placed at the bottom of
+   * the zone's default layout until the owner rearranges it.
+   */
+  places?: Array<{ zone: string; widget: string; size: WidgetSize }>;
 };

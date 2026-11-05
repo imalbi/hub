@@ -37,7 +37,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   test('the desk panel and the deck tile drive one light and follow each other', async ({ page, browser, request }) => {
     const { context, phone } = await openDeck(browser);
     try {
-      await page.goto('/desk');
+      await page.goto('/desk/devices');
       const panel = page.getByRole('region', { name: 'Luci', exact: true });
       await expect(panel.getByText('Accesa, 80%', { exact: true })).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
@@ -62,7 +62,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     page,
     request,
   }) => {
-    await page.goto('/desk');
+    await page.goto('/desk/devices');
     const panel = page.getByRole('region', { name: 'Luci', exact: true });
     const slider = panel.getByRole('slider', { name: 'Luminosità' });
     await slider.focus();
@@ -97,7 +97,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   }) => {
     const { context, phone } = await openDeck(browser);
     try {
-      await page.goto('/desk');
+      await page.goto('/desk/devices');
       const panel = page.getByRole('region', { name: 'Luci', exact: true });
       const tile = phone.getByRole('button', { name: /^Luci:/ });
       await expect(tile).toBeVisible();
@@ -129,7 +129,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     const { context, phone } = await openDeck(browser);
     try {
       await freezePomodoro(page);
-      await page.goto('/desk');
+      await page.goto('/desk/devices');
       const panel = page.getByRole('region', { name: 'Luci', exact: true });
       const deckShot = { animations: 'disabled', scale: 'css' } as const;
       await expect(panel.getByText('Accesa, 80%', { exact: true })).toBeVisible();
@@ -161,22 +161,25 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     }
   });
 
-  test('the light widget sits in Panoramica at 4K', async ({ page }) => {
+  test('the light widget sits in Dispositivi at 4K and Panoramica does not get it by default', async ({ page }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await freezePomodoro(page);
     await page.route('**/trpc/health*', (route) =>
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
-    await page.goto('/desk');
+    await page.goto('/desk/devices');
     await expect(
       page.getByRole('region', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
     ).toBeVisible();
     await settleFonts(page);
-    // Artwork and server uptime load on their own clock; this check is about where the light sits.
+    // The device list shows last-seen times; this check is about where the light sits.
     await expect(page).toHaveScreenshot('desk-lights-4k.png', {
       animations: 'disabled',
-      mask: [page.locator('[data-widget="media"]'), page.locator('[data-widget="server"]')],
+      mask: [page.locator('[data-widget="devices"]')],
     });
+    await page.goto('/desk');
+    await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Luci', exact: true })).toHaveCount(0);
   });
 
   test('the light tile stays within the deck page without vertical scroll', async ({ browser }) => {
@@ -191,7 +194,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 } else {
   test('the light is absent without the example flag', async ({ page, request }) => {
-    await page.goto('/desk');
+    await page.goto('/desk/devices');
     await expect(page.getByRole('region', { name: 'Luci', exact: true })).toHaveCount(0);
     expect((await request.get('/trpc/hue.state')).status()).toBe(404);
     expect((await request.get(HOOK)).status()).toBe(404);
