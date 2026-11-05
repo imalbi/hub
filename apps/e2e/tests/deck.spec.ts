@@ -18,7 +18,7 @@ test('both tiles show the state of the fake desktop', async ({ page }) => {
   await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
   await expect(mediaTile(page)).toHaveAccessibleName('Musica: Artist - Title, in riproduzione');
   // The icon is the action a tap performs: Pause while playing.
-  await expect(mediaTile(page).locator('svg.lucide-pause')).toBeVisible();
+  await expect(mediaTile(page).locator('svg[data-icon="pause"]')).toBeVisible();
 });
 
 test('tapping the audio tile switches to the other output and back', async ({ page }) => {
@@ -31,10 +31,10 @@ test('tapping the audio tile switches to the other output and back', async ({ pa
 test('tapping the media tile flips the icon and the play state', async ({ page }) => {
   await mediaTile(page).click();
   await expect(mediaTile(page)).toHaveAccessibleName('Musica: Artist - Title, in pausa');
-  await expect(mediaTile(page).locator('svg.lucide-play')).toBeVisible();
+  await expect(mediaTile(page).locator('svg[data-icon="play"]')).toBeVisible();
   await mediaTile(page).click();
   await expect(mediaTile(page)).toHaveAccessibleName('Musica: Artist - Title, in riproduzione');
-  await expect(mediaTile(page).locator('svg.lucide-pause')).toBeVisible();
+  await expect(mediaTile(page).locator('svg[data-icon="pause"]')).toBeVisible();
 });
 
 test('a change made elsewhere reaches the open page without a reload', async ({ page, pc }) => {

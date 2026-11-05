@@ -1,3 +1,4 @@
+import { LightbulbIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
@@ -27,10 +28,21 @@ export function LightsPanel({ size }: { size: WidgetSize }) {
         {light?.capabilities.power && (
           <div className="min-w-0 flex-1">
             <RegistryButton
-              label={power ? copy.switchOff : copy.switchOn}
+              label={`${copy.power}: ${describeLight(light, connectionLost)}`}
+              pressed={power === true}
+              secondary={!power}
+              iconOnly
+              icon={
+                <LightbulbIcon
+                  className="size-icon"
+                  aria-hidden
+                  data-icon="lightbulb"
+                  data-weight={power ? 'fill' : 'regular'}
+                  weight={power ? 'fill' : 'regular'}
+                />
+              }
               action={() => setPower.mutateAsync({ on: !power })}
               disabled={!ready || power === null}
-              className="w-full"
             />
           </div>
         )}

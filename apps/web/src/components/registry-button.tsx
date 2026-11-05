@@ -9,6 +9,7 @@ export function RegistryButton({
   icon,
   secondary = false,
   iconOnly = false,
+  pressed,
   className = '',
 }: {
   label: string;
@@ -17,12 +18,14 @@ export function RegistryButton({
   icon?: ReactNode;
   secondary?: boolean;
   iconOnly?: boolean;
+  pressed?: boolean;
   className?: string;
 }) {
   return (
     <ActionButton
       action={action}
       aria-label={label}
+      aria-pressed={pressed}
       label={label}
       disabled={disabled}
       icon={icon}

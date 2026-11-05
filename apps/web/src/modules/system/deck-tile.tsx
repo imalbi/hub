@@ -1,6 +1,14 @@
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
-import { Gauge, Lock, MessageCircle, Moon, Music, Power, RotateCcw } from 'lucide-react';
+import {
+  GaugeIcon,
+  LockIcon,
+  ChatCircleIcon,
+  MoonIcon,
+  MusicNotesIcon,
+  PowerIcon,
+  ArrowCounterClockwiseIcon,
+} from '@phosphor-icons/react';
 import { HoldTile } from '../../components/hold-tile.tsx';
 import { Tile } from '../../components/tile.tsx';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
@@ -12,7 +20,7 @@ export function LockTile() {
   const lock = useMutation(trpc.system.lock.mutationOptions());
   return (
     <Tile
-      icon={Lock}
+      icon={LockIcon}
       label={m.system_lock()}
       state={m.system_lock_state()}
       pending={lock.isPending}
@@ -28,7 +36,7 @@ function WorkspaceTile({ name }: { name: 'communication' | 'music' }) {
   const toggle = useMutation(trpc.system.toggleWorkspace.mutationOptions());
   return (
     <Tile
-      icon={name === 'music' ? Music : MessageCircle}
+      icon={name === 'music' ? MusicNotesIcon : ChatCircleIcon}
       label={name === 'music' ? m.system_music_app() : m.system_communication()}
       state={m.system_toggle_state()}
       pending={toggle.isPending}
@@ -51,7 +59,7 @@ export function PowerTile() {
     <div
       className={`flex flex-col items-start gap-xs rounded-lg border border-border bg-surface p-md ${useConnectionLost() ? 'opacity-60' : ''}`}
     >
-      <Gauge className="size-icon" aria-hidden />
+      <GaugeIcon className="size-icon" aria-hidden />
       <span className="text-label tabular-nums">
         <span className="sr-only">{m.power_title()}: </span>
         {figure ?? m.power_not_measured()}
@@ -66,7 +74,7 @@ export function SuspendTile() {
   const suspend = useMutation(trpc.system.suspend.mutationOptions());
   return (
     <HoldTile
-      icon={Moon}
+      icon={MoonIcon}
       label={m.system_suspend()}
       holdLabel={m.system_suspend_hold()}
       onConfirm={() => suspend.mutateAsync({ confirmed: true })}
@@ -79,7 +87,7 @@ export function RebootTile() {
   const reboot = useMutation(trpc.system.reboot.mutationOptions());
   return (
     <HoldTile
-      icon={RotateCcw}
+      icon={ArrowCounterClockwiseIcon}
       label={m.system_reboot()}
       holdLabel={m.system_reboot_hold()}
       onConfirm={() => reboot.mutateAsync({ confirmed: true })}
@@ -92,7 +100,7 @@ export function PowerOffTile() {
   const powerOff = useMutation(trpc.system.powerOff.mutationOptions());
   return (
     <HoldTile
-      icon={Power}
+      icon={PowerIcon}
       label={m.system_power_off()}
       holdLabel={m.system_power_off_hold()}
       onConfirm={() => powerOff.mutateAsync({ confirmed: true })}

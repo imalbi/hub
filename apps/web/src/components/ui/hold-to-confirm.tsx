@@ -3,7 +3,7 @@
 'use client';
 
 import * as React from 'react';
-import { CircleAlert, Fingerprint } from 'lucide-react';
+import { WarningCircleIcon, FingerprintIcon } from '@phosphor-icons/react';
 import { TextMorph } from './text-morph.tsx';
 import { INTERACTION_FOCUS, interactionIcon, useInteractionReducedMotion } from './ui-interaction-motion.ts';
 import { useHoldConfirm, type HoldStatus } from './use-hold-confirm.ts';
@@ -121,7 +121,7 @@ export function HoldToConfirm({
             className="absolute inset-0 flex items-center justify-center [&>svg]:size-md"
             style={interactionIcon(status === 'idle' || status === 'holding', reduced)}
           >
-            {icon ?? <Fingerprint />}
+            {icon ?? <FingerprintIcon />}
           </span>
           <svg
             viewBox="0 0 24 24"
@@ -164,7 +164,10 @@ export function HoldToConfirm({
               }}
             />
           </svg>
-          <CircleAlert className="absolute inset-0 size-md" style={interactionIcon(status === 'error', reduced)} />
+          <WarningCircleIcon
+            className="absolute inset-0 size-md"
+            style={interactionIcon(status === 'error', reduced)}
+          />
         </span>
         <TextMorph>{text}</TextMorph>
       </button>

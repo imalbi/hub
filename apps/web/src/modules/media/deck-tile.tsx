@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
-import { Pause, Play } from 'lucide-react';
+import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { Tile } from '../../components/tile.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
@@ -27,7 +27,8 @@ export function MediaTile() {
   return (
     <Tile
       // The icon is the action a tap performs, like a transport control.
-      icon={media.data?.status === 'Playing' ? Pause : Play}
+      icon={media.data?.status === 'Playing' ? PauseIcon : PlayIcon}
+      iconName={media.data?.status === 'Playing' ? 'pause' : 'play'}
       label={m.tile_media()}
       state={stateText()}
       status={statusText()}

@@ -1,4 +1,4 @@
-import { Lightbulb, LightbulbOff } from 'lucide-react';
+import { LightbulbIcon } from '@phosphor-icons/react';
 import { Tile } from '../../components/tile.tsx';
 import { copy } from './copy.ts';
 import { describeLight, useHue } from './use-hue.ts';
@@ -10,7 +10,9 @@ export function LightTile() {
   const power = light?.availability === 'ready' && light.capabilities.power ? light.power : null;
   return (
     <Tile
-      icon={light?.power ? Lightbulb : LightbulbOff}
+      icon={LightbulbIcon}
+      iconName="lightbulb"
+      iconWeight={light?.power ? 'fill' : 'regular'}
       label={copy.title}
       state={describeLight(light, connectionLost)}
       pending={setPower.isPending}

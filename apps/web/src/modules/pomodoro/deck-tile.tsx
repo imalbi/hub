@@ -1,4 +1,4 @@
-import { Timer } from 'lucide-react';
+import { TimerIcon } from '@phosphor-icons/react';
 import { Tile } from '../../components/tile.tsx';
 import { m } from '../../paraglide/messages.js';
 import { usePomodoro } from './use-pomodoro.ts';
@@ -16,7 +16,7 @@ export function PomodoroTile() {
       : m.tile_loading();
   return (
     <Tile
-      icon={Timer}
+      icon={TimerIcon}
       label={m.pomodoro_title()}
       state={state}
       status={timer.state ? timer.primaryLabel : undefined}

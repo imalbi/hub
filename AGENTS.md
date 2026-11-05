@@ -12,7 +12,7 @@ pnpm guard        # scan tracked files for private data; --staged scans the inde
 pnpm lint         # oxlint --type-aware + the design-token guard
 pnpm format       # prettier --write (format:check to verify)
 pnpm check        # guard + typecheck + lint + format:check + test: fast, run while working
-pnpm verify       # check + e2e: the gate before a step is done, and the pre-commit hook
+pnpm verify       # check + e2e + web build: the completion gate also refreshes the served UI
 pnpm test:e2e     # Playwright against the fake server (apps/e2e)
 pnpm test:e2e:update  # rewrite screenshot baselines: only for an intended visual change
 pnpm smoke        # read-only check that the real audio/media tools and notify-send help still parse
@@ -102,7 +102,7 @@ Nothing is done until it is verified, and nothing verified once stays unguarded.
 - **Tests never touch the real desktop or personal data.** System commands go through an injected fake; fixtures use generic device names. The only exception is `pnpm smoke`, which is read-only by design.
 - **Every bug gets a regression test first**: write the test that fails on the bug, then fix it, and keep the test.
 - **Never weaken a test to get green.** Do not delete, skip or loosen a failing test, and do not update screenshot baselines, unless the change in behaviour or look is intended; say which and why in the Progress notes.
-- **The gate:** `pnpm check` while working; `pnpm verify` (check + e2e) before a step is called done. The pre-commit hook (`.githooks/pre-commit`, set up by the root `prepare` script on `pnpm install`) runs `pnpm verify`, so a regression blocks the commit; `--no-verify` only with the user's explicit OK.
+- **The gate:** `pnpm check` while working; `pnpm verify` (check + e2e + web build) before a step is called done. The final build refreshes `apps/web/dist`, served by the installed service, only after all checks pass; this is authorized at step completion and needs no separate rebuild request. It does not restart the backend or apply desktop integration. The pre-commit hook (`.githooks/pre-commit`, set up by the root `prepare` script on `pnpm install`) runs `pnpm verify`, so a regression or failed build blocks the commit; `--no-verify` only with the user's explicit OK.
 - **Private-data guard:** manual guard/check/verify scan every tracked worktree file; the pre-commit hook exports `HUB_GUARD_STAGED=1` so the same guard reads only staged blobs, including partially staged files. `pnpm guard --staged` selects that mode explicitly. Binary detection checks the first 8 KiB; leaf symlinks are scanned as link text and symlinked parent directories are refused before opening a file. Accidentally tracked config/secret files fail without opening their contents. Deliberate generic matches need a trailing `//`, `#`, `--` or HTML comment `guard-private: allow <reason>` on the same line; use documentation IP ranges in fixtures. Guard failures report masked matches, not source lines. This heuristic does not inspect image contents or rewrite history.
 - **System drift:** `pnpm smoke` (`apps/server/src/smoke.ts`) runs only read-only commands on the real machine, feeds them through the real parsers and exits non-zero when a binary is missing or its output no longer parses. It is not part of `pnpm verify`. Run it after system updates and whenever a module that wraps a system tool changes; a new wrapped tool gets a check there.
 

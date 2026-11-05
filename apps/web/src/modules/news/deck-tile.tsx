@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
-import { Newspaper } from 'lucide-react';
+import { NewspaperIcon } from '@phosphor-icons/react';
 import { Tile } from '../../components/tile.tsx';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
@@ -15,7 +15,7 @@ export function NewsTile() {
   const count = state?.fresh ? state.items : 0;
   return (
     <Tile
-      icon={Newspaper}
+      icon={NewspaperIcon}
       label={m.news_title()}
       state={
         state === undefined

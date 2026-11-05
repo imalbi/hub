@@ -1,8 +1,10 @@
-import type { LucideIcon } from 'lucide-react';
+import type { Icon, IconWeight } from '@phosphor-icons/react';
 import { m } from '../paraglide/messages.js';
 
 type TileProps = {
-  icon: LucideIcon;
+  icon: Icon;
+  iconName?: string;
+  iconWeight?: IconWeight;
   label: string;
   state: string;
   /** Read by screen readers after the state, not shown: for a fact the icon alone carries (playing or paused). */
@@ -22,6 +24,8 @@ type TileProps = {
 
 export function Tile({
   icon: Icon,
+  iconName,
+  iconWeight = 'regular',
   label,
   state,
   status,
@@ -44,7 +48,7 @@ export function Tile({
         error ? 'border-danger' : 'border-border'
       } ${stale ? 'opacity-60' : ''} bg-surface`}
     >
-      <Icon className="size-icon" aria-hidden />
+      <Icon className="size-icon" aria-hidden data-icon={iconName} data-weight={iconWeight} weight={iconWeight} />
       {badge !== undefined && (
         <span
           aria-hidden

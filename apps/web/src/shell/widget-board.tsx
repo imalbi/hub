@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Plus, X } from 'lucide-react';
+import { ArrowLeftIcon, ArrowRightIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import { useState, useSyncExternalStore } from 'react';
 import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
 import { SplitPill } from '../components/split-pill.tsx';
@@ -156,20 +156,20 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
                           disabled={index === 0}
                           onClick={() => move(index, -1)}
                         >
-                          <ArrowLeft className="size-icon-sm" aria-hidden />
+                          <ArrowLeftIcon className="size-icon-sm" aria-hidden />
                         </ToolButton>
                         <ToolButton
                           label={m.widget_move_after({ name })}
                           disabled={index === items.length - 1}
                           onClick={() => move(index, 1)}
                         >
-                          <ArrowRight className="size-icon-sm" aria-hidden />
+                          <ArrowRightIcon className="size-icon-sm" aria-hidden />
                         </ToolButton>
                         <ToolButton
                           label={m.widget_remove({ name })}
                           onClick={() => commit(items.filter((entry) => entry !== item))}
                         >
-                          <X className="size-icon-sm" aria-hidden />
+                          <XIcon className="size-icon-sm" aria-hidden />
                         </ToolButton>
                       </div>
                     </>
@@ -195,7 +195,7 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
                 }
                 className="flex min-h-touch items-center gap-xs rounded-full border border-dashed border-border px-md text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent"
               >
-                <Plus className="size-icon-sm" aria-hidden />
+                <PlusIcon className="size-icon-sm" aria-hidden />
                 {widget.label()}
               </button>
             ))}

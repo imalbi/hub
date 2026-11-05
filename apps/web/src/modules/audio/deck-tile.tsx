@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
-import { Volume2 } from 'lucide-react';
+import { SpeakerHighIcon } from '@phosphor-icons/react';
 import { Tile } from '../../components/tile.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
@@ -19,7 +19,7 @@ export function AudioOutputTile() {
 
   return (
     <Tile
-      icon={Volume2}
+      icon={SpeakerHighIcon}
       label={m.tile_audio_output()}
       state={stateText()}
       pending={cycleOutput.isPending}

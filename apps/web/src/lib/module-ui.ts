@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { Icon } from '@phosphor-icons/react';
 import type { WidgetSize } from './widget-size.ts';
 
 export type ModuleWidget = {
@@ -15,7 +15,7 @@ export type ModuleUI = {
   zone?: {
     id: string;
     label: () => string;
-    icon: LucideIcon;
+    icon: Icon;
     layout: Array<{ widget: string; size: WidgetSize; x: number; y: number }>;
     page?: ComponentType;
   };

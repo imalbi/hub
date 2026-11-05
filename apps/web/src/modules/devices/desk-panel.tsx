@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useTRPC } from '../../lib/trpc.ts';
-import { Smartphone } from 'lucide-react';
+import { DeviceMobileIcon } from '@phosphor-icons/react';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { HoldButton } from '../../components/hold-button.tsx';
@@ -57,7 +57,7 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
 
       {devices.data?.length === 0 && (
         <EmptyState
-          illustration={<Smartphone className="size-3xl text-muted-foreground" aria-hidden />}
+          illustration={<DeviceMobileIcon className="size-3xl text-muted-foreground" aria-hidden />}
           title={m.devices_empty()}
           description={m.devices_empty_hint()}
         />

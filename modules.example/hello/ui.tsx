@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createTRPCOptionsProxy, useSubscription } from '@trpc/tanstack-react-query';
-import { Hand } from 'lucide-react';
+import { HandWavingIcon } from '@phosphor-icons/react';
 import type definition from './server.ts';
 import { createModuleClient } from '../../apps/web/src/lib/module-client.ts';
 import type { ModuleUI } from '../../apps/web/src/lib/module-ui.ts';
@@ -44,7 +44,7 @@ function HelloTile() {
   const stale = useConnectionLost();
   return (
     <Tile
-      icon={Hand}
+      icon={HandWavingIcon}
       label={copy.title}
       state={state.data ? `${copy.count}: ${state.data.count}` : stale ? copy.unavailable : copy.loading}
       onPress={() => greet.mutate()}
@@ -58,6 +58,11 @@ export default {
   name: 'hello',
   copy,
   widgets: [{ id: 'hello', label: () => copy.title, sizes: ['medium', 'large'], component: HelloPanel }],
-  zone: { id: 'hello', label: () => copy.title, icon: Hand, layout: [{ widget: 'hello', size: 'medium', x: 0, y: 0 }] },
+  zone: {
+    id: 'hello',
+    label: () => copy.title,
+    icon: HandWavingIcon,
+    layout: [{ widget: 'hello', size: 'medium', x: 0, y: 0 }],
+  },
   deck: { id: 'hello', label: () => copy.title, tiles: [HelloTile] },
 } satisfies ModuleUI;

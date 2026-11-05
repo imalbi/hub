@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { Timer } from 'lucide-react';
+import { TimerIcon } from '@phosphor-icons/react';
 import { Badge } from '../components/ui/badge.tsx';
 import { LiveActivity } from '../components/ui/live-activity.tsx';
 import { m } from '../paraglide/messages.js';
@@ -25,7 +25,7 @@ export function HeaderActivity() {
                 id: 'pomodoro',
                 label: m.pomodoro_activity({ phase: timer.phaseLabel, time: timer.time }),
                 progress: timer.progress,
-                icon: <Timer className="size-icon" aria-hidden />,
+                icon: <TimerIcon className="size-icon" aria-hidden />,
               }
             : null
         }

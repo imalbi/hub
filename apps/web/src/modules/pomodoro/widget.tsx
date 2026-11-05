@@ -1,4 +1,4 @@
-import { Pause, Play } from 'lucide-react';
+import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import type { WidgetSize } from '../../lib/widget-size.ts';
@@ -15,7 +15,7 @@ export function PomodoroWidget({ size }: { size: WidgetSize }) {
 /** Phase, time and the one action that fits: start, pause or resume. */
 function SmallPomodoro() {
   const timer = usePomodoro();
-  const Icon = timer.primaryAction === 'pause' ? Pause : Play;
+  const Icon = timer.primaryAction === 'pause' ? PauseIcon : PlayIcon;
   return (
     <Panel title={m.pomodoro_title()} className={`h-full ${timer.connectionLost ? 'opacity-60' : ''}`}>
       <p className="text-caption text-muted-foreground">

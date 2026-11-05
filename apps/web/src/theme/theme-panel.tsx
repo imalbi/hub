@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { Copy, Pencil } from 'lucide-react';
+import { CopyIcon, PencilSimpleIcon } from '@phosphor-icons/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
 import { HoldButton } from '../components/hold-button.tsx';
@@ -197,7 +197,7 @@ function ThemeCard({
           }}
           className="flex size-touch shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
         >
-          <Copy className="size-icon-sm" aria-hidden />
+          <CopyIcon className="size-icon-sm" aria-hidden />
         </button>
         {onEdit && (
           <button
@@ -207,7 +207,7 @@ function ThemeCard({
             onClick={onEdit}
             className="flex size-touch shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent"
           >
-            <Pencil className="size-icon-sm" aria-hidden />
+            <PencilSimpleIcon className="size-icon-sm" aria-hidden />
           </button>
         )}
       </div>

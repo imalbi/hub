@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { Icon } from '@phosphor-icons/react';
 import { useId } from 'react';
 import { INTERACTION_FOCUS, useInteractionReducedMotion } from './ui/ui-interaction-motion.ts';
 import { useHoldConfirm } from './ui/use-hold-confirm.ts';
@@ -16,7 +16,7 @@ export function HoldTile({
   holdLabel,
   onConfirm,
 }: {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   /** The accessible name, saying it needs a hold. */
   holdLabel: string;

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { Settings2 } from 'lucide-react';
+import { SlidersHorizontalIcon } from '@phosphor-icons/react';
 import { useId, useRef } from 'react';
 import type { inferRouterInputs } from '@trpc/server';
 import type { AppRouter } from '@hub/server';
@@ -69,7 +69,7 @@ export function PomodoroSettings({ settings }: { settings: Settings | undefined 
         disabled={!settings}
         className="flex size-touch items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent disabled:opacity-40"
       >
-        <Settings2 className="size-icon" aria-hidden />
+        <SlidersHorizontalIcon className="size-icon" aria-hidden />
       </button>
       <div
         id={popoverId}

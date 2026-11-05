@@ -13,7 +13,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 ## Writing specs
 
-- Locate by role and accessible name (`getByRole('button', { name: /^Uscita audio/ })`, `toHaveAccessibleName`): it checks the names AGENTS.md requires. The icon of a tile is the exception, assert its `svg.lucide-*` class.
+- Locate by role and accessible name (`getByRole('button', { name: /^Uscita audio/ })`, `toHaveAccessibleName`): it checks the names AGENTS.md requires. The icon of a tile is the exception, assert its intentional `svg[data-icon="play"]` / `svg[data-icon="pause"]` hook. Phosphor icons use `regular` by default; the Luci bulb uses `data-icon="lightbulb"` with `data-weight="fill"` when on and `regular` when off. Never match SVG path data.
 - The fake desktop is one shared state (default sink, play status) and tests run one at a time (`workers: 1`). A test that changes it puts it back; `deck.spec.ts` also runs `restoreDesktop` (`tests/desktop.ts`) in `afterEach`, so a test that dies halfway does not make the next ones fail. A second client is a plain HTTP call through the `pc` fixture (`playPause(pc)`). A test that pairs a device with `pairDevice(pc, name)` removes it with `revokeDevices(pc, name)` in `finally`. Wrong pairing codes are rate limited per address (5 a minute, and every browser here is `127.0.0.1`): a spec may send a few, not a loop.
 - Wait with auto-waiting assertions, not sleeps. The connection-lost state needs a longer `timeout` (the tRPC client backs off between retries).
 - A revoked or unknown token ends on the pairing screen (see `pairing.spec.ts`), not on "Connessione persa"; that state is for a dropped socket.
@@ -72,4 +72,5 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 ## Hue light (step 11a)
 
 - `hue.spec.ts` runs in the desk project in both passes: with `HUB_EXAMPLE_MODULES=1` it drives the example module's fake light (desk and deck sync both ways, an outside change, Bluetooth lost and back, brightness on release, capabilities), without it only checks the light is absent. It changes the fake through `POST http://127.0.0.1:4190/__fake/hue` (`apps/server/src/testing/fake.ts`; the Vite proxy forwards only `/trpc`) and `afterEach` posts `{ reset: true }`.
+- Hue specs also check the `Luce: <state>` icon toggle's `aria-pressed`, bulb weights, one write per tap, pending/success/error feedback, and disabled/recovery on Hub socket loss.
 - Baselines (all in `desk/`, since the spec runs in the desk project, deck shots included): `desk-lights`, `desk-lights-unavailable`, `desk-lights-power-only`, `desk-lights-paper`, `desk-lights-4k` (Dispositivi with Luci under the device list, device list masked; Panoramica checked to have no Luci by default), `deck-lights`, `deck-lights-unavailable`.
