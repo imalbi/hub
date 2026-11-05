@@ -8,25 +8,53 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 const script = fileURLToPath(new URL('./guard-private.ts', import.meta.url));
+/** The test's environment without GIT_* variables, so every fixture command acts on its own temp repository. */
+function isolatedEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+}
 const privatePath = ['', 'home', 'sample', 'Documents'].join('/');
 
 function repository(t: { after: (fn: () => void) => void }) {
   const directory = mkdtempSync(join(tmpdir(), 'hub-guard-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  execFileSync('git', ['init', '--quiet', directory]);
+  execFileSync('git', ['init', '--quiet', directory], { env: isolatedEnv() });
   function stage(file: string, contents: string | Buffer) {
     writeFileSync(join(directory, file), contents);
-    execFileSync('git', ['add', '--', file], { cwd: directory });
+    execFileSync('git', ['add', '--', file], { cwd: directory, env: isolatedEnv() });
   }
   function guard(args: string[] = [], extraEnv: Record<string, string> = {}) {
     return spawnSync(process.execPath, [script, ...args], {
       cwd: directory,
       encoding: 'utf8',
-      env: { ...process.env, HUB_GUARD_STAGED: '', ...extraEnv },
+      env: { ...isolatedEnv(), HUB_GUARD_STAGED: '', ...extraEnv },
     });
   }
   return { directory, stage, guard };
 }
+
+// Git runs hooks with GIT_DIR and GIT_INDEX_FILE set (absolute in a linked worktree). Inherited by these fixtures,
+// `git init` once marked the real repository bare and `git add` staged fixture files into its index.
+void test('fixture repositories ignore the git variables a hook exports', (t) => {
+  const decoy = mkdtempSync(join(tmpdir(), 'hub-guard-decoy-'));
+  t.after(() => rmSync(decoy, { recursive: true, force: true }));
+  execFileSync('git', ['init', '--quiet', decoy], { env: isolatedEnv() });
+  const saved = { GIT_DIR: process.env.GIT_DIR, GIT_INDEX_FILE: process.env.GIT_INDEX_FILE };
+  process.env.GIT_DIR = join(decoy, '.git');
+  process.env.GIT_INDEX_FILE = join(decoy, '.git', 'index');
+  try {
+    const repo = repository(t);
+    repo.stage('sample.txt', 'safe\n');
+    assert.equal(repo.guard(['--staged']).status, 0);
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+  const run = (args: string[]) => execFileSync('git', args, { cwd: decoy, encoding: 'utf8', env: isolatedEnv() });
+  assert.equal(run(['config', '--get', 'core.bare']).trim(), 'false');
+  assert.equal(run(['ls-files']), '');
+});
 
 void test('staged mode scans the index, while normal mode scans tracked worktree content', (t) => {
   const repo = repository(t);
@@ -101,7 +129,7 @@ void test('symlinks are scanned as link text and never followed into personal da
   const repo = repository(t);
   writeFileSync(join(repo.directory, 'private-data'), privatePath);
   symlinkSync('private-data', join(repo.directory, 'linked.txt'));
-  execFileSync('git', ['add', '--', 'linked.txt'], { cwd: repo.directory });
+  execFileSync('git', ['add', '--', 'linked.txt'], { cwd: repo.directory, env: isolatedEnv() });
   assert.equal(repo.guard().status, 0);
   assert.equal(repo.guard(['--staged']).status, 0);
 });
