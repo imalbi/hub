@@ -25,7 +25,7 @@ const values = {
 };
 
 function server() {
-  return buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config: emptyConfig });
+  return buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config: emptyConfig });
 }
 
 async function call(app: ReturnType<typeof server>, path: string, input?: unknown) {

@@ -12,7 +12,7 @@ void test('next and previous are protected registry actions with exact playerctl
     calls.push([bin, ...args]);
     return fake(bin, args, options);
   };
-  const app = buildServer({ dbPath: ':memory:', run });
+  const app = buildServer({ dbPath: ':memory:', deps: { run } });
   t.after(() => app.close());
   for (const action of ['next', 'previous']) {
     const response = await app.inject({
@@ -35,7 +35,7 @@ void test('next and previous are protected registry actions with exact playerctl
 });
 
 void test('art query ignores caller-supplied source and serves only the current player cover', async (t) => {
-  const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop() });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() } });
   t.after(() => app.close());
   const response = await app.inject({
     method: 'GET',
@@ -57,7 +57,7 @@ void test('the protected art query uses the injected fetch for the current https
     requests.push(input instanceof URL ? input.href : typeof input === 'string' ? input : input.url);
     return Promise.resolve(new Response(Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')));
   };
-  const app = buildServer({ dbPath: ':memory:', run, mediaFetch });
+  const app = buildServer({ dbPath: ':memory:', deps: { run, fetch: mediaFetch } });
   t.after(() => app.close());
   const response = await app.inject({ method: 'GET', url: '/trpc/media.art' });
   assert.equal(response.statusCode, 200);
@@ -67,7 +67,7 @@ void test('the protected art query uses the injected fetch for the current https
 });
 
 void test('failed transport actions return failure without exposing raw player error details', async (t) => {
-  const app = buildServer({ dbPath: ':memory:', run: failingRun });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: failingRun } });
   t.after(() => app.close());
   for (const action of ['next', 'previous', 'playPause']) {
     const response = await app.inject({

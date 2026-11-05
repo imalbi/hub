@@ -1,69 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import { publicModules } from '../modules.ts';
+import { coreConfigSchema } from './config-schema.ts';
+import { moduleConfigShape } from './module.ts';
 
-/** Pomodoro durations, from the config and overridden by the settings the owner saves from the UI (`pomodoro.configure`). */
-export const pomodoroDurationsSchema = z.object({
-  focusMinutes: z.number().positive().max(1440),
-  shortBreakMinutes: z.number().positive().max(1440),
-  longBreakMinutes: z.number().positive().max(1440),
-  // 0 means never a long break.
-  longBreakEvery: z.number().int().min(0).max(100),
-});
-
-const durations = pomodoroDurationsSchema.shape;
-
-const configSchema = z.object({
-  pomodoro: z
-    .object({
-      focusMinutes: durations.focusMinutes.default(25),
-      shortBreakMinutes: durations.shortBreakMinutes.default(5),
-      longBreakMinutes: durations.longBreakMinutes.default(15),
-      longBreakEvery: durations.longBreakEvery.default(4),
-    })
-    .default({ focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 }),
-  audio: z
-    .object({
-      outputs: z.array(
-        z.object({
-          label: z.string().min(1),
-          // Case-insensitive substring of the PipeWire node.description; device names are personal, so they live in config.
-          match: z.string().min(1),
-        }),
-      ),
-    })
-    .default({ outputs: [] }),
-  server: z
-    .object({
-      // Where to listen. Loopback until the deck is paired; `0.0.0.0` (or a LAN address) opens Hub to the home network.
-      host: z.string().min(1).default('127.0.0.1'),
-      // Extra page origins allowed to open the WebSocket (the deck on the LAN); dev origins are built in.
-      allowedOrigins: z.array(z.string().min(1)).default([]),
-    })
-    .default({ host: '127.0.0.1', allowedOrigins: [] }),
-  theme: z
-    .object({
-      // Caelestia's color scheme file. Unset means the Caelestia theme is off; `src/index.ts` fills in the usual path.
-      caelestiaScheme: z.string().min(1).optional(),
-    })
-    .default({}),
-  system: z
-    .object({
-      // Where the owner's powerstat tracker writes status.json and samples.csv. Unset hides consumption.
-      powerstatDir: z.string().min(1).optional(),
-    })
-    .default({}),
-  // The owner's web dev digest. `page` is the HTML it writes, `stateFile` the JSON it keeps (its mtime is the last
-  // run), `command` the script, run with --no-open. Unset `page` hides news.
-  news: z
-    .object({
-      page: z.string().min(1).optional(),
-      stateFile: z.string().min(1).optional(),
-      command: z.string().min(1).optional(),
-    })
-    .default({}),
-});
-
+const configSchema = coreConfigSchema.extend(moduleConfigShape(publicModules));
 export type Config = z.infer<typeof configSchema>;
 
 export const emptyConfig: Config = configSchema.parse({});

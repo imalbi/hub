@@ -1,13 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { EASE_THROW, useInteractionReducedMotion } from '../components/ui/ui-interaction-motion.ts';
-import { zones } from './zones.ts';
+import { zones, zonePath } from './zones.ts';
 import { m } from '../paraglide/messages.js';
 
 export function DeskRail({ pathname }: { pathname: string }) {
   const reduced = useInteractionReducedMotion();
   const index = Math.max(
     0,
-    zones.findIndex((zone) => zone.path === pathname.replace(/\/$/, '')),
+    zones.findIndex((zone) => zonePath(zone) === pathname.replace(/\/$/, '')),
   );
   return (
     <nav
@@ -24,10 +24,11 @@ export function DeskRail({ pathname }: { pathname: string }) {
             transition: reduced ? 'none' : `transform var(--motion-standard) ${EASE_THROW}`,
           }}
         />
-        {zones.map(({ id, path, icon: Icon, label }) => (
+        {zones.map(({ id, path, params, icon: Icon, label }) => (
           <Link
             key={id}
             to={path}
+            params={params}
             activeOptions={{ exact: true }}
             aria-label={label()}
             title={label()}

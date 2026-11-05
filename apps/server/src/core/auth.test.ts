@@ -14,7 +14,7 @@ process.env.NODE_ENV = 'test';
 
 const LAN = '192.0.2.20';
 // No `isLoopback` option: this is the server `index.ts` builds, so it proves the production default.
-const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop() });
+const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() } });
 after(() => app.close());
 afterEach(() => mock.timers.reset());
 
@@ -136,7 +136,7 @@ void test('five wrong codes from one address end in a 429 for the rest of the mi
 
 void test('redeeming returns the token once and the database keeps only its hash', async () => {
   const dbPath = join(mkdtempSync(join(tmpdir(), 'hub-auth-')), 'hub.db');
-  const own = buildServer({ dbPath, run: createFakeDesktop() });
+  const own = buildServer({ dbPath, deps: { run: createFakeDesktop() } });
   const code = z.object({ code: z.string() }).parse(
     envelope.parse(
       (

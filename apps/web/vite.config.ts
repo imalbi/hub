@@ -1,3 +1,4 @@
+import { defaultModuleRoots } from '../server/src/core/discovery.ts';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
@@ -15,7 +16,15 @@ const compilerLogger = {
 };
 
 export default defineConfig({
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // No leading slash: Vite joins a glob that starts with '/' to the project root and never applies the alias.
+      '@hub-private-modules': process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0],
+    },
+  },
+  define: { 'import.meta.env.HUB_EXAMPLE_MODULES': JSON.stringify(process.env.HUB_EXAMPLE_MODULES ?? '0') },
   plugins: [
     // Must run before react() or route generation and code splitting fail silently.
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
@@ -31,5 +40,10 @@ export default defineConfig({
     }),
   ],
   // `ws: true` forwards the WebSocket upgrade of the tRPC subscriptions along with the Origin header the server checks.
-  server: { proxy: { '/trpc': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}`, ws: true } } },
+  server: {
+    proxy: {
+      '/files': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
+      '/trpc': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}`, ws: true },
+    },
+  },
 });

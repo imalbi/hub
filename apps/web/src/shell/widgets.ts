@@ -1,3 +1,4 @@
+import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
 import type { WidgetSize } from '../lib/widget-size.ts';
 import { AudioWidget } from '../modules/audio/widget.tsx';
@@ -32,7 +33,7 @@ export const widgets: Array<{
   { id: 'theme', label: m.theme_title, sizes: ['large', 'full'], component: ThemeWidget },
 ];
 
-export type ZoneId = 'overview' | 'study' | 'media' | 'system' | 'devices';
+export type ZoneId = string;
 
 /** Which widgets a zone may hold: Panoramica is the home screen and takes them all, a zone only its own domain's. */
 export const zoneWidgets: Record<ZoneId, readonly string[] | 'all'> = {
@@ -64,3 +65,11 @@ export const defaultLayouts: Record<ZoneId, WidgetItem[]> = {
     { widget: 'theme', size: 'large', x: 6, y: 0 },
   ],
 };
+
+for (const module of moduleUIs) {
+  widgets.push(...(module.widgets ?? []));
+  if (module.zone) {
+    zoneWidgets[module.zone.id] = (module.widgets ?? []).map((widget) => widget.id);
+    defaultLayouts[module.zone.id] = module.zone.layout;
+  }
+}

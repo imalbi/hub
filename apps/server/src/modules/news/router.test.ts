@@ -13,7 +13,7 @@ const timedOut: Run = () => Promise.resolve({ stdout: '', stderr: '', code: -1 }
 
 function setup(t: test.TestContext, config: Config = configured, run?: Run) {
   const news: string[][] = [];
-  const app = buildServer({ dbPath: ':memory:', run: run ?? createFakeDesktop({ news }), config });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: run ?? createFakeDesktop({ news }) }, config });
   t.after(() => app.close());
   const call = (path: string) =>
     app.inject({

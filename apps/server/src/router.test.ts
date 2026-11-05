@@ -4,7 +4,11 @@ import { test } from 'node:test';
 import type { AnyProcedure } from '@trpc/server';
 import { z } from 'zod';
 import { emptyConfig } from './core/config.ts';
-import { appRouter } from './router.ts';
+import { createAppRouter } from './router.ts';
+import { publicModules } from './modules.ts';
+import { openDb } from './db/index.ts';
+import fastify from 'fastify';
+import { after } from 'node:test';
 import { buildServer } from './server.ts';
 import { createFakeDesktop } from './testing/fake-desktop.ts';
 
@@ -14,6 +18,19 @@ function isProcedure(value: unknown): value is AnyProcedure {
 }
 
 process.env.NODE_ENV = 'test';
+
+const db = openDb(':memory:');
+const closes: Array<() => void | Promise<void>> = [];
+const appRouter = createAppRouter(
+  publicModules,
+  { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set() },
+  emptyConfig,
+  (close) => closes.push(close),
+);
+after(async () => {
+  for (const close of closes) await close();
+  db.$client.close();
+});
 
 const metaSchema = z.object({ description: z.string().min(1) });
 
@@ -57,7 +74,7 @@ void test('every mutation carries a description in its meta', () => {
 });
 
 void test('every danger mutation is refused without confirmed: true and runs with it', async (t) => {
-  const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config: emptyConfig });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config: emptyConfig });
   t.after(() => app.close());
   const danger = mutations.filter(
     ({ procedure }) => z.object({ danger: z.literal(true) }).safeParse(procedure._def.meta).success,

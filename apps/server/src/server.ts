@@ -1,3 +1,5 @@
+import { createFiles } from './core/files.ts';
+import { registerFiles } from './core/file-routes.ts';
 import type { IncomingMessage } from 'node:http';
 import { extname } from 'node:path';
 import fastifyStatic from '@fastify/static';
@@ -19,54 +21,46 @@ import {
 import { emptyConfig, type Config } from './core/config.ts';
 import { openDb } from './db/index.ts';
 import { run as realRun, type Run } from './core/exec.ts';
-import { createAudioLive } from './modules/audio/live.ts';
-import { createMediaLive } from './modules/media/live.ts';
-import { createMediaArt } from './modules/media/art.ts';
-import { createPairingCodes } from './modules/devices/codes.ts';
-import { createPomodoro } from './modules/pomodoro/live.ts';
-import { createPowerLive } from './modules/system/power.ts';
-import { createNewsLive } from './modules/news/page.ts';
-import { createCaelestiaTheme } from './modules/theme/caelestia.ts';
-import { createCustomThemesLive } from './modules/theme/router.ts';
+import { publicModules } from './modules.ts';
+import { discoverModules } from './core/discovery.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
-import { appRouter, type AppRouter } from './router.ts';
+import { createAppRouter, type AppRouter } from './router.ts';
 
 // `run` and `config` default to the real system and an empty config so tests never touch the desktop or personal files.
 // `isLoopback` decides which peer is "the PC"; only `fake.ts` and tests replace it, `index.ts` never does.
 export function buildServer({
   dbPath,
-  run = realRun,
+  deps = {},
   config = emptyConfig,
   isLoopback = isLoopbackPeer,
   webRoot,
-  mediaFetch,
+  moduleRoots = [],
+  exampleModules = process.env.HUB_EXAMPLE_MODULES === '1',
 }: {
   dbPath: string;
-  run?: Run;
+  deps?: { run?: Run; fetch?: typeof fetch };
   config?: Config;
   isLoopback?: IsLoopback;
   /** The built web app (`apps/web/dist`). Without it the server answers the API only. */
   webRoot?: string;
-  mediaFetch?: typeof fetch;
+  moduleRoots?: readonly string[];
+  exampleModules?: boolean;
 }) {
+  const run = deps.run ?? realRun;
   const db = openDb(dbPath);
   const app = fastify({ logger: process.env.NODE_ENV !== 'test' });
   app.addHook('onClose', () => db.$client.close());
-  const pomodoro = createPomodoro(db, run, config.pomodoro, (err) =>
-    app.log.error({ err }, 'Pomodoro deadline failed'),
+  const files = createFiles();
+  app.addHook('onClose', () => files.close());
+  app.register(async (scope) =>
+    registerFiles(scope, {
+      db,
+      files,
+      isLoopback,
+      maxUploadMb: config.files?.maxUploadMb ?? 25,
+      origins: allowedOrigins(config),
+    }),
   );
-  app.addHook('onClose', () => pomodoro.close());
-  const live = {
-    audio: createAudioLive(run, config),
-    media: createMediaLive(run),
-    pomodoro,
-    power: createPowerLive(config.system.powerstatDir),
-    news: createNewsLive(config.news),
-    caelestia: createCaelestiaTheme(config.theme.caelestiaScheme),
-    customThemes: createCustomThemesLive(db),
-  };
-  const mediaArt = createMediaArt(run, { fetch: mediaFetch });
-  const pairing = createPairingCodes();
   const sockets = createDeviceSockets();
   const allowlist = allowedOrigins(config);
   // CORS does not cover WebSockets, so any page open in the browser could otherwise drive the desktop through
@@ -85,41 +79,60 @@ export function buildServer({
     },
   });
   // Registered after @fastify/websocket on purpose: the tRPC plugin's WebSocket route needs it.
-  app.register(fastifyTRPCPlugin, {
-    prefix: '/trpc',
-    useWSS: true,
-    trpcOptions: {
-      router: appRouter,
-      createContext: async ({ req, res, info }: CreateFastifyContextOptions) => {
-        const client = await resolveClient(
-          db,
-          isLoopback,
-          req,
-          extractToken(req.headers.authorization, info.connectionParams),
-        );
-        // For a WebSocket `res` is the socket, whatever the typings say.
-        if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res);
-        return {
-          db,
-          run,
-          config,
-          live,
-          mediaArt,
-          client,
-          remoteAddress: req.socket.remoteAddress ?? '',
-          pairing,
-          sockets,
-        };
-      },
-      keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
-    } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
+  app.register(async (scope) => {
+    const moduleDeps = {
+      db,
+      run,
+      fetch: deps.fetch ?? fetch,
+      log: app.log,
+      zones: new Set(publicModules.flatMap((m) => m.zones ?? [])),
+    };
+    const onClose = (close: () => void | Promise<void>) => {
+      scope.addHook('onClose', close);
+    };
+    const extra = await discoverModules({
+      roots: moduleRoots,
+      examples: exampleModules,
+      reserved: publicModules.map((m) => m.name),
+      deps: moduleDeps,
+      config: config.modules ?? {},
+      onClose,
+    });
+    const appRouter = createAppRouter(publicModules, moduleDeps, config, onClose, extra);
+    scope.register(fastifyTRPCPlugin, {
+      prefix: '/trpc',
+      useWSS: true,
+      trpcOptions: {
+        router: appRouter,
+        createContext: async ({ req, res, info }: CreateFastifyContextOptions) => {
+          const client = await resolveClient(
+            db,
+            isLoopback,
+            req,
+            extractToken(req.headers.authorization, info.connectionParams),
+          );
+          // For a WebSocket `res` is the socket, whatever the typings say.
+          if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res);
+          return {
+            db,
+            run,
+            config,
+            files,
+            client,
+            remoteAddress: req.socket.remoteAddress ?? '',
+            sockets,
+          };
+        },
+        keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
+      } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
+    });
   });
   if (webRoot) {
     app.register(fastifyStatic, { root: webRoot });
     // /deck and /desk are client-side routes with no file behind them; a missing file with an extension stays a 404.
     app.setNotFoundHandler((req, reply) => {
       const path = req.url.split('?')[0] ?? '';
-      return req.method === 'GET' && !path.startsWith('/trpc') && !extname(path)
+      return req.method === 'GET' && !path.startsWith('/trpc') && !path.startsWith('/files') && !extname(path)
         ? reply.sendFile('index.html')
         : reply.code(404).send({ error: 'Not found' });
     });

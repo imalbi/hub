@@ -8,7 +8,7 @@ process.env.NODE_ENV = 'test';
 
 function setup(t: test.TestContext) {
   const system: string[][] = [];
-  const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop({ system }), config: emptyConfig });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop({ system }) }, config: emptyConfig });
   t.after(() => app.close());
   const call = (path: string, input: object = {}, remoteAddress?: string) =>
     app.inject({
@@ -47,7 +47,7 @@ void test('power actions need the hold confirmation; workspaces outside the list
 });
 
 void test('without a powerstat directory the consumption is null', async (t) => {
-  const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config: emptyConfig });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config: emptyConfig });
   t.after(() => app.close());
   const response = await app.inject('/trpc/system.power');
   assert.equal(response.statusCode, 200);

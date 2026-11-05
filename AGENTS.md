@@ -33,6 +33,35 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 - `scripts/`: repository checks, included in the server's Node typecheck and root tests. Its local tsconfig reuses the server's Node typings so oxlint also checks it. `guard-private.ts` reads Git snapshots; `private-scanner.ts` is the pure detector and returns masked findings only.
 - End-to-end types: the web app imports `type AppRouter` from `@hub/server`. Never import runtime code from the server into the web app, only types.
 
+## Writing a module
+
+A module is one folder with `server.ts` (required) and `ui.tsx` (optional). Public modules live in `apps/server/src/modules/<name>/` and are listed in `apps/server/src/modules.ts`; private ones are a folder in the gitignored `modules.local/` and are discovered at startup, no tracked file changes. `modules.example/hello/` is the working reference (state, live updates, an action, a file round trip, a widget, a zone and a deck tile). <!-- guard-private: allow Repository-local module directory -->
+
+- **Server** (`server.ts`): `export default defineModule({ name, config?, zones?, create })` from `apps/server/src/core/module.ts`. `create({ db, run, fetch, log, config })` returns `{ router, close? }`; live hubs and services are built inside it and closed in `close`. `config` is the zod slice: public modules read `config.<name>`, private ones `modules.<name>` in `config.local.json`. Names match `^[a-z][a-z0-9-]{0,39}$`; a name or zone that collides, a bad config or a throwing factory skips that module with a log line (no payload) and the server still starts.
+- **Files**: an action takes `{ fileId }` and reads it with `ctx.files.get/read`; it returns `ctx.files.put(bytes, { name, mime })`. Upload is `POST /files`, download `GET /files/:id`, both behind the same loopback-or-token check as tRPC; ids are opaque and expire after an hour. Never accept a client path.
+- **Web** (`ui.tsx`): `export default { name, copy, widgets?, zone?, deck? } satisfies ModuleUI` (`apps/web/src/lib/module-ui.ts`). Call the server with `createModuleClient<typeof definition>(name)` and a type-only `import type definition from './server.ts'`: inputs and outputs are inferred from the module's own router. Copy is a plain Italian object in the module (private modules cannot join the tracked Paraglide settings).
+- **Discovery points** are the only tracked files that may reach `modules.local/`: `apps/server/src/core/discovery.ts` and `apps/web/src/lib/modules.ts` (through the `@hub-private-modules` Vite alias; it must not start with `/`, or Vite joins it to the project root and never applies the alias). `pnpm guard` fails on any other tracked path into it and checks the folder stays ignored. <!-- guard-private: allow Repository-local module directory -->
+- **Example mode**: `HUB_EXAMPLE_MODULES=1 pnpm dev` loads `modules.example/`. `pnpm test:e2e` runs the suite twice; the second pass loads `modules.example/` through `HUB_MODULES_ROOT`, the same path a private module takes.
+
+Skeleton (`modules.local/<name>/server.ts`): <!-- guard-private: allow Repository-local module directory -->
+
+```ts
+import { defineModule, z } from '../../apps/server/src/core/module.ts';
+import { protectedProcedure, router } from '../../apps/server/src/core/trpc.ts';
+
+export default defineModule({
+  name: 'notes',
+  config: z.object({ title: z.string().default('Note') }).default({ title: 'Note' }),
+  create({ config }) {
+    return {
+      router: router({
+        state: protectedProcedure.query(() => ({ title: config.title })),
+      }),
+    };
+  },
+});
+```
+
 ## Hard rules
 
 - **Public repo, private life stays out.** The repo is public (showcase, all rights reserved). No home paths, hostnames, IPs, device names, tokens or personal data in tracked files. Personal modules (family, study, mail, client sites) live in the gitignored `modules.local/`; personal values in the gitignored `config.local.json`, with a fake `config.example.json` tracked. If a change needs a personal value, read it from config, never hardcode it. `pnpm guard` enforces built-in patterns and an optional gitignored `.private-words` list; only the owner fills that list. Never open or print it. <!-- guard-private: allow Repository-local module directory -->
@@ -66,7 +95,7 @@ Nothing is done until it is verified, and nothing verified once stays unguarded.
 
 - **Every planned change ships with its checks.** A plan's Acceptance lists the tests to add by behaviour (not "add tests") and the manual or visual checks to make. The executor records in the plan's Progress notes what each check actually showed.
 - **Where tests go:**
-  - pure logic (parsers, pickers, state reducers) gets unit tests next to the code (`*.test.ts`, `node:test`);
+  - pure logic (parsers, pickers, state reducers) gets unit tests next to the code (`*.test.ts`, `node:test`); the shared VS Code settings (`.vscode/settings.json`) fold each test under its source file in the explorer, so they add no noise. Name a test after the file it covers: `x.test.ts`, or `x-<aspect>.test.ts` for a second suite (`server-live.test.ts` under `server.ts`); a test with no matching file shows loose;
   - server behaviour gets integration tests through `buildServer(...).inject` with a fake `run` and fixture config;
   - UI behaviour and layout get e2e specs and screenshot baselines in `apps/e2e` (Playwright against the fake server, see `apps/e2e/AGENTS.md`). A UI change ships with its spec: assert by role and accessible name, and add or update the baseline only when the look change is intended.
 - **Tests never touch the real desktop or personal data.** System commands go through an injected fake; fixtures use generic device names. The only exception is `pnpm smoke`, which is read-only by design.

@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingHttpHeaders } from 'node:http';
-import { eq } from 'drizzle-orm';
 import type { Db } from '../db/index.ts';
 import { devices } from '../db/schema.ts';
 

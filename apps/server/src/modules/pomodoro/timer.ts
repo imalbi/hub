@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { pomodoroDurationsSchema } from '../../core/config.ts';
+import type { pomodoroDurationsSchema } from './config.ts';
 
 export type Durations = z.infer<typeof pomodoroDurationsSchema>;
 

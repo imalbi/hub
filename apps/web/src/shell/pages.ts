@@ -1,3 +1,4 @@
+import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
 import { AudioOutputTile } from '../modules/audio/deck-tile.tsx';
 import { MediaTile } from '../modules/media/deck-tile.tsx';
@@ -35,3 +36,5 @@ export const pages: Page[] = [
     extra: DeckThemeList,
   },
 ];
+
+for (const module of moduleUIs) if (module.deck) pages.push(module.deck);

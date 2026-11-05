@@ -56,7 +56,13 @@ const config: Config = {
 const isLoopback: IsLoopback = ({ headers }) => headers.host?.split(':')[0] === 'localhost';
 
 // Loopback only and a port of its own, so it never reaches the LAN or collides with `pnpm dev` on 4180.
-await buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config, isLoopback }).listen({
+await buildServer({
+  dbPath: ':memory:',
+  moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
+  deps: { run: createFakeDesktop() },
+  config,
+  isLoopback,
+}).listen({
   host: '127.0.0.1',
   port: Number(process.env.HUB_PORT ?? 4190),
 });

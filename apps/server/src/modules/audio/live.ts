@@ -1,4 +1,5 @@
-import type { Config } from '../../core/config.ts';
+import type { z } from 'zod';
+import type { configSchema } from './config.ts';
 import type { Run } from '../../core/exec.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { currentOutput, parsePwDump, resolveOutputs } from './pipewire.ts';
@@ -8,7 +9,7 @@ export async function readSnapshot(run: Run) {
   return parsePwDump(code === 0 ? stdout : '');
 }
 
-export async function readAudioState(run: Run, config: Config) {
+export async function readAudioState(run: Run, config: { audio: z.output<typeof configSchema> }) {
   const { sinks, defaultName } = await readSnapshot(run);
   const resolved = resolveOutputs(sinks, config.audio.outputs);
   const current = currentOutput(resolved, defaultName);
@@ -18,5 +19,6 @@ export async function readAudioState(run: Run, config: Config) {
   };
 }
 
-export const createAudioLive = (run: Run, config: Config) => createLiveHub(() => readAudioState(run, config));
+export const createAudioLive = (run: Run, config: { audio: z.output<typeof configSchema> }) =>
+  createLiveHub(() => readAudioState(run, config));
 export type AudioLive = ReturnType<typeof createAudioLive>;

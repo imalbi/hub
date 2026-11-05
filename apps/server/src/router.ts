@@ -1,25 +1,23 @@
-import { audioRouter } from './modules/audio/router.ts';
-import { devicesRouter } from './modules/devices/router.ts';
-import { layoutRouter } from './modules/layout/router.ts';
-import { mediaRouter } from './modules/media/router.ts';
-import { newsRouter } from './modules/news/router.ts';
-import { pairingRouter } from './modules/devices/pairing-router.ts';
-import { pomodoroRouter } from './modules/pomodoro/router.ts';
-import { systemRouter } from './modules/system/router.ts';
-import { themeRouter } from './modules/theme/router.ts';
-import { protectedProcedure, router } from './core/trpc.ts';
+import { router } from './core/trpc.ts';
+import type { ModuleDefinition, ModuleDeps, ModuleInstance } from './core/module.ts';
+import type { publicModules } from './modules.ts';
 
-export const appRouter = router({
-  health: protectedProcedure.query(() => ({ ok: true, uptime: Math.round(process.uptime()) })),
-  audio: audioRouter,
-  media: mediaRouter,
-  news: newsRouter,
-  layout: layoutRouter,
-  pairing: pairingRouter,
-  devices: devicesRouter,
-  pomodoro: pomodoroRouter,
-  system: systemRouter,
-  theme: themeRouter,
-});
+export function createAppRouter<const T extends readonly ModuleDefinition[]>(
+  modules: T,
+  deps: ModuleDeps,
+  config: Record<string, unknown>,
+  onClose: (close: NonNullable<ModuleInstance['close']>) => void,
+  extra: Record<string, ModuleInstance['router']> = {},
+) {
+  type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
+  const entries = modules.map((definition) => {
+    const instance = definition.create({ ...deps, config: config[definition.name] });
+    if (instance.close) onClose(instance.close);
+    return [definition.name, instance.router];
+  });
+  // fromEntries erases the literal name/router association; extra routers remain runtime-only.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tRPC consumes the mapped record proven by each factory.
+  return router({ ...Object.fromEntries(entries), ...extra } as Entries);
+}
 
-export type AppRouter = typeof appRouter;
+export type AppRouter = ReturnType<typeof createAppRouter<typeof publicModules>>;

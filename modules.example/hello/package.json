@@ -1,0 +1,14 @@
+{
+  "name": "@hub/example-hello",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "^19.3.1",
+    "@tanstack/react-query": "^5.105.3",
+    "@trpc/tanstack-react-query": "^11.23.0",
+    "lucide-react": "^1.67.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0"
+  }
+}

@@ -63,3 +63,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 - The fake config copies `modules/news/fixtures/latest.html` (22 items) to the temp dir with a fixed mtime (4 Nov 08:30), which is the "Aggiornato" line in the baselines. `news.spec.ts` (desk) and the Notizie test in `deck.spec.ts` check count, badge and that Aggiorna/Apri succeed; argv is a server test.
 - Baselines with the Notizie widget or tile: desk, desk-4k, desk-paper, desk-moss, desk-stone, desk-caelestia, desk-widgets-edit, deck, deck-pomodoro-paused.
+
+## Modules (step 11)
+
+- `pnpm test:e2e` runs Playwright twice. The second pass sets `HUB_EXAMPLE_MODULES=1` in the test process only: `playwright.config.ts` then points `HUB_MODULES_ROOT` of the fake server and Vite at `modules.example/` and runs only `modules.spec.ts`, so the example travels the private-module path (server discovery plus the `@hub-private-modules` glob). The first pass uses an empty root and checks the example is absent.
+- Baselines `desk/desk-example-4k.png` and `desk/deck-example.png`; the deck one pins `health` like the other visual specs. Size radios are visually hidden in their labels: click the `label`, never `check()` the radio (it waits forever).

@@ -1,11 +1,11 @@
 import type { TRPCLink } from '@trpc/client';
 import { observable } from '@trpc/server/observable';
-import type { AppRouter } from '@hub/server';
+import type { AnyRouter } from '@trpc/server';
 import { getToken } from './auth.ts';
 import { replaceToken } from './trpc.ts';
 
 /** An UNAUTHORIZED answer to any call (query, mutation or subscription) means the token is gone, revoked or from a reset database: back to the pairing screen. */
-export const authLink: TRPCLink<AppRouter> =
+export const authLink: TRPCLink<AnyRouter> =
   () =>
   ({ next, op }) =>
     observable((observer) => {

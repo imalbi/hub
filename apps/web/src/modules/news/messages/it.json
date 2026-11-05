@@ -1,0 +1,12 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "news_title": "Notizie",
+  "news_fresh": "voci nuove",
+  "news_last_page": "nell'ultima pagina, niente di nuovo dopo",
+  "news_updated": "Aggiornato {when}",
+  "news_refresh": "Aggiorna",
+  "news_open": "Apri",
+  "news_open_on_pc": "Apri sul PC",
+  "news_count": "{count} voci nuove",
+  "news_off": "Non configurato"
+}

@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ThemeProvider } from '../theme/theme.tsx';
-import { zones } from './zones.ts';
+import { zones, zonePath } from './zones.ts';
 import { m } from '../paraglide/messages.js';
 import { useLayout } from './use-layout.ts';
 import { DeskRail } from './rail.tsx';
@@ -17,7 +17,7 @@ export function DeskShell() {
   const navigate = useNavigate();
   // A callback ref into state, so zones can portal their actions into the header once it exists.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
-  const active = zones.find((zone) => zone.path === location.pathname.replace(/\/$/, ''));
+  const active = zones.find((zone) => zonePath(zone) === location.pathname.replace(/\/$/, ''));
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
@@ -30,7 +30,7 @@ export function DeskShell() {
       const zone = /^[1-5]$/.test(event.key) ? zones[Number(event.key) - 1] : undefined;
       if (zone) {
         event.preventDefault();
-        void navigate({ to: zone.path });
+        void navigate({ to: zone.path, params: zone.params });
       }
     }
     window.addEventListener('keydown', onKey);

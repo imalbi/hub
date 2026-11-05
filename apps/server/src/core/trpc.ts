@@ -1,18 +1,9 @@
+import type { Files } from './files.ts';
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { Client, DeviceSockets } from './auth.ts';
-import type { Config } from './config.ts';
+import type { CoreConfig } from './config-schema.ts';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
-import type { AudioLive } from '../modules/audio/live.ts';
-import type { MediaLive } from '../modules/media/live.ts';
-import type { MediaArt } from '../modules/media/art.ts';
-import type { PairingCodes } from '../modules/devices/codes.ts';
-import type { NewsLive } from '../modules/news/page.ts';
-import type { PomodoroLive } from '../modules/pomodoro/live.ts';
-import type { PowerLive } from '../modules/system/power.ts';
-import type { CaelestiaTheme } from '../modules/theme/caelestia.ts';
-import type { CustomThemesLive } from '../modules/theme/router.ts';
-
 /** Registry metadata for an action (a mutation). Later steps derive LLM tools and the danger check from it. */
 export type ActionMeta = {
   /** English, written for an LLM: what the action does, not how it is labelled in the UI. */
@@ -21,27 +12,14 @@ export type ActionMeta = {
   danger?: boolean;
 };
 
-/** One state hub per module, shared by every connection of a server (see `src/live.ts`). */
-export type Live = {
-  audio: AudioLive;
-  media: MediaLive;
-  pomodoro: PomodoroLive;
-  news: NewsLive;
-  power: PowerLive;
-  caelestia: CaelestiaTheme;
-  customThemes: CustomThemesLive;
-};
-
 export type Context = {
   db: Db;
   run: Run;
-  config: Config;
-  live: Live;
-  mediaArt: MediaArt;
+  config: CoreConfig;
+  files: Files;
   /** Who is calling, decided once per request (per connection for a WebSocket) in `createContext`. */
   client: Client;
   remoteAddress: string;
-  pairing: PairingCodes;
   sockets: DeviceSockets;
 };
 

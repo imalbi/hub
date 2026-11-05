@@ -31,7 +31,7 @@ function fakeRun() {
 
 void test('audio.state reports the current output and which outputs are available', async () => {
   const { run } = fakeRun();
-  const res = await buildServer({ dbPath: ':memory:', run, config }).inject({
+  const res = await buildServer({ dbPath: ':memory:', deps: { run }, config }).inject({
     method: 'GET',
     url: '/trpc/audio.state',
   });
@@ -47,7 +47,7 @@ void test('audio.state reports the current output and which outputs are availabl
 
 void test('audio.cycleOutput sets the next available sink as default', async () => {
   const { run, calls } = fakeRun();
-  const res = await buildServer({ dbPath: ':memory:', run, config }).inject({
+  const res = await buildServer({ dbPath: ':memory:', deps: { run }, config }).inject({
     method: 'POST',
     url: '/trpc/audio.cycleOutput',
     headers: { 'content-type': 'application/json' },
@@ -60,7 +60,11 @@ void test('audio.cycleOutput sets the next available sink as default', async () 
 
 void test('audio.cycleOutput fails without touching wpctl when no configured output is available', async () => {
   const { run, calls } = fakeRun();
-  const res = await buildServer({ dbPath: ':memory:', run, config: { ...config, audio: { outputs: [] } } }).inject({
+  const res = await buildServer({
+    dbPath: ':memory:',
+    deps: { run },
+    config: { ...config, audio: { outputs: [] } },
+  }).inject({
     method: 'POST',
     url: '/trpc/audio.cycleOutput',
     headers: { 'content-type': 'application/json' },
@@ -75,7 +79,7 @@ void test('audio.cycleOutput fails without touching wpctl when no configured out
 
 void test('audio.setOutput switches to the output with that label, and refuses unknown or unavailable ones', async () => {
   const { run, calls } = fakeRun();
-  const app = buildServer({ dbPath: ':memory:', run, config });
+  const app = buildServer({ dbPath: ':memory:', deps: { run }, config });
   const set = (label: string) =>
     app.inject({
       method: 'POST',

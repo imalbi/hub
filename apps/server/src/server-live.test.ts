@@ -18,7 +18,7 @@ const config: Config = {
   server: { host: '127.0.0.1', allowedOrigins: [] },
 };
 
-const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config });
+const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config });
 let port = 0;
 
 before(async () => {

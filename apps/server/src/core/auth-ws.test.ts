@@ -9,7 +9,7 @@ process.env.NODE_ENV = 'test';
 // The fake PC: only a request that says so counts as loopback, so a socket from 127.0.0.1 can act as a LAN phone.
 const app = buildServer({
   dbPath: ':memory:',
-  run: createFakeDesktop(),
+  deps: { run: createFakeDesktop() },
   isLoopback: ({ headers }) => headers['x-test-pc'] === '1',
 });
 let port = 0;

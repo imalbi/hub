@@ -12,7 +12,7 @@ const items = [
 ];
 
 function server() {
-  return buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config: emptyConfig });
+  return buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config: emptyConfig });
 }
 
 async function get(app: ReturnType<typeof server>) {

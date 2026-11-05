@@ -1,3 +1,4 @@
+import { defaultModuleRoots } from './core/discovery.ts';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -21,7 +22,7 @@ const config = {
 assertCanListen(config);
 
 // Loopback unless the config opens it, and then only with an origin allowlist and device pairing in place.
-await buildServer({ dbPath, config, webRoot }).listen({
+await buildServer({ dbPath, config, webRoot, moduleRoots: defaultModuleRoots }).listen({
   host: config.server.host,
   port: Number(process.env.HUB_PORT ?? 4180),
 });

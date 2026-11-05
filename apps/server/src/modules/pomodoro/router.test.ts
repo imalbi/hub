@@ -21,7 +21,7 @@ void test('HTTP actions validate transitions and trust, complete to history, and
   const notifications: string[][] = [];
   const options = {
     dbPath,
-    run: createFakeDesktop({ notifications }),
+    deps: { run: createFakeDesktop({ notifications }) },
     config: { ...emptyConfig, pomodoro: { ...emptyConfig.pomodoro, focusMinutes: 0.05 } },
   };
   const app = buildServer(options);
@@ -83,7 +83,7 @@ void test('a missing notification binary never interrupts a completed phase', as
   mock.timers.enable({ apis: ['Date', 'setTimeout'], now: new Date(2026, 10, 4, 10) });
   const app = buildServer({
     dbPath: ':memory:',
-    run: async () => ({ stdout: '', stderr: 'missing', code: -1 }),
+    deps: { run: async () => ({ stdout: '', stderr: 'missing', code: -1 }) },
     config: { ...emptyConfig, pomodoro: { ...emptyConfig.pomodoro, focusMinutes: 0.05 } },
   });
   t.after(async () => {
@@ -103,7 +103,7 @@ void test('a missing notification binary never interrupts a completed phase', as
 });
 
 void test('configure validates the limits of the config schema', async (t) => {
-  const app = buildServer({ dbPath: ':memory:', run: createFakeDesktop(), config: emptyConfig });
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config: emptyConfig });
   t.after(() => app.close());
   const configure = (input: object) =>
     app.inject({

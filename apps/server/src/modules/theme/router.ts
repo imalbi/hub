@@ -1,3 +1,4 @@
+import type { CaelestiaTheme } from './caelestia.ts';
 import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -30,64 +31,66 @@ export function createCustomThemesLive(db: Db) {
 
 export type CustomThemesLive = ReturnType<typeof createCustomThemesLive>;
 
-export const themeRouter = router({
-  caelestia: protectedProcedure.query(({ ctx }) => ctx.live.caelestia.read()),
-  onCaelestia: protectedProcedure.subscription(({ ctx, signal }) => ctx.live.caelestia.subscribe(signal)),
+export function createThemeRouter(caelestia: CaelestiaTheme, customThemes: CustomThemesLive) {
+  return router({
+    caelestia: protectedProcedure.query(() => caelestia.read()),
+    onCaelestia: protectedProcedure.subscription(({ signal }) => caelestia.subscribe(signal)),
 
-  list: protectedProcedure.query(({ ctx }) => readCustomThemes(ctx.db)),
-  onList: protectedProcedure.subscription(({ ctx, signal }) => ctx.live.customThemes.subscribe(signal)),
+    list: protectedProcedure.query(({ ctx }) => readCustomThemes(ctx.db)),
+    onList: protectedProcedure.subscription(({ signal }) => customThemes.subscribe(signal)),
 
-  save: protectedProcedure
-    .meta({ description: 'Create a custom color theme, or replace the colors and name of an existing one' })
-    .input(z.object({ id: id.optional(), name, base: z.string().min(1).max(40), values: themeValuesSchema }))
-    .mutation(({ ctx, input }) => {
-      const now = new Date();
-      let saved: number;
-      if (input.id === undefined) {
-        const [row] = ctx.db
-          .insert(themes)
-          .values({ name: input.name, base: input.base, values: input.values, createdAt: now, updatedAt: now })
-          .returning({ id: themes.id })
-          .all();
-        if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Theme not saved' });
-        saved = row.id;
-      } else {
+    save: protectedProcedure
+      .meta({ description: 'Create a custom color theme, or replace the colors and name of an existing one' })
+      .input(z.object({ id: id.optional(), name, base: z.string().min(1).max(40), values: themeValuesSchema }))
+      .mutation(({ ctx, input }) => {
+        const now = new Date();
+        let saved: number;
+        if (input.id === undefined) {
+          const [row] = ctx.db
+            .insert(themes)
+            .values({ name: input.name, base: input.base, values: input.values, createdAt: now, updatedAt: now })
+            .returning({ id: themes.id })
+            .all();
+          if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Theme not saved' });
+          saved = row.id;
+        } else {
+          const updated = ctx.db
+            .update(themes)
+            .set({ name: input.name, values: input.values, updatedAt: now })
+            .where(eq(themes.id, input.id))
+            .returning({ id: themes.id })
+            .all();
+          if (updated.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such theme' });
+          saved = input.id;
+        }
+        void customThemes.notify();
+        return { id: saved };
+      }),
+
+    rename: protectedProcedure
+      .meta({ description: 'Rename a custom color theme' })
+      .input(z.object({ id, name }))
+      .mutation(({ ctx, input }) => {
         const updated = ctx.db
           .update(themes)
-          .set({ name: input.name, values: input.values, updatedAt: now })
+          .set({ name: input.name, updatedAt: new Date() })
           .where(eq(themes.id, input.id))
           .returning({ id: themes.id })
           .all();
         if (updated.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such theme' });
-        saved = input.id;
-      }
-      void ctx.live.customThemes.notify();
-      return { id: saved };
-    }),
+        void customThemes.notify();
+      }),
 
-  rename: protectedProcedure
-    .meta({ description: 'Rename a custom color theme' })
-    .input(z.object({ id, name }))
-    .mutation(({ ctx, input }) => {
-      const updated = ctx.db
-        .update(themes)
-        .set({ name: input.name, updatedAt: new Date() })
-        .where(eq(themes.id, input.id))
-        .returning({ id: themes.id })
-        .all();
-      if (updated.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such theme' });
-      void ctx.live.customThemes.notify();
-    }),
-
-  delete: protectedProcedure
-    .meta({
-      description: 'Delete a custom color theme; devices using it fall back to the default dark theme',
-      danger: true,
-    })
-    .input(z.object({ id, confirmed: z.literal(true) }))
-    .mutation(({ ctx, input }) => {
-      const removed = ctx.db.delete(themes).where(eq(themes.id, input.id)).returning({ id: themes.id }).all();
-      if (removed.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such theme' });
-      void ctx.live.customThemes.notify();
-    }),
-});
+    delete: protectedProcedure
+      .meta({
+        description: 'Delete a custom color theme; devices using it fall back to the default dark theme',
+        danger: true,
+      })
+      .input(z.object({ id, confirmed: z.literal(true) }))
+      .mutation(({ ctx, input }) => {
+        const removed = ctx.db.delete(themes).where(eq(themes.id, input.id)).returning({ id: themes.id }).all();
+        if (removed.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such theme' });
+        void customThemes.notify();
+      }),
+  });
+}

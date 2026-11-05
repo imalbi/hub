@@ -17,7 +17,7 @@ function isForbiddenFile(file: string) {
   return name === 'config.local.json' || name === '.private-words' || name.startsWith('.env');
 }
 
-function readWorktree(root: string, file: string) {
+export function readTrackedWorktree(root: string, file: string) {
   const target = join(root, file);
   try {
     const parts = file.split('/');
@@ -63,7 +63,7 @@ export function guardRepository(cwd: string, staged: boolean) {
       findings.push({ file, line: 1, rule: 'forbidden-file', masked: '**' });
       continue;
     }
-    const content = staged ? git(root, ['show', `:${file}`]) : readWorktree(root, file);
+    const content = staged ? git(root, ['show', `:${file}`]) : readTrackedWorktree(root, file);
     if (content) findings.push(...scanContent(file, content, words));
   }
   return { findings, hasPrivateWords, scannedFiles: files.length };
