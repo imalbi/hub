@@ -100,6 +100,12 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Close order: Fastify runs `onClose` hooks last in, first out, so the database hook is registered before the module's `close` and runs after it (a module can still write in `close`; the same reason the core database hook is registered first in `buildServer`).
 - Generating a module's migrations is in "Writing a module" of the root `AGENTS.md`; `pnpm --filter @hub/server db:generate` is for the core only.
 
+## HTML for modules
+
+- `linkedom` (exact version in `package.json`) is the one HTML parser, chosen so the server and the browser share a DOM API and one cleaning function can run on both (the Lavoro description cleaner). `core/module-html.ts` re-exports `parseHTML` for module folders, like `module-db.ts` does for drizzle.
+- The server tsconfig has no DOM lib: linkedom's declarations reference DOM globals and typecheck here only because `skipLibCheck` is on in `tsconfig.base.json`. A private module is typechecked with the DOM lib (`scripts/tsconfig.modules.json`), where `parseHTML(...).document` is a plain `Document`. Do not import linkedom's `DOMParser`: it returns linkedom's own `HTMLDocument`, which is not assignable to `Document`.
+- linkedom's parser is lenient and not spec-exact on malformed markup. Code that must be safe on hostile input builds its output from an allowlist and escaped text instead of editing the parsed tree, and its tests assert properties (only allowlisted tags, no attribute) over a list of hostile strings rather than exact trees.
+
 ## Security invariants
 
 - `core/trpc.ts` explicitly sets `isDev: false`: procedure error bodies never include stacks or source paths, regardless of `NODE_ENV` or the service environment.

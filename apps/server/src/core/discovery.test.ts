@@ -7,6 +7,8 @@ import type { FastifyBaseLogger } from 'fastify';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { discoverModules } from './discovery.ts';
 
+const noop = () => {};
+
 // The private root may hold its own git repository: `.git` and other dot or non-module folders are not modules, and
 // trying them logged "Module skipped" at every start.
 void test('folders that cannot be module names are never tried, so a git repository in the root stays silent', async (t) => {
@@ -14,7 +16,6 @@ void test('folders that cannot be module names are never tried, so a git reposit
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const folder of ['.git', '.cache', 'Not_A_Module']) await mkdir(join(root, folder));
   const warnings: unknown[] = [];
-  const noop = () => {};
   const log: FastifyBaseLogger = {
     level: 'info',
     fatal: noop,
