@@ -67,4 +67,6 @@ export function moduleConfigShape<const T extends readonly ModuleDefinition[]>(m
   return Object.fromEntries(modules.filter((m) => m.config).map((m) => [m.name, m.config])) as Shape;
 }
 
+// A private module cannot resolve `zod` or `@trpc/server` from its own folder: both come from here.
+export { TRPCError } from '@trpc/server';
 export { z };

@@ -72,3 +72,29 @@ void test('discovery isolates broken imports, bad config, collisions and malform
     400,
   );
 });
+
+void test('onlyModules loads the named folders of a root and leaves the others alone', async (t) => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const root = await mkdtemp(join(tmpdir(), 'hub-modules-only-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const api = new URL('./core/module.ts', import.meta.url).href;
+  const trpc = new URL('./core/trpc.ts', import.meta.url).href;
+  const source = (name: string) =>
+    `import { defineModule } from ${JSON.stringify(api)}; import { router, protectedProcedure } from ${JSON.stringify(trpc)};
+     export default defineModule({ name: '${name}', create: () => ({ router: router({ state: protectedProcedure.query(() => '${name}') }) }) });`;
+  for (const name of ['kept', 'ignored']) {
+    await mkdir(join(root, name));
+    await writeFile(join(root, name, 'server.ts'), source(name));
+  }
+  const app = buildServer({
+    dbPath: ':memory:',
+    moduleRoots: [root],
+    onlyModules: ['kept'],
+    deps: { run: createFakeDesktop() },
+  });
+  t.after(() => app.close());
+  assert.equal((await app.inject('/trpc/kept.state')).statusCode, 200);
+  assert.equal((await app.inject('/trpc/ignored.state')).statusCode, 404);
+});

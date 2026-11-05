@@ -36,6 +36,7 @@ export function buildServer({
   webRoot,
   moduleRoots = [],
   exampleModules = process.env.HUB_EXAMPLE_MODULES === '1',
+  onlyModules,
 }: {
   dbPath: string;
   deps?: { run?: Run; fetch?: typeof fetch };
@@ -45,6 +46,8 @@ export function buildServer({
   webRoot?: string;
   moduleRoots?: readonly string[];
   exampleModules?: boolean;
+  /** Folder names of the module roots to load; unset loads all. For tests, like `isLoopback`: `index.ts` never sets it. */
+  onlyModules?: readonly string[];
 }) {
   const run = deps.run ?? realRun;
   const db = openDb(dbPath);
@@ -93,6 +96,7 @@ export function buildServer({
     const extra = await discoverModules({
       roots: moduleRoots,
       examples: exampleModules,
+      onlyModules,
       reserved: [...publicModules.map((m) => m.name), 'registry'],
       deps: discoveredDeps,
       dbPath,

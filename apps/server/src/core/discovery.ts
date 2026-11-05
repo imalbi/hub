@@ -37,6 +37,7 @@ const instanceSchema = z.object({
 export async function discoverModules({
   roots = [privateRoot],
   examples = false,
+  onlyModules,
   reserved,
   deps,
   dbPath,
@@ -45,6 +46,8 @@ export async function discoverModules({
 }: {
   roots?: readonly string[];
   examples?: boolean;
+  /** Folder names to load; unset loads every folder. Only tests set it, so a broken sibling module cannot fail them. */
+  onlyModules?: readonly string[];
   reserved: readonly string[];
   deps: DiscoveredDeps;
   /** The core database path: module databases live next to it. */
@@ -61,7 +64,7 @@ export async function discoverModules({
       return [];
     });
     for (const folder of folders
-      .filter((entry) => entry.isDirectory())
+      .filter((entry) => entry.isDirectory() && (!onlyModules || onlyModules.includes(entry.name)))
       .toSorted((a, b) => a.name.localeCompare(b.name))) {
       let close: ModuleInstance['close'];
       let db: Db | undefined;
