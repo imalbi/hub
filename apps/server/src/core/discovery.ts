@@ -64,7 +64,9 @@ export async function discoverModules({
       return [];
     });
     for (const folder of folders
-      .filter((entry) => entry.isDirectory() && (!onlyModules || onlyModules.includes(entry.name)))
+      // Only folders that can be module names: the private root may hold its own `.git` and other tool folders.
+      .filter((entry) => entry.isDirectory() && name.safeParse(entry.name).success)
+      .filter((entry) => !onlyModules || onlyModules.includes(entry.name))
       .toSorted((a, b) => a.name.localeCompare(b.name))) {
       let close: ModuleInstance['close'];
       let db: Db | undefined;
