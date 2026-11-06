@@ -15,7 +15,7 @@ const EXAMPLE_EMAIL_DOMAINS = new Set(['example.com', 'example.org', 'example.ne
 
 // Reasons cannot contain quote delimiters: a marker inside a string must not waive that string's finding.
 const ALLOW_COMMENT =
-  /(?:\/\/|#|--)\s*guard-private:\s+allow\s+[\p{L}\p{N}][\p{L}\p{N} .,;:/()_-]*\s*$|<!--\s*guard-private:\s+allow\s+[\p{L}\p{N}][\p{L}\p{N} .,;:/()_-]*\s*-->\s*$/u;
+  /(?:\/\/|#|--)\s*guard-private:\s+allow\s+[\p{L}\p{N}][\p{L}\p{N} .,;:/()_-]*\s*$|<!--\s*guard-private:\s+allow\s+[\p{L}\p{N}][\p{L}\p{N} .,;:/()_-]*\s*-->\s*$|\/\*\s*guard-private:\s+allow\s+[\p{L}\p{N}][\p{L}\p{N} .,;:/()_-]*\s*\*\/\s*$/u;
 
 export function parsePrivateWords(source: string): string[] {
   return [

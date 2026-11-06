@@ -34,6 +34,7 @@
   "widget_size_wide": "Largo",
   "widget_size_label": "Dimensione di {name}",
   "widget_board": "Widget",
+  "chip_remove": "Rimuovi {name}",
   "widget_save_failed": "Disposizione non salvata",
   "duration_seconds": "{value} s",
   "duration_minutes": "{value} min",

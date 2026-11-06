@@ -115,12 +115,18 @@ void test('trailing allow comments require a reason and suppress only their own 
     '# guard-private: allow Fake scanner fixture',
     '-- guard-private: allow Fake scanner fixture',
     '<!-- guard-private: allow Fake scanner fixture -->',
+    '/* guard-private: allow Fake scanner fixture */',
   ]) {
     const findings = scanContent('fixture.txt', `${homePath} ${comment}\n${homePath}`);
     assert.equal(findings.length, 1);
     assert.equal(findings[0]?.line, 2);
   }
-  for (const suffix of ['guard-private: allow', '// guard-private: allow   ', '<!-- guard-private: allow -->']) {
+  for (const suffix of [
+    'guard-private: allow',
+    '// guard-private: allow   ',
+    '<!-- guard-private: allow -->',
+    '/* guard-private: allow */',
+  ]) {
     assert.equal(scanContent('fixture.txt', `${homePath} ${suffix}`).length, 1);
   }
 });

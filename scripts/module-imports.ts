@@ -1,5 +1,10 @@
-const source = /\.(?:[cm]?[jt]sx?|json)$/;
-const discovery = new Set(['apps/server/src/core/discovery.ts', 'apps/web/src/lib/modules.ts']);
+const source = /\.(?:[cm]?[jt]sx?|json|css)$/;
+// index.css names the private root for Tailwind: it only scans apps/web, so a utility used by a private module's UI would not compile.
+const discovery = new Set([
+  'apps/server/src/core/discovery.ts',
+  'apps/web/src/lib/modules.ts',
+  'apps/web/src/index.css',
+]);
 const privatePath = /(?:^|[/'"`])modules\.local\//;
 
 /** Source/config paths are forbidden, while prose documenting the module contract is allowed. */
