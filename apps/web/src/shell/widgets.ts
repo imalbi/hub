@@ -14,7 +14,7 @@ import { ThemeWidget } from '../theme/widget.tsx';
 
 export type WidgetItem = { widget: string; size: WidgetSize; x: number; y: number };
 
-/** Every widget the board can show, with the sizes it has a layout for. Step 11 lets modules add to this list. */
+/** Every widget Panoramica can show, built-in and from modules, with the sizes it has a layout for. */
 export const widgets: Array<{
   id: string;
   label: () => string;
@@ -33,49 +33,13 @@ export const widgets: Array<{
   { id: 'theme', label: m.theme_title, sizes: ['large', 'full'], component: ThemeWidget },
 ];
 
-export type ZoneId = string;
+/** What Panoramica shows until the owner rearranges it. */
+export const defaultLayout: WidgetItem[] = [
+  { widget: 'pomodoro', size: 'medium', x: 0, y: 0 },
+  { widget: 'media', size: 'medium', x: 6, y: 0 },
+  { widget: 'server', size: 'small', x: 0, y: 1 },
+  { widget: 'audio', size: 'small', x: 3, y: 1 },
+  { widget: 'news', size: 'medium', x: 6, y: 1 },
+];
 
-/** Which widgets a zone may hold: Panoramica is the home screen and takes them all, a zone only its own domain's. */
-export const zoneWidgets: Record<ZoneId, readonly string[] | 'all'> = {
-  overview: 'all',
-  study: ['pomodoro'],
-  media: ['audio'],
-  system: ['controls', 'power', 'server'],
-  devices: ['devices', 'theme'],
-};
-
-/** What each zone shows until the owner rearranges it. */
-export const defaultLayouts: Record<ZoneId, WidgetItem[]> = {
-  overview: [
-    { widget: 'pomodoro', size: 'medium', x: 0, y: 0 },
-    { widget: 'media', size: 'medium', x: 6, y: 0 },
-    { widget: 'server', size: 'small', x: 0, y: 1 },
-    { widget: 'audio', size: 'small', x: 3, y: 1 },
-    { widget: 'news', size: 'medium', x: 6, y: 1 },
-  ],
-  study: [{ widget: 'pomodoro', size: 'large', x: 0, y: 0 }],
-  media: [{ widget: 'audio', size: 'medium', x: 0, y: 0 }],
-  system: [
-    { widget: 'controls', size: 'wide', x: 0, y: 0 },
-    { widget: 'power', size: 'small', x: 0, y: 1 },
-    { widget: 'server', size: 'small', x: 3, y: 1 },
-  ],
-  devices: [
-    { widget: 'devices', size: 'large', x: 0, y: 0 },
-    { widget: 'theme', size: 'large', x: 6, y: 0 },
-  ],
-};
-
-for (const module of moduleUIs) {
-  widgets.push(...(module.widgets ?? []));
-  for (const { zone, widget, size } of module.places ?? []) {
-    const allowed = zoneWidgets[zone];
-    if (Array.isArray(allowed)) zoneWidgets[zone] = [...allowed, widget];
-    // Below the built-in rows; the board's vertical compaction closes the gap and pushes apart two that land here.
-    defaultLayouts[zone]?.push({ widget, size, x: 0, y: 100 });
-  }
-  if (module.zone) {
-    zoneWidgets[module.zone.id] = (module.widgets ?? []).map((widget) => widget.id);
-    defaultLayouts[module.zone.id] = module.zone.layout;
-  }
-}
+for (const module of moduleUIs) widgets.push(...(module.widgets ?? []));

@@ -10,6 +10,7 @@ const zones = [
   ['Media', '/desk/media'],
   ['Sistema', '/desk/system'],
   ['Dispositivi', '/desk/devices'],
+  ['Impostazioni', '/desk/settings'],
 ];
 
 test('the rail navigates every zone and marks exactly the active destination', async ({ page }) => {
@@ -32,7 +33,7 @@ test('number keys switch zones but do not interfere with typing or modified shor
     await expect(page).toHaveURL(new RegExp(`${zones[i]?.[1]}/?$`));
   }
   await page.keyboard.press('Control+1');
-  await expect(page).toHaveURL(/\/desk\/devices$/);
+  await expect(page).toHaveURL(/\/desk\/settings$/);
   await page.evaluate(() => {
     const input = document.createElement('input');
     input.setAttribute('aria-label', 'Campo di prova');
@@ -41,8 +42,8 @@ test('number keys switch zones but do not interfere with typing or modified shor
   await page.getByRole('textbox', { name: 'Campo di prova' }).focus();
   await page.keyboard.press('1');
   await expect(page.getByRole('textbox', { name: 'Campo di prova' })).toHaveValue('1');
-  await expect(page).toHaveURL(/\/desk\/devices$/);
-  await page.getByRole('button', { name: 'Genera codice' }).focus();
+  await expect(page).toHaveURL(/\/desk\/settings$/);
+  await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).focus();
   await page.keyboard.press('1');
   await expect(page).toHaveURL(/\/desk\/?$/);
 });
@@ -64,7 +65,7 @@ test('Media controls existing playback and switches outputs with the output swit
 });
 
 test('a chosen theme survives reload and the deck follows it', async ({ page }) => {
-  await page.goto('/desk/devices');
+  await page.goto('/desk/settings');
   await chooseTheme(page, 'Chiaro');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   await page.reload();
@@ -78,7 +79,7 @@ test('a chosen theme survives reload and the deck follows it', async ({ page }) 
 
 test('Pomodoro secondary controls remain readable when hovered in paper', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
-  await page.goto('/desk/devices');
+  await page.goto('/desk/settings');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
   for (const name of ['Salta', 'Ferma']) {

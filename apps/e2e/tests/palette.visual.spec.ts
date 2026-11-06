@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro } from './pomodoro-visual.ts';
 
-// Only these new palette images are intentional; the existing desk/deck baselines stay unchanged.
+// The palette lives at the bottom center, grown out of a round button at the bottom right (step 07p).
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await freezePomodoro(page);
@@ -22,6 +22,20 @@ test('the palette on the 4K desk matches the baseline', async ({ page }) => {
   await page.getByRole('combobox', { name: 'Cerca azioni' }).fill('Pomodoro');
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-palette-4k.png', { animations: 'disabled' });
+});
+
+test('the palette on a 1920x1080 desk matches the baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.getByRole('combobox', { name: 'Cerca azioni' }).fill('Pomodoro');
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-palette.png', { animations: 'disabled' });
+});
+
+test('the resting palette button on a 4K zone matches the baseline', async ({ page }) => {
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Comandi' })).not.toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-palette-rest-4k.png', { animations: 'disabled' });
 });
 
 test('the generated input form matches the baseline', async ({ page }) => {

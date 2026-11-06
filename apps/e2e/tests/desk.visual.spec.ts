@@ -90,6 +90,7 @@ for (const zone of [
   { path: '/desk/media', name: 'Media', file: 'desk-media.png' },
   { path: '/desk/system', name: 'Sistema', file: 'desk-system.png' },
   { path: '/desk/devices', name: 'Dispositivi', file: 'desk-devices.png' },
+  { path: '/desk/settings', name: 'Impostazioni', file: 'desk-settings.png' },
 ]) {
   test(`the ${zone.name} zone matches the baseline`, async ({ page }) => {
     await page.goto(zone.path);
@@ -104,8 +105,16 @@ for (const zone of [
   });
 }
 
-test('the overview in paper matches the baseline', async ({ page }) => {
+test('Dispositivi at 4K matches the baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk/devices');
+  await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-devices-4k.png', { animations: 'disabled' });
+});
+
+test('the overview in paper matches the baseline', async ({ page }) => {
+  await page.goto('/desk/settings');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
@@ -114,7 +123,7 @@ test('the overview in paper matches the baseline', async ({ page }) => {
 });
 
 test('Media in paper uses solid floating controls and matches the baseline', async ({ page }) => {
-  await page.goto('/desk/devices');
+  await page.goto('/desk/settings');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Media', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
@@ -129,7 +138,7 @@ for (const theme of [
   { name: 'Caelestia', id: 'caelestia', file: 'desk-caelestia.png' },
 ]) {
   test(`the overview in ${theme.name} matches the baseline`, async ({ page }) => {
-    await page.goto('/desk/devices');
+    await page.goto('/desk/settings');
     await chooseTheme(page, theme.name);
     await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id);
@@ -139,7 +148,7 @@ for (const theme of [
 }
 
 test('the theme editor flags unreadable text and matches the baseline', async ({ page }) => {
-  await page.goto('/desk/devices');
+  await page.goto('/desk/settings');
   await page.getByRole('button', { name: 'Duplica Pietra' }).click();
   const editor = page.getByRole('form', { name: 'Nuovo tema' });
   const surface = await editor.getByLabel('Pannelli', { exact: true }).inputValue();

@@ -4,7 +4,7 @@ import { createLayoutRouter, builtinZones } from './router.ts';
 export const layoutModule = defineModule({
   name: 'layout',
   zones: builtinZones,
-  create({ zones }) {
-    return { router: createLayoutRouter(zones) };
+  create() {
+    return { router: createLayoutRouter() };
   },
 });

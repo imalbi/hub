@@ -147,7 +147,8 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 ## Layout
 
-- `modules/layout/router.ts`: `layout.get/save/reset` for desk widget boards, one `desk_layouts` row per zone (`overview`, `study`, `media`, `system`, `devices`, the ids of `apps/web/src/shell/zones.ts`). The server validates the shape (widget id pattern, size enum, integer positions on 12 columns, at most 40 items), not the widget ids: those belong to the web app and later to modules.
+- `modules/layout/router.ts`: `layout.get/save/reset` for the Panoramica widget board only. The `zone` input is a string refined to `overview` (400 for anything else; deliberately not `z.literal`, because the command palette builds its form from the JSON Schema and cannot run a `const` field), and `desk_layouts` holds that one row. The migration `overview_only_layouts` deleted the saved boards of the zones that became pages (Studio, Media, Sistema, Dispositivi). The server validates the shape (widget id pattern, size enum, integer positions on 12 columns, at most 40 items), not the widget ids: those belong to the web app and modules.
+- Zone ids are still registered, for the name collision check only: `builtinZones` (`overview`, `study`, `media`, `system`, `devices`, `settings`, `work`, `messages`) is what the layout module passes as `zones`, and a discovered module whose `zones` hit a taken id is skipped (`server-modules.test.ts` pins it for a built-in id and for a second module on the same zone). Sections are web-only: the server knows nothing about them.
 
 ## Sistema
 

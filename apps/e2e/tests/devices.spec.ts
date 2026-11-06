@@ -64,19 +64,20 @@ test('revoking needs a hold, then the device is gone and its token stops working
   }
 });
 
-// With no device paired, the code and its countdown stacked over the empty state and pushed the panel past its cell.
+// With no device paired, the code and its countdown once stacked over the empty state: a live code takes its place.
 for (const viewport of [
   { width: 1920, height: 1080 },
   { width: 3840, height: 2160 },
 ]) {
-  test(`a generated code fits the Dispositivi widget with no device paired (${viewport.width}px)`, async ({ page }) => {
+  test(`a generated code replaces the empty state in the Dispositivi panel (${viewport.width}px)`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.route('**/trpc/devices.list*', (route) => route.fulfill({ json: [{ result: { data: [] } }] }));
     await page.goto('/desk/devices');
+    await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
     await page.getByRole('button', { name: 'Genera codice' }).click();
     await expect(page.getByRole('status', { name: 'Codice di abbinamento' })).toHaveText(/^\d{6}$/);
-    const scroller = page.locator('[data-widget="devices"] .overflow-y-auto').first();
-    const overflow = await scroller.evaluate((el) => el.scrollHeight - el.clientHeight);
-    expect(overflow).toBeLessThanOrEqual(0);
+    await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toHaveCount(0);
+    const panel = page.getByRole('region', { name: 'Dispositivi', exact: true });
+    expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
   });
 }

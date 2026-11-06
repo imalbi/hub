@@ -7,7 +7,10 @@ import { useTRPC } from '../lib/trpc.ts';
 import { widgetCells, type WidgetSize } from '../lib/widget-size.ts';
 import { m } from '../paraglide/messages.js';
 import { HeaderActions } from './header-slot.tsx';
-import { defaultLayouts, widgets, zoneWidgets, type WidgetItem, type ZoneId } from './widgets.ts';
+import { defaultLayout, widgets, type WidgetItem } from './widgets.ts';
+
+// The server keeps one saved board, Panoramica's.
+const zone = 'overview';
 
 const sizeLabel: Record<WidgetSize, () => string> = {
   small: m.widget_size_small,
@@ -35,8 +38,8 @@ function subscribeToResize(onChange: () => void) {
 // Reading order (rows top to bottom, then left to right), used for "move before/after" and to keep saves stable.
 const byPosition = (a: WidgetItem, b: WidgetItem) => a.y - b.y || a.x - b.x;
 
-/** A desk zone as a phone-style home screen: fixed sizes, drag to rearrange in edit mode, saved on the server. */
-export function WidgetBoard({ zone }: { zone: ZoneId }) {
+/** Panoramica as a phone-style home screen: fixed sizes, drag to rearrange in edit mode, saved on the server. */
+export function WidgetBoard() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const queryKey = trpc.layout.get.queryKey({ zone });
@@ -46,12 +49,9 @@ export function WidgetBoard({ zone }: { zone: ZoneId }) {
   const [editing, setEditing] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth();
 
-  const allowed = zoneWidgets[zone];
-  const known = new Map(
-    widgets.filter((widget) => allowed === 'all' || allowed.includes(widget.id)).map((widget) => [widget.id, widget]),
-  );
+  const known = new Map(widgets.map((widget) => [widget.id, widget]));
   // Unknown ids (a widget removed since) and sizes a widget no longer has are dropped, never rendered.
-  const items = (saved.data ?? defaultLayouts[zone])
+  const items = (saved.data ?? defaultLayout)
     .filter((item) => known.get(item.widget)?.sizes.includes(item.size))
     .toSorted(byPosition);
 

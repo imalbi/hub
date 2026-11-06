@@ -46,19 +46,26 @@ export function PomodoroPanel({ compact = false, className = '' }: { compact?: b
           <p role="timer" aria-label={m.pomodoro_remaining()} className="text-display tabular-nums">
             <span className="sr-only">{timer.time}</span>
             <span aria-hidden className="select-none">
-              <NumberRoll
-                value={timer.minutes}
-                format={{ minimumIntegerDigits: 2, useGrouping: false }}
-                locales="it"
-                direction="down"
-              />
-              :
-              <NumberRoll
-                value={timer.seconds}
-                format={{ minimumIntegerDigits: 2, useGrouping: false }}
-                locales="it"
-                direction="down"
-              />
+              {/* Digits mount with the first real value, so arriving at the page is not a change they roll for. */}
+              {timer.state ? (
+                <>
+                  <NumberRoll
+                    value={timer.minutes}
+                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
+                    locales="it"
+                    direction="down"
+                  />
+                  :
+                  <NumberRoll
+                    value={timer.seconds}
+                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
+                    locales="it"
+                    direction="down"
+                  />
+                </>
+              ) : (
+                <span className="invisible">{timer.time}</span>
+              )}
             </span>
           </p>
         </div>

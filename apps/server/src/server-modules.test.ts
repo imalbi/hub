@@ -44,6 +44,11 @@ void test('discovery isolates broken imports, bad config, collisions and malform
     invalidclose: `export default { name: 'badclose', create: () => ({ router: null, close: 'invalid' }) };`,
     throwingclose: `export default { name: 'badcleanup', create: () => ({ router: null, close: () => { throw new Error('cleanup failed'); } }) };`,
     valid: `${prefix} export default ${valid};`,
+    // Folders load in name order: `zeta` comes after `valid`, so it is the one that meets a zone already taken.
+    zeta: `${prefix} export default defineModule({ name: 'zeta', zones: ['sample'], create: () => ({ router: router({ state: protectedProcedure.query(() => 'zeta') }) }) });`,
+    reserved: `${prefix} export default defineModule({ name: 'reserved', zones: ['work'], create: () => ({ router: router({ state: protectedProcedure.query(() => 'reserved') }) }) });`,
+    // A module zone's id is its path (`/desk/<id>`), so the path of a built-in page is taken too.
+    slug: `${prefix} export default defineModule({ name: 'slug', zones: ['lavoro'], create: () => ({ router: router({ state: protectedProcedure.query(() => 'slug') }) }) });`,
   };
   for (const [name, source] of Object.entries(fixtures)) {
     await mkdir(join(root, name));
@@ -62,15 +67,9 @@ void test('discovery isolates broken imports, bad config, collisions and malform
   for (const name of ['invalid', 'badclose', 'badcleanup'])
     assert.equal((await app.inject(`/trpc/${name}.state`)).statusCode, 404);
   assert.equal((await app.inject('/trpc/audio.state')).statusCode, 200);
-  assert.equal(
-    (await app.inject(`/trpc/layout.get?input=${encodeURIComponent(JSON.stringify({ zone: 'sample' }))}`)).statusCode,
-    200,
-  );
-  assert.equal(
-    (await app.inject(`/trpc/layout.get?input=${encodeURIComponent(JSON.stringify({ zone: 'unregistered' }))}`))
-      .statusCode,
-    400,
-  );
+  // A zone is registered by the module that declares it first; a built-in zone id is never free.
+  for (const name of ['zeta', 'reserved', 'slug'])
+    assert.equal((await app.inject(`/trpc/${name}.state`)).statusCode, 404);
 });
 
 void test('onlyModules loads the named folders of a root and leaves the others alone', async (t) => {

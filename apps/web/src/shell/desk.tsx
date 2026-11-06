@@ -11,7 +11,7 @@ import { HeaderActivity } from './header-activity.tsx';
 import { HeaderSlot } from './header-slot.tsx';
 import { DeskCommandPalette } from './command-palette.tsx';
 
-/** The desk frame: theme, backdrop, rail, header, keys 1-5 and the zone grid the child routes render into. */
+/** The desk frame: theme, backdrop, rail, header, keys 1-9 and the zone grid the child routes render into. */
 export function DeskShell() {
   useLayout('desk');
   const location = useLocation();
@@ -28,7 +28,7 @@ export function DeskShell() {
         event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
       )
         return;
-      const zone = /^[1-5]$/.test(event.key) ? zones[Number(event.key) - 1] : undefined;
+      const zone = /^[1-9]$/.test(event.key) ? zones[Number(event.key) - 1] : undefined;
       if (zone) {
         event.preventDefault();
         void navigate({ to: zone.path, params: zone.params });
@@ -43,7 +43,7 @@ export function DeskShell() {
         <DeskCommandPalette />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
-        <main className="min-h-dvh p-xl pl-desk-inset">
+        <main className="min-h-dvh px-xl pt-xl pb-palette-clear pl-desk-inset">
           <header className="mb-xl flex items-center justify-between gap-lg">
             <h1 className="text-heading">{active?.label() ?? m.desk_title()}</h1>
             <div className="flex items-center gap-md">

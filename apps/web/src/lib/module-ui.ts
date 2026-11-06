@@ -8,22 +8,22 @@ export type ModuleWidget = {
   sizes: readonly WidgetSize[];
   component: ComponentType<{ size: WidgetSize }>;
 };
+/** One tab of a zone page. Ids are unique within a page; the first tab is the default one. */
+export type PageTab = { id: string; label: () => string; component: ComponentType };
+/** A tab a module adds to a zone page, after the page's own tabs. */
+export type ModuleSection = PageTab & { zone: string };
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
+  /** Widgets are for Panoramica, the one board: it offers every widget of every module. */
   widgets?: ModuleWidget[];
-  zone?: {
-    id: string;
-    label: () => string;
-    icon: Icon;
-    layout: Array<{ widget: string; size: WidgetSize; x: number; y: number }>;
-    page?: ComponentType;
-  };
+  /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
+  zone?: { id: string; label: () => string; icon: Icon; page: ComponentType };
   /** `page` names an existing deck page to add the tiles to, instead of a page of their own. */
   deck?: { id: string; label: () => string; tiles: ComponentType[]; page?: string };
   /**
-   * Built-in zones a widget of this module joins (Panoramica takes every widget anyway), placed at the bottom of
-   * the zone's default layout until the owner rearranges it.
+   * Tabs this module adds to zone pages, built-in or declared by another module, after the page's own tabs. A zone that
+   * does not exist skips the section (logged once at startup).
    */
-  places?: Array<{ zone: string; widget: string; size: WidgetSize }>;
+  sections?: ModuleSection[];
 };

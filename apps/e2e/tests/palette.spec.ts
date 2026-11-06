@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { restoreDesktop } from './desktop.ts';
 
@@ -44,7 +45,9 @@ test('Ctrl+K searches the registry, arrows and Enter run an action and Escape re
   await expect(palette).not.toBeVisible();
   await expect(origin).toBeFocused();
   await page.keyboard.press('Control+k');
-  await expect(palette.getByRole('option').first()).toContainText('Riproduci o metti in pausa');
+  await expect(palette.getByRole('group', { name: 'Azioni' }).getByRole('option').first()).toContainText(
+    'Riproduci o metti in pausa',
+  );
   await search.fill('nessuna-corrispondenza');
   await expect(palette.getByRole('status')).toContainText('Nessun risultato');
   await expect(search).not.toHaveAttribute('aria-activedescendant');
@@ -130,6 +133,81 @@ test('a schema enum offers the registered workspace values and submits one valid
   await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
   expect((await sent).postData()).toContain('"name":"music"');
   await expect(palette.getByRole('status')).toHaveText('Fatto');
+});
+
+const button = (page: Page) => page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
+
+test('at rest the palette is a round button at the bottom right of every desk page', async ({ page }) => {
+  for (const path of ['/desk', '/desk/studio', '/desk/settings']) {
+    await page.goto(path);
+    const box = await button(page).boundingBox();
+    const view = page.viewportSize();
+    if (!box || !view) throw new Error('missing box');
+    expect(box.x + box.width).toBeGreaterThan(view.width * 0.9);
+    expect(box.y + box.height).toBeGreaterThan(view.height * 0.9);
+    expect(box.width).toBeCloseTo(box.height, 0);
+    await expect(button(page)).toHaveCSS('border-radius', /^\d+(\.\d+)?px$/);
+  }
+});
+
+test('the button and Ctrl+K open the palette at the bottom center and Escape returns focus to the button', async ({
+  page,
+}) => {
+  await page.goto('/desk');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  const view = page.viewportSize();
+  if (!view) throw new Error('no viewport');
+  for (const open of [() => button(page).click(), () => page.keyboard.press('Control+k')]) {
+    await open();
+    await expect(palette).toBeVisible();
+    // The entrance travels for a moment; the resting place is the bottom center.
+    await expect
+      .poll(async () => {
+        const box = await palette.boundingBox();
+        return box ? Math.round(Math.abs(box.x + box.width / 2 - view.width / 2)) : -1;
+      })
+      .toBe(0);
+    const box = await palette.boundingBox();
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(view.height * 0.9);
+    await page.keyboard.press('Escape');
+    await expect(palette).not.toBeVisible();
+    await expect(button(page)).toBeFocused();
+  }
+});
+
+test('opening grows the palette out of the button, and with reduced motion it just appears', async ({ page }) => {
+  const opening = () =>
+    page.evaluate(async () => {
+      document.getElementById('palette-button')?.click();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      return document.querySelector('dialog')?.getAnimations().length ?? -1;
+    });
+  await page.goto('/desk');
+  await expect(button(page)).toBeVisible();
+  expect(await opening()).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await opening()).toBe(0);
+});
+
+test('Vai a lists the rail zones above the actions and navigates', async ({ page }) => {
+  await page.goto('/desk');
+  await expect(button(page)).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  const goto = palette.getByRole('group', { name: 'Vai a' });
+  const names = ['Panoramica', 'Studio', 'Media', 'Sistema', 'Dispositivi'];
+  if (examples) names.push('Lavoro', 'Esempio');
+  names.push('Impostazioni');
+  await expect(goto.getByRole('option')).toHaveText(names);
+  const first = await goto.getByRole('option').first().boundingBox();
+  const action = await palette.getByRole('group', { name: 'Azioni' }).getByRole('option').first().boundingBox();
+  expect(first?.y).toBeLessThan(action?.y ?? 0);
+  await palette.getByRole('combobox').fill('Impostazioni');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/desk\/settings$/);
+  await expect(palette).not.toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Impostazioni' })).toBeVisible();
 });
 
 if (examples)

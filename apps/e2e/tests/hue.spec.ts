@@ -39,7 +39,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await page.setViewportSize({ width: 3840, height: 2160 });
     const { context, phone } = await openDeck(browser);
     try {
-      await page.goto('/desk/devices');
+      await page.goto('/desk/devices?tab=luci');
       const panel = page.getByRole('region', { name: 'Luci', exact: true });
       await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
@@ -76,7 +76,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 
   test('the icon toggle keeps pending, success and error feedback and writes once', async ({ page, request }) => {
-    await page.goto('/desk/devices');
+    await page.goto('/desk/devices?tab=luci');
     const panel = page.getByRole('region', { name: 'Luci', exact: true });
     const toggle = panel.getByRole('button', { name: /^Luce:/ });
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
@@ -123,7 +123,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     page,
     request,
   }) => {
-    await page.goto('/desk/devices');
+    await page.goto('/desk/devices?tab=luci');
     const panel = page.getByRole('region', { name: 'Luci', exact: true });
     const slider = panel.getByRole('slider', { name: 'Luminosità' });
     await slider.focus();
@@ -158,7 +158,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   }) => {
     const { context, phone } = await openDeck(browser);
     try {
-      await page.goto('/desk/devices');
+      await page.goto('/desk/devices?tab=luci');
       const panel = page.getByRole('region', { name: 'Luci', exact: true });
       const tile = phone.getByRole('button', { name: /^Luci:/ });
       const toggle = panel.getByRole('button', { name: /^Luce:/ });
@@ -189,7 +189,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
 
   test('losing Hub disables the light toggle until the socket recovers', async ({ page, request }) => {
     const sockets = await controlSockets(page);
-    await page.goto('/desk/devices');
+    await page.goto('/desk/devices?tab=luci');
     const toggle = page.getByRole('region', { name: 'Luci', exact: true }).getByRole('button', { name: /^Luce:/ });
     await expect(toggle).toBeEnabled();
     await sockets.cut();
@@ -207,7 +207,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     const { context, phone } = await openDeck(browser);
     try {
       await freezePomodoro(page);
-      await page.goto('/desk/devices');
+      await page.goto('/desk/devices?tab=luci');
       const panel = page.getByRole('region', { name: 'Luci', exact: true });
       const deckShot = { animations: 'disabled', scale: 'css' } as const;
       await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
@@ -239,22 +239,21 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     }
   });
 
-  test('the light widget sits in Dispositivi at 4K and Panoramica does not get it by default', async ({ page }) => {
+  test('the light is the Luci tab of Dispositivi at 4K and Panoramica does not get its widget by default', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await freezePomodoro(page);
     await page.route('**/trpc/health*', (route) =>
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
-    await page.goto('/desk/devices');
+    await page.goto('/desk/devices?tab=luci');
     await expect(
       page.getByRole('region', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
     ).toBeVisible();
     await settleFonts(page);
-    // The device list shows last-seen times; this check is about where the light sits.
-    await expect(page).toHaveScreenshot('desk-lights-4k.png', {
-      animations: 'disabled',
-      mask: [page.locator('[data-widget="devices"]')],
-    });
+    await expect(page.getByRole('tab', { name: 'Luci' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page).toHaveScreenshot('desk-lights-4k.png', { animations: 'disabled' });
     await page.goto('/desk');
     await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();
     await expect(page.getByRole('region', { name: 'Luci', exact: true })).toHaveCount(0);

@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { getUntypedClient } from '@trpc/client';
 import { Command } from 'cmdk';
 import { LightningIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
@@ -33,13 +34,58 @@ function actionZone(path: string) {
     theme: 'devices',
   };
   const zone =
-    module?.zone ?? zones.find((item) => item.id === (module?.places?.[0]?.zone ?? builtins[name ?? ''] ?? 'overview'));
+    module?.zone ??
+    zones.find((item) => item.id === (module?.sections?.[0]?.zone ?? builtins[name ?? ''] ?? 'overview'));
   return zone?.label() ?? m.zone_overview();
 }
 
+const BUTTON_ID = 'palette-button';
+
+const groupClass =
+  '[&_[cmdk-group-heading]]:px-sm [&_[cmdk-group-heading]]:pt-sm [&_[cmdk-group-heading]]:pb-2xs [&_[cmdk-group-heading]]:text-caption [&_[cmdk-group-heading]]:text-muted-foreground';
+const itemClass =
+  'flex min-h-touch cursor-pointer items-center gap-sm rounded-md px-sm py-xs text-label aria-disabled:opacity-60 aria-selected:bg-muted';
+
+const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/**
+ * The palette grows out of the round button: the dialog starts shifted so its bottom right corner sits on the button's
+ * and clipped to the button's size, then travels to the bottom center while the clip opens, so content is never scaled.
+ * Its content fades in over the second half. With reduced motion it just appears.
+ */
+function growFrom(button: HTMLElement, dialog: HTMLDialogElement) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const from = button.getBoundingClientRect();
+  const to = dialog.getBoundingClientRect();
+  const duration = Number.parseFloat(token('--motion-standard'));
+  const options = { duration, easing: token('--ease-out'), fill: 'backwards' } satisfies KeyframeAnimationOptions;
+  dialog.animate(
+    [
+      {
+        transform: `translate(${from.right - to.right}px, ${from.bottom - to.bottom}px)`,
+        clipPath: `inset(${to.height - from.height}px 0 0 ${to.width - from.width}px round ${from.height / 2}px)`,
+      },
+      { transform: 'none', clipPath: `inset(0 round ${getComputedStyle(dialog).borderTopLeftRadius})` },
+    ],
+    options,
+  );
+  dialog.animate([{ opacity: 0 }, { opacity: 1 }], { ...options, pseudoElement: '::backdrop' });
+  dialog.firstElementChild?.animate([{ opacity: 0 }, { opacity: 1 }], {
+    ...options,
+    duration: duration / 2,
+    delay: duration / 2,
+  });
+}
+
+// A module-level function keeps the ref callback stable: a new one on every render would close and reopen the dialog.
 function mountPalette(dialog: HTMLDialogElement | null) {
   if (!dialog) return undefined;
   dialog.showModal();
+  // cmdk hands focus to the input when its first item is selected after opening, but the zones are items from the start.
+  dialog.querySelector('input')?.focus();
+  const button = document.getElementById(BUTTON_ID);
+  if (button) growFrom(button, dialog);
+  // Closing hands focus back to what opened the palette, the button when it was clicked.
   return () => dialog.close();
 }
 
@@ -47,6 +93,7 @@ export function DeskCommandPalette() {
   const trpc = useTRPC();
   const client = useTRPCClient();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const session = useRef(0);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -54,6 +101,13 @@ export function DeskCommandPalette() {
   const [status, setStatus] = useState<'idle' | 'pending' | 'error'>('idle');
   const [recent, setRecent] = useState(recentPaths);
   const registry = useQuery(trpc.registry.list.queryOptions(undefined, { enabled: open }));
+  function toggle() {
+    session.current++;
+    setSelected(null);
+    setQuery('');
+    setStatus('idle');
+    setOpen((current) => !current);
+  }
   const onHotkey = useEffectEvent((event: KeyboardEvent) => {
     if (
       event.repeat ||
@@ -64,11 +118,7 @@ export function DeskCommandPalette() {
     )
       return;
     event.preventDefault();
-    session.current++;
-    setSelected(null);
-    setQuery('');
-    setStatus('idle');
-    setOpen((current) => !current);
+    toggle();
   });
   useEffect(() => {
     document.addEventListener('keydown', onHotkey);
@@ -115,101 +165,139 @@ export function DeskCommandPalette() {
     const second = recent.indexOf(b.path);
     return (first < 0 ? recent.length : first) - (second < 0 ? recent.length : second);
   });
-  if (!open) return null;
   return (
-    <dialog
-      ref={mountPalette}
-      aria-label={m.palette_title()}
-      onCancel={close}
-      onKeyDownCapture={(event) => {
-        // HoldButton consumes Escape to cancel a hold; the palette must close as well.
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          close();
-        }
-      }}
-      className="fixed inset-0 m-auto max-h-dvh w-sheet max-w-full overflow-hidden rounded-lg border border-border bg-surface p-0 text-foreground backdrop:bg-background/55"
-    >
-      {selected ? (
-        <div className="max-h-dvh overflow-y-auto p-lg">
-          <PaletteForm action={selected} run={(input) => run(selected, input)} />
-        </div>
-      ) : (
-        <Command
-          label={m.palette_search()}
-          loop
-          vimBindings={false}
+    <>
+      <button
+        type="button"
+        id={BUTTON_ID}
+        aria-label={m.palette_open()}
+        title={m.palette_open()}
+        onClick={toggle}
+        className={`desk-glass fixed right-xl bottom-xl z-40 flex size-touch items-center justify-center rounded-full border text-foreground transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-accent ${open ? 'opacity-0' : ''}`}
+      >
+        <MagnifyingGlassIcon aria-hidden="true" className="size-icon" />
+      </button>
+      {open && (
+        <dialog
+          ref={mountPalette}
+          aria-label={m.palette_title()}
+          onCancel={close}
           onKeyDownCapture={(event) => {
-            if (status === 'pending' && event.key === 'Enter') {
+            // HoldButton consumes Escape to cancel a hold; the palette must close as well.
+            if (event.key === 'Escape') {
               event.preventDefault();
-              event.stopPropagation();
+              close();
             }
           }}
+          className="fixed inset-x-0 top-auto bottom-xl m-auto max-h-dvh w-sheet max-w-full overflow-hidden rounded-lg border border-border bg-surface p-0 text-foreground backdrop:bg-background/55"
         >
-          <div className="flex items-center gap-sm border-b border-border p-md">
-            <MagnifyingGlassIcon
-              aria-hidden="true"
-              data-icon="magnifying-glass"
-              className="size-icon shrink-0 text-muted-foreground"
-            />
-            <Command.Input
-              onValueChange={setQuery}
-              placeholder={m.palette_search()}
-              className="min-h-touch min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-muted-foreground"
-            />
-            <span className="text-caption text-muted-foreground">{m.palette_escape()}</span>
-          </div>
-          <Command.List label={m.palette_title()} className="max-h-widget-row overflow-y-auto overscroll-contain p-xs">
-            <Command.Empty asChild>
-              {/* cmdk.Empty supplies role=presentation through its slot, so the explicit status must win. */}
-              {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Preserve live status through cmdk's slot role override. */}
-              <output role="status" className="block p-md text-body text-muted-foreground">
-                {registry.isError
-                  ? m.palette_error()
-                  : registry.isPending
-                    ? m.palette_loading()
-                    : m.palette_empty({ query })}
-              </output>
-            </Command.Empty>
-            {actions.map((action) => (
-              <Command.Item
-                key={action.path}
-                value={action.path}
-                keywords={[action.label, action.description]}
-                disabled={status === 'pending'}
-                onSelect={() => {
-                  void choose(action);
-                }}
-                className="flex min-h-touch cursor-pointer items-center gap-sm rounded-md px-sm py-xs text-label aria-disabled:opacity-60 aria-selected:bg-muted"
-              >
-                <LightningIcon
+          {selected ? (
+            <div className="max-h-dvh overflow-y-auto p-lg">
+              <PaletteForm action={selected} run={(input) => run(selected, input)} />
+            </div>
+          ) : (
+            <Command
+              label={m.palette_search()}
+              className="flex flex-col"
+              loop
+              vimBindings={false}
+              onKeyDownCapture={(event) => {
+                if (status === 'pending' && event.key === 'Enter') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }
+              }}
+            >
+              <div className="order-3 flex items-center gap-sm border-t border-border p-md">
+                <MagnifyingGlassIcon
                   aria-hidden="true"
-                  data-icon="lightning"
+                  data-icon="magnifying-glass"
                   className="size-icon shrink-0 text-muted-foreground"
                 />
-                <span className="min-w-0 flex-1">
-                  <span className="block">{action.label}</span>
-                  {action.schema && (
-                    <span className="block text-caption text-muted-foreground">
-                      {paletteFields(action.schema, action.danger) === null
-                        ? m.palette_not_runnable()
-                        : m.palette_needs_input()}
-                    </span>
-                  )}
-                </span>
-                <span className="text-caption text-muted-foreground">{actionZone(action.path)}</span>
-              </Command.Item>
-            ))}
-          </Command.List>
-          <p aria-live="polite" className="block border-t border-border px-md py-sm text-caption text-muted-foreground">
-            {status === 'pending'
-              ? m.action_pending()
-              : status === 'error'
-                ? m.palette_error()
-                : m.palette_keyboard_hint()}
-          </p>
-        </Command>
+                <Command.Input
+                  onValueChange={setQuery}
+                  placeholder={m.palette_search()}
+                  className="min-h-touch min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-muted-foreground"
+                />
+                <span className="text-caption text-muted-foreground">{m.palette_escape()}</span>
+              </div>
+              <Command.List
+                label={m.palette_title()}
+                className="order-1 max-h-widget-row overflow-y-auto overscroll-contain p-xs"
+              >
+                <Command.Empty asChild>
+                  {/* cmdk.Empty supplies role=presentation through its slot, so the explicit status must win. */}
+                  {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Preserve live status through cmdk's slot role override. */}
+                  <output role="status" className="block p-md text-body text-muted-foreground">
+                    {registry.isError
+                      ? m.palette_error()
+                      : registry.isPending
+                        ? m.palette_loading()
+                        : m.palette_empty({ query })}
+                  </output>
+                </Command.Empty>
+                <Command.Group heading={m.palette_goto()} className={groupClass}>
+                  {zones.map((zone) => (
+                    <Command.Item
+                      key={zone.id}
+                      value={zone.label()}
+                      onSelect={() => {
+                        close();
+                        void navigate({ to: zone.path, params: zone.params });
+                      }}
+                      className={itemClass}
+                    >
+                      <zone.icon aria-hidden="true" className="size-icon shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1">{zone.label()}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+                <Command.Group heading={m.palette_actions()} className={groupClass}>
+                  {actions.map((action) => (
+                    <Command.Item
+                      key={action.path}
+                      value={action.path}
+                      keywords={[action.label, action.description]}
+                      disabled={status === 'pending'}
+                      onSelect={() => {
+                        void choose(action);
+                      }}
+                      className={itemClass}
+                    >
+                      <LightningIcon
+                        aria-hidden="true"
+                        data-icon="lightning"
+                        className="size-icon shrink-0 text-muted-foreground"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block">{action.label}</span>
+                        {action.schema && (
+                          <span className="block text-caption text-muted-foreground">
+                            {paletteFields(action.schema, action.danger) === null
+                              ? m.palette_not_runnable()
+                              : m.palette_needs_input()}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-caption text-muted-foreground">{actionZone(action.path)}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              </Command.List>
+              <p
+                aria-live="polite"
+                className="order-2 block border-t border-border px-md py-sm text-caption text-muted-foreground"
+              >
+                {status === 'pending'
+                  ? m.action_pending()
+                  : status === 'error'
+                    ? m.palette_error()
+                    : m.palette_keyboard_hint()}
+              </p>
+            </Command>
+          )}
+        </dialog>
       )}
-    </dialog>
+    </>
   );
 }

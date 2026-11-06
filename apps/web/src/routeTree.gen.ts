@@ -15,7 +15,10 @@ import { Route as DeskRouteImport } from './routes/desk'
 import { Route as DeskIndexRouteImport } from './routes/desk.index'
 import { Route as DeskModuleRouteImport } from './routes/desk.$module'
 import { Route as DeskDevicesRouteImport } from './routes/desk.devices'
+import { Route as DeskLavoroRouteImport } from './routes/desk.lavoro'
 import { Route as DeskMediaRouteImport } from './routes/desk.media'
+import { Route as DeskMessaggiRouteImport } from './routes/desk.messaggi'
+import { Route as DeskSettingsRouteImport } from './routes/desk.settings'
 import { Route as DeskStudioRouteImport } from './routes/desk.studio'
 import { Route as DeskSystemRouteImport } from './routes/desk.system'
 
@@ -49,9 +52,24 @@ const DeskDevicesRoute = DeskDevicesRouteImport.update({
   path: '/devices',
   getParentRoute: () => DeskRoute,
 } as any)
+const DeskLavoroRoute = DeskLavoroRouteImport.update({
+  id: '/lavoro',
+  path: '/lavoro',
+  getParentRoute: () => DeskRoute,
+} as any)
 const DeskMediaRoute = DeskMediaRouteImport.update({
   id: '/media',
   path: '/media',
+  getParentRoute: () => DeskRoute,
+} as any)
+const DeskMessaggiRoute = DeskMessaggiRouteImport.update({
+  id: '/messaggi',
+  path: '/messaggi',
+  getParentRoute: () => DeskRoute,
+} as any)
+const DeskSettingsRoute = DeskSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => DeskRoute,
 } as any)
 const DeskStudioRoute = DeskStudioRouteImport.update({
@@ -71,7 +89,10 @@ export interface FileRoutesByFullPath {
   '/desk': typeof DeskRouteWithChildren
   '/desk/$module': typeof DeskModuleRoute
   '/desk/devices': typeof DeskDevicesRoute
+  '/desk/lavoro': typeof DeskLavoroRoute
   '/desk/media': typeof DeskMediaRoute
+  '/desk/messaggi': typeof DeskMessaggiRoute
+  '/desk/settings': typeof DeskSettingsRoute
   '/desk/studio': typeof DeskStudioRoute
   '/desk/system': typeof DeskSystemRoute
   '/desk/': typeof DeskIndexRoute
@@ -81,7 +102,10 @@ export interface FileRoutesByTo {
   '/deck': typeof DeckRoute
   '/desk/$module': typeof DeskModuleRoute
   '/desk/devices': typeof DeskDevicesRoute
+  '/desk/lavoro': typeof DeskLavoroRoute
   '/desk/media': typeof DeskMediaRoute
+  '/desk/messaggi': typeof DeskMessaggiRoute
+  '/desk/settings': typeof DeskSettingsRoute
   '/desk/studio': typeof DeskStudioRoute
   '/desk/system': typeof DeskSystemRoute
   '/desk': typeof DeskIndexRoute
@@ -93,7 +117,10 @@ export interface FileRoutesById {
   '/desk': typeof DeskRouteWithChildren
   '/desk/$module': typeof DeskModuleRoute
   '/desk/devices': typeof DeskDevicesRoute
+  '/desk/lavoro': typeof DeskLavoroRoute
   '/desk/media': typeof DeskMediaRoute
+  '/desk/messaggi': typeof DeskMessaggiRoute
+  '/desk/settings': typeof DeskSettingsRoute
   '/desk/studio': typeof DeskStudioRoute
   '/desk/system': typeof DeskSystemRoute
   '/desk/': typeof DeskIndexRoute
@@ -106,7 +133,10 @@ export interface FileRouteTypes {
     | '/desk'
     | '/desk/$module'
     | '/desk/devices'
+    | '/desk/lavoro'
     | '/desk/media'
+    | '/desk/messaggi'
+    | '/desk/settings'
     | '/desk/studio'
     | '/desk/system'
     | '/desk/'
@@ -116,7 +146,10 @@ export interface FileRouteTypes {
     | '/deck'
     | '/desk/$module'
     | '/desk/devices'
+    | '/desk/lavoro'
     | '/desk/media'
+    | '/desk/messaggi'
+    | '/desk/settings'
     | '/desk/studio'
     | '/desk/system'
     | '/desk'
@@ -127,7 +160,10 @@ export interface FileRouteTypes {
     | '/desk'
     | '/desk/$module'
     | '/desk/devices'
+    | '/desk/lavoro'
     | '/desk/media'
+    | '/desk/messaggi'
+    | '/desk/settings'
     | '/desk/studio'
     | '/desk/system'
     | '/desk/'
@@ -183,11 +219,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskDevicesRouteImport
       parentRoute: typeof DeskRoute
     }
+    '/desk/lavoro': {
+      id: '/desk/lavoro'
+      path: '/lavoro'
+      fullPath: '/desk/lavoro'
+      preLoaderRoute: typeof DeskLavoroRouteImport
+      parentRoute: typeof DeskRoute
+    }
     '/desk/media': {
       id: '/desk/media'
       path: '/media'
       fullPath: '/desk/media'
       preLoaderRoute: typeof DeskMediaRouteImport
+      parentRoute: typeof DeskRoute
+    }
+    '/desk/messaggi': {
+      id: '/desk/messaggi'
+      path: '/messaggi'
+      fullPath: '/desk/messaggi'
+      preLoaderRoute: typeof DeskMessaggiRouteImport
+      parentRoute: typeof DeskRoute
+    }
+    '/desk/settings': {
+      id: '/desk/settings'
+      path: '/settings'
+      fullPath: '/desk/settings'
+      preLoaderRoute: typeof DeskSettingsRouteImport
       parentRoute: typeof DeskRoute
     }
     '/desk/studio': {
@@ -210,7 +267,10 @@ declare module '@tanstack/react-router' {
 interface DeskRouteChildren {
   DeskModuleRoute: typeof DeskModuleRoute
   DeskDevicesRoute: typeof DeskDevicesRoute
+  DeskLavoroRoute: typeof DeskLavoroRoute
   DeskMediaRoute: typeof DeskMediaRoute
+  DeskMessaggiRoute: typeof DeskMessaggiRoute
+  DeskSettingsRoute: typeof DeskSettingsRoute
   DeskStudioRoute: typeof DeskStudioRoute
   DeskSystemRoute: typeof DeskSystemRoute
   DeskIndexRoute: typeof DeskIndexRoute
@@ -219,7 +279,10 @@ interface DeskRouteChildren {
 const DeskRouteChildren: DeskRouteChildren = {
   DeskModuleRoute: DeskModuleRoute,
   DeskDevicesRoute: DeskDevicesRoute,
+  DeskLavoroRoute: DeskLavoroRoute,
   DeskMediaRoute: DeskMediaRoute,
+  DeskMessaggiRoute: DeskMessaggiRoute,
+  DeskSettingsRoute: DeskSettingsRoute,
   DeskStudioRoute: DeskStudioRoute,
   DeskSystemRoute: DeskSystemRoute,
   DeskIndexRoute: DeskIndexRoute,

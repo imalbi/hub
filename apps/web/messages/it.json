@@ -10,6 +10,11 @@
   "zone_study": "Studio",
   "zone_media": "Media",
   "zone_system": "Sistema",
+  "zone_work": "Lavoro",
+  "zone_messages": "Messaggi",
+  "zone_settings": "Impostazioni",
+  "zone_tabs": "Sezioni",
+  "page_not_found": "Pagina non trovata",
   "desk_zones": "Zone",
   "zone_open": "Apri {zone}",
   "action_pending": "In corso",
@@ -57,5 +62,8 @@
   "palette_no": "No",
   "palette_hold": "Tieni premuto per {label}",
   "palette_keyboard_hint": "Frecce per scegliere, Invio per aprire, Esc per chiudere",
-  "palette_escape": "Esc"
+  "palette_escape": "Esc",
+  "palette_open": "Cerca o esegui, scorciatoia Ctrl K",
+  "palette_goto": "Vai a",
+  "palette_actions": "Azioni"
 }

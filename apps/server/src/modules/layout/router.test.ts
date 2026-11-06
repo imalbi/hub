@@ -61,6 +61,22 @@ void test('only the known shape is saved: zone, id pattern, size, positions on 1
   await app.close();
 });
 
+void test('only Panoramica is a board: get, save and reset refuse every other zone', async () => {
+  const app = server();
+  for (const zone of ['study', 'media', 'system', 'devices', 'settings', 'work', 'messages', 'hello']) {
+    const read = await app.inject({
+      method: 'GET',
+      url: `/trpc/layout.get?input=${encodeURIComponent(JSON.stringify({ zone }))}`,
+    });
+    assert.equal(read.statusCode, 400, `get ${zone}`);
+    assert.equal((await post(app, 'layout.save', { zone, items })).statusCode, 400, `save ${zone}`);
+    assert.equal((await post(app, 'layout.reset', { zone })).statusCode, 400, `reset ${zone}`);
+  }
+  assert.equal((await post(app, 'layout.save', { zone: 'overview', items })).statusCode, 200);
+  assert.deepEqual(await get(app), items);
+  await app.close();
+});
+
 void test('a LAN device without a token cannot read or change the board', async () => {
   const app = server();
   const res = await app.inject({

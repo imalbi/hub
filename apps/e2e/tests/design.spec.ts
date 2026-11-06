@@ -47,10 +47,10 @@ test('the visible countdown ticks without changing its live announcement', async
 });
 
 test('rail labels remain readable when the active link is hovered in either theme', async ({ page }) => {
-  await page.goto('/desk/devices');
+  await page.goto('/desk/settings');
   for (const theme of ['Scuro', 'Chiaro']) {
     await chooseTheme(page, theme);
-    const active = page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Dispositivi' });
+    const active = page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Impostazioni' });
     await active.hover();
     const label = active.locator('.desk-rail-label');
     await expect(label).toHaveCSS('opacity', '1');
@@ -101,7 +101,7 @@ test('rail selection moves, glass follows the theme and reduced motion stops tra
   await expect(rail.locator('.desk-glass')).not.toHaveCSS('backdrop-filter', 'none');
   const player = page.getByRole('region', { name: 'Player musicale' });
   await expect(player).not.toHaveCSS('backdrop-filter', 'none');
-  await rail.getByRole('link', { name: 'Dispositivi' }).click();
+  await rail.getByRole('link', { name: 'Impostazioni' }).click();
   await expect.poll(() => indicator.evaluate((element) => getComputedStyle(element).transform)).not.toBe(before);
   await chooseTheme(page, 'Chiaro');
   await expect(rail.locator('.desk-glass')).toHaveCSS('backdrop-filter', 'none');

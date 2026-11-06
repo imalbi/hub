@@ -1,5 +1,6 @@
 import { LightbulbIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
+import { PageGrid } from '../../components/page-grid.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import type { WidgetSize } from '../../lib/widget-size.ts';
@@ -70,5 +71,16 @@ export function LightsPanel({ size }: { size: WidgetSize }) {
         </p>
       ) : null}
     </Panel>
+  );
+}
+
+/** The Luci tab of Dispositivi: the panel at its largest size, in the page grid. */
+export function LightsSection() {
+  return (
+    <PageGrid>
+      <div className="col-span-6">
+        <LightsPanel size="medium" />
+      </div>
+    </PageGrid>
   );
 }
