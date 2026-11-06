@@ -99,6 +99,9 @@ void test('audio.onState pushes the current state, then the new one right after 
         { label: 'Cuffie', available: true },
         { label: 'Monitor', available: true },
       ],
+      volume: 0.8,
+      muted: false,
+      micMuted: false,
     }),
   );
 
@@ -117,6 +120,9 @@ void test('audio.onState pushes the current state, then the new one right after 
         { label: 'Cuffie', available: true },
         { label: 'Monitor', available: true },
       ],
+      volume: 0.8,
+      muted: false,
+      micMuted: false,
     }),
   );
   client.close();

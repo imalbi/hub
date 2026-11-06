@@ -127,6 +127,7 @@ test('a schema enum offers the registered workspace values and submits one valid
     'Scegli un valore',
     'communication',
     'music',
+    'hub',
   ]);
   await name.selectOption('music');
   const sent = page.waitForRequest((request) => request.url().includes('system.toggleWorkspace'));

@@ -26,12 +26,14 @@ void test('each action runs its exact command through the fake desktop', async (
   assert.equal((await call('lock')).statusCode, 200);
   assert.equal((await call('toggleWorkspace', { name: 'communication' })).statusCode, 200);
   assert.equal((await call('toggleWorkspace', { name: 'music' })).statusCode, 200);
+  assert.equal((await call('toggleWorkspace', { name: 'hub' })).statusCode, 200);
   for (const path of ['suspend', 'reboot', 'powerOff'])
     assert.equal((await call(path, { confirmed: true })).statusCode, 200, path);
   assert.deepEqual(system, [
     ['caelestia', 'shell', 'lock', 'lock'],
     ['caelestia', 'toggle', 'communication'],
     ['caelestia', 'toggle', 'music'],
+    ['caelestia', 'toggle', 'hub'],
     ['systemctl', 'suspend'],
     ['systemctl', 'reboot'],
     ['systemctl', 'poweroff'],
@@ -41,7 +43,7 @@ void test('each action runs its exact command through the fake desktop', async (
 void test('power actions need the hold confirmation; workspaces outside the list and the LAN are refused', async (t) => {
   const { system, call } = setup(t);
   for (const path of ['suspend', 'reboot', 'powerOff']) assert.equal((await call(path)).statusCode, 412, path);
-  assert.equal((await call('toggleWorkspace', { name: 'hub' })).statusCode, 400);
+  assert.equal((await call('toggleWorkspace', { name: 'unknown' })).statusCode, 400);
   assert.equal((await call('lock', {}, '192.0.2.20')).statusCode, 401);
   assert.deepEqual(system, []);
 });

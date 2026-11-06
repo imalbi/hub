@@ -34,7 +34,7 @@ void test('every other command is refused and changes nothing', async () => {
     ['pw-dump', ['--unknown']],
     ['systemctl', ['poweroff', '--force']],
     ['systemctl', ['halt']],
-    ['caelestia', ['toggle', 'hub']],
+    ['caelestia', ['toggle', 'unknown']],
     ['webdigest', []],
     ['xdg-open', ['https://example.com']],
   ] as const;
@@ -71,4 +71,35 @@ void test('Hub notifications are accepted and recorded without invoking a binary
   assert.equal((await run('notify-send', args)).code, 0);
   assert.deepEqual(notifications, [args]);
   assert.notEqual((await run('notify-send', ['--wait', 'unrecognized'])).code, 0);
+});
+
+void test('caelestia toggle hub is accepted and recorded in system array', async () => {
+  const system: string[][] = [];
+  const run = createFakeDesktop({ system });
+  assert.equal((await run('caelestia', ['toggle', 'hub'])).code, 0);
+  assert.deepEqual(system, [['caelestia', 'toggle', 'hub']]);
+});
+
+void test('wpctl get-volume, set-volume and set-mute manage fake audio state', async () => {
+  const run = createFakeDesktop();
+  assert.equal((await run('wpctl', ['get-volume', '@DEFAULT_AUDIO_SINK@'])).stdout.trim(), 'Volume: 0.80');
+  assert.equal((await run('wpctl', ['get-volume', '@DEFAULT_AUDIO_SOURCE@'])).stdout.trim(), 'Volume: 1.00');
+
+  assert.equal((await run('wpctl', ['set-volume', '@DEFAULT_AUDIO_SINK@', '0.50'])).code, 0);
+  assert.equal((await run('wpctl', ['get-volume', '@DEFAULT_AUDIO_SINK@'])).stdout.trim(), 'Volume: 0.50');
+
+  assert.equal((await run('wpctl', ['set-mute', '@DEFAULT_AUDIO_SINK@', 'toggle'])).code, 0);
+  assert.equal((await run('wpctl', ['get-volume', '@DEFAULT_AUDIO_SINK@'])).stdout.trim(), 'Volume: 0.50 [MUTED]');
+
+  assert.equal((await run('wpctl', ['set-mute', '@DEFAULT_AUDIO_SOURCE@', 'toggle'])).code, 0);
+  assert.equal((await run('wpctl', ['get-volume', '@DEFAULT_AUDIO_SOURCE@'])).stdout.trim(), 'Volume: 1.00 [MUTED]');
+});
+
+void test('airplay status, start and stop manage fake AirPlay state', async () => {
+  const run = createFakeDesktop();
+  assert.equal((await run('airplay', ['status'])).code, 1);
+  assert.equal((await run('airplay', ['start'])).code, 0);
+  assert.equal((await run('airplay', ['status'])).code, 0);
+  assert.equal((await run('airplay', ['stop'])).code, 0);
+  assert.equal((await run('airplay', ['status'])).code, 1);
 });

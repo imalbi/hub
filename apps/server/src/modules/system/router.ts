@@ -36,9 +36,9 @@ export function createSystemRouter(power: PowerLive) {
       .meta({
         label: 'Apri spazio di lavoro',
         description:
-          'Show or hide a special workspace on the PC: communication (chat apps) or music (the music player)',
+          'Show or hide a special workspace on the PC: communication (chat apps), music (the music player), or hub (Hub dashboard)',
       })
-      .input(z.object({ name: z.enum(['communication', 'music']) }))
+      .input(z.object({ name: z.enum(['communication', 'music', 'hub']) }))
       .mutation(({ ctx, input }) => command(ctx, 'caelestia', ['toggle', input.name])),
   });
 }

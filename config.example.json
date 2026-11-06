@@ -12,5 +12,6 @@
     "command": "/path/to/webdigest"
   },
   "system": { "powerstatDir": "/path/to/powerstat/state" },
-  "pomodoro": { "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15, "longBreakEvery": 4 }
+  "pomodoro": { "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15, "longBreakEvery": 4 },
+  "airplay": { "command": "/path/to/airplay" }
 }

@@ -1,5 +1,5 @@
 import { run as realRun, type Run, type RunResult } from './core/exec.ts';
-import { parsePwDump } from './modules/audio/pipewire.ts';
+import { parsePwDump, parseVolume } from './modules/audio/pipewire.ts';
 import { loadConfig } from './core/config.ts';
 import { MEDIA_FORMAT, parseMediaState } from './modules/media/playerctl.ts';
 import { createNewsLive } from './modules/news/page.ts';
@@ -24,6 +24,13 @@ function judgeWpctlHelp(result: RunResult): Verdict {
   return result.stdout.includes('set-default')
     ? { status: 'ok', detail: 'set-default listed' }
     : { status: 'unparseable', detail: 'set-default not listed in the help' };
+}
+
+function judgeGetVolume(result: RunResult): Verdict {
+  if (result.code !== 0) return { status: 'unparseable', detail: exitDetail(result) };
+  const volume = parseVolume(result.stdout);
+  if (!volume) return { status: 'unparseable', detail: 'unknown volume format' };
+  return { status: 'ok', detail: `volume ${Math.round(volume.volume * 100)}%${volume.muted ? ' (muted)' : ''}` };
 }
 
 function judgeNotifyHelp(result: RunResult): Verdict {
@@ -64,6 +71,7 @@ function judgeMetadata(result: RunResult): Verdict {
 // Read-only on purpose: no `set-default`, no `play-pause`. This runs against the real desktop.
 const checks = [
   { name: 'wpctl --help', bin: 'wpctl', args: ['--help'], judge: judgeWpctlHelp },
+  { name: 'wpctl get-volume', bin: 'wpctl', args: ['get-volume', '@DEFAULT_AUDIO_SINK@'], judge: judgeGetVolume },
   { name: 'playerctl --version', bin: 'playerctl', args: ['--version'], judge: judgeVersion },
   { name: 'pw-dump', bin: 'pw-dump', args: [], judge: judgePwDump },
   { name: 'playerctl metadata', bin: 'playerctl', args: ['metadata', '--format', MEDIA_FORMAT], judge: judgeMetadata },

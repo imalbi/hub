@@ -46,8 +46,14 @@ const mutations = Object.entries<unknown>(appRouter._def.procedures).flatMap(([p
 // Later steps derive LLM tools from this meta, so no action may lack it.
 void test('every mutation carries an Italian label and an English description in its meta', () => {
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
+    'airplay.start',
+    'airplay.stop',
     'audio.cycleOutput',
     'audio.setOutput',
+    'audio.setVolume',
+    'audio.stepVolume',
+    'audio.toggleMicMute',
+    'audio.toggleMute',
     'devices.revoke',
     'layout.reset',
     'layout.save',

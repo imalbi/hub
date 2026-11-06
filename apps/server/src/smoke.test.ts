@@ -29,6 +29,7 @@ void test('every check is ok on a healthy desktop', async () => {
   const results = await runSmoke(healthy());
   assert.deepEqual(statuses(results), [
     ['wpctl --help', 'ok'],
+    ['wpctl get-volume', 'ok'],
     ['playerctl --version', 'ok'],
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'ok'],
@@ -60,6 +61,7 @@ void test('only read-only commands are run', async () => {
     'pw-play --version',
     'systemctl --version',
     'wpctl --help',
+    'wpctl get-volume',
   ]);
 });
 
@@ -69,6 +71,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
   );
   assert.deepEqual(statuses(results), [
     ['wpctl --help', 'ok'],
+    ['wpctl get-volume', 'ok'],
     ['playerctl --version', 'missing'],
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'missing'],
@@ -99,6 +102,13 @@ void test('a wpctl without set-default is reported as unparseable', async () => 
     healthy((bin, args) => (bin === 'wpctl' && args[0] === '--help' ? ok('Commands:\n  status\n') : undefined)),
   );
   assert.equal(results.find((r) => r.name === 'wpctl --help')?.status, 'unparseable');
+});
+
+void test('a wpctl get-volume output the parser does not know is reported as unparseable', async () => {
+  const results = await runSmoke(
+    healthy((bin, args) => (bin === 'wpctl' && args[0] === 'get-volume' ? ok('not a volume string') : undefined)),
+  );
+  assert.equal(results.find((r) => r.name === 'wpctl get-volume')?.status, 'unparseable');
 });
 
 void test('a playerctl status the parser does not know is reported as unparseable', async () => {

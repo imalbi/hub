@@ -11,13 +11,19 @@ void test('registry lists all public mutations with labels, descriptions and the
   const response = await app.inject('/trpc/registry.list');
   assert.equal(response.statusCode, 200);
   const actions = response.json().result.data;
-  assert.equal(actions.length, 26);
+  assert.equal(actions.length, 32);
   for (const action of actions) {
     assert.ok(action.label.trim());
     assert.ok(action.description.trim());
     assert.equal(typeof action.danger, 'boolean');
     assert.ok('schema' in action);
   }
+  assert.deepEqual(actions.find((a: { path: string }) => a.path === 'audio.setVolume').schema, {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    type: 'object',
+    properties: { value: { type: 'number', minimum: 0, maximum: 1 } },
+    required: ['value'],
+  });
   assert.deepEqual(actions.find((a: { path: string }) => a.path === 'audio.setOutput').schema, {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -35,7 +41,7 @@ void test('registry is protected and automatically includes optional module acti
   const response = await app.inject('/trpc/registry.list');
   assert.equal(response.statusCode, 200);
   const actions = response.json().result.data;
-  assert.equal(actions.length, 30);
+  assert.equal(actions.length, 36);
   const brightness = actions.find((a: { path: string }) => a.path === 'hue.setBrightness');
   assert.equal(brightness.schema.properties.percent.minimum, 1);
   assert.equal(brightness.schema.properties.percent.maximum, 100);

@@ -22,6 +22,10 @@ export function createFakeDesktop({
   let sinkName = defaultName ?? '';
   let status = 'Playing';
   let track = 0;
+  let sinkVolume = 0.8;
+  let sinkMuted = false;
+  let micMuted = false;
+  let airplayRunning = false;
   const titles = ['Title', 'Second Title', 'Third Title'];
   const artUrl = new URL('../modules/media/fixtures/cover.png', import.meta.url).href;
 
@@ -42,6 +46,7 @@ export function createFakeDesktop({
         'caelestia shell lock lock',
         'caelestia toggle communication',
         'caelestia toggle music',
+        'caelestia toggle hub',
         'systemctl suspend',
         'systemctl reboot',
         'systemctl poweroff',
@@ -49,6 +54,23 @@ export function createFakeDesktop({
     ) {
       system.push([bin, ...args]);
       return Promise.resolve(ok());
+    }
+    if (bin === 'airplay') {
+      if (command === 'status') {
+        return Promise.resolve(
+          airplayRunning
+            ? ok('AirPlay (UxPlay) is RUNNING [PID 12345]\n')
+            : { stdout: 'AirPlay (UxPlay) is STOPPED\n', stderr: '', code: 1 },
+        );
+      }
+      if (command === 'start') {
+        airplayRunning = true;
+        return Promise.resolve(ok('AirPlay started\n'));
+      }
+      if (command === 'stop') {
+        airplayRunning = false;
+        return Promise.resolve(ok('AirPlay stopped\n'));
+      }
     }
     // The digest as the fake config names it, and opening its page: recorded, never run (a real run marks news seen).
     if (
@@ -60,6 +82,38 @@ export function createFakeDesktop({
     }
     if (bin === 'pw-dump' && args.length === 0) {
       return Promise.resolve(ok(dump.replace(/("default\.audio\.sink"[^}]*"name"\s*:\s*")[^"]+/, `$1${sinkName}`)));
+    }
+    if (bin === 'wpctl' && command === 'get-volume') {
+      if (target === '@DEFAULT_AUDIO_SINK@') {
+        return Promise.resolve(ok(`Volume: ${sinkVolume.toFixed(2)}${sinkMuted ? ' [MUTED]' : ''}\n`));
+      }
+      if (target === '@DEFAULT_AUDIO_SOURCE@') {
+        return Promise.resolve(ok(`Volume: 1.00${micMuted ? ' [MUTED]' : ''}\n`));
+      }
+    }
+    if (bin === 'wpctl' && command === 'set-volume' && target === '@DEFAULT_AUDIO_SINK@' && args[2]) {
+      const val = Number.parseFloat(args[2]);
+      if (!Number.isNaN(val)) {
+        sinkVolume = Math.max(0, Math.min(1, val));
+        return Promise.resolve(ok());
+      }
+    }
+    if (bin === 'wpctl' && command === 'set-mute') {
+      const mode = args[2];
+      if (target === '@DEFAULT_AUDIO_SINK@') {
+        if (mode === 'toggle') sinkMuted = !sinkMuted;
+        else if (mode === '1') sinkMuted = true;
+        else if (mode === '0') sinkMuted = false;
+        else return Promise.resolve(refused);
+        return Promise.resolve(ok());
+      }
+      if (target === '@DEFAULT_AUDIO_SOURCE@') {
+        if (mode === 'toggle') micMuted = !micMuted;
+        else if (mode === '1') micMuted = true;
+        else if (mode === '0') micMuted = false;
+        else return Promise.resolve(refused);
+        return Promise.resolve(ok());
+      }
     }
     if (bin === 'wpctl' && command === 'set-default') {
       const sink = sinks.find((s) => String(s.id) === target);

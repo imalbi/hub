@@ -50,6 +50,7 @@ const config: Config = {
   theme: { caelestiaScheme },
   system: { powerstatDir },
   news: { page: newsPage, command: 'webdigest' },
+  airplay: { command: 'airplay' },
 };
 
 // The e2e browser runs on this machine, so every request really is loopback. The suite needs one page to play the PC

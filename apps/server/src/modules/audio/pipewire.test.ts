@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { currentOutput, nextOutput, parsePwDump, resolveOutputs } from './pipewire.ts';
+import { currentOutput, nextOutput, parsePwDump, parseVolume, resolveOutputs } from './pipewire.ts';
 
 const dump = readFileSync(new URL('./fixtures/pw-dump.json', import.meta.url), 'utf8');
 const { sinks, defaultName } = parsePwDump(dump);
@@ -53,4 +53,13 @@ void test('nextOutput picks the first available output when the current sink mat
 
 void test('nextOutput is null when no configured output is available', () => {
   assert.equal(nextOutput(resolveOutputs([], outputs), null), null);
+});
+
+void test('parseVolume parses normal volume, muted volume, and returns null for missing or invalid output', () => {
+  assert.deepEqual(parseVolume('Volume: 0.85\n'), { volume: 0.85, muted: false });
+  assert.deepEqual(parseVolume('Volume: 0.85 [MUTED]\n'), { volume: 0.85, muted: true });
+  assert.deepEqual(parseVolume('Volume: 1.25\n'), { volume: 1, muted: false });
+  assert.deepEqual(parseVolume('Volume: 0.00\n'), { volume: 0, muted: false });
+  assert.equal(parseVolume(''), null);
+  assert.equal(parseVolume('error: device not found\n'), null);
 });

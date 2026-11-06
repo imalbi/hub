@@ -75,3 +75,22 @@ export function nextOutput(resolved: ResolvedOutput[], defaultName: string | nul
   }
   return null;
 }
+
+export type VolumeSnapshot = { volume: number; muted: boolean };
+
+/** Clamps volume between 0 and 1, rounded to 2 decimal places. */
+export function clampVolume(value: number): number {
+  return Math.max(0, Math.min(1, Math.round(value * 100) / 100));
+}
+
+/** Parses `wpctl get-volume` output. Returns null if unparseable or empty. */
+export function parseVolume(output: string): VolumeSnapshot | null {
+  const match = output.match(/Volume:\s*([0-9.]+)/i);
+  if (!match?.[1]) return null;
+  const raw = Number.parseFloat(match[1]);
+  if (Number.isNaN(raw)) return null;
+  return {
+    volume: clampVolume(raw),
+    muted: /\[MUTED\]/i.test(output),
+  };
+}
