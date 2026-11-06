@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
-import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
+import { PauseIcon, PlayIcon, SkipForwardIcon } from '@phosphor-icons/react';
 import { Tile } from '../../components/tile.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
@@ -36,6 +36,33 @@ export function MediaTile() {
       error={playPause.isError}
       stale={connectionLost}
       onPress={() => playPause.mutate()}
+    />
+  );
+}
+
+// Its state is the track a tap skips; with no track there is nothing to skip.
+export function NextTile() {
+  const trpc = useTRPC();
+  const connectionLost = useConnectionLost();
+  const media = useSubscription(trpc.media.onState.subscriptionOptions());
+  const next = useMutation(trpc.media.next.mutationOptions());
+
+  function stateText() {
+    if (media.data === undefined) return connectionLost ? m.tile_unavailable() : m.tile_loading();
+    if (media.data === null || !media.data.title) return m.media_nothing_playing();
+    return media.data.artist ? m.media_track(media.data) : media.data.title;
+  }
+
+  return (
+    <Tile
+      icon={SkipForwardIcon}
+      label={m.media_next()}
+      state={stateText()}
+      pending={next.isPending}
+      error={next.isError}
+      disabled={!media.data?.title}
+      stale={connectionLost}
+      onPress={() => next.mutate()}
     />
   );
 }

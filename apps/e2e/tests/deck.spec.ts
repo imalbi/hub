@@ -101,7 +101,7 @@ test('the deck applies the theme chosen on this device, a custom one included', 
 
 test('the dots and a swipe move between pages, and the page shown survives a reload', async ({ page }) => {
   const pages = page.getByRole('navigation', { name: 'Pagine' });
-  const dot = (name: string) => pages.getByRole('button', { name: `Vai a ${name}` });
+  const dot = (name: string) => pages.getByRole('button', { name: `Vai a ${name}`, exact: true });
   try {
     await expect(dot('Scrivania')).toHaveAttribute('aria-current', 'page');
     await dot('Studio').click();
@@ -110,7 +110,7 @@ test('the dots and a swipe move between pages, and the page shown survives a rel
       page.getByRole('region', { name: 'Studio' }).getByRole('button', { name: /^Pomodoro:/ }),
     ).toBeVisible();
     // A swipe is a horizontal scroll of the page strip.
-    await page.locator('.deck-pages').evaluate((strip) => strip.scrollTo({ left: 2 * strip.clientWidth }));
+    await page.locator('.deck-pages').evaluate((strip) => strip.scrollTo({ left: 3 * strip.clientWidth }));
     await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
     await page.reload();
     await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
@@ -181,10 +181,89 @@ test('the Sistema page locks with a tap and powers off only after a hold', async
 });
 
 test('the Notizie tile shows the count as a badge and opens the digest on the PC', async ({ page }) => {
-  const tile = page.getByRole('button', { name: /^Notizie:/ });
+  await page.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
+  const tile = page.getByRole('region', { name: 'Scrivania 2' }).getByRole('button', { name: /^Notizie:/ });
   await expect(tile).toHaveAccessibleName('Notizie: Apri sul PC, 22 voci nuove');
   await expect(tile.getByText('22', { exact: true })).toBeVisible();
   await tile.click();
   await expect(tile).toBeEnabled();
   await expect(tile).not.toHaveAccessibleName(/Errore/);
+});
+
+test('Scrivania presents the requested controls in order', async ({ page }) => {
+  const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
+  await expect(desk.getByRole('button', { name: /^Hub:/ })).toBeVisible();
+  await expect(desk.getByRole('button')).toHaveCount(12);
+  const names = [
+    /^Hub:/,
+    /^Chat:/,
+    /^Lettore:/,
+    /^Uscita audio:/,
+    /^Abbassa volume:/,
+    /^Alza volume:/,
+    /^Microfono:/,
+    /^Musica:/,
+    /^Brano successivo:/,
+    /^Blocca:/,
+    /^AirPlay:/,
+    /^Pomodoro:/,
+  ];
+  for (const [index, name] of names.entries())
+    await expect(desk.getByRole('button').nth(index)).toHaveAccessibleName(name);
+  // The next tile names the track it skips, not the workspace copy.
+  await expect(desk.getByRole('button', { name: /^Brano successivo:/ })).toHaveAccessibleName(
+    'Brano successivo: Artist - Title',
+  );
+});
+
+test('badges open the pages containing News and the running Pomodoro', async ({ page, pc }) => {
+  const badges = page.getByRole('navigation', { name: 'Attività' });
+  try {
+    await expect(badges.getByRole('button', { name: /Notizie/ })).toBeVisible();
+    await expect(badges.getByRole('button', { name: /Pomodoro/ })).toHaveCount(0);
+    expect((await pc.post('/trpc/pomodoro.start', { data: {} })).ok()).toBe(true);
+    await badges.getByRole('button', { name: /Pomodoro/ }).click();
+    await expect(page.getByRole('region', { name: 'Studio', exact: true })).toBeVisible();
+    await badges.getByRole('button', { name: /Notizie/ }).click();
+    await expect(page.getByRole('region', { name: 'Scrivania 2', exact: true })).toBeVisible();
+    expect((await pc.post('/trpc/pomodoro.stop', { data: {} })).ok()).toBe(true);
+    await expect(badges.getByRole('button', { name: /Pomodoro/ })).toHaveCount(0);
+  } finally {
+    await pc.post('/trpc/pomodoro.stop', { data: {} });
+    await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+  }
+});
+
+test('all Scrivania controls and the player fit on the phone screen', async ({ page }) => {
+  await expect(page.getByRole('region', { name: 'In riproduzione' }).getByText('Title', { exact: true })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.getByRole('button', { name: /^Pomodoro:/ })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeInViewport({ ratio: 1 });
+});
+
+test('volume, microphone and AirPlay controls update the fake desktop', async ({ page, pc }) => {
+  try {
+    const down = page.getByRole('button', { name: /^Abbassa volume:/ });
+    const up = page.getByRole('button', { name: /^Alza volume:/ });
+    await expect(down).toHaveAccessibleName('Abbassa volume: 80%');
+    await down.click();
+    await expect(up).toHaveAccessibleName('Alza volume: 75%');
+    await up.click();
+    await expect(down).toHaveAccessibleName('Abbassa volume: 80%');
+    const mic = page.getByRole('button', { name: /^Microfono:/ });
+    await mic.click();
+    await expect(mic).toHaveAccessibleName('Microfono: Disattivato');
+    await mic.click();
+    await expect(mic).toHaveAccessibleName('Microfono: Attivo');
+    const airplay = page.getByRole('button', { name: /^AirPlay:/ });
+    await airplay.click();
+    await expect(airplay).toHaveAccessibleName('AirPlay: Attivo');
+    await airplay.click();
+    await expect(airplay).toHaveAccessibleName('AirPlay: Disattivato');
+  } finally {
+    const state = (await (await pc.get('/trpc/audio.state')).json()).result.data;
+    if (state.micMuted) await pc.post('/trpc/audio.toggleMicMute', { data: {} });
+    await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
+    await pc.post('/trpc/airplay.stop', { data: {} });
+  }
 });

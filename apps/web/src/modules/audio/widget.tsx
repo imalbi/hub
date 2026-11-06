@@ -1,4 +1,5 @@
 import { useSubscription } from '@trpc/tanstack-react-query';
+import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
 import type { WidgetSize } from '../../lib/widget-size.ts';
@@ -18,13 +19,16 @@ function SmallAudio() {
   const stale = useConnectionLost();
   return (
     <Panel title={m.tile_audio_output()} className={`h-full ${stale ? 'opacity-60' : ''}`}>
-      <p className="mt-auto text-heading break-words">
-        {audio.data
-          ? (audio.data.current?.label ?? m.audio_output_none())
-          : stale
-            ? m.tile_unavailable()
-            : m.tile_loading()}
-      </p>
+      <div className="mt-auto flex items-end justify-between gap-xs">
+        <p className="text-heading break-words">
+          {audio.data
+            ? (audio.data.current?.label ?? m.audio_output_none())
+            : stale
+              ? m.tile_unavailable()
+              : m.tile_loading()}
+        </p>
+        {audio.data && <NumberRoll className="text-display" value={Math.round(audio.data.volume * 100)} suffix="%" />}
+      </div>
       <OutputSwitch />
     </Panel>
   );

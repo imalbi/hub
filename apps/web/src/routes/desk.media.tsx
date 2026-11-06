@@ -13,7 +13,7 @@ function MediaTab() {
   return (
     <PageGrid>
       <MediaPanel className="col-span-12 mb-2xl" />
-      <AudioPanel className="col-span-6" />
+      <AudioPanel controls className="col-span-6" />
     </PageGrid>
   );
 }

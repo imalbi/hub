@@ -16,12 +16,14 @@ async function openDeck(browser: Browser) {
     deviceScaleFactor: 3,
   });
   const phone = await context.newPage();
+  await phone.emulateMedia({ reducedMotion: 'reduce' });
   await freezePomodoro(phone);
   // The deck header shows the server uptime; pin it like the other visual specs.
   await phone.route('**/trpc/health*', (route) =>
     route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
   );
   await phone.goto(`${PHONE_URL}/deck`);
+  await phone.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
   return { context, phone };
 }
 

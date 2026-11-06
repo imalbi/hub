@@ -1,10 +1,12 @@
 import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
-import { AudioOutputTile } from '../modules/audio/deck-tile.tsx';
-import { MediaTile } from '../modules/media/deck-tile.tsx';
+import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
+import { MediaTile, NextTile } from '../modules/media/deck-tile.tsx';
 import { NewsTile } from '../modules/news/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import {
+  AirPlayTile,
+  HubTile,
   CommunicationTile,
   LockTile,
   MusicAppTile,
@@ -27,7 +29,25 @@ type Page = {
 
 /** The deck's pages, mirroring the desk zones, in swipe order. */
 export const pages: Page[] = [
-  { id: 'desk', label: m.page_desk, tiles: [AudioOutputTile, MediaTile, PomodoroTile, NewsTile] },
+  {
+    id: 'desk',
+    label: m.page_desk,
+    tiles: [
+      HubTile,
+      CommunicationTile,
+      MusicAppTile,
+      AudioOutputTile,
+      VolumeDownTile,
+      VolumeUpTile,
+      MicMuteTile,
+      MediaTile,
+      NextTile,
+      LockTile,
+      AirPlayTile,
+      PomodoroTile,
+    ],
+  },
+  { id: 'desk-more', label: m.page_desk_more, tiles: [NewsTile] },
   { id: 'study', label: m.zone_study, tiles: [PomodoroTile] },
   {
     id: 'system',
@@ -40,7 +60,7 @@ export const pages: Page[] = [
 for (const module of moduleUIs) {
   const { deck } = module;
   if (!deck) continue;
-  const target = pages.find((page) => page.id === deck.page);
+  const target = pages.find((page) => page.id === (deck.page === 'desk' ? 'desk-more' : deck.page));
   if (target) target.tiles.push(...deck.tiles);
   else pages.push(deck);
 }

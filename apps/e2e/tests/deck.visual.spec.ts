@@ -11,11 +11,30 @@ test.describe('the deck', () => {
     );
     await page.goto('/deck');
     await expect(page.getByText('Server attivo da 42s')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
     await expect(page).toHaveScreenshot('deck.png', { animations: 'disabled' });
+  });
+
+  test('the second Scrivania page matches the baseline', async ({ page }) => {
+    await freezePomodoro(page);
+    await page.route('**/trpc/health*', (route) =>
+      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
+    );
+    await page.goto('/deck');
+    await page.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
+    await expect(
+      page.getByRole('region', { name: 'Scrivania 2' }).getByRole('button', { name: /^Notizie:/ }),
+    ).toBeVisible();
+    await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      localStorage.removeItem('hub.deck.page');
+    });
+    await expect(page).toHaveScreenshot('deck-scrivania-2.png', { animations: 'disabled' });
   });
 
   test('a paused Pomodoro remains readable on the deck', async ({ page }) => {
@@ -25,6 +44,7 @@ test.describe('the deck', () => {
     );
     await page.goto('/deck');
     await expect(page.getByRole('button', { name: /^Pomodoro:/ })).toHaveAccessibleName(/12:30/);
+    await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
     const fits = await page.getByRole('button', { name: /^Pomodoro:/ }).evaluate((button) => {
       const state = button.querySelector('span:last-child');
       if (!state) return false;

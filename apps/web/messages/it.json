@@ -65,5 +65,9 @@
   "palette_escape": "Esc",
   "palette_open": "Cerca o esegui, scorciatoia Ctrl K",
   "palette_goto": "Vai a",
-  "palette_actions": "Azioni"
+  "palette_actions": "Azioni",
+  "page_desk_more": "Scrivania 2",
+  "deck_activity": "Attività",
+  "deck_badge_news": "Notizie: {count}",
+  "deck_badge_pomodoro": "Pomodoro in corso"
 }

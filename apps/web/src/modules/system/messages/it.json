@@ -24,5 +24,9 @@
   "power_watts": "{watts} W",
   "power_today": "{kwh} kWh oggi",
   "power_not_measured": "Non misurato ora",
-  "power_off": "Non configurato"
+  "power_off": "Non configurato",
+  "system_hub": "Hub",
+  "system_airplay": "AirPlay",
+  "system_on": "Attivo",
+  "system_off": "Disattivato"
 }

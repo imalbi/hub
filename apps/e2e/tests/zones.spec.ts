@@ -89,3 +89,71 @@ test('Pomodoro secondary controls remain readable when hovered in paper', async 
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
 });
+
+test('Media volume follows a second client and can be changed from the slider', async ({ page, pc }) => {
+  try {
+    await page.goto('/desk/media');
+    const slider = page.getByRole('slider', { name: 'Volume' });
+    await expect(slider).toHaveValue('80');
+    const response = await pc.post('/trpc/audio.setVolume', { data: { value: 0.45 } });
+    expect(response.ok()).toBe(true);
+    await expect(slider).toHaveValue('45');
+    await slider.focus();
+    await slider.press('End');
+    await expect.poll(async () => (await (await pc.get('/trpc/audio.state')).json()).result.data.volume).toBe(1);
+  } finally {
+    await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
+  }
+});
+
+test('dragging the Media volume slider writes once, on release, with the final value', async ({ page, pc }) => {
+  try {
+    await page.goto('/desk/media');
+    const slider = page.getByRole('slider', { name: 'Volume' });
+    await expect(slider).toHaveValue('80');
+    const writes: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('audio.setVolume')) writes.push(request.postData() ?? '');
+    });
+    await slider.scrollIntoViewIfNeeded();
+    const box = await slider.boundingBox();
+    if (!box) throw new Error('slider has no box');
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width * 0.8, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.3, y, { steps: 10 });
+    await expect(slider).not.toHaveValue('80');
+    expect(writes).toEqual([]);
+    await page.mouse.up();
+    await expect.poll(() => writes.length).toBe(1);
+    const final = Number(await slider.inputValue()) / 100;
+    await expect.poll(async () => (await (await pc.get('/trpc/audio.state')).json()).result.data.volume).toBe(final);
+  } finally {
+    await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
+  }
+});
+
+test('the audio widget shows live volume from a second client', async ({ page, pc }) => {
+  try {
+    await page.goto('/desk');
+    const widget = page.getByRole('region', { name: 'Uscita audio' });
+    await expect(widget.getByText('80%', { exact: true })).toHaveCount(1);
+    expect((await pc.post('/trpc/audio.setVolume', { data: { value: 0.55 } })).ok()).toBe(true);
+    await expect(widget.getByText('55%', { exact: true })).toHaveCount(1);
+  } finally {
+    await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
+  }
+});
+
+test('audio widget keeps its output selector inside its bounds', async ({ page }) => {
+  await page.goto('/desk');
+  const widget = page.getByRole('region', { name: 'Uscita audio' });
+  const selector = widget.getByRole('toolbar', { name: 'Uscite configurate' });
+  await expect(selector).toBeVisible();
+  const fits = await widget.evaluate((panel) => {
+    const toolbar = panel.querySelector('[role="toolbar"]');
+    if (!toolbar) return false;
+    return toolbar.getBoundingClientRect().bottom <= panel.getBoundingClientRect().bottom;
+  });
+  expect(fits).toBe(true);
+});

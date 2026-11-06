@@ -7,6 +7,7 @@ const NOW = new Date('2026-11-04T12:00:00Z');
 const json = (data: unknown) => [{ result: { data } }];
 
 test.beforeEach(async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await freezePomodoro(page);
   await page.clock.setFixedTime(NOW);
   await page.route('**/trpc/health*', (route) => route.fulfill({ json: json({ ok: true, uptime: 42 }) }));
@@ -19,6 +20,16 @@ test.beforeEach(async ({ page }) => {
   );
   await page.goto('/desk');
   await expect(page.getByText('42 s', { exact: true })).toBeVisible();
+  const playback = page.getByRole('button', { name: 'Metti in pausa la musica', exact: true });
+  await expect(playback).toBeVisible();
+  await expect
+    .poll(() =>
+      playback.evaluate(
+        (button) =>
+          button.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length,
+      ),
+    )
+    .toBe(0);
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
@@ -27,6 +38,7 @@ test.beforeEach(async ({ page }) => {
 test('the desk at 4K matches the baseline', async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Uscita audio' }).getByText('80%', { exact: true })).toHaveCount(1);
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-4k.png', { animations: 'disabled' });
 });
@@ -99,7 +111,13 @@ for (const zone of [
       await document.fonts.ready;
     });
     if (zone.name === 'Dispositivi') await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
-    if (zone.name === 'Media') await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
+    if (zone.name === 'Media') {
+      await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
+      await page.getByRole('button', { name: 'Silenzia microfono' }).scrollIntoViewIfNeeded();
+      await expect(page.getByRole('slider', { name: 'Volume' })).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('button', { name: 'Silenzia uscita audio' })).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('button', { name: 'Silenzia microfono' })).toBeInViewport({ ratio: 1 });
+    }
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled' });
   });

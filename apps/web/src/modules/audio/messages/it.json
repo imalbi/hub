@@ -2,5 +2,13 @@
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "tile_audio_output": "Uscita audio",
   "audio_output_none": "Nessuna uscita",
-  "audio_outputs": "Uscite configurate"
+  "audio_outputs": "Uscite configurate",
+  "audio_volume": "Volume",
+  "audio_mute": "Silenzia uscita audio",
+  "audio_mic_mute": "Silenzia microfono",
+  "audio_volume_down": "Abbassa volume",
+  "audio_volume_up": "Alza volume",
+  "audio_microphone": "Microfono",
+  "audio_muted": "Disattivato",
+  "audio_unmuted": "Attivo"
 }

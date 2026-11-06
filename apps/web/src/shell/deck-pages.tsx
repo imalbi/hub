@@ -1,3 +1,8 @@
+import { useSubscription } from '@trpc/tanstack-react-query';
+import { Badge } from '../components/ui/badge.tsx';
+import { useTRPC } from '../lib/trpc.ts';
+import { NewsTile } from '../modules/news/deck-tile.tsx';
+import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m } from '../paraglide/messages.js';
 import { pages } from './pages.ts';
@@ -18,6 +23,9 @@ function storedPage() {
  * by the dots under the header. Pages off screen are `inert`, so focus and screen readers stay on the one shown.
  */
 export function DeckPages() {
+  const trpc = useTRPC();
+  const news = useSubscription(trpc.news.onState.subscriptionOptions());
+  const pomodoro = useSubscription(trpc.pomodoro.onState.subscriptionOptions());
   const [active, setActive] = useState(storedPage);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -51,6 +59,26 @@ export function DeckPages() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-md">
+      <nav aria-label={m.deck_activity()} className="flex justify-center gap-xs">
+        {news.data?.fresh && news.data.items > 0 && (
+          <button
+            type="button"
+            aria-label={m.deck_badge_news({ count: news.data.items })}
+            onClick={() => goTo(pages.findIndex((page) => page.tiles.includes(NewsTile)))}
+          >
+            <Badge count={news.data.items} /> {m.news_title()}
+          </button>
+        )}
+        {pomodoro.data && pomodoro.data.phase !== 'idle' && pomodoro.data.pausedRemainingMs === null && (
+          <button
+            type="button"
+            aria-label={m.deck_badge_pomodoro()}
+            onClick={() => goTo(pages.findLastIndex((page) => page.tiles.includes(PomodoroTile)))}
+          >
+            <Badge dot>{m.pomodoro_title()}</Badge>
+          </button>
+        )}
+      </nav>
       <nav aria-label={m.deck_pages()} className="flex justify-center gap-3xs">
         {pages.map((page, index) => (
           <button
@@ -75,7 +103,9 @@ export function DeckPages() {
             aria-hidden={index !== active || undefined}
             className="flex w-full shrink-0 flex-col gap-xl"
           >
-            <div className="grid grid-cols-3 gap-md">
+            <div
+              className={`grid grid-cols-3 ${page.id === 'desk' ? 'gap-xs [&>button]:gap-2xs [&>button]:p-sm' : 'gap-md'}`}
+            >
               {page.tiles.map((Tile, tile) => (
                 // A fixed list: the position is the identity.
                 <Tile key={tile} />
