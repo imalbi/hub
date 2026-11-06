@@ -176,6 +176,18 @@ test('the button and Ctrl+K open the palette at the bottom center and Escape ret
   }
 });
 
+test('a click outside the palette closes it, a click inside does not', async ({ page }) => {
+  await page.goto('/desk');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await button(page).click();
+  await expect(palette).toBeVisible();
+  await palette.getByRole('combobox').click();
+  await expect(palette).toBeVisible();
+  // The top left corner is backdrop: the palette sits at the bottom center.
+  await page.mouse.click(10, 10);
+  await expect(palette).not.toBeVisible();
+});
+
 test('opening grows the palette out of the button, and with reduced motion it just appears', async ({ page }) => {
   const opening = () =>
     page.evaluate(async () => {
@@ -183,10 +195,18 @@ test('opening grows the palette out of the button, and with reduced motion it ju
       await new Promise((resolve) => requestAnimationFrame(resolve));
       return document.querySelector('dialog')?.getAnimations().length ?? -1;
     });
+  const closing = () =>
+    page.evaluate(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      return document.querySelector('dialog')?.getAnimations().length ?? -1;
+    });
   await page.goto('/desk');
   await expect(button(page)).toBeVisible();
   expect(await opening()).toBeGreaterThan(0);
+  expect(await closing()).toBeGreaterThan(0);
   await page.keyboard.press('Escape');
+  await expect(page.locator('dialog')).not.toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await opening()).toBe(0);
 });

@@ -25,6 +25,14 @@ test('the rail navigates every zone and marks exactly the active destination', a
   }
 });
 
+test('the rail keeps the active link style and aria-current when the URL has search parameters', async ({ page }) => {
+  await page.goto('/desk/studio?segment=favorites');
+  const rail = page.getByRole('navigation', { name: 'Zone' });
+  const studioLink = rail.getByRole('link', { name: 'Studio', exact: true });
+  await expect(studioLink).toHaveAttribute('aria-current', 'page');
+  await expect(studioLink).toHaveClass(/text-primary-foreground/);
+});
+
 test('number keys switch zones but do not interfere with typing or modified shortcuts', async ({ page }) => {
   await page.goto('/desk/studio');
   await expect(page.getByRole('heading', { level: 1, name: 'Studio' })).toBeVisible();

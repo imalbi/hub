@@ -29,7 +29,7 @@ export function DeskRail({ pathname }: { pathname: string }) {
             key={id}
             to={path}
             params={params}
-            activeOptions={{ exact: true }}
+            activeOptions={{ exact: true, includeSearch: false }}
             aria-label={label()}
             title={label()}
             className="group relative flex size-touch items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent"

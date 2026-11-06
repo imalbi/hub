@@ -44,6 +44,8 @@ export interface DialogProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Accessible name of the close button. */
   closeLabel?: string;
+  /** Element or ref to focus immediately upon opening. */
+  initialFocus?: React.RefObject<HTMLElement | null> | (() => HTMLElement | null) | null;
   /** Press on the veil closes it. Turn off for forms that would lose work. */
   dismissible?: boolean;
   className?: string;
@@ -63,6 +65,7 @@ export function Dialog({
   size = 'md',
   dismissible = true,
   closeLabel = 'Close',
+  initialFocus,
   className = '',
 }: DialogProps) {
   const reduced = useInteractionReducedMotion();
@@ -73,7 +76,7 @@ export function Dialog({
     onOpenChange?.(next);
   };
   const close = () => setOpen(false);
-  const { dialog, mounted, shown } = useModal(open, close, 220);
+  const { dialog, mounted, shown } = useModal(open, close, 220, initialFocus);
   const titleId = React.useId();
   const descId = React.useId();
   const ease = EASE_OUT;

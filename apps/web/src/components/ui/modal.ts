@@ -19,7 +19,12 @@ import * as React from 'react';
  *            touched: no layout shift, no restyle of <html>)
  * ───────────────────────────────────────────────────────── */
 
-export function useModal(open: boolean, onClose: () => void, exit = 220) {
+export function useModal(
+  open: boolean,
+  onClose: () => void,
+  exit = 220,
+  initialFocus?: React.RefObject<HTMLElement | null> | (() => HTMLElement | null) | null,
+) {
   const dialog = React.useRef<HTMLDialogElement>(null);
   const [mounted, setMounted] = React.useState(open);
   const [shown, setShown] = React.useState(false);
@@ -37,9 +42,16 @@ export function useModal(open: boolean, onClose: () => void, exit = 220) {
     if (open) {
       opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       if (!el.open) el.showModal();
-      // Start on the panel, not its first control: no keyboard popping up on phones, no
-      // slider bubble or tooltip showing uninvited.
-      el.querySelector<HTMLElement>('[data-modal-panel]')?.focus({ preventScroll: true });
+      // Start on initial focus if specified, else on the panel, not its first control:
+      // no keyboard popping up on phones, no slider bubble or tooltip showing uninvited.
+      const initial =
+        (typeof initialFocus === 'function' ? initialFocus() : initialFocus?.current) ??
+        el.querySelector<HTMLElement>('[data-initial-focus]');
+      if (initial) {
+        initial.focus({ preventScroll: true });
+      } else {
+        el.querySelector<HTMLElement>('[data-modal-panel]')?.focus({ preventScroll: true });
+      }
       let inner = 0;
       const outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => setShown(true));
@@ -57,7 +69,7 @@ export function useModal(open: boolean, onClose: () => void, exit = 220) {
     }, exit);
     return () => window.clearTimeout(timer);
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the ref is only filled after the render that sets `mounted`
-  }, [open, mounted, exit]);
+  }, [open, mounted, exit, initialFocus]);
 
   React.useEffect(() => {
     const el = dialog.current;
