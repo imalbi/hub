@@ -7,6 +7,7 @@ import { moduleZones, orphanSections, pageTabs } from './zone-sections.ts';
 const page = () => null;
 const tab = (id: string): PageTab => ({ id, label: () => id, component: page });
 const section = (zone: string, id: string) => ({ ...tab(id), zone });
+const zone = (id: string) => ({ id, label: () => id, icon: BriefcaseIcon, page });
 const ui = (name: string, extra: Partial<ModuleUI> = {}): ModuleUI => ({ name, copy: {}, ...extra });
 const ids = (tabs: readonly PageTab[]) => tabs.map((entry) => entry.id);
 
@@ -38,11 +39,10 @@ void test('a section aimed at a zone that does not exist is on no page and is re
   const uis = [ui('a', { sections: [lost, section('devices', 'kept')] })];
   const known = new Set(['devices', 'work']);
   assert.deepEqual(orphanSections(uis, known), [lost]);
-  for (const zone of known) assert.ok(!ids(pageTabs(zone, [], uis)).includes('lost'));
+  for (const target of known) assert.ok(!ids(pageTabs(target, [], uis)).includes('lost'));
 });
 
 void test('a module zone whose id is the path of a built-in page is skipped, the others are kept', () => {
-  const zone = (id: string) => ({ id, label: () => id, icon: BriefcaseIcon, page });
   const uis = [ui('a', { zone: zone('lavoro') }), ui('b', { zone: zone('ricerca') }), ui('c')];
   assert.deepEqual(
     moduleZones(uis, new Set(['studio', 'lavoro', 'messaggi'])).map((entry) => entry.id),

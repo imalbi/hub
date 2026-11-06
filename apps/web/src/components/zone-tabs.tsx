@@ -2,7 +2,7 @@ import { useId, type ReactNode } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { activeTab, tabParam } from '../lib/zone-search.ts';
 import { m } from '../paraglide/messages.js';
-import { Tabs } from './ui/tabs.tsx';
+import { LiquidTabs } from './ui/liquid-tabs.tsx';
 
 export type ZoneTab = { id: string; label: string; count?: number; content: ReactNode };
 
@@ -16,18 +16,29 @@ export function ZoneTabs({ tabs }: { tabs: ZoneTab[] }) {
   const navigate = useNavigate();
   const { tab } = useSearch({ strict: false });
   const ids = tabs.map((entry) => entry.id);
-  const active = tabs.find((entry) => entry.id === activeTab(ids, tab));
+  const active = tabs.find((entry) => entry.id === activeTab(ids, typeof tab === 'string' ? tab : undefined));
   if (!active) return null;
   if (tabs.length === 1) return active.content;
   return (
     <>
-      <Tabs
+      <LiquidTabs
         id={id}
         label={m.zone_tabs()}
-        items={tabs.map(({ id: value, label, count }) => ({ value, label, count }))}
+        size="md"
+        tabs={tabs.map(({ id: value, label, count }) => ({
+          value,
+          label,
+          count,
+          id: `${id}-tab-${value}`,
+          panelId: `${id}-panel`,
+        }))}
         value={active.id}
         onValueChange={(next) => {
-          void navigate({ to: '.', search: (previous) => ({ ...previous, tab: tabParam(ids, next) }), replace: true });
+          void navigate({
+            to: '.',
+            search: (previous: Record<string, unknown>) => ({ ...previous, tab: tabParam(ids, next) }),
+            replace: true,
+          });
         }}
       />
       <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${active.id}`}>

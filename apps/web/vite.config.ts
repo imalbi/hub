@@ -48,6 +48,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@phosphor-icons/react': fileURLToPath(new URL('./node_modules/@phosphor-icons/react', import.meta.url)),
       // No leading slash: Vite joins a glob that starts with '/' to the project root and never applies the alias.
       '@hub-private-modules': process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0],
     },

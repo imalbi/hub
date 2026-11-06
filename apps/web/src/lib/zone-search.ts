@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export { useNavigate, useSearch } from '@tanstack/react-router';
+
 /**
  * `validateSearch` of every zone route: the router runs a Standard Schema as it is. The router fails the whole route
  * on a validation issue, so a `tab` that is not a string (`?tab=3` is parsed as a number) is dropped, never rejected.

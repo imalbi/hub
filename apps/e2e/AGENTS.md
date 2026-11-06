@@ -92,3 +92,11 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - Baselines for 07p: `desk-settings`, `desk-devices-4k`, `desk-palette` (1920x1080), `desk-palette-rest-4k`, `desk-devices-tabs` (example pass) and the changed `desk-studio`, `desk-media`, `desk-system`, `desk-devices`, `desk-palette-4k`, the Luci ones above and `desk-example-4k`. Intended: every desk image gained the resting button, the zone pages replaced the boards, and an element screenshot of a page panel no longer has the board cell's fixed height.
 
 - Step 13: deck tests navigate to Scrivania 2 for module tiles. Desk visual captures set reduced motion before load and wait for the media icon to settle: its Web Animations can otherwise race screenshot capture. Media screenshot scrolls to the audio section and asserts the slider and both mute buttons are inside the viewport.
+
+## Private e2e mechanism (step 16g)
+
+- Generic, opt-in mechanism in `playwright.config.ts`: when `HUB_E2E_PRIVATE` env var names a folder, a `private` desk project is registered with specs from that folder's `*.spec.ts` and module root (`HUB_MODULES_ROOT`) at that folder's `root/`.
+- Unset, nothing changes: public `deck` and `desk` run as normal.
+- No tracked file names the private module root: private specs import public test helpers (`fixtures.ts`, `hosts.ts`) by relative path.
+- **No screenshot baselines for private UI**: private specs assert by role, name and state only, so private layout is never captured in tracked baselines.
+- Executed via `pnpm test:e2e:private` (runs against discovered private module `e2e/` folders or `HUB_E2E_PRIVATE`). With no private root or no private `e2e/` folders, it prints that and exits 0. `pnpm verify` includes `pnpm test:e2e:private` after the public passes.

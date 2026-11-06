@@ -3,8 +3,12 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["es2023", "dom", "dom.iterable"],
-    "types": ["node"],
-    "typeRoots": ["../apps/server/node_modules/@types"],
-    "paths": { "@/*": ["../apps/web/src/*"] }
+    "types": ["node", "react", "react-dom"],
+    "typeRoots": ["../apps/server/node_modules/@types", "../apps/web/node_modules/@types"],
+    "paths": {
+      "@/*": ["../apps/web/src/*"],
+      "@tanstack/react-router": ["../apps/web/node_modules/@tanstack/react-router"],
+      "@phosphor-icons/react": ["../apps/web/node_modules/@phosphor-icons/react"]
+    }
   }
 }

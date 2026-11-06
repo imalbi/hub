@@ -3,7 +3,10 @@ import { moduleUIs } from '../lib/modules.ts';
 import { zoneSearch } from '../lib/zone-search.ts';
 import { ZonePage } from '../shell/zone-page.tsx';
 
-export const Route = createFileRoute('/desk/$module')({ validateSearch: zoneSearch, component: ModuleZone });
+export const Route = createFileRoute('/desk/$module')({
+  validateSearch: zoneSearch.loose(),
+  component: ModuleZone,
+});
 
 function ModuleZone() {
   const { module } = Route.useParams();

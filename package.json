@@ -19,8 +19,9 @@
     "check:modules": "node scripts/check-modules.ts",
     "prepare": "git config core.hooksPath .githooks",
     "test:e2e": "pnpm --filter @hub/e2e e2e && HUB_EXAMPLE_MODULES=1 pnpm --filter @hub/e2e e2e",
+    "test:e2e:private": "node scripts/test-e2e-private.ts",
     "test:e2e:update": "pnpm --filter @hub/e2e e2e:update && HUB_EXAMPLE_MODULES=1 pnpm --filter @hub/e2e e2e:update",
-    "verify": "pnpm check && pnpm test:e2e && pnpm --filter @hub/web build && node scripts/verify-stamp.ts write",
+    "verify": "pnpm check && pnpm test:e2e && pnpm test:e2e:private && pnpm --filter @hub/web build && node scripts/verify-stamp.ts write",
     "smoke": "pnpm --filter @hub/server smoke",
     "serve": "pnpm --filter @hub/web build && pnpm --filter @hub/server start",
     "desktop:install": "node deploy/install.ts"
