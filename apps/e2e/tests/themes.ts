@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, type Page } from '@playwright/test';
+import { RUN_TMP } from './hosts.ts';
 
 /** The Aspetto picker is a radio group of preview cards; the radio is visually hidden, so click its name as a user would. */
 export async function chooseTheme(page: Page, name: string) {
@@ -16,7 +16,7 @@ export async function themeSettled(page: Page) {
 }
 
 // The fake server reads this copy of the fixture (see `apps/server/src/testing/fake.ts`).
-const schemePath = join(tmpdir(), 'hub-e2e-caelestia-scheme.json');
+const schemePath = join(RUN_TMP, 'hub-e2e-caelestia-scheme.json');
 const fixture = readFileSync(new URL('../../server/src/modules/theme/fixtures/scheme.json', import.meta.url), 'utf8');
 
 /** Rewrites the fake Caelestia scheme; call `restoreScheme` in `finally`. */

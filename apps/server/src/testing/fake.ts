@@ -9,14 +9,18 @@ import { createFakeDesktop } from './fake-desktop.ts';
 import { getFakeHue } from './fake-hue.ts';
 import { buildServer } from '../server.ts';
 
-// A copy of the fixture scheme in the temp dir, so e2e can rewrite it to check that the Caelestia theme follows live.
+// Fixtures live in the run's own folder (`apps/e2e/tests/hosts.ts` makes one per run), so two runs never share a file.
+const runDir = process.env.HUB_E2E_TMP ?? tmpdir();
+const webPort = process.env.HUB_E2E_WEB_PORT ?? '5190';
+
+// A copy of the fixture scheme, so e2e can rewrite it to check that the Caelestia theme follows live.
 // `apps/e2e/tests/themes.ts` writes the same path.
-const caelestiaScheme = join(tmpdir(), 'hub-e2e-caelestia-scheme.json');
+const caelestiaScheme = join(runDir, 'hub-e2e-caelestia-scheme.json');
 copyFileSync(new URL('../modules/theme/fixtures/scheme.json', import.meta.url), caelestiaScheme);
 
 // A powerstat directory with fixed readings: the status is dated far ahead so it never goes stale, and today has an
 // hour of samples at 150 W from 08:00 (0.15 kWh), so screenshots read the same whenever the suite runs.
-const powerstatDir = join(tmpdir(), 'hub-e2e-powerstat');
+const powerstatDir = join(runDir, 'hub-e2e-powerstat');
 mkdirSync(powerstatDir, { recursive: true });
 writeFileSync(join(powerstatDir, 'status.json'), JSON.stringify({ ts: 4_102_444_800, total_w: 212.4 }));
 const today = new Date();
@@ -29,14 +33,14 @@ const samples = Array.from(
 writeFileSync(join(powerstatDir, 'samples.csv'), ['iso,total_w', ...samples].join('\n'));
 
 // The digest page from the news fixture, under a name of its own; the fake desktop answers `webdigest --no-open`.
-const newsPage = join(tmpdir(), 'hub-e2e-news.html');
+const newsPage = join(runDir, 'hub-e2e-news.html');
 copyFileSync(new URL('../modules/news/fixtures/latest.html', import.meta.url), newsPage);
 // Its mtime is "last updated" on screen: a fixed one keeps the screenshots stable.
 const newsUpdated = new Date(2026, 10, 4, 8, 30);
 utimesSync(newsPage, newsUpdated, newsUpdated);
 
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
-// of the real server, so its origins go on the allowlist or every WebSocket upgrade is refused.
+// of the real server, so its origins (the run's Vite port) go on the allowlist or every WebSocket upgrade is refused.
 const config: Config = {
   ...emptyConfig,
   pomodoro: { ...emptyConfig.pomodoro, focusMinutes: 0.1, shortBreakMinutes: 0.05, longBreakMinutes: 0.1 },
@@ -46,7 +50,7 @@ const config: Config = {
       { label: 'Casse', match: 'HDMI Monitor' },
     ],
   },
-  server: { host: '127.0.0.1', allowedOrigins: ['http://localhost:5190', 'http://127.0.0.1:5190'] },
+  server: { host: '127.0.0.1', allowedOrigins: [`http://localhost:${webPort}`, `http://127.0.0.1:${webPort}`] },
   theme: { caelestiaScheme },
   system: { powerstatDir },
   news: { page: newsPage, command: 'webdigest' },

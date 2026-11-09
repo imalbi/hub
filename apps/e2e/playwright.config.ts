@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
-import { DECK_STATE, PC_URL, PHONE_URL, SERVER_PORT, WEB_PORT } from './tests/hosts.ts';
+import { DECK_STATE, PC_URL, PHONE_URL, SERVER_PORT, SERVER_URL, WEB_PORT } from './tests/hosts.ts';
 
-// Ports of their own so the suite never meets `pnpm dev` (4180, 5173); `reuseExistingServer: false` makes a
-// collision a hard error instead of a test run against the wrong stack.
+// Free ports per run (see `tests/hosts.ts`), so the suite never meets `pnpm dev` or another e2e run; `reuseExistingServer:
+// false` makes a collision a hard error instead of a test run against the wrong stack.
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 const privateFolder = process.env.HUB_E2E_PRIVATE;
 // Example mode loads modules.example through the private-module root, the same path a private module takes
@@ -16,7 +17,16 @@ const moduleRoot =
     : examples
       ? fileURLToPath(new URL('../../modules.example', import.meta.url))
       : '/tmp/hub-e2e-no-modules');
+// The fake server reads HUB_E2E_* from this process's environment (set by `tests/hosts.ts`); the Vite proxy reads HUB_PORT.
 const serverEnv = { HUB_PORT: String(SERVER_PORT), HUB_MODULES_ROOT: moduleRoot, HUB_EXAMPLE_MODULES: '0' };
+// Vite keeps its optimized-dependency cache per project; two runs whose config differs (module root, example flag) that
+// share it keep invalidating each other's, which reloads the page under a test and fails its in-flight requests.
+// A cache per variant is shared only by runs with the same config (the public shards), and stays warm between runs.
+const variant = createHash('sha1').update(`${moduleRoot}|${examples}`).digest('hex').slice(0, 8);
+const viteEnv = {
+  ...serverEnv,
+  HUB_VITE_CACHE: fileURLToPath(new URL(`../web/node_modules/.vite-e2e/${variant}`, import.meta.url)),
+};
 const deckViewport = { viewport: { width: 375, height: 812 }, deviceScaleFactor: 3 };
 
 export default defineConfig({
@@ -81,12 +91,12 @@ export default defineConfig({
       command: 'node ../server/src/testing/fake.ts',
       env: serverEnv,
       // The fake answers 401 here (not the PC), which counts as up.
-      url: `http://127.0.0.1:${SERVER_PORT}/trpc/health`,
+      url: `${SERVER_URL}/trpc/health`,
       reuseExistingServer: false,
     },
     {
       command: `pnpm --filter @hub/web exec vite --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
-      env: serverEnv,
+      env: viteEnv,
       url: PHONE_URL,
       reuseExistingServer: false,
     },

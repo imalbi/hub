@@ -1,11 +1,11 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test';
-import { DECK_STATE, PHONE_URL, SERVER_PORT } from './hosts.ts';
+import { DECK_STATE, PHONE_URL, SERVER_URL } from './hosts.ts';
 import { controlSockets } from './sockets.ts';
 import { freezePomodoro } from './pomodoro-visual.ts';
 
 // The fake server's hook for the Hue example light (apps/server/src/testing/fake.ts). Playwright talks to it
 // directly: it is not a tRPC route and the Vite proxy only forwards /trpc.
-const HOOK = `http://127.0.0.1:${SERVER_PORT}/__fake/hue`;
+const HOOK = `${SERVER_URL}/__fake/hue`;
 const change = (request: APIRequestContext, data: object) => request.post(HOOK, { data });
 const writes = async (request: APIRequestContext) => (await (await request.get(HOOK)).json()).writes;
 

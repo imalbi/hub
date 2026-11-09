@@ -19,4 +19,3 @@ apps/web/project.inlang/cache/
 # Playwright output (baselines in apps/e2e/__screenshots__ are tracked)
 apps/e2e/test-results/
 apps/e2e/playwright-report/
-apps/e2e/.auth/

@@ -1,12 +1,13 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { restoreDesktop } from './desktop.ts';
+import { SERVER_URL } from './hosts.ts';
 
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 
 test.afterEach(async ({ pc, request }) => {
   await restoreDesktop(pc);
-  if (examples) await request.post('http://127.0.0.1:4190/__fake/hue', { data: { reset: true } });
+  if (examples) await request.post(`${SERVER_URL}/__fake/hue`, { data: { reset: true } });
 });
 
 test('Ctrl+K searches the registry, arrows and Enter run an action and Escape restores focus', async ({ page, pc }) => {
@@ -249,12 +250,12 @@ if (examples)
     const percent = palette.getByLabel('percent', { exact: true });
     await percent.fill('101');
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
-    expect((await (await request.get('http://127.0.0.1:4190/__fake/hue')).json()).writes).toEqual([]);
+    expect((await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes).toEqual([]);
     await percent.fill('42');
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
     await expect(palette.getByRole('status')).toHaveText('Fatto');
     await expect
-      .poll(async () => (await (await request.get('http://127.0.0.1:4190/__fake/hue')).json()).writes)
+      .poll(async () => (await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes)
       .toEqual([{ type: 'setBrightness', percent: 42 }]);
     await page.keyboard.press('Escape');
     await expect(palette).not.toBeVisible();
@@ -267,7 +268,7 @@ if (examples)
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
     await expect(palette.getByRole('status')).toHaveText('Fatto');
     await expect
-      .poll(async () => (await (await request.get('http://127.0.0.1:4190/__fake/hue')).json()).writes)
+      .poll(async () => (await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes)
       .toEqual([
         { type: 'setBrightness', percent: 42 },
         { type: 'setPower', on: false },

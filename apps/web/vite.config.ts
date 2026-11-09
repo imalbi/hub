@@ -44,6 +44,8 @@ function extraLicenses(): Plugin {
 }
 
 export default defineConfig({
+  // e2e runs with different module roots at the same time: one dep cache per variant (`apps/e2e/playwright.config.ts`).
+  cacheDir: process.env.HUB_VITE_CACHE,
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
