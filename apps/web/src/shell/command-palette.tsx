@@ -8,7 +8,7 @@ import { AnimatePresence, motion, useReducedMotion, type Transition } from 'moti
 import { Kbd } from '../components/ui/kbd.tsx';
 import { useTRPC, useTRPCClient } from '../lib/trpc.ts';
 import { moduleUIs } from '../lib/modules.ts';
-import { zones } from './zones.ts';
+import { useZones, zones as allZones } from './zones.ts';
 import { m } from '../paraglide/messages.js';
 import { PaletteForm } from './palette-form.tsx';
 import { paletteFields, type RegistryAction } from './palette-input.ts';
@@ -37,7 +37,7 @@ function actionZone(path: string) {
   };
   const zone =
     module?.zone ??
-    zones.find((item) => item.id === (module?.sections?.[0]?.zone ?? builtins[name ?? ''] ?? 'overview'));
+    allZones.find((item) => item.id === (module?.sections?.[0]?.zone ?? builtins[name ?? ''] ?? 'overview'));
   return zone?.label() ?? m.zone_overview();
 }
 
@@ -67,6 +67,7 @@ export function DeskCommandPalette() {
   const [selected, setSelected] = useState<RegistryAction | null>(null);
   const [status, setStatus] = useState<'idle' | 'pending' | 'error'>('idle');
   const [recent, setRecent] = useState(recentPaths);
+  const zones = useZones();
   const registry = useQuery(trpc.registry.list.queryOptions(undefined, { enabled: open }));
   function toggle() {
     session.current++;

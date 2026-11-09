@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createTRPCClient, httpBatchLink, splitLink, wsLink } from '@trpc/client';
+import { createTRPCClient, httpBatchLink, httpLink, splitLink, wsLink } from '@trpc/client';
 import type { AppRouter } from '@hub/server';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { StrictMode } from 'react';
@@ -11,6 +11,10 @@ import { TRPCProvider, wsClient } from './lib/trpc.ts';
 import './index.css';
 
 const queryClient = new QueryClient();
+const authHeaders = () => {
+  const token = getToken();
+  return token ? { authorization: `Bearer ${token}` } : {};
+};
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     authLink,
@@ -18,12 +22,12 @@ const trpcClient = createTRPCClient<AppRouter>({
       // Subscriptions need the socket; queries and mutations stay plain HTTP.
       condition: (op) => op.type === 'subscription',
       true: wsLink({ client: wsClient }),
-      false: httpBatchLink({
-        url: '/trpc',
-        headers: () => {
-          const token = getToken();
-          return token ? { authorization: `Bearer ${token}` } : {};
-        },
+      false: splitLink({
+        // Asked on every page by the rail, in the same tick as `health`: alone, it never rides in the header's batch,
+        // so a page that pins `health` (the visual specs) keeps seeing exactly that request.
+        condition: (op) => op.path === 'modules.enabled',
+        true: httpLink({ url: '/trpc', headers: authHeaders }),
+        false: httpBatchLink({ url: '/trpc', headers: authHeaders }),
       }),
     }),
   ],

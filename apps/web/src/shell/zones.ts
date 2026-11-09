@@ -1,3 +1,4 @@
+import { useLiveModuleUIs, useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { LinkProps } from '@tanstack/react-router';
 import {
@@ -44,6 +45,10 @@ const declared: Zone[] = moduleZones(moduleUIs, builtinPaths).map((zone) => ({
   params: { module: zone.id },
 }));
 
+// Which module a zone belongs to, so the rail can drop it while that module is off.
+const zoneOwner = new Map(moduleUIs.flatMap((ui) => (ui.zone ? [[ui.zone.id, ui.name] as const] : [])));
+const sectionsOnlyIds = new Set(sectionsOnly.map((zone) => zone.id));
+
 const known = new Set([overview, ...pages, ...sectionsOnly, settings, ...declared].map((zone) => zone.id));
 for (const section of orphanSections(moduleUIs, known))
   console.warn(`Section "${section.id}" skipped: there is no zone "${section.zone}"`);
@@ -59,6 +64,28 @@ export const zones: Zone[] = [
   settings,
 ];
 
+/** The rail as it is now: zones of modules that are off are left out, and so are section-only zones left with no section. */
+export function useZones() {
+  const isOn = useIsOn();
+  const live = useLiveModuleUIs();
+  return zones.filter((zone) => {
+    const owner = zoneOwner.get(zone.id);
+    if (owner) return isOn(owner);
+    if (sectionsOnlyIds.has(zone.id))
+      return live.some((ui) => ui.sections?.some((section) => section.zone === zone.id));
+    return true;
+  });
+}
+
 export function zonePath(zone: Zone) {
   return zone.params ? `/desk/${zone.params.module}` : zone.path;
+}
+
+/** The zone a path belongs to: its own path, or a page under it (`/desk/settings/lavoro` is Impostazioni). */
+export function zoneAt(pathname: string, list: Zone[] = zones) {
+  const path = pathname.replace(/\/$/, '');
+  return (
+    list.find((zone) => zonePath(zone) === path) ??
+    list.find((zone) => zone.id !== 'overview' && path.startsWith(`${zone.path}/`))
+  );
 }

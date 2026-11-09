@@ -1,14 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { EASE_THROW, useInteractionReducedMotion } from '../components/ui/ui-interaction-motion.ts';
-import { zones, zonePath } from './zones.ts';
+import { useZones, zoneAt } from './zones.ts';
 import { m } from '../paraglide/messages.js';
 
 export function DeskRail({ pathname }: { pathname: string }) {
   const reduced = useInteractionReducedMotion();
-  const index = Math.max(
-    0,
-    zones.findIndex((zone) => zonePath(zone) === pathname.replace(/\/$/, '')),
-  );
+  const zones = useZones();
+  const current = zoneAt(pathname, zones);
+  const index = Math.max(0, current ? zones.indexOf(current) : 0);
   return (
     <nav
       aria-label={m.desk_zones()}
@@ -29,7 +28,7 @@ export function DeskRail({ pathname }: { pathname: string }) {
             key={id}
             to={path}
             params={params}
-            activeOptions={{ exact: true, includeSearch: false }}
+            activeOptions={{ exact: path === '/desk', includeSearch: false }}
             aria-label={label()}
             title={label()}
             className="group relative flex size-touch items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent"

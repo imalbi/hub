@@ -23,6 +23,8 @@ export type Context = {
   client: Client;
   remoteAddress: string;
   sockets: DeviceSockets;
+  /** Restart once the response to this request is sent (only a settings save asks); false when nothing will restart. */
+  restart: () => boolean;
 };
 
 const t = initTRPC.context<Context>().meta<ActionMeta>().create({ isDev: false });

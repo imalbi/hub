@@ -33,3 +33,5 @@ export default defineModule({
   },
 });
 ```
+
+- **Impostazioni** (settings page): a module's config can be edited from the desk and the module switched off. The form is drawn from `settingsSchema` (or `config` when absent; a module whose config is `z.unknown()` has no form). Mark a secret field `.meta({ secret: true })`: it is never sent to the page and can only be replaced. Plain objects become fields, maps, lists of objects and unions become JSON blocks, so shape a config as flat leaves where you want a control. A module in `modulesOff` (top level of the config file) is imported but never created: no database file is opened, no timer or route starts, and its data stays for when it is switched back on.

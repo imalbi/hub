@@ -70,6 +70,8 @@ void test('every mutation carries an Italian label and an English description in
     'pomodoro.skip',
     'pomodoro.start',
     'pomodoro.stop',
+    'settings.restore',
+    'settings.save',
     'system.lock',
     'system.powerOff',
     'system.reboot',
@@ -92,6 +94,7 @@ void test('every danger mutation is refused without confirmed: true and runs wit
   );
   assert.deepEqual(danger.map((m) => m.path).toSorted(), [
     'devices.revoke',
+    'settings.restore',
     'system.powerOff',
     'system.reboot',
     'system.suspend',

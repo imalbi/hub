@@ -1,3 +1,4 @@
+import { useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
 import type { WidgetSize } from '../lib/widget-size.ts';
@@ -42,4 +43,28 @@ export const defaultLayout: WidgetItem[] = [
   { widget: 'news', size: 'medium', x: 6, y: 1 },
 ];
 
-for (const module of moduleUIs) widgets.push(...(module.widgets ?? []));
+// The module each widget belongs to, so a module that is off takes its widgets out of the offer and the board.
+const widgetOwner = new Map<string, string>(
+  Object.entries({
+    pomodoro: 'pomodoro',
+    media: 'media',
+    server: 'health',
+    news: 'news',
+    controls: 'system',
+    power: 'system',
+    audio: 'audio',
+    devices: 'devices',
+    theme: 'theme',
+  }),
+);
+for (const module of moduleUIs)
+  for (const widget of module.widgets ?? []) {
+    widgets.push(widget);
+    widgetOwner.set(widget.id, module.name);
+  }
+
+/** The widgets whose module is on. A saved layout keeps the ones that are off, so switching a module back on restores them. */
+export function useWidgets() {
+  const isOn = useIsOn();
+  return widgets.filter((widget) => isOn(widgetOwner.get(widget.id) ?? ''));
+}

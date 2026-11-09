@@ -1,15 +1,16 @@
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { Badge } from '../components/ui/badge.tsx';
+import { useIsOn } from '../lib/enabled-modules.ts';
 import { useTRPC } from '../lib/trpc.ts';
 import { NewsTile } from '../modules/news/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m } from '../paraglide/messages.js';
-import { pages } from './pages.ts';
+import { useDeckPages } from './pages.ts';
 
 const storageKey = 'hub.deck.page';
 
-function storedPage() {
+function storedPage(pages: { id: string }[]) {
   try {
     const index = pages.findIndex((page) => page.id === localStorage.getItem(storageKey));
     return Math.max(0, index);
@@ -24,9 +25,12 @@ function storedPage() {
  */
 export function DeckPages() {
   const trpc = useTRPC();
-  const news = useSubscription(trpc.news.onState.subscriptionOptions());
-  const pomodoro = useSubscription(trpc.pomodoro.onState.subscriptionOptions());
-  const [active, setActive] = useState(storedPage);
+  const isOn = useIsOn();
+  // A module that is off has no router: its subscription would only fail.
+  const news = useSubscription(trpc.news.onState.subscriptionOptions(undefined, { enabled: isOn('news') }));
+  const pomodoro = useSubscription(trpc.pomodoro.onState.subscriptionOptions(undefined, { enabled: isOn('pomodoro') }));
+  const pages = useDeckPages();
+  const [active, setActive] = useState(() => storedPage(pages));
   const scroller = useRef<HTMLDivElement>(null);
 
   // The remembered page is where the deck opens, without an animation; scroll position lives in the DOM.

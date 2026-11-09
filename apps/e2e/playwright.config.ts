@@ -53,7 +53,7 @@ export default defineConfig({
       testMatch: privateFolder
         ? []
         : examples
-          ? ['modules.spec.ts', 'hue.spec.ts', 'palette.spec.ts', 'zone-pages.spec.ts']
+          ? ['modules.spec.ts', 'hue.spec.ts', 'palette.spec.ts', 'zone-pages.spec.ts', 'settings.spec.ts']
           : [
               'palette.spec.ts',
               'palette-regressions.spec.ts',
@@ -71,6 +71,8 @@ export default defineConfig({
               'widgets.spec.ts',
               'system.spec.ts',
               'news.spec.ts',
+              'settings.spec.ts',
+              'settings.visual.spec.ts',
             ],
       use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
     },

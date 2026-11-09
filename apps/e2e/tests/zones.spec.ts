@@ -73,7 +73,7 @@ test('Media controls existing playback and switches outputs with the output swit
 });
 
 test('a chosen theme survives reload and the deck follows it', async ({ page }) => {
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   await page.reload();
@@ -87,7 +87,7 @@ test('a chosen theme survives reload and the deck follows it', async ({ page }) 
 
 test('Pomodoro secondary controls remain readable when hovered in paper', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
   for (const name of ['Salta', 'Ferma']) {

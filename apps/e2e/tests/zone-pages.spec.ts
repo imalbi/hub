@@ -10,7 +10,7 @@ const pages = [
   { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
   { path: '/desk/system', landmark: { role: 'region', name: 'Comandi' } },
   { path: '/desk/devices', landmark: { role: 'region', name: 'Dispositivi' } },
-  { path: '/desk/settings', landmark: { role: 'group', name: 'Aspetto' } },
+  { path: '/desk/settings', landmark: { role: 'navigation', name: 'Sezioni' } },
 ] as const;
 
 for (const { path, landmark } of pages) {
@@ -24,10 +24,10 @@ for (const { path, landmark } of pages) {
 }
 
 test('Impostazioni shows the Aspetto picker and a chosen theme applies', async ({ page }) => {
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
   await expect(page.getByRole('heading', { level: 1, name: 'Impostazioni' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Aspetto' })).toBeVisible();
-  // One tab until step 07s adds Moduli and Configurazione: no bar.
+  // Aspetto is a page of its own under the settings list, not a tab: no bar.
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await chooseTheme(page, 'Chiaro');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');

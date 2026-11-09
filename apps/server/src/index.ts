@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertCanListen, loadConfig } from './core/config.ts';
+import { assertCanListen, configFilePath, loadConfig } from './core/config.ts';
+import { RESTART_EXIT_CODE } from './core/settings-router.ts';
 import { buildServer } from './server.ts';
 
 // XDG state dir: personal data stays out of the repo and survives reinstalls of it.
@@ -22,7 +23,22 @@ const config = {
 assertCanListen(config);
 
 // Loopback unless the config opens it, and then only with an origin allowlist and device pairing in place.
-await buildServer({ dbPath, config, webRoot, moduleRoots: defaultModuleRoots }).listen({
+const app = buildServer({
+  dbPath,
+  config,
+  webRoot,
+  moduleRoots: defaultModuleRoots,
+  // Under systemd (`INVOCATION_ID`) a save exits and `hub.service` (`Restart=on-failure`) starts it again, any non-zero
+  // code does. From a terminal (`pnpm dev`, `pnpm serve`) nobody would start it again: it only writes the file.
+  settings: {
+    configPath: configFilePath(),
+    // Closing first runs every module's cleanup: a running Lavoro collection is cancelled and recorded, not killed.
+    onRestart: process.env.INVOCATION_ID
+      ? () => void app.close().finally(() => process.exit(RESTART_EXIT_CODE))
+      : undefined,
+  },
+});
+await app.listen({
   host: config.server.host,
   port: Number(process.env.HUB_PORT ?? 4180),
 });

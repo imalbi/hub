@@ -7,7 +7,7 @@ import { useTRPC } from '../lib/trpc.ts';
 import { widgetCells, type WidgetSize } from '../lib/widget-size.ts';
 import { m } from '../paraglide/messages.js';
 import { HeaderActions } from './header-slot.tsx';
-import { defaultLayout, widgets, type WidgetItem } from './widgets.ts';
+import { defaultLayout, useWidgets, type WidgetItem } from './widgets.ts';
 
 // The server keeps one saved board, Panoramica's.
 const zone = 'overview';
@@ -49,6 +49,7 @@ export function WidgetBoard() {
   const [editing, setEditing] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth();
 
+  const widgets = useWidgets();
   const known = new Map(widgets.map((widget) => [widget.id, widget]));
   // Unknown ids (a widget removed since) and sizes a widget no longer has are dropped, never rendered.
   const items = (saved.data ?? defaultLayout)

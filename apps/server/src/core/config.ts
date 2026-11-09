@@ -5,7 +5,7 @@ import { publicModules } from '../modules.ts';
 import { coreConfigSchema } from './config-schema.ts';
 import { moduleConfigShape } from './module.ts';
 
-const configSchema = coreConfigSchema.extend(moduleConfigShape(publicModules));
+export const configSchema = coreConfigSchema.extend(moduleConfigShape(publicModules));
 export type Config = z.infer<typeof configSchema>;
 
 export const emptyConfig: Config = configSchema.parse({});
@@ -23,8 +23,11 @@ export function assertCanListen({ server }: Config) {
 
 const defaultPath = fileURLToPath(new URL('../../../../config.local.json', import.meta.url));
 
+/** The file `loadConfig` reads and Impostazioni writes. */
+export const configFilePath = () => process.env.HUB_CONFIG ?? defaultPath;
+
 /** A missing file is an empty config; an unreadable or invalid one throws a message that names the file. */
-export function loadConfig(path = process.env.HUB_CONFIG ?? defaultPath): Config {
+export function loadConfig(path = configFilePath()): Config {
   let text: string;
   try {
     text = readFileSync(path, 'utf8');

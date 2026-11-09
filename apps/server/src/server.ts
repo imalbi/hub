@@ -24,6 +24,7 @@ import { run as realRun, type Run } from './core/exec.ts';
 import { publicModules } from './modules.ts';
 import { discoverModules } from './core/discovery.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
+import { createModuleStates } from './core/module-states.ts';
 import { createAppRouter, type AppRouter } from './router.ts';
 
 // `run` and `config` default to the real system and an empty config so tests never touch the desktop or personal files.
@@ -37,6 +38,7 @@ export function buildServer({
   moduleRoots = [],
   exampleModules = process.env.HUB_EXAMPLE_MODULES === '1',
   onlyModules,
+  settings,
 }: {
   dbPath: string;
   deps?: { run?: Run; fetch?: typeof fetch };
@@ -48,6 +50,12 @@ export function buildServer({
   exampleModules?: boolean;
   /** Folder names of the module roots to load; unset loads all. For tests, like `isLoopback`: `index.ts` never sets it. */
   onlyModules?: readonly string[];
+  /**
+   * Without it Impostazioni can read module states but not the config file. `onRestart` runs once the response to a
+   * save is sent: `index.ts` exits with a code the service manager restarts on, the e2e fake restarts in place. Left
+   * out, a save writes the file and answers `restarting: false` (a dev server nobody would start again).
+   */
+  settings?: { configPath: string; onRestart?: () => void };
 }) {
   const run = deps.run ?? realRun;
   const db = openDb(dbPath);
@@ -93,17 +101,24 @@ export function buildServer({
     const onClose = (close: () => void | Promise<void>) => {
       scope.addHook('onClose', close);
     };
+    const states = createModuleStates();
     const extra = await discoverModules({
       roots: moduleRoots,
       examples: exampleModules,
       onlyModules,
-      reserved: [...publicModules.map((m) => m.name), 'registry'],
+      reserved: [...publicModules.map((m) => m.name), 'registry', 'settings', 'modules'],
       deps: discoveredDeps,
       dbPath,
       config: config.modules ?? {},
       onClose,
+      states,
+      off: config.modulesOff,
     });
-    const appRouter = createAppRouter(publicModules, moduleDeps, config, onClose, extra);
+    const appRouter = createAppRouter(publicModules, moduleDeps, config, onClose, extra, {
+      states,
+      off: config.modulesOff,
+      configPath: settings?.configPath,
+    });
     scope.register(fastifyTRPCPlugin, {
       prefix: '/trpc',
       useWSS: true,
@@ -126,6 +141,14 @@ export function buildServer({
             client,
             remoteAddress: req.socket.remoteAddress ?? '',
             sockets,
+            restart: () => {
+              const exit = settings?.onRestart;
+              if (!exit) return false;
+              // A WebSocket reply is the socket itself and has no `finish`; HTTP is the one real path.
+              if (isSocket(res)) setTimeout(exit, 200);
+              else res.raw.once('finish', exit);
+              return true;
+            },
           };
         },
         keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },

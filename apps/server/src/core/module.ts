@@ -18,6 +18,7 @@ export type ModuleInstance = { router: AnyRouter | AnyProcedure; close?: () => v
 export type ModuleDefinition = {
   name: string;
   config?: z.ZodType;
+  settingsSchema?: z.ZodType;
   zones?: readonly string[];
   create: (deps: ModuleDeps & { config: unknown }) => ModuleInstance;
 };
@@ -36,6 +37,11 @@ export function defineModule<
 >(definition: {
   name: N;
   config?: S;
+  /**
+   * What Impostazioni draws its form from and validates a save with, when it differs from `config`: a module that
+   * accepts any slice and parses it strictly inside `create` (so a bad one leaves it loaded) names the strict schema here.
+   */
+  settingsSchema?: z.ZodType;
   zones?: readonly string[];
   migrations?: M;
   coreDb?: C;

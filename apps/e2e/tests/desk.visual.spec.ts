@@ -132,7 +132,7 @@ test('Dispositivi at 4K matches the baseline', async ({ page }) => {
 });
 
 test('the overview in paper matches the baseline', async ({ page }) => {
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
@@ -141,7 +141,7 @@ test('the overview in paper matches the baseline', async ({ page }) => {
 });
 
 test('Media in paper uses solid floating controls and matches the baseline', async ({ page }) => {
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Media', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
@@ -156,7 +156,7 @@ for (const theme of [
   { name: 'Caelestia', id: 'caelestia', file: 'desk-caelestia.png' },
 ]) {
   test(`the overview in ${theme.name} matches the baseline`, async ({ page }) => {
-    await page.goto('/desk/settings');
+    await page.goto('/desk/settings/appearance');
     await chooseTheme(page, theme.name);
     await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id);
@@ -166,7 +166,7 @@ for (const theme of [
 }
 
 test('the theme editor flags unreadable text and matches the baseline', async ({ page }) => {
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
   await page.getByRole('button', { name: 'Duplica Pietra' }).click();
   const editor = page.getByRole('form', { name: 'Nuovo tema' });
   const surface = await editor.getByLabel('Pannelli', { exact: true }).inputValue();

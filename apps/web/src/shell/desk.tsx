@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ThemeProvider } from '../theme/theme.tsx';
-import { zones, zonePath } from './zones.ts';
+import { useZones, zoneAt } from './zones.ts';
 import { m } from '../paraglide/messages.js';
 import { useLayout } from './use-layout.ts';
 import { DeskRail } from './rail.tsx';
@@ -10,15 +10,17 @@ import { DeskBackdrop } from './backdrop.tsx';
 import { HeaderActivity } from './header-activity.tsx';
 import { HeaderSlot } from './header-slot.tsx';
 import { DeskCommandPalette } from './command-palette.tsx';
+import { RestartScreen } from '../settings/restart-screen.tsx';
 
 /** The desk frame: theme, backdrop, rail, header, keys 1-9 and the zone grid the child routes render into. */
 export function DeskShell() {
   useLayout('desk');
+  const zones = useZones();
   const location = useLocation();
   const navigate = useNavigate();
   // A callback ref into state, so zones can portal their actions into the header once it exists.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
-  const active = zones.find((zone) => zonePath(zone) === location.pathname.replace(/\/$/, ''));
+  const active = zoneAt(location.pathname, zones);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
@@ -36,11 +38,12 @@ export function DeskShell() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate]);
+  }, [navigate, zones]);
   return (
     <ThemeProvider remote>
       <MediaProvider>
         <DeskCommandPalette />
+        <RestartScreen />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
         <main className="min-h-dvh px-xl pt-xl pb-palette-clear pl-desk-inset">

@@ -16,7 +16,7 @@ async function deleteCustomThemes(pc: APIRequestContext) {
 const backgroundOf = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).backgroundColor);
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/desk/settings');
+  await page.goto('/desk/settings/appearance');
 });
 
 test('every built-in theme has a card whose preview draws its own colors', async ({ page }) => {

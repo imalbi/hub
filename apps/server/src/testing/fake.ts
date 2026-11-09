@@ -1,9 +1,10 @@
-import { copyFileSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import type { IsLoopback } from '../core/auth.ts';
 import { z } from 'zod';
-import { emptyConfig, type Config } from '../core/config.ts';
+import { configSchema, emptyConfig, type Config } from '../core/config.ts';
 import { hueStateSchema } from '../integrations/hue/contracts.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
 import { getFakeHue } from './fake-hue.ts';
@@ -63,32 +64,61 @@ const config: Config = {
 // Only this file passes the option: `index.ts` never does, and `auth.test.ts` pins that the real default trusts 127.0.0.1.
 const isLoopback: IsLoopback = ({ headers }) => headers.host?.split(':')[0] === 'localhost';
 
-// Loopback only and a port of its own, so it never reaches the LAN or collides with `pnpm dev` on 4180.
-const app = buildServer({
-  dbPath: ':memory:',
-  moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
-  deps: { run: createFakeDesktop() },
-  config,
-  isLoopback,
-});
+// Impostazioni writes this file, never the real config. A restart builds the server again from the fixture config plus
+// whatever the file holds (top-level keys replace the fixture's), the way the real one reloads `config.local.json`.
+const configPath = join(runDir, 'hub-e2e-config.json');
+writeFileSync(configPath, '{}\n');
+// A file, not memory: the restart keeps paired devices and module data, as the real service does.
+const dbPath = join(runDir, 'hub-e2e.db');
+// How long the server stays down on a restart, long enough for the page to show it.
+const restartDelayMs = Number(process.env.HUB_E2E_RESTART_MS ?? 1500);
 
-// Test hook for the Hue example module's fake light, so a spec can change it the way Echo or a power cut would and
-// read the writes it received. Only this e2e server has it; there is no such route in `index.ts`.
-const hueHook = z.union([z.object({ reset: z.literal(true) }), hueStateSchema.partial()]);
-app.get('/__fake/hue', (_request, reply) => {
-  const fake = getFakeHue();
-  return fake ? { state: fake.state(), writes: fake.writes, watchers: fake.watchers } : reply.code(404).send();
-});
-app.post('/__fake/hue', (request, reply) => {
-  const fake = getFakeHue();
-  const body = hueHook.safeParse(request.body);
-  if (!fake || !body.success) return reply.code(fake ? 400 : 404).send();
-  if ('reset' in body.data) fake.reset();
-  else fake.patch(body.data);
-  return { state: fake.state() };
-});
+function build() {
+  const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  const app = buildServer({
+    dbPath,
+    moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
+    deps: { run: createFakeDesktop() },
+    config: configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) }),
+    isLoopback,
+    settings: { configPath, onRestart: () => void restart() },
+  });
+  return app;
+}
 
-await app.listen({
-  host: '127.0.0.1',
-  port: Number(process.env.HUB_PORT ?? 4190),
-});
+let app = build();
+let restarting: Promise<void> | undefined;
+// Close and build again in place instead of exiting: nothing supervises this process.
+function restart() {
+  restarting ??= (async () => {
+    await app.close();
+    await sleep(restartDelayMs);
+    app = build();
+    hooks(app);
+    await listen();
+    restarting = undefined;
+  })();
+  return restarting;
+}
+const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HUB_PORT ?? 4190) });
+
+function hooks(server: typeof app) {
+  // Test hook for the Hue example module's fake light, so a spec can change it the way Echo or a power cut would and
+  // read the writes it received. Only this e2e server has it; there is no such route in `index.ts`.
+  const hueHook = z.union([z.object({ reset: z.literal(true) }), hueStateSchema.partial()]);
+  server.get('/__fake/hue', (_request, reply) => {
+    const fake = getFakeHue();
+    return fake ? { state: fake.state(), writes: fake.writes, watchers: fake.watchers } : reply.code(404).send();
+  });
+  server.post('/__fake/hue', (request, reply) => {
+    const fake = getFakeHue();
+    const body = hueHook.safeParse(request.body);
+    if (!fake || !body.success) return reply.code(fake ? 400 : 404).send();
+    if ('reset' in body.data) fake.reset();
+    else fake.patch(body.data);
+    return { state: fake.state() };
+  });
+}
+hooks(app);
+
+await listen();

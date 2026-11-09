@@ -1,3 +1,4 @@
+import { useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
 import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
@@ -57,10 +58,31 @@ export const pages: Page[] = [
   },
 ];
 
+// The module each tile belongs to, so a module that is off takes its tiles off the deck.
+const tileOwner = new Map<ComponentType, string>([
+  ...[AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
+  ...[MediaTile, NextTile].map((tile) => [tile, 'media'] as const),
+  [NewsTile, 'news'],
+  [PomodoroTile, 'pomodoro'],
+  [AirPlayTile, 'airplay'],
+  ...[HubTile, CommunicationTile, LockTile, MusicAppTile, PowerOffTile, PowerTile, RebootTile, SuspendTile].map(
+    (tile) => [tile, 'system'] as const,
+  ),
+]);
+
 for (const module of moduleUIs) {
   const { deck } = module;
   if (!deck) continue;
+  for (const tile of deck.tiles) tileOwner.set(tile, module.name);
   const target = pages.find((page) => page.id === (deck.page === 'desk' ? 'desk-more' : deck.page));
   if (target) target.tiles.push(...deck.tiles);
   else pages.push(deck);
+}
+
+/** The deck's pages with the tiles of modules that are off left out; a page left with nothing to show is dropped. */
+export function useDeckPages() {
+  const isOn = useIsOn();
+  return pages
+    .map((page) => ({ ...page, tiles: page.tiles.filter((tile) => isOn(tileOwner.get(tile) ?? '')) }))
+    .filter((page) => page.tiles.length > 0 || page.extra);
 }
