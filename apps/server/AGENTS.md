@@ -33,7 +33,7 @@ The server runs `.ts` files directly with Node 24, so only erasable TypeScript i
 
 ## Action registry
 
-The registry is the tRPC router: a module is a `defineModule` definition in `src/modules/<module>/module.ts` (see "Writing a module" in the root AGENTS.md), listed in `src/modules.ts`; `createAppRouter` mounts its sub-router (`router.ts` next to it) under its name. `health` is a root procedure, `devices` and `pairing` are two definitions from one folder. It exposes `state` (query), `onState` (subscription, see "Live state") and one mutation per action.
+The registry is the tRPC router: a module is a `defineModule` definition in `src/modules/<module>/module.ts` (see `docs/modules.md`), listed in `src/modules.ts`; `createAppRouter` mounts its sub-router (`router.ts` next to it) under its name. `health` is a root procedure, `devices` and `pairing` are two definitions from one folder. It exposes `state` (query), `onState` (subscription, see "Live state") and one mutation per action.
 
 - Every mutation sets `.meta({ label, description, danger? })` (`ActionMeta` in `src/core/trpc.ts`): `label` is short Italian UI copy; `description` is English for an LLM ("Switch the default audio output to the next configured device"). `src/router.test.ts` requires both. Protected `registry.list` enumerates every public/private mutation with metadata and input JSON Schema, generated with zod `io: "input"`; opaque parsers remain listed but cannot run through generated forms.
 - `core/registry.ts` removes zod JSON Schema's open index signature from its public type: tRPC serialization otherwise erases named fields into unknown, breaking inferred web forms. Runtime JSON Schema stays intact.
@@ -98,7 +98,7 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Isolation is by type and by construction: `discoverModules` takes `DiscoveredDeps` (no `db`), `buildServer` passes it a separate object from the public `ModuleDeps`, and a discovered definition with `coreDb` is refused. `defineModule` types `db` from the options: `migrations` gives it, `coreDb: true` gives the core one, neither gives none (`server-modules-db.test.ts` has a `@ts-expect-error` for that). `pomodoro` and `theme` are the two public modules that declare `coreDb`.
 - Failures stay local: the database is opened after the name and zone checks and before `create`; if opening, `create` or the instance check throws, the module's `close` and the database handle are closed and the module is skipped.
 - Close order: Fastify runs `onClose` hooks last in, first out, so the database hook is registered before the module's `close` and runs after it (a module can still write in `close`; the same reason the core database hook is registered first in `buildServer`).
-- Generating a module's migrations is in "Writing a module" of the root `AGENTS.md`; `pnpm --filter @hub/server db:generate` is for the core only.
+- Generating a module's migrations is in `docs/modules.md`; `pnpm --filter @hub/server db:generate` is for the core only.
 
 ## HTML for modules
 
