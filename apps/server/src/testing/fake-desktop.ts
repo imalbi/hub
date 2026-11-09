@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Run, RunResult } from '../core/exec.ts';
 import { parsePwDump } from '../modules/audio/pipewire.ts';
+import { createFakeHimalaya } from './fake-himalaya.ts';
 
 const dump = readFileSync(new URL('../modules/audio/fixtures/pw-dump.json', import.meta.url), 'utf8');
 const { sinks, defaultName } = parsePwDump(dump);
@@ -18,7 +19,16 @@ export function createFakeDesktop({
   sounds = [],
   system = [],
   news = [],
-}: { notifications?: string[][]; sounds?: string[]; system?: string[][]; news?: string[][] } = {}): Run {
+  mail = [],
+}: {
+  notifications?: string[][];
+  sounds?: string[];
+  system?: string[][];
+  news?: string[][];
+  /** Every `himalaya` argv the fake was asked, refused ones included. */
+  mail?: string[][];
+} = {}): Run {
+  const himalaya = createFakeHimalaya();
   let sinkName = defaultName ?? '';
   let status = 'Playing';
   let track = 0;
@@ -30,6 +40,10 @@ export function createFakeDesktop({
   const artUrl = new URL('../modules/media/fixtures/cover.png', import.meta.url).href;
 
   return (bin, args) => {
+    if (bin === 'himalaya') {
+      mail.push([...args]);
+      return Promise.resolve(himalaya(args));
+    }
     const [command, target] = args;
     if (bin === 'notify-send' && args.length === 4 && command === '--app-name' && target === 'Hub') {
       notifications.push([...args]);

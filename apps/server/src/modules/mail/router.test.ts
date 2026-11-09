@@ -1,0 +1,199 @@
+import assert from 'node:assert/strict';
+import { mock, test } from 'node:test';
+import { z } from 'zod';
+import { emptyConfig, type Config } from '../../core/config.ts';
+import type { Run, RunResult } from '../../core/exec.ts';
+import { buildServer } from '../../server.ts';
+import { createFakeDesktop } from '../../testing/fake-desktop.ts';
+
+process.env.NODE_ENV = 'test';
+
+const withMail: Config = {
+  ...emptyConfig,
+  mail: {
+    accounts: [
+      { label: 'Lavoro', account: 'work' },
+      { label: 'Personale', account: 'personal' },
+    ],
+  },
+};
+
+function setup(t: test.TestContext, config: Config = withMail, run?: Run) {
+  const calls: string[][] = [];
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: run ?? createFakeDesktop({ mail: calls }) },
+    config,
+  });
+  t.after(() => app.close());
+  const get = (path: string, input?: unknown) =>
+    app.inject(
+      input === undefined ? `/trpc/${path}` : `/trpc/${path}?input=${encodeURIComponent(JSON.stringify(input))}`,
+    );
+  const post = (path: string, input: unknown) =>
+    app.inject({
+      method: 'POST',
+      url: `/trpc/${path}`,
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify(input),
+    });
+  return { app, calls, get, post };
+}
+
+const ids = (response: { json: () => { result: { data: { id: string }[] } } }) =>
+  response.json().result.data.map((row) => row.id);
+
+const failing =
+  (result: RunResult): Run =>
+  () =>
+    Promise.resolve(result);
+
+void test('a listing asks for one page of the mailbox and gives its rows, newest first', async (t) => {
+  const { get, calls } = setup(t);
+  const first = await get('mail.list', { account: 'work' });
+  assert.equal(first.statusCode, 200);
+  assert.deepEqual(ids(first), ['310', '309', '308']);
+  assert.deepEqual(calls[0], ['--json', '-a', 'work', 'envelope', 'list', '-m', 'INBOX', '-p', '1', '-s', '25']);
+  const second = await get('mail.list', { account: 'work', page: 2 });
+  assert.deepEqual(calls[1], ['--json', '-a', 'work', 'envelope', 'list', '-m', 'INBOX', '-p', '2', '-s', '25']);
+  assert.deepEqual(ids(second), []);
+});
+
+void test('reading a message asks for it without --seen, returns its text, and leaves it unread', async (t) => {
+  const { get, calls } = setup(t);
+  const read = await get('mail.read', { account: 'work', id: '310' });
+  assert.equal(read.statusCode, 200, 'the fake refuses --seen, so a read that sent it would fail here');
+  assert.deepEqual(calls.at(-1), ['--json', '-a', 'work', 'message', 'read', '-m', 'INBOX', '310']);
+  assert.equal(calls.flat().includes('--seen'), false);
+  assert.deepEqual(read.json().result.data, {
+    id: '310',
+    text: 'Buongiorno,\nvorremmo proporle un colloquio.',
+    truncated: false,
+  });
+  const after = await get('mail.list', { account: 'work' });
+  assert.equal(after.json().result.data.find((row: { id: string }) => row.id === '310').seen, false);
+});
+
+void test('marking seen and starred asks for the flag and shows in the next listing', async (t) => {
+  const { post, get, calls } = setup(t);
+  assert.equal((await post('mail.setSeen', { account: 'work', ids: ['310'], seen: true })).statusCode, 200);
+  assert.deepEqual(calls.at(-1), ['--json', '-a', 'work', 'flag', 'add', '-m', 'INBOX', '-f', 'seen', '310']);
+  const seen = await get('mail.list', { account: 'work' });
+  assert.equal(seen.json().result.data.find((row: { id: string }) => row.id === '310').seen, true);
+
+  assert.equal((await post('mail.setSeen', { account: 'work', ids: ['310'], seen: false })).statusCode, 200);
+  assert.deepEqual(calls.at(-1), ['--json', '-a', 'work', 'flag', 'remove', '-m', 'INBOX', '-f', 'seen', '310']);
+
+  assert.equal((await post('mail.setFlagged', { account: 'work', ids: ['310'], flagged: true })).statusCode, 200);
+  assert.deepEqual(calls.at(-1), ['--json', '-a', 'work', 'flag', 'add', '-m', 'INBOX', '-f', 'flagged', '310']);
+  const starred = await get('mail.list', { account: 'work' });
+  assert.equal(starred.json().result.data.find((row: { id: string }) => row.id === '310').flagged, true);
+});
+
+void test('search narrows by sender, by an unread flag and by a subject with spaces, as one token each', async (t) => {
+  const { get, calls } = setup(t);
+  assert.deepEqual(ids(await get('mail.search', { account: 'work', filter: { from: 'carla' } })), ['308']);
+  assert.deepEqual(calls.at(-1)?.slice(-2), ['from', '"carla"']);
+  assert.deepEqual(ids(await get('mail.search', { account: 'work', filter: { unseen: true } })), ['310', '308']);
+  assert.deepEqual(ids(await get('mail.search', { account: 'work', filter: { subject: 'Offerta di colloquio' } })), [
+    '310',
+  ]);
+  const literal = await get('mail.search', { account: 'work', filter: { subject: 'Offerta and dintorni' } });
+  assert.equal(literal.statusCode, 200);
+  assert.deepEqual(ids(literal), []);
+});
+
+void test('a himalaya failure is a generic error, with no address, subject or body in the answer', async (t) => {
+  const exited = setup(t, withMail, failing({ stdout: '', stderr: 'owner@example.org Offerta', code: 1 }));
+  const list = await exited.get('mail.list', { account: 'work' });
+  assert.equal(list.statusCode, 500);
+  assert.equal(list.json().error.message, 'The mail account is not available');
+  assert.doesNotMatch(list.body, /example\.org|Offerta/);
+
+  const timed = setup(t, withMail, failing({ stdout: '', stderr: '', code: -1 }));
+  assert.equal((await timed.get('mail.list', { account: 'work' })).statusCode, 408);
+
+  const garbled = setup(t, withMail, failing({ stdout: 'Offerta di colloquio, not json', stderr: '', code: 0 }));
+  const bad = await garbled.get('mail.read', { account: 'work', id: '310' });
+  assert.equal(bad.statusCode, 500);
+  assert.equal(bad.json().error.message, 'The mail account answered unexpectedly');
+  assert.doesNotMatch(bad.body, /Offerta/);
+});
+
+void test('the state keeps a failed account as an error row, and the answer stays free of addresses', async (t) => {
+  const { get } = setup(t, withMail, failing({ stdout: '', stderr: '', code: 1 }));
+  const state = await get('mail.state', undefined);
+  assert.equal(state.statusCode, 200);
+  assert.deepEqual(
+    state
+      .json()
+      .result.data.accounts.map((account: { unread: unknown; failure: string; latest: unknown[] }) => [
+        account.unread,
+        account.failure,
+        account.latest,
+      ]),
+    [
+      [null, 'failed', []],
+      [null, 'failed', []],
+    ],
+  );
+  assert.doesNotMatch(state.body, /example\.org/);
+});
+
+void test('without a mail slice the module answers nothing, and an account it does not know is refused', async (t) => {
+  const off = setup(t, emptyConfig);
+  assert.equal((await off.get('mail.state', undefined)).statusCode, 404);
+  assert.equal((await off.get('mail.list', { account: 'work' })).statusCode, 404);
+  assert.deepEqual(off.calls, []);
+
+  const unknown = setup(t);
+  const refused = await unknown.get('mail.list', { account: 'nosuch' });
+  assert.equal(refused.statusCode, 404);
+  assert.equal(refused.json().error.message, 'Mail account not configured');
+  assert.equal((await unknown.post('mail.setSeen', { account: 'nosuch', ids: ['1'], seen: true })).statusCode, 404);
+  assert.deepEqual(unknown.calls, []);
+});
+
+void test('the two flag actions are in the registry with their Italian label and English description', async (t) => {
+  const { app } = setup(t);
+  const actions = z
+    .array(z.object({ path: z.string(), label: z.string(), description: z.string() }))
+    .parse((await app.inject('/trpc/registry.list')).json().result.data);
+  for (const path of ['mail.setSeen', 'mail.setFlagged']) {
+    const action = actions.find((item) => item.path === path);
+    assert.ok(action?.label.trim(), path);
+    assert.ok(action?.description.trim(), path);
+  }
+});
+
+void test('a thread is rebuilt from both mailboxes over the window, starting the day before it', async (t) => {
+  mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 10, 9, 12) });
+  t.after(() => mock.timers.reset());
+  const { get, calls } = setup(t);
+  const response = await get('mail.threads', {
+    links: [
+      { account: 'work', messageId: 'ask@example.org' },
+      { account: 'work', messageId: 'offer@example.org' },
+      { account: 'work', messageId: 'missing@example.org' },
+    ],
+    days: 60,
+  });
+  assert.equal(response.statusCode, 200);
+  const answer = response.json().result.data;
+  assert.equal(answer.after, '2026-09-09');
+  assert.equal(answer.truncated, false);
+  const [question, offer, missing] = answer.threads;
+  assert.deepEqual(
+    question.thread.messages.map((message: { id: string }) => message.id),
+    ['42', '308'],
+  );
+  assert.equal(question.thread.waiting, false);
+  assert.deepEqual(
+    offer.thread.messages.map((message: { id: string }) => message.id),
+    ['310', '43'],
+  );
+  assert.equal(offer.thread.waiting, true);
+  assert.equal(missing.thread, null);
+  assert.ok(calls.some((call) => call.includes('after') && call.includes('2026-09-09')));
+  assert.ok(calls.some((call) => call.join(' ').includes('-m sent')));
+});

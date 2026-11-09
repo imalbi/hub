@@ -188,3 +188,15 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Without `airplay.command`, the module is off: `state` is null, `start` and `stop` throw `PRECONDITION_FAILED` (412).
 - The e2e fake config sets `airplay.command: 'airplay'`, which the fake desktop answers. The real helper starts uxplay with `setsid ... &`, so it lives in the `hub.service` cgroup: restarting the service stops AirPlay.
 - When configured: `status` exit code 0 means running (`running: true`), non-zero means stopped (`running: false`), polled every 2 s while subscribed. `start` runs `<command> start`, `stop` runs `<command> stop`, both push fresh state via live notify. Tests use fake desktop or injected runner and never invoke the real binary.
+
+## Mail (Posta)
+
+- `modules/mail/`: `himalaya.ts` (argv builders, zod for `--json` answers, plain text of a message), `thread.ts` (`threadOf`, pure), `live.ts` (`readMailState`, `createMailLive`, polled every 60 s only while subscribed), `router.ts`, `config.ts`, `module.ts`. Public module, absent `mail` in config means off: `create` returns an empty router, so no procedure answers and nothing polls.
+- Every call is `himalaya --json -a <account> ...` through `ctx.run` with `timeoutMs` 20 s. The account must be in `mail.accounts` (404 otherwise): a name from the client never reaches himalaya unchecked. Hub never reads himalaya's own config, never passes credentials.
+- himalaya answers failures as `{"error": ...}`, and the exit code is 1 in the cases checked; `himalaya()` checks both. A failure is a reason (`timeout`, `failed`, `unreadable`) that the router turns into one short English message: no address, subject or body in it.
+- Query words are joined by himalaya and parsed as one string. A value must be double-quoted with `\` and `"` escaped (`quoteValue`), or a space, `and` or `or` in it breaks the parse. `after D` excludes day D, so a window starts the day before (`windowStart`).
+- Reading never passes `--seen` (the fake refuses it, so a read that sent it fails the test). Flags change only through `setSeen` and `setFlagged`.
+- Plain text: `text_body` can point at an HTML part, so text comes from `Text` parts first and falls back to `Html` stripped by `htmlToText` (wrapped in a body first, since a bare fragment has none in linkedom; `head` is never removed).
+- Threads are built from both INBOX and `sent` (role lookup by himalaya). "Waiting for a reply" means the last message of the thread is in `sent`.
+- The fake (`testing/fake-himalaya.ts`, through `createFakeDesktop({ mail })`) answers the exact argv Hub builds, keeps flags per desktop and refuses anything else. Fixtures are invented (`example.org`).
+- Smoke: `himalaya --version` and `json-schema himalaya-envelope-list` checked for the fields Hub reads. No account command is in the smoke list.

@@ -103,3 +103,36 @@ void test('airplay status, start and stop manage fake AirPlay state', async () =
   assert.equal((await run('airplay', ['stop'])).code, 0);
   assert.equal((await run('airplay', ['status'])).code, 1);
 });
+
+void test('himalaya answers only the argv Hub builds: a send, a read with --seen, an unknown account or flag are refused', async () => {
+  const calls: string[][] = [];
+  const run = createFakeDesktop({ mail: calls });
+  const himalaya = (args: string[]) => run('himalaya', args);
+  const refusals = [
+    ['--json', '-a', 'work', 'message', 'send'],
+    ['--json', '-a', 'work', 'message', 'read', '-m', 'INBOX', '310', '--seen'],
+    ['--json', '-a', 'nosuch', 'envelope', 'list', '-m', 'INBOX', '-p', '1', '-s', '25'],
+    ['--json', '-a', 'work', 'flag', 'add', '-m', 'INBOX', '-f', 'deleted', '310'],
+    ['--json', '-a', 'work', 'flag', 'add', '-m', 'INBOX', '-f', 'seen', '999'],
+  ];
+  for (const args of refusals) assert.equal((await himalaya(args)).code, 127, args.join(' '));
+  assert.equal(calls.length, refusals.length, 'refused calls are still recorded');
+});
+
+/** The flags himalaya reports for message 310 on one desktop. */
+const flagsOf = async (desktop: ReturnType<typeof createFakeDesktop>) =>
+  JSON.parse(
+    (await desktop('himalaya', ['--json', '-a', 'work', 'envelope', 'list', '-m', 'INBOX'])).stdout,
+  ).envelopes.find((row: { id: string }) => row.id === '310').flags;
+
+void test('a flag change is kept by the desktop that made it and not by another one', async () => {
+  const run = createFakeDesktop();
+  const other = createFakeDesktop();
+  assert.deepEqual(await flagsOf(run), []);
+  assert.equal(
+    (await run('himalaya', ['--json', '-a', 'work', 'flag', 'add', '-m', 'INBOX', '-f', 'seen', '310'])).code,
+    0,
+  );
+  assert.deepEqual(await flagsOf(run), [{ raw: '\\Seen', iana: 'seen' }]);
+  assert.deepEqual(await flagsOf(other), []);
+});

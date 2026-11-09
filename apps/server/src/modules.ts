@@ -9,6 +9,7 @@ import { pomodoroModule } from './modules/pomodoro/module.ts';
 import { systemModule } from './modules/system/module.ts';
 import { themeModule } from './modules/theme/module.ts';
 import { airplayModule } from './modules/airplay/module.ts';
+import { mailModule } from './modules/mail/module.ts';
 
 export const publicModules = [
   healthModule,
@@ -22,4 +23,5 @@ export const publicModules = [
   systemModule,
   themeModule,
   airplayModule,
+  mailModule,
 ] as const;
