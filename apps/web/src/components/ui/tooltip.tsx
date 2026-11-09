@@ -58,9 +58,13 @@ export function Tooltip({
   const { mounted, shown } = usePresence(open, 140);
   const place = useFloating({ open: mounted, anchor, floating: surface, side, align, offset: 8 });
   const [vars, setVars] = React.useState<React.CSSProperties>({});
+  // A modal dialog sits in the top layer and paints the body under it, so a tooltip portalled to the body would show beneath the dialog.
+  const [host, setHost] = React.useState<HTMLElement>(() => document.body);
 
   const show = (now: boolean) => {
     if (disabled) return;
+    // Chosen before it mounts, so the surface is never moved between hosts.
+    setHost(anchor.current?.closest('dialog') ?? document.body);
     window.clearTimeout(timer.current);
     const isWarm = !!last && performance.now() - last.at < WARM_MS;
     if (now || isWarm) {
@@ -136,7 +140,7 @@ export function Tooltip({
             {content}
             {shortcut && <kbd className="font-mono text-caption text-background/60">{shortcut}</kbd>}
           </div>,
-          document.body,
+          host,
         )}
     </>
   );

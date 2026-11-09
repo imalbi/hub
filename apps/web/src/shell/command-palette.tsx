@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getUntypedClient } from '@trpc/client';
 import { Command } from 'cmdk';
-import { LightningIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, LightningIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react';
+import { Kbd } from '../components/ui/kbd.tsx';
 import { useTRPC, useTRPCClient } from '../lib/trpc.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import { zones } from './zones.ts';
@@ -43,9 +44,9 @@ function actionZone(path: string) {
 const BUTTON_ID = 'palette-button';
 
 const groupClass =
-  '[&_[cmdk-group-heading]]:px-sm [&_[cmdk-group-heading]]:pt-sm [&_[cmdk-group-heading]]:pb-2xs [&_[cmdk-group-heading]]:text-caption [&_[cmdk-group-heading]]:text-muted-foreground';
+  '[&_[cmdk-group-heading]]:px-sm [&_[cmdk-group-heading]]:pb-2xs [&_[cmdk-group-heading]]:pt-xs [&_[cmdk-group-heading]]:text-caption [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:text-muted-foreground';
 const itemClass =
-  'flex min-h-touch cursor-pointer items-center gap-sm rounded-md px-sm py-xs text-label aria-disabled:opacity-60 aria-selected:bg-muted';
+  'flex min-h-touch cursor-pointer items-center gap-sm rounded-lg px-sm text-label text-foreground select-none aria-disabled:opacity-50 aria-selected:bg-muted';
 
 const PALETTE_TRANSITION: Transition = {
   duration: 0.38,
@@ -221,7 +222,7 @@ export function DeskCommandPalette() {
                 close();
               }
             }}
-            className="fixed inset-x-0 top-auto bottom-xl m-auto max-h-dvh w-sheet max-w-full overflow-hidden rounded-lg border border-border bg-surface p-0 text-foreground backdrop:bg-background/55"
+            className="fixed inset-x-0 top-auto bottom-xl m-auto max-h-dvh w-dialog-md max-w-full overflow-hidden rounded-xl border border-border bg-surface text-foreground backdrop:bg-background/55"
           >
             <motion.div
               initial={reduced ? undefined : { opacity: 0 }}
@@ -231,8 +232,21 @@ export function DeskCommandPalette() {
               className="flex flex-col"
             >
               {selected ? (
-                <div className="max-h-dvh overflow-y-auto p-lg">
-                  <PaletteForm action={selected} run={(input) => run(selected, input)} />
+                <div className="flex flex-col">
+                  <div className="flex h-touch items-center gap-xs border-b border-border px-md">
+                    <button
+                      type="button"
+                      onClick={() => setSelected(null)}
+                      className="flex items-center gap-2xs rounded-md px-xs py-2xs text-caption text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <ArrowLeftIcon className="size-icon-sm" />
+                      <span>{m.palette_back()}</span>
+                    </button>
+                    <span className="truncate text-label text-foreground">{selected.label}</span>
+                  </div>
+                  <div className="max-h-widget-row overflow-y-auto p-md">
+                    <PaletteForm action={selected} run={(input) => run(selected, input)} />
+                  </div>
                 </div>
               ) : (
                 <Command
@@ -247,7 +261,7 @@ export function DeskCommandPalette() {
                     }
                   }}
                 >
-                  <div className="order-3 flex items-center gap-sm border-t border-border p-md">
+                  <div className="order-1 flex h-touch shrink-0 items-center gap-sm border-b border-border px-md">
                     <MagnifyingGlassIcon
                       aria-hidden="true"
                       data-icon="magnifying-glass"
@@ -256,18 +270,21 @@ export function DeskCommandPalette() {
                     <Command.Input
                       onValueChange={setQuery}
                       placeholder={m.palette_search()}
-                      className="min-h-touch min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-muted-foreground"
+                      className="h-full min-w-0 flex-1 bg-transparent text-label text-foreground outline-none placeholder:text-muted-foreground"
                     />
-                    <span className="text-caption text-muted-foreground">{m.palette_escape()}</span>
+                    <Kbd>{m.palette_escape()}</Kbd>
                   </div>
                   <Command.List
                     label={m.palette_title()}
-                    className="order-1 max-h-widget-row overflow-y-auto overscroll-contain p-xs"
+                    className="order-2 max-h-widget-row overflow-y-auto overscroll-contain p-xs"
                   >
                     <Command.Empty asChild>
                       {/* cmdk.Empty supplies role=presentation through its slot, so the explicit status must win. */}
-                      {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Preserve live status through cmdk's slot role override. */}
-                      <output role="status" className="block p-md text-body text-muted-foreground">
+                      <output
+                        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Preserve live status through cmdk's slot role override.
+                        role="status"
+                        className="flex h-touch items-center justify-center text-label text-muted-foreground"
+                      >
                         {registry.isError
                           ? m.palette_error()
                           : registry.isPending
@@ -323,16 +340,22 @@ export function DeskCommandPalette() {
                       ))}
                     </Command.Group>
                   </Command.List>
-                  <p
-                    aria-live="polite"
-                    className="order-2 block border-t border-border px-md py-sm text-caption text-muted-foreground"
-                  >
-                    {status === 'pending'
-                      ? m.action_pending()
-                      : status === 'error'
-                        ? m.palette_error()
-                        : m.palette_keyboard_hint()}
-                  </p>
+                  <div className="order-3 flex h-touch shrink-0 items-center justify-between border-t border-border bg-muted/20 px-md text-caption text-muted-foreground">
+                    <p aria-live="polite" className="truncate">
+                      {status === 'pending'
+                        ? m.action_pending()
+                        : status === 'error'
+                          ? m.palette_error()
+                          : m.palette_keyboard_hint()}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-xs">
+                      <span className="flex items-center gap-2xs">
+                        <Kbd>↑</Kbd>
+                        <Kbd>↓</Kbd>
+                      </span>
+                      <Kbd>↵</Kbd>
+                    </div>
+                  </div>
                 </Command>
               )}
             </motion.div>

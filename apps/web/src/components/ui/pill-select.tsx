@@ -124,6 +124,8 @@ export function PillSelect({
   const [fit, setFit] = React.useState<Fit>({ up: false, width, shift: 0, x: 0, y: 0, theme: {} });
   const [highlight, setHighlight] = React.useState({ top: 0, height: 0, ready: false });
   const [quiet, setQuiet] = React.useState(false);
+  // A modal dialog sits in the top layer and makes the rest of the page inert, so a list portalled to the body inside one would be hidden and unclickable.
+  const [host, setHost] = React.useState<HTMLElement | null>(null);
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -147,6 +149,7 @@ export function PillSelect({
   const measureFit = () => {
     const wrap = wrapRef.current;
     if (!wrap) return;
+    setHost(wrap.closest('dialog') ?? document.body);
     const rect = wrap.getBoundingClientRect();
     const vw = document.documentElement.clientWidth;
     const w = Math.min(Math.max(width, rect.width), vw - 24);
@@ -374,6 +377,7 @@ export function PillSelect({
       </button>
 
       {mounted &&
+        host &&
         createPortal(
           <div
             ref={surfaceRef}
@@ -515,7 +519,7 @@ export function PillSelect({
               </div>
             </div>
           </div>,
-          document.body,
+          host,
         )}
     </div>
   );

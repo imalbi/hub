@@ -67,6 +67,11 @@ test('a duplicated theme previews live, refuses to save unreadable text, then sa
 
     await editor.getByLabel('Testo secondario', { exact: true }).fill('#c8c8c0');
     await editor.getByLabel('Nome').fill('Bosco');
+
+    // The mode is a Select inside the side sheet (a modal dialog), so its list must open and pick there.
+    await editor.getByRole('button', { name: 'Modalità: Scura, con il vetro', exact: true }).click();
+    await page.getByRole('listbox', { name: 'Modalità' }).getByRole('option', { name: 'Chiara, senza vetro' }).click();
+    await expect(editor.getByRole('button', { name: 'Modalità: Chiara, senza vetro', exact: true })).toBeVisible();
     await editor.getByRole('button', { name: 'Salva' }).click();
     await expect(editor).toBeHidden();
 

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { PageGrid } from '../../components/page-grid.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
+import { Slider } from '../../components/ui/slider.tsx';
 import type { WidgetSize } from '../../lib/widget-size.ts';
 import { copy } from './copy.ts';
 import { describeLight, useHue } from './use-hue.ts';
@@ -48,21 +49,19 @@ export function LightsPanel({ size }: { size: WidgetSize }) {
           </div>
         )}
         {size !== 'small' && light?.capabilities.brightness && (
-          <input
-            type="range"
-            min={1}
-            max={100}
-            step={1}
-            value={draft ?? light.brightnessPercent ?? 1}
-            disabled={!ready || power !== true}
-            aria-label={copy.brightness}
-            aria-valuetext={`${draft ?? light.brightnessPercent ?? 1}%`}
-            onChange={(event) => setDraft(Number(event.target.value))}
-            onPointerUp={commit}
-            onKeyUp={commit}
-            onBlur={commit}
-            className="min-h-touch min-w-0 flex-1 accent-primary"
-          />
+          <div className="min-w-0 flex-1">
+            <Slider
+              label={copy.brightness}
+              min={1}
+              max={100}
+              step={1}
+              value={draft ?? light.brightnessPercent ?? 1}
+              format={(v) => `${v}%`}
+              disabled={!ready || power !== true}
+              onValueChange={([val]) => setDraft(val)}
+              onValueCommit={commit}
+            />
+          </div>
         )}
       </div>
       {setPower.isError || setBrightness.isError ? (

@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { NumberRoll } from '../../components/ui/number-roll.tsx';
+import { Slider } from '../../components/ui/slider.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { Link } from '@tanstack/react-router';
 import { useSubscription } from '@trpc/tanstack-react-query';
@@ -55,25 +56,22 @@ export function AudioPanel({
       {!compact && <OutputSwitch />}
       {controls && (
         <>
-          <label className="flex flex-col gap-xs">
-            <span>
+          <div className="flex flex-col gap-xs">
+            <span className="text-caption text-muted-foreground">
               {m.audio_volume()}: {shown}%
             </span>
-            <input
-              className="accent-primary"
-              aria-label={m.audio_volume()}
-              type="range"
-              min="0"
-              max="100"
+            <Slider
+              label={m.audio_volume()}
+              min={0}
+              max={100}
+              step={1}
               value={shown}
-              aria-valuetext={`${shown}%`}
+              format={(v) => `${v}%`}
               disabled={!audio.data || stale}
-              onChange={(event) => setDraft(Number(event.target.value))}
-              onPointerUp={commit}
-              onKeyUp={commit}
-              onBlur={commit}
+              onValueChange={([val]) => setDraft(val)}
+              onValueCommit={commit}
             />
-          </label>
+          </div>
           <div className="flex flex-wrap gap-xs">
             <RegistryButton
               secondary

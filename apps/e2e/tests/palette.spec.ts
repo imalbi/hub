@@ -122,14 +122,20 @@ test('a schema enum offers the registered workspace values and submits one valid
   await palette.getByRole('combobox').fill('Apri spazio di lavoro');
   await expect(palette.getByRole('option', { name: /Apri spazio di lavoro/ })).toBeVisible();
   await page.keyboard.press('Enter');
-  const name = palette.getByRole('combobox', { name: 'name', exact: true });
-  await expect(name.getByRole('option', { includeHidden: true })).toHaveText([
-    'Scegli un valore',
-    'communication',
-    'music',
-    'hub',
-  ]);
-  await name.selectOption('music');
+  // A required choice left empty does not run the action.
+  let ran = false;
+  page.on('request', (request) => {
+    if (request.url().includes('system.toggleWorkspace')) ran = true;
+  });
+  await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
+  await expect(palette.getByText('Scelta obbligatoria')).toBeVisible();
+  expect(ran).toBe(false);
+  // The list is a Select inside the modal dialog, so it must be reachable from the dialog itself.
+  await palette.getByRole('button', { name: 'name: Scegli un valore', exact: true }).click();
+  const names = palette.getByRole('listbox', { name: 'name' });
+  await expect(names.getByRole('option')).toHaveText(['communication', 'music', 'hub']);
+  await names.getByRole('option', { name: 'music' }).click();
+  await expect(palette.getByRole('button', { name: 'name: music', exact: true })).toBeVisible();
   const sent = page.waitForRequest((request) => request.url().includes('system.toggleWorkspace'));
   await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
   expect((await sent).postData()).toContain('"name":"music"');
@@ -256,7 +262,8 @@ if (examples)
     await palette.getByRole('combobox').fill('Imposta luce');
     await expect(palette.getByRole('option', { name: /Imposta luce/ })).toBeVisible();
     await page.keyboard.press('Enter');
-    await palette.getByRole('combobox', { name: 'on', exact: true }).selectOption('false');
+    await palette.getByRole('button', { name: 'on: Scegli un valore', exact: true }).click();
+    await palette.getByRole('listbox', { name: 'on' }).getByRole('option', { name: 'No', exact: true }).click();
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
     await expect(palette.getByRole('status')).toHaveText('Fatto');
     await expect

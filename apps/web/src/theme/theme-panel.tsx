@@ -3,6 +3,7 @@ import { CopyIcon, PencilSimpleIcon } from '@phosphor-icons/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
 import { HoldButton } from '../components/hold-button.tsx';
+import { Select } from '../components/ui/select.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
 import { contrastFailures, type Colors } from './contrast.ts';
@@ -338,17 +339,15 @@ function ThemeEditor({
             className="min-h-touch rounded-md border border-border bg-background px-sm text-body text-foreground"
           />
         </label>
-        <label className="flex flex-col gap-2xs text-caption text-muted-foreground">
-          {m.theme_mode()}
-          <select
-            value={values.mode}
-            onChange={(event) => change({ ...values, mode: event.target.value === 'light' ? 'light' : 'dark' })}
-            className="min-h-touch rounded-md border border-border bg-background px-sm text-body text-foreground"
-          >
-            <option value="dark">{m.theme_mode_dark()}</option>
-            <option value="light">{m.theme_mode_light()}</option>
-          </select>
-        </label>
+        <Select
+          label={m.theme_mode()}
+          value={values.mode}
+          onValueChange={(mode) => change({ ...values, mode: mode === 'light' ? 'light' : 'dark' })}
+          options={[
+            { value: 'dark', label: m.theme_mode_dark() },
+            { value: 'light', label: m.theme_mode_light() },
+          ]}
+        />
       </div>
       <div className="grid grid-cols-2 gap-sm">
         {roles.map((role) => (
