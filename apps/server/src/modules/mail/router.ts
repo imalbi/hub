@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { Run } from '../../core/exec.ts';
-import { protectedProcedure, router } from '../../core/trpc.ts';
+import { loopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
 import type { MailAccount } from './config.ts';
 import { readMailState, type MailLive } from './live.ts';
 import {
@@ -97,10 +97,11 @@ export function createMailRouter({
     himalaya(run, flagArgs(account, INBOX, add, flag, ids), flagResultSchema);
 
   return router({
+    // The deck shows the unread count (state); what the mail says stays on the PC (owner, 2026-11-09).
     state: protectedProcedure.query(() => readMailState(run, accounts)),
     onState: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
 
-    list: protectedProcedure
+    list: loopbackProcedure
       .input(z.object({ account: accountInput, mailbox: mailboxSchema.default(INBOX), page: pageInput }))
       .query(async ({ input }) => {
         const { account } = findAccount(accounts, input.account);
@@ -110,7 +111,7 @@ export function createMailRouter({
         return envelopes.map(toMessage);
       }),
 
-    search: protectedProcedure
+    search: loopbackProcedure
       .input(z.object({ account: accountInput, filter: filterSchema, page: pageInput }))
       .query(async ({ input }) => {
         const { account } = findAccount(accounts, input.account);
@@ -121,7 +122,7 @@ export function createMailRouter({
       }),
 
     // Never `--seen`: opening a message leaves it unread until the owner marks it.
-    read: protectedProcedure
+    read: loopbackProcedure
       .input(z.object({ account: accountInput, id: idSchema, mailbox: mailboxSchema.default(INBOX) }))
       .query(async ({ input }) => {
         const { account } = findAccount(accounts, input.account);
@@ -129,7 +130,7 @@ export function createMailRouter({
         return { id: input.id, ...capText(plainTextOf(view)) };
       }),
 
-    threads: protectedProcedure
+    threads: loopbackProcedure
       .input(
         z.object({
           links: z

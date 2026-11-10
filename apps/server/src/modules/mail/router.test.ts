@@ -197,3 +197,33 @@ void test('a thread is rebuilt from both mailboxes over the window, starting the
   assert.ok(calls.some((call) => call.includes('after') && call.includes('2026-09-09')));
   assert.ok(calls.some((call) => call.join(' ').includes('-m sent')));
 });
+
+void test('a paired phone gets the unread state but never the content of the mail', async (t) => {
+  const { app, get, post } = setup(t);
+  const LAN = '192.0.2.30';
+  const code = (await post('pairing.createCode', {})).json().result.data.code;
+  const redeemed = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.redeem',
+    remoteAddress: LAN,
+    headers: { 'content-type': 'application/json' },
+    payload: JSON.stringify({ code, deviceName: 'Phone' }),
+  });
+  const token: string = redeemed.json().result.data.token;
+  const fromPhone = (path: string, input: unknown) =>
+    app.inject({
+      url: input === undefined ? `/trpc/${path}` : `/trpc/${path}?input=${encodeURIComponent(JSON.stringify(input))}`,
+      remoteAddress: LAN,
+      headers: { authorization: `Bearer ${token}` },
+    });
+  assert.equal((await fromPhone('mail.state', undefined)).statusCode, 200);
+  for (const [path, input] of [
+    ['mail.list', { account: 'work' }],
+    ['mail.search', { account: 'work', filter: { subject: 'Offerta' } }],
+    ['mail.read', { account: 'work', id: '310' }],
+    ['mail.threads', { links: [{ account: 'work', messageId: '<a@example.com>' }] }],
+  ] as const)
+    assert.equal((await fromPhone(path, input)).statusCode, 403, path);
+  // The PC still reads it.
+  assert.equal((await get('mail.list', { account: 'work' })).statusCode, 200);
+});
