@@ -130,8 +130,13 @@ export function createPomodoro(db: Db, run: Run, config: Durations, onError: (er
     clearTimeout(deadline);
   }
 
+  /** The hub replays its last state to a late subscriber: `serverNow` is stamped when each value leaves, not when it was read. */
+  async function* subscribe(signal?: AbortSignal) {
+    for await (const value of hub.subscribe(signal)) yield { ...value, serverNow: Date.now() };
+  }
+
   schedule();
-  return { state, act, configure, subscribe: hub.subscribe, close };
+  return { state, act, configure, subscribe, close };
 }
 
 export type PomodoroLive = ReturnType<typeof createPomodoro>;

@@ -19,6 +19,23 @@ test('opening a generated form moves keyboard focus to its first control', async
   await expect(palette.getByRole('button', { name: 'Tieni premuto per Spegni PC' })).toBeFocused();
 });
 
+// Step 20 review: Enter on an item before the grow had ended opened its page, then the end of the grow gave focus back
+// to the field, so the hold had no focus about half the runs. The frozen clock is what the visual specs use.
+test('a page opened before the palette finished growing keeps its focus', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
+  await page.goto('/desk/studio');
+  await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await expect(palette.getByRole('option', { name: /Avvia Pomodoro/ })).toBeVisible();
+  await palette.getByRole('combobox').fill('Spegni PC');
+  await page.keyboard.press('Enter');
+  const hold = palette.getByRole('button', { name: 'Tieni premuto per Spegni PC' });
+  await expect(hold).toBeVisible();
+  await page.waitForTimeout(800);
+  await expect(hold).toBeFocused();
+});
+
 test('completion from a closed session cannot dismiss a newly opened form', async ({ page }) => {
   let release: (() => void) | undefined;
   const held = new Promise<void>((resolve) => {

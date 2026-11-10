@@ -194,3 +194,30 @@ void test('configure persists across a restart and applies from the next phase',
   second.act('start');
   assert.equal(second.state().durationMs, 50 * 60_000);
 });
+
+// Plan 19: the hub replays its last state to a late subscriber; a stale `serverNow` in it made a view opened later
+// count from the moment of that push (25:00 a minute into a session).
+void test('a subscriber that joins later gets the server time of now, not of the last push', async (t) => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 10, 4, 10) });
+  const db = openDb(':memory:');
+  const timer = createPomodoro(db, createFakeDesktop({ notifications: [] }), emptyConfig.pomodoro);
+  t.after(() => {
+    timer.close();
+    db.$client.close();
+  });
+  const first = new AbortController();
+  const early = timer.subscribe(first.signal);
+  await early.next();
+  const started = early.next();
+  timer.act('start');
+  await started;
+  mock.timers.tick(60_000);
+  const second = new AbortController();
+  const late = timer.subscribe(second.signal);
+  const joined = (await late.next()).value;
+  assert.equal(joined?.serverNow, Date.now());
+  first.abort();
+  second.abort();
+  await early.return();
+  await late.return();
+});

@@ -169,3 +169,86 @@ test('the settings popover switches the preset and the sound', async ({ page, pc
     await pc.post('/trpc/pomodoro.configure', { data: fixture, headers: { 'content-type': 'application/json' } });
   }
 });
+
+/** The digits the rolling strips actually show (each strip's offset picks one character of its column). */
+function shownDigits(page: Page) {
+  return page.getByRole('timer', { name: 'Tempo rimanente' }).evaluate((timer) => {
+    const strips = [
+      ...timer.querySelectorAll<HTMLElement>('[aria-hidden="true"] > span > span > span[aria-hidden="true"]'),
+    ];
+    const digits = strips.map((strip) => {
+      const chars = (strip.textContent ?? '').replaceAll(/\s/g, '');
+      const step = strip.offsetHeight / chars.length;
+      const offset = -new DOMMatrixReadOnly(getComputedStyle(strip).transform).m42;
+      return chars[Math.round(offset / step)] ?? '?';
+    });
+    return `${digits.slice(0, 2).join('')}:${digits.slice(2, 4).join('')}`;
+  });
+}
+
+// Plan 19: a view mounted again mid-session showed the full duration (25:00) instead of the time left.
+for (const [paused, via] of [
+  [false, 'Media'],
+  [true, 'Media'],
+  [false, 'Panoramica'],
+] as const)
+  test(`a Pomodoro view mounted again mid-session shows the time left${paused ? ' (paused)' : ''}, via ${via}`, async ({
+    page,
+    pc,
+  }) => {
+    const fixture = {
+      focusMinutes: 0.1,
+      shortBreakMinutes: 0.05,
+      longBreakMinutes: 0.1,
+      longBreakEvery: 4,
+      sound: true,
+    };
+    const json = { headers: { 'content-type': 'application/json' } };
+    try {
+      await pc.post('/trpc/pomodoro.configure', { data: { ...fixture, focusMinutes: 25 }, ...json });
+      await page.goto('/desk/studio');
+      await page.getByRole('button', { name: 'Avvia', exact: true }).click();
+      await expect(timeText(page)).toHaveText(/^24:5\d$/);
+      await page.waitForTimeout(2500);
+      if (paused) {
+        await page.getByRole('button', { name: 'Metti in pausa', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Riprendi', exact: true })).toBeVisible();
+      }
+      const before = await timeText(page).textContent();
+      const rail = page.getByRole('navigation', { name: 'Zone' });
+      await rail.getByRole('link', { name: via, exact: true }).click();
+      await expect(page).toHaveURL(via === 'Media' ? /\/desk\/media$/ : /\/desk$/);
+      // Panoramica has its own Pomodoro panel: read it there; otherwise come back to Studio.
+      if (via === 'Media') await rail.getByRole('link', { name: 'Studio', exact: true }).click();
+      await expect(timeText(page)).toHaveText(/^\d\d:\d\d$/);
+      const after = await timeText(page).textContent();
+      expect(after).not.toBe('25:00');
+      // What the owner sees are the rolling digits, not the screen reader text: once they settle they must agree.
+      await expect.poll(() => shownDigits(page), { timeout: 5000 }).toBe(await timeText(page).textContent());
+      // Paused, the time is frozen; running, it has gone on by at most a few seconds.
+      const secondsOf = (text: string | null) => Number(text?.slice(0, 2)) * 60 + Number(text?.slice(3));
+      const gone = secondsOf(before) - secondsOf(after);
+      expect(gone).toBeGreaterThanOrEqual(0);
+      expect(gone).toBeLessThanOrEqual(paused ? 0 : 5);
+    } finally {
+      await pc.post('/trpc/pomodoro.configure', { data: fixture, ...json });
+    }
+  });
+
+// Owner's steps (plan 19): start, wait until the minutes have changed elsewhere, then open Studio.
+test('Studio opened after the minute changed elsewhere shows the time left', async ({ page, pc }) => {
+  const fixture = { focusMinutes: 0.1, shortBreakMinutes: 0.05, longBreakMinutes: 0.1, longBreakEvery: 4, sound: true };
+  const json = { headers: { 'content-type': 'application/json' } };
+  try {
+    // 1:06, so the minutes go from 01 to 00 a few seconds in.
+    await pc.post('/trpc/pomodoro.configure', { data: { ...fixture, focusMinutes: 1.1 }, ...json });
+    await page.goto('/desk/media');
+    await pc.post('/trpc/pomodoro.start', { data: {} });
+    await page.waitForTimeout(8000);
+    await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
+    await expect(timeText(page)).toHaveText(/^00:5\d$/);
+    await expect.poll(() => shownDigits(page), { timeout: 5000 }).toBe(await timeText(page).textContent());
+  } finally {
+    await pc.post('/trpc/pomodoro.configure', { data: fixture, ...json });
+  }
+});

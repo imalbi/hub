@@ -468,9 +468,11 @@ export function CommandPalette({
     };
   }, [phase]);
 
+  // Hub: not while a page is open. Enter on an item before the grow ends opened its page, whose control took focus,
+  // and this stole it back for the field (the hold confirmation then had no focus about half the time).
   React.useEffect(() => {
-    if (isOpen) inputRef.current?.focus({ preventScroll: true });
-  }, [isOpen]);
+    if (isOpen && !view) inputRef.current?.focus({ preventScroll: true });
+  }, [isOpen, view]);
 
   // Leaving a page unmounts the control that had focus; the field takes it in the same commit, so the next key still lands in the dialog.
   React.useLayoutEffect(() => {

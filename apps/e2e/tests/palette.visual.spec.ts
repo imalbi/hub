@@ -25,7 +25,13 @@ test('the palette on the 4K desk matches the baseline', async ({ page }) => {
 });
 
 test('the palette on a 1920x1080 desk matches the baseline', async ({ page }) => {
+  // The palette places itself when it opens: resizing while it is open (the 4K one from beforeEach) left it off
+  // centre by a varying amount. Close, resize, open again.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Comandi' })).not.toBeVisible();
   await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('option', { name: /Avvia Pomodoro/ })).toBeVisible();
   await page.getByRole('combobox', { name: 'Cerca azioni' }).fill('Pomodoro');
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-palette.png', { animations: 'disabled' });
