@@ -9,9 +9,9 @@ import { moduleImportViolation } from './module-imports.ts';
 
 const script = fileURLToPath(new URL('./check-modules.ts', import.meta.url));
 const passing =
-  "import assert from 'node:assert/strict'; import { test } from 'node:test'; void test('ok', () => { assert.ok(true); });";
+  "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nvoid test('ok', () => {\n  assert.ok(true);\n});\n";
 const failing =
-  "import assert from 'node:assert/strict'; import { test } from 'node:test'; void test('no', () => { assert.equal(1, 2); });";
+  "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nvoid test('no', () => {\n  assert.equal(1, 2);\n});\n";
 
 async function scratch(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'hub-check-modules-test-'));
@@ -40,7 +40,7 @@ void test('a module whose tests pass and whose types are sound is reported with 
   await addModule(root, 'good', { 'a.test.ts': passing });
   const result = check(root);
   assert.equal(result.code, 0);
-  assert.equal(result.out, 'check-modules: good: 1 tests passed in 1 files, typecheck ok\n');
+  assert.equal(result.out, 'check-modules: good: 1 tests passed in 1 files, typecheck and format ok\n');
 });
 
 void test('a failing private test fails the script and shows the failure', async (t) => {
@@ -79,6 +79,14 @@ void test('a missing or empty private root is not a failure', async (t) => {
     assert.equal(result.code, 0);
     assert.equal(result.out, 'check-modules: no private modules\n');
   }
+});
+
+void test('formatting is checked and can be fixed for a selected module', async (t) => {
+  const root = await scratch(t);
+  await addModule(root, 'good', { 'a.ts': 'export const value={one:1,two:2};\n' });
+  assert.equal(check(root, 'good').code, 1);
+  assert.equal(check(root, '--write', 'good').code, 0);
+  assert.equal(check(root, 'good').code, 0);
 });
 
 void test('the script reaches the private root only through discovery, so it needs no exemption from the guard', async () => {

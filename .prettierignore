@@ -3,6 +3,7 @@ apps/web/src/paraglide/
 apps/web/src/routeTree.gen.ts
 apps/server/drizzle/
 modules.example/*/drizzle/
+**/drizzle/
 # Generated editor state and documentation, already ignored by the inlang project itself.
 apps/web/project.inlang/.lix/
 apps/web/project.inlang/.meta.json

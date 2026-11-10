@@ -14,6 +14,7 @@
     "lint": "oxlint --type-aware && pnpm --filter @hub/web lint:tokens",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:modules": "node scripts/check-modules.ts --write",
     "guard": "node scripts/guard-private.ts && node scripts/guard-modules.ts",
     "check": "pnpm guard && pnpm typecheck && pnpm check:modules && pnpm lint && pnpm format:check && pnpm test",
     "check:modules": "node scripts/check-modules.ts",
