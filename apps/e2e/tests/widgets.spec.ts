@@ -119,6 +119,7 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
   await expect(page.getByRole('button', { name: /^Aggiungi / })).toHaveText([
+    'Posta',
     'Comandi',
     'Consumo',
     'Dispositivi',
@@ -126,4 +127,12 @@ test('Panoramica offers every widget, the ones that also have a page included', 
   ]);
   await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Aspetto' }).click());
   await expect(cell(page, 'theme')).toBeVisible();
+});
+
+test('Posta shows unread count and latest sender', async ({ page }) => {
+  await page.getByRole('button', { name: 'Modifica' }).click();
+  await page.getByRole('button', { name: 'Aggiungi Posta' }).click();
+  const widget = page.getByRole('region', { name: 'Posta' });
+  await expect(widget.getByText('3 non lette')).toBeVisible();
+  await expect(widget.getByText('Recruiter Example')).toBeVisible();
 });

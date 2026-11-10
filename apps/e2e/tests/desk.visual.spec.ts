@@ -43,6 +43,15 @@ test('the desk at 4K matches the baseline', async ({ page }) => {
   await expect(page).toHaveScreenshot('desk-4k.png', { animations: 'disabled' });
 });
 
+test('Posta at 4K shows the inbox and reader', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/messaggi');
+  await page.getByRole('button', { name: /Offerta di colloquio/ }).click();
+  await expect(page.getByText('vorremmo proporle un colloquio.', { exact: false })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-posta-4k.png', { animations: 'disabled' });
+});
+
 test('the idle progress ring draws no completed arc', async ({ page }) => {
   await page.goto('/desk/studio');
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();

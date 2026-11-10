@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Run } from '../../core/exec.ts';
 import { loopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
 import type { MailAccount } from './config.ts';
-import { readMailState, type MailLive } from './live.ts';
+import { readMailState, type MailLive, type MailState } from './live.ts';
 import {
   capText,
   filterSchema,
@@ -82,6 +82,12 @@ async function listThreadEntries(
   return { entries: [...inbox.entries, ...sent.entries], truncated: inbox.truncated || sent.truncated };
 }
 
+/** A paired device gets the counts only: the senders and subjects of the latest rows stay on the PC. */
+function forClient(state: MailState, kind: string): MailState {
+  if (kind === 'loopback') return state;
+  return { accounts: state.accounts.map((account) => ({ ...account, latest: [] })) };
+}
+
 export type ThreadAnswer = { account: string; messageId: string; thread: ThreadView | null };
 
 export function createMailRouter({
@@ -98,8 +104,12 @@ export function createMailRouter({
 
   return router({
     // The deck shows the unread count (state); what the mail says stays on the PC (owner, 2026-11-09).
-    state: protectedProcedure.query(() => readMailState(run, accounts)),
-    onState: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
+    // Cheap: answers from the config, so the UI may ask on every page whether Posta is configured.
+    accounts: protectedProcedure.query(() => accounts.map(({ account, label }) => ({ account, label }))),
+    state: protectedProcedure.query(async ({ ctx }) => forClient(await readMailState(run, accounts), ctx.client.kind)),
+    onState: protectedProcedure.subscription(async function* ({ ctx, signal }) {
+      for await (const state of live.subscribe(signal)) yield forClient(state, ctx.client.kind);
+    }),
 
     list: loopbackProcedure
       .input(z.object({ account: accountInput, mailbox: mailboxSchema.default(INBOX), page: pageInput }))

@@ -225,7 +225,9 @@ test('Vai a lists the rail zones above the actions and navigates', async ({ page
   const palette = page.getByRole('dialog', { name: 'Comandi' });
   const goto = palette.getByRole('group', { name: 'Vai a' });
   const names = ['Panoramica', 'Studio', 'Media', 'Sistema', 'Dispositivi'];
-  if (examples) names.push('Lavoro', 'Esempio');
+  if (examples) names.push('Lavoro');
+  names.push('Messaggi');
+  if (examples) names.push('Esempio');
   names.push('Impostazioni');
   await expect(goto.getByRole('option')).toHaveText(names);
   const first = await goto.getByRole('option').first().boundingBox();

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { z } from 'zod';
+import { emptyConfig } from './config.ts';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { buildServer } from '../server.ts';
 
@@ -10,6 +11,7 @@ process.env.NODE_ENV = 'test';
 const app = buildServer({
   dbPath: ':memory:',
   deps: { run: createFakeDesktop() },
+  config: { ...emptyConfig, mail: { accounts: [{ label: 'Lavoro', account: 'work' }] } },
   isLoopback: ({ headers }) => headers['x-test-pc'] === '1',
 });
 let port = 0;
@@ -33,7 +35,7 @@ async function pairPhone() {
 }
 
 /** A tRPC WebSocket that sends its token as connection params, the way the deck does. */
-function connect(token?: string) {
+function connect(token?: string, path = 'media.onState') {
   const ws = new WebSocket(`ws://127.0.0.1:${port}/trpc?connectionParams=1`, {
     headers: { Origin: 'http://127.0.0.1:5173' },
   });
@@ -43,7 +45,7 @@ function connect(token?: string) {
   ws.addEventListener('close', () => (closed = true));
   ws.addEventListener('open', () => {
     ws.send(JSON.stringify({ method: 'connectionParams', data: token ? { token } : null }));
-    ws.send(JSON.stringify({ id: 1, method: 'subscription', params: { path: 'media.onState' } }));
+    ws.send(JSON.stringify({ id: 1, method: 'subscription', params: { path } }));
   });
   const until = async (done: () => boolean) => {
     for (let waited = 0; !done() && waited < 2000; waited += 20) await new Promise((r) => setTimeout(r, 20));
@@ -86,4 +88,20 @@ void test('revoking a device closes its open socket', async () => {
     payload: JSON.stringify({ id: device.id, confirmed: true }),
   });
   await client.until(() => client.isClosed());
+});
+
+void test('the mail state pushed to a phone carries the unread count but no senders or subjects', async () => {
+  const client = connect(await pairPhone(), 'mail.onState');
+  const state = z.object({
+    id: z.literal(1),
+    result: z.object({
+      type: z.literal('data'),
+      data: z.object({ accounts: z.array(z.object({ unread: z.number().nullable(), latest: z.array(z.unknown()) })) }),
+    }),
+  });
+  await client.until(() => client.messages.some((m) => state.safeParse(m).success));
+  const [account] = client.messages.flatMap((m) => state.safeParse(m).data?.result.data.accounts ?? []);
+  assert.ok(account && account.unread !== null && account.unread > 0);
+  assert.deepEqual(account.latest, []);
+  client.close();
 });

@@ -1,5 +1,10 @@
 # Web (`@hub/web`)
 
+## Posta
+
+- `modules/mail/use-mail.ts`: the module's `create` returns an empty router when unconfigured, so `AppRouter['mail']` infers as empty; the client is `createRouterClient<MailRouter>('mail')` (`lib/module-client.ts`, the same transport as `createModuleClient`) typed from `createMailRouter`. Availability is `mail.accounts` (answered from the config, no himalaya call, `staleTime: Infinity`), asked by `useIsOn` on every page: never use `mail.state` for that, it reads every inbox.
+- The deck uses only the protected state subscription and displays counts; `list`, `search`, `read` and `threads` are PC-only. A failed account makes the total unavailable; a capped account makes it a lower bound.
+
 React 19 SPA built with Vite. In dev, `/trpc` is proxied to the server (`vite.config.ts`). Two layouts: `/desk` (4K dashboard) and `/deck` (iPhone X PWA, 375x812, no scroll, dark).
 
 ## Where files go
@@ -190,3 +195,4 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - `ModuleUI` (`lib/module-ui.ts`): `widgets` are for Panoramica; `zone` (`{ id, label, icon, page }`, `page` required) adds a rail entry whose page the module lays out (and gives `ZoneTabs` itself if it needs tabs); `sections` (`{ zone, id, label, component }`) add a tab to any zone page, built-in or another module's, after that page's own tabs (a page that had none then shows the bar); a section aimed at a zone that does not exist is skipped with a `console.warn` at startup (`zones.ts`, `orphanSections`). Section ids are unique per zone. `deck.page` names an existing deck page to add the tiles to, instead of a page of their own. Panoramica accepts every widget but places none by default; a default layout applies only until the owner saves it.
 - `src/integrations/hue/`: `use-hue.ts` (the typed client from a type-only import of the server module, and the one text for panel and tile, `describeLight`), `lights-panel.tsx` (Luci widget, and `LightsSection`, the Luci tab of Dispositivi: the panel at medium size in the page grid; state plus an icon-only RegistryButton named `Luce: <state>`, `aria-pressed` follows power, outline when off and primary when on, disabled on Bluetooth/Hub loss; small is state and power, medium adds the brightness slider on the same row; the slider writes once on release, is disabled while the light is off or unavailable and is absent when the light has no brightness), `light-tile.tsx`, `hue-ui.ts` (the `ModuleUI` both `modules.example/hue/ui.tsx` and the private wiring export) and `copy.ts` (Italian, plain). "Senza Bluetooth" is the unavailable text on purpose: it is distinct from Hub's own "Non disponibile" and fits a deck tile in two lines.
 - `Tile` has `disabled` for an action that cannot run now (as `pending` does, without the busy state).
+- `Tile` without `onPress` is a status tile: a `role="group"` named like the button would be, same look, no press state (the Posta tile: the count only, the mail stays on the PC). Never pass a no-op `onPress` to keep a tile a button.

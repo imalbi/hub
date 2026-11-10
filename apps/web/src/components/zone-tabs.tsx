@@ -11,14 +11,14 @@ export type ZoneTab = { id: string; label: string; count?: number; content: Reac
  * `validateSearch: zoneSearch`), so a reload or a link keeps it; a click replaces the history entry. The first tab is the
  * default and a page with one tab shows no bar at all.
  */
-export function ZoneTabs({ tabs }: { tabs: ZoneTab[] }) {
+export function ZoneTabs({ tabs, always = false }: { tabs: ZoneTab[]; always?: boolean }) {
   const id = useId();
   const navigate = useNavigate();
   const { tab } = useSearch({ strict: false });
   const ids = tabs.map((entry) => entry.id);
   const active = tabs.find((entry) => entry.id === activeTab(ids, typeof tab === 'string' ? tab : undefined));
   if (!active) return null;
-  if (tabs.length === 1) return active.content;
+  if (tabs.length === 1 && !always) return active.content;
   return (
     <>
       <LiquidTabs

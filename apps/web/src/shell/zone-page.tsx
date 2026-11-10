@@ -12,6 +12,7 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
   return (
     <div className="col-span-12 flex flex-col gap-lg">
       <ZoneTabs
+        always={zone === 'messages'}
         tabs={tabs.map(({ id, label, component: Content }) => ({ id, label: label(), content: <Content /> }))}
       />
     </div>

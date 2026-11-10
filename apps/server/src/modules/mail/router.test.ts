@@ -216,7 +216,14 @@ void test('a paired phone gets the unread state but never the content of the mai
       remoteAddress: LAN,
       headers: { authorization: `Bearer ${token}` },
     });
-  assert.equal((await fromPhone('mail.state', undefined)).statusCode, 200);
+  const phoneState = await fromPhone('mail.state', undefined);
+  assert.equal(phoneState.statusCode, 200);
+  // The count reaches the phone, the senders and subjects of the latest rows do not.
+  const phoneAccounts: { unread: number | null; latest: unknown[] }[] = phoneState.json().result.data.accounts;
+  assert.ok(phoneAccounts.some((account) => account.unread !== null && account.unread > 0));
+  assert.ok(phoneAccounts.every((account) => account.latest.length === 0));
+  const pcAccounts: { latest: unknown[] }[] = (await get('mail.state', undefined)).json().result.data.accounts;
+  assert.ok(pcAccounts.some((account) => account.latest.length > 0));
   for (const [path, input] of [
     ['mail.list', { account: 'work' }],
     ['mail.search', { account: 'work', filter: { subject: 'Offerta' } }],
@@ -226,4 +233,15 @@ void test('a paired phone gets the unread state but never the content of the mai
     assert.equal((await fromPhone(path, input)).statusCode, 403, path);
   // The PC still reads it.
   assert.equal((await get('mail.list', { account: 'work' })).statusCode, 200);
+});
+
+void test('the configured accounts are listed without running himalaya, so the UI can check for Posta on every page', async (t) => {
+  const { calls, get } = setup(t);
+  const response = await get('mail.accounts');
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json().result.data, [
+    { account: 'work', label: 'Lavoro' },
+    { account: 'personal', label: 'Personale' },
+  ]);
+  assert.equal(calls.length, 0);
 });

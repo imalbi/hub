@@ -3,6 +3,9 @@ import { Badge } from '../components/ui/badge.tsx';
 import { useIsOn } from '../lib/enabled-modules.ts';
 import { useTRPC } from '../lib/trpc.ts';
 import { NewsTile } from '../modules/news/deck-tile.tsx';
+import { MailTile } from '../modules/mail/deck-tile.tsx';
+import { useMailTRPC } from '../modules/mail/use-mail.ts';
+import { summarizeMail } from '../modules/mail/summary.ts';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m } from '../paraglide/messages.js';
@@ -29,6 +32,9 @@ export function DeckPages() {
   // A module that is off has no router: its subscription would only fail.
   const news = useSubscription(trpc.news.onState.subscriptionOptions(undefined, { enabled: isOn('news') }));
   const pomodoro = useSubscription(trpc.pomodoro.onState.subscriptionOptions(undefined, { enabled: isOn('pomodoro') }));
+  const mailTRPC = useMailTRPC();
+  const mail = useSubscription(mailTRPC.onState.subscriptionOptions(undefined, { enabled: isOn('mail') }));
+  const unread = mail.data ? summarizeMail(mail.data.accounts).count : null;
   const pages = useDeckPages();
   const [active, setActive] = useState(() => storedPage(pages));
   const scroller = useRef<HTMLDivElement>(null);
@@ -64,6 +70,15 @@ export function DeckPages() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-md">
       <nav aria-label={m.deck_activity()} className="flex justify-center gap-xs">
+        {unread !== null && unread > 0 && (
+          <button
+            type="button"
+            aria-label={m.mail_badge({ count: unread })}
+            onClick={() => goTo(pages.findIndex((page) => page.tiles.includes(MailTile)))}
+          >
+            <Badge count={unread} /> {m.module_mail()}
+          </button>
+        )}
         {news.data?.fresh && news.data.items > 0 && (
           <button
             type="button"

@@ -71,6 +71,7 @@ export default defineConfig({
               'widgets.spec.ts',
               'system.spec.ts',
               'news.spec.ts',
+              'mail.spec.ts',
               'settings.spec.ts',
               'settings.visual.spec.ts',
             ],

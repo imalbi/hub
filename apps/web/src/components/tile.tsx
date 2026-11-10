@@ -9,7 +9,8 @@ type TileProps = {
   state: string;
   /** Read by screen readers after the state, not shown: for a fact the icon alone carries (playing or paused). */
   status?: string;
-  onPress: () => void;
+  /** Without it the tile only shows a state: a named group, not a button, so nothing pretends to be pressable. */
+  onPress?: () => void;
   /** The action is running: the tile dims and ignores taps. */
   pending?: boolean;
   /** The action cannot run now (its target is unreachable): the tile dims and ignores taps. */
@@ -37,17 +38,12 @@ export function Tile({
   badge,
 }: TileProps) {
   const shownState = error ? m.tile_error() : state;
-  return (
-    <button
-      type="button"
-      aria-label={`${label}: ${shownState}${status ? `, ${status}` : ''}`}
-      aria-busy={pending}
-      disabled={pending || disabled}
-      onClick={onPress}
-      className={`relative flex flex-col items-start gap-xs rounded-lg border p-md text-left active:bg-surface-raised disabled:opacity-60 ${
-        error ? 'border-danger' : 'border-border'
-      } ${stale ? 'opacity-60' : ''} bg-surface`}
-    >
+  const name = `${label}: ${shownState}${status ? `, ${status}` : ''}`;
+  const look = `relative flex flex-col items-start gap-xs rounded-lg border p-md text-left ${
+    error ? 'border-danger' : 'border-border'
+  } ${stale ? 'opacity-60' : ''} bg-surface`;
+  const content = (
+    <>
       <Icon className="size-icon" aria-hidden data-icon={iconName} data-weight={iconWeight} weight={iconWeight} />
       {badge !== undefined && (
         <span
@@ -63,6 +59,25 @@ export function Tile({
       >
         {shownState}
       </span>
+    </>
+  );
+  if (!onPress)
+    return (
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- fieldset groups form controls; a status tile is a named group of text.
+      <div role="group" aria-label={name} className={look}>
+        {content}
+      </div>
+    );
+  return (
+    <button
+      type="button"
+      aria-label={name}
+      aria-busy={pending}
+      disabled={pending || disabled}
+      onClick={onPress}
+      className={`${look} active:bg-surface-raised disabled:opacity-60`}
+    >
+      {content}
     </button>
   );
 }

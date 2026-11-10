@@ -190,6 +190,28 @@ test('the Notizie tile shows the count as a badge and opens the digest on the PC
   await expect(tile).not.toHaveAccessibleName(/Errore/);
 });
 
+test('Posta shows only its unread count and hides the badge at zero', async ({ page, pc }) => {
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  try {
+    await page.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
+    await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
+    // Content stays on the PC, so the tile shows the count and is not a button.
+    await expect(page.getByRole('button', { name: 'Posta: 3 non lette' })).toHaveCount(0);
+    const badges = page.getByRole('navigation', { name: 'Attività' });
+    await expect(badges.getByRole('button', { name: 'Posta: 3' })).toBeVisible();
+    await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310', '308'], seen: true } });
+    await pc.post('/trpc/mail.setSeen', { data: { account: 'personal', ids: ['88'], seen: true } });
+    await expect(page.getByRole('group', { name: 'Posta: 0 non lette' })).toBeVisible();
+    await expect(badges.getByRole('button', { name: /^Posta:/ })).toHaveCount(0);
+    expect(requests.filter((url) => /mail\.(list|search|read|threads)/.test(url))).toEqual([]);
+  } finally {
+    await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310', '308'], seen: false } });
+    await pc.post('/trpc/mail.setSeen', { data: { account: 'personal', ids: ['88'], seen: false } });
+    await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+  }
+});
+
 test('Scrivania presents the requested controls in order', async ({ page }) => {
   const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
   await expect(desk.getByRole('button', { name: /^Hub:/ })).toBeVisible();

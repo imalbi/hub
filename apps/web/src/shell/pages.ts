@@ -4,6 +4,7 @@ import type { ComponentType } from 'react';
 import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
 import { MediaTile, NextTile } from '../modules/media/deck-tile.tsx';
 import { NewsTile } from '../modules/news/deck-tile.tsx';
+import { MailTile } from '../modules/mail/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import {
   AirPlayTile,
@@ -48,7 +49,7 @@ export const pages: Page[] = [
       PomodoroTile,
     ],
   },
-  { id: 'desk-more', label: m.page_desk_more, tiles: [NewsTile] },
+  { id: 'desk-more', label: m.page_desk_more, tiles: [NewsTile, MailTile] },
   { id: 'study', label: m.zone_study, tiles: [PomodoroTile] },
   {
     id: 'system',
@@ -63,6 +64,7 @@ const tileOwner = new Map<ComponentType, string>([
   ...[AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
   ...[MediaTile, NextTile].map((tile) => [tile, 'media'] as const),
   [NewsTile, 'news'],
+  [MailTile, 'mail'],
   [PomodoroTile, 'pomodoro'],
   [AirPlayTile, 'airplay'],
   ...[HubTile, CommunicationTile, LockTile, MusicAppTile, PowerOffTile, PowerTile, RebootTile, SuspendTile].map(

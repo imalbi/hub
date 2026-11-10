@@ -10,6 +10,7 @@ const zones = [
   ['Media', '/desk/media'],
   ['Sistema', '/desk/system'],
   ['Dispositivi', '/desk/devices'],
+  ['Messaggi', '/desk/messaggi'],
   ['Impostazioni', '/desk/settings'],
 ];
 

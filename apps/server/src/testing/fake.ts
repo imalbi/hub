@@ -9,6 +9,7 @@ import { hueStateSchema } from '../integrations/hue/contracts.ts';
 import { createFakeDesktop } from './fake-desktop.ts';
 import { getFakeHue } from './fake-hue.ts';
 import { buildServer } from '../server.ts';
+import type { Run } from '../core/exec.ts';
 
 // Fixtures live in the run's own folder (`apps/e2e/tests/hosts.ts` makes one per run), so two runs never share a file.
 const runDir = process.env.HUB_E2E_TMP ?? tmpdir();
@@ -55,6 +56,12 @@ const config: Config = {
   theme: { caelestiaScheme },
   system: { powerstatDir },
   news: { page: newsPage, command: 'webdigest' },
+  mail: {
+    accounts: [
+      { account: 'work', label: 'Lavoro' },
+      { account: 'personal', label: 'Personale' },
+    ],
+  },
   airplay: { command: 'airplay' },
 };
 
@@ -72,13 +79,21 @@ writeFileSync(configPath, '{}\n');
 const dbPath = join(runDir, 'hub-e2e.db');
 // How long the server stays down on a restart, long enough for the page to show it.
 const restartDelayMs = Number(process.env.HUB_E2E_RESTART_MS ?? 1500);
+let failMail = false;
+const mailCalls: string[][] = [];
 
 function build() {
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  const desktop = createFakeDesktop({ mail: mailCalls });
+  const run: Run = (bin, args, options) => {
+    if (failMail && bin === 'himalaya' && args.includes('envelope') && args.includes('25'))
+      return Promise.resolve({ stdout: '', stderr: '', code: 1 });
+    return desktop(bin, args, options);
+  };
   const app = buildServer({
     dbPath,
     moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
-    deps: { run: createFakeDesktop() },
+    deps: { run },
     config: configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) }),
     isLoopback,
     settings: { configPath, onRestart: () => void restart() },
@@ -103,6 +118,13 @@ function restart() {
 const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HUB_PORT ?? 4190) });
 
 function hooks(server: typeof app) {
+  server.get('/__fake/mail', () => ({ calls: mailCalls }));
+  server.post('/__fake/mail', (request, reply) => {
+    const body = z.object({ fail: z.boolean() }).safeParse(request.body);
+    if (!body.success) return reply.code(400).send();
+    failMail = body.data.fail;
+    return { fail: failMail };
+  });
   // Test hook for the Hue example module's fake light, so a spec can change it the way Echo or a power cut would and
   // read the writes it received. Only this e2e server has it; there is no such route in `index.ts`.
   const hueHook = z.union([z.object({ reset: z.literal(true) }), hueStateSchema.partial()]);

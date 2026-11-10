@@ -10,7 +10,12 @@ type ModuleRouter<M extends ModuleDefinition> = Extract<ReturnType<M['create']>[
 
 /** Type-only module imports infer procedures; transport prefixes paths and shares the authenticated socket. */
 export function createModuleClient<M extends ModuleDefinition>(name: M['name']) {
-  return createTRPCClient<ModuleRouter<M>>({
+  return createRouterClient<ModuleRouter<M>>(name);
+}
+
+/** The same transport for a module whose router type is named directly (one whose `create` may return an empty router). */
+export function createRouterClient<R extends AnyRouter>(name: string) {
+  return createTRPCClient<R>({
     links: [
       authLink,
       moduleLink(name),
