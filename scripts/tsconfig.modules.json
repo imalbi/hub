@@ -8,6 +8,7 @@
     "paths": {
       "@/*": ["../apps/web/src/*"],
       "@tanstack/react-router": ["../apps/web/node_modules/@tanstack/react-router"],
+      "@tanstack/react-query": ["../apps/web/node_modules/@tanstack/react-query"],
       "@phosphor-icons/react": ["../apps/web/node_modules/@phosphor-icons/react"],
       "motion/react": ["../apps/web/node_modules/motion/react"],
       "motion": ["../apps/web/node_modules/motion"]

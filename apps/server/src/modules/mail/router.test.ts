@@ -103,6 +103,17 @@ void test('search narrows by sender, by an unread flag and by a subject with spa
   assert.deepEqual(ids(literal), []);
 });
 
+void test('search uses the requested mailbox and defaults to INBOX', async (t) => {
+  const { get, calls } = setup(t);
+  assert.equal(
+    (await get('mail.search', { account: 'work', filter: { subject: 'Offerta' }, mailbox: 'sent' })).statusCode,
+    200,
+  );
+  assert.equal(calls.at(-1)?.[6], 'sent');
+  assert.equal((await get('mail.search', { account: 'work', filter: { subject: 'Offerta' } })).statusCode, 200);
+  assert.equal(calls.at(-1)?.[6], 'INBOX');
+});
+
 void test('a himalaya failure is a generic error, with no address, subject or body in the answer', async (t) => {
   const exited = setup(t, withMail, failing({ stdout: '', stderr: 'owner@example.org Offerta', code: 1 }));
   const list = await exited.get('mail.list', { account: 'work' });

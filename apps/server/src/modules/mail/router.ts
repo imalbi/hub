@@ -122,11 +122,18 @@ export function createMailRouter({
       }),
 
     search: loopbackProcedure
-      .input(z.object({ account: accountInput, filter: filterSchema, page: pageInput }))
+      .input(
+        z.object({
+          account: accountInput,
+          mailbox: mailboxSchema.default(INBOX),
+          filter: filterSchema,
+          page: pageInput,
+        }),
+      )
       .query(async ({ input }) => {
         const { account } = findAccount(accounts, input.account);
         const { envelopes } = unwrap(
-          await himalaya(run, searchArgs(account, INBOX, input.page, PAGE_SIZE, input.filter), envelopesSchema),
+          await himalaya(run, searchArgs(account, input.mailbox, input.page, PAGE_SIZE, input.filter), envelopesSchema),
         );
         return envelopes.map(toMessage);
       }),
