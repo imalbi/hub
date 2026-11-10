@@ -34,6 +34,7 @@ void test('every check is ok on a healthy desktop', async () => {
     ['playerctl --version', 'ok'],
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'ok'],
+    ['playerctl --player=mpv status', 'ok'],
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
     ['systemctl --version', 'ok'],
@@ -60,6 +61,7 @@ void test('only read-only commands are run', async () => {
     'himalaya --version',
     'himalaya json-schema',
     'notify-send --help',
+    'playerctl --player=mpv',
     'playerctl --version',
     'playerctl metadata',
     'pw-dump',
@@ -80,6 +82,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['playerctl --version', 'missing'],
     ['pw-dump', 'ok'],
     ['playerctl metadata', 'missing'],
+    ['playerctl --player=mpv status', 'missing'],
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
     ['systemctl --version', 'ok'],
@@ -161,4 +164,18 @@ void test('a himalaya schema that no longer has a field Hub reads is reported as
   const check = results.find((r) => r.name === 'himalaya envelope schema');
   assert.equal(check?.status, 'unparseable');
   assert.equal(check?.detail, 'missing has-attachment');
+});
+
+void test('mpv status accepts known states and rejects unknown output', async () => {
+  for (const [status, expected] of [
+    ['Playing', 'ok'],
+    ['Paused', 'ok'],
+    ['Stopped', 'ok'],
+    ['Buffering', 'unparseable'],
+  ] as const) {
+    const results = await runSmoke(
+      healthy((bin, args) => (bin === 'playerctl' && args[0] === '--player=mpv' ? ok(status + '\n') : undefined)),
+    );
+    assert.equal(results.find((r) => r.name === 'playerctl --player=mpv status')?.status, expected);
+  }
 });

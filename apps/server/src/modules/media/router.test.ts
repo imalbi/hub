@@ -80,3 +80,42 @@ void test('failed transport actions return failure without exposing raw player e
     assert.equal(response.body.includes('untrusted private diagnostic'), false);
   }
 });
+
+void test('mpv preference selects the same player for state, artwork and controls, with fallback', async (t) => {
+  let mpv = 'Playing';
+  const calls: string[][] = [];
+  const run: Run = (_bin, args) => {
+    calls.push(args);
+    if (args[0] === '--player=mpv' && args[1] === 'status')
+      return Promise.resolve({ stdout: mpv, stderr: '', code: mpv ? 0 : 1 });
+    if (args.includes('metadata'))
+      return Promise.resolve({
+        stdout: `Playing\tArtist\t${args[0] === '--player=mpv' ? 'mpv' : 'browser'}\t\t\n`,
+        stderr: '',
+        code: 0,
+      });
+    return Promise.resolve({ stdout: '', stderr: '', code: 0 });
+  };
+  const app = buildServer({ dbPath: ':memory:', deps: { run } });
+  t.after(() => app.close());
+  for (const [status, prefix, title] of [
+    ['Playing', ['--player=mpv'], 'mpv'],
+    ['Paused', ['--player=mpv'], 'mpv'],
+    ['Stopped', [], 'browser'],
+    ['', [], 'browser'],
+  ] satisfies [string, string[], string][]) {
+    mpv = status;
+    const state = await app.inject('/trpc/media.state');
+    assert.equal(state.json().result.data.title, title);
+    assert.deepEqual(calls.at(-1)?.slice(0, -3), prefix);
+    await app.inject('/trpc/media.art');
+    assert.deepEqual(calls.at(-1)?.slice(0, -3), prefix);
+    await app.inject({
+      method: 'POST',
+      url: '/trpc/media.playPause',
+      payload: {},
+      headers: { 'content-type': 'application/json' },
+    });
+    assert.deepEqual(calls.at(-1), [...prefix, 'play-pause']);
+  }
+});

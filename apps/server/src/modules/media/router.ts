@@ -2,11 +2,12 @@ import type { MediaLive } from './live.ts';
 import type { MediaArt } from './art.ts';
 import { TRPCError } from '@trpc/server';
 import { protectedProcedure, router } from '../../core/trpc.ts';
+import { playerArgs } from './preference.ts';
 import { readMediaState } from './live.ts';
 import type { Context } from '../../core/trpc.ts';
 
 async function control(ctx: Context, action: 'play-pause' | 'next' | 'previous', media: MediaLive) {
-  const { code } = await ctx.run('playerctl', [action]);
+  const { code } = await ctx.run('playerctl', [...(await playerArgs(ctx.run)), action]);
   if (code !== 0) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Media control failed' });
   void media.notify();
 }

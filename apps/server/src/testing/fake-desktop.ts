@@ -135,6 +135,8 @@ export function createFakeDesktop({
       sinkName = sink.name;
       return Promise.resolve(ok());
     }
+    if (bin === 'playerctl' && command === '--player=mpv' && target === 'status')
+      return Promise.resolve({ stdout: '', stderr: 'No players found', code: 1 });
     if (bin === 'playerctl' && command === 'metadata')
       return Promise.resolve(ok(`${status}\tArtist\t${titles[track]}\t${artUrl}\t213000000\n`));
     if (bin === 'playerctl' && args.length === 1 && (command === 'next' || command === 'previous')) {

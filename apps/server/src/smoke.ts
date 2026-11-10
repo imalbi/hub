@@ -79,6 +79,14 @@ function judgeMetadata(result: RunResult): Verdict {
   return { status: 'unparseable', detail: result.code === 0 ? 'unknown status or format' : exitDetail(result) };
 }
 
+function judgeMpvStatus(result: RunResult): Verdict {
+  if (result.code !== 0 && /no players found/i.test(result.stderr)) return { status: 'ok', detail: 'mpv not running' };
+  const status = result.stdout.trim();
+  return result.code === 0 && ['Playing', 'Paused', 'Stopped'].includes(status)
+    ? { status: 'ok', detail: `status ${status}` }
+    : { status: 'unparseable', detail: result.code === 0 ? 'unknown status' : exitDetail(result) };
+}
+
 // Read-only on purpose: no `set-default`, no `play-pause`. This runs against the real desktop.
 const checks = [
   { name: 'wpctl --help', bin: 'wpctl', args: ['--help'], judge: judgeWpctlHelp },
@@ -86,6 +94,7 @@ const checks = [
   { name: 'playerctl --version', bin: 'playerctl', args: ['--version'], judge: judgeVersion },
   { name: 'pw-dump', bin: 'pw-dump', args: [], judge: judgePwDump },
   { name: 'playerctl metadata', bin: 'playerctl', args: ['metadata', '--format', MEDIA_FORMAT], judge: judgeMetadata },
+  { name: 'playerctl --player=mpv status', bin: 'playerctl', args: ['--player=mpv', 'status'], judge: judgeMpvStatus },
   { name: 'notify-send --help', bin: 'notify-send', args: ['--help'], judge: judgeNotifyHelp },
   { name: 'pw-play --version', bin: 'pw-play', args: ['--version'], judge: judgeVersion },
   { name: 'systemctl --version', bin: 'systemctl', args: ['--version'], judge: judgeVersion },

@@ -1,6 +1,7 @@
 import type { Run } from '../../core/exec.ts';
 import { open } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import { playerArgs } from './preference.ts';
 import { MEDIA_FORMAT, parseMediaMetadata } from './playerctl.ts';
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -82,7 +83,9 @@ export function createMediaArt(run: Run, { fetch: fetcher = fetch }: { fetch?: t
   }
 
   return async () => {
-    const metadata = parseMediaMetadata(await run('playerctl', ['metadata', '--format', MEDIA_FORMAT]));
+    const metadata = parseMediaMetadata(
+      await run('playerctl', [...(await playerArgs(run)), 'metadata', '--format', MEDIA_FORMAT]),
+    );
     const key = metadata?.state.artKey;
     if (!key || !metadata?.artUrl) return null;
     if (cache?.key === key) return cache;
