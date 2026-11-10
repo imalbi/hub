@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env*
 config.local.json
+config.local.json.bak
 # Bracket syntax keeps the literal directory name distinct from a LAN hostname in the privacy scan.
 modules[.]local/
 .private-words
