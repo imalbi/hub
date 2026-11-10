@@ -1,6 +1,115 @@
 import { expect, test } from './fixtures.ts';
 import { SERVER_URL } from './hosts.ts';
 
+test('inbox and reader scroll independently beneath the fixed toolbar', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 750 });
+  const messages = Array.from({ length: 25 }, (_, index) => ({
+    id: String(index),
+    subject: `Messaggio ${index}`,
+    from: { name: 'Mittente', email: 'sender@example.org' },
+    date: '2026-11-07T09:00:00Z',
+    seen: true,
+    flagged: false,
+  }));
+  await page.route('**/trpc/mail.list*', (route) => route.fulfill({ json: [{ result: { data: messages } }] }));
+  await page.route('**/trpc/mail.read*', (route) =>
+    route.fulfill({ json: [{ result: { data: { text: 'Testo lungo\n'.repeat(200), truncated: false } } }] }),
+  );
+  await page.goto('/desk/messaggi');
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  await expect(inbox.getByRole('button', { name: /Messaggio 0/ })).toBeVisible();
+  await inbox.getByRole('button', { name: /Messaggio 0/ }).click();
+  const toolbar = page.getByRole('textbox', { name: 'Mittente' });
+  await toolbar.focus();
+  await expect(toolbar).toBeFocused();
+  const before = await toolbar.boundingBox();
+  const list = inbox.locator('.overflow-y-auto');
+  await list.hover();
+  await page.mouse.wheel(0, 1500);
+  await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(
+    await page
+      .locator('main > div')
+      .last()
+      .evaluate((element) => element.scrollTop),
+  ).toBe(0);
+  await list.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await list.focus();
+  await expect(list).toBeFocused();
+  await page.keyboard.press('PageDown');
+  await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect((await toolbar.boundingBox())?.y).toBe(before?.y);
+  await expect(inbox.getByRole('button', { name: 'Successiva' })).toBeVisible();
+  const reader = page.getByRole('region', { name: 'Messaggio 0' }).locator('..');
+  await reader.hover();
+  await page.mouse.wheel(0, 1500);
+  await expect.poll(() => reader.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+test('the inbox shows loading until its first list arrives', async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/trpc/mail.list*', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto('/desk/messaggi');
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  await expect(inbox.getByRole('status').filter({ hasText: 'Caricamento...' })).toBeVisible();
+  await expect(inbox.getByText('Nessun messaggio')).toHaveCount(0);
+  release();
+  await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+});
+
+test('refresh reloads the inbox and accounts', async ({ page }) => {
+  let addMessage = false;
+  await page.route('**/trpc/mail.list*', async (route) => {
+    const response = await route.fetch();
+    const payload: unknown = await response.json();
+    if (addMessage && Array.isArray(payload)) {
+      const first: unknown = payload[0];
+      if (
+        typeof first !== 'object' ||
+        !first ||
+        !('result' in first) ||
+        typeof first.result !== 'object' ||
+        !first.result ||
+        !('data' in first.result) ||
+        !Array.isArray(first.result.data)
+      )
+        throw new Error('unexpected mail response');
+      first.result.data.push({
+        id: 'new',
+        subject: 'Nuovo messaggio',
+        from: { name: 'Mittente', email: 'sender@example.org' },
+        date: null,
+        seen: false,
+        flagged: false,
+      });
+    }
+    await route.fulfill({ response, json: payload });
+  });
+  await page.goto('/desk/messaggi');
+  await expect(page.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  addMessage = true;
+  const list = page.waitForResponse((response) => response.url().includes('/trpc/mail.list'));
+  const accounts = page.waitForResponse((response) => response.url().includes('mail.accounts'));
+  const state = page.waitForResponse((response) => response.url().includes('mail.refresh'));
+  await page.getByRole('button', { name: 'Aggiorna', exact: true }).click();
+  expect((await list).ok()).toBe(true);
+  expect((await accounts).ok()).toBe(true);
+  expect((await state).ok()).toBe(true);
+  await expect(page.getByRole('button', { name: /Nuovo messaggio/ })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Posta in arrivo' }).getByRole('status').filter({ hasText: 'Fatto' }),
+  ).toHaveText('Fatto');
+});
+
 test('Messaggi shows the Posta inbox', async ({ page }) => {
   await page.goto('/desk');
   await page.getByRole('link', { name: 'Messaggi', exact: true }).click();

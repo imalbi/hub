@@ -9,7 +9,7 @@ export type ModuleWidget = {
   component: ComponentType<{ size: WidgetSize }>;
 };
 /** One tab of a zone page. Ids are unique within a page; the first tab is the default one. */
-export type PageTab = { id: string; label: () => string; component: ComponentType };
+export type PageTab = { id: string; label: () => string; component: ComponentType; fill?: boolean };
 /** A tab a module adds to a zone page, after the page's own tabs. */
 export type ModuleSection = PageTab & { zone: string };
 export type ModuleUI = {
@@ -18,7 +18,7 @@ export type ModuleUI = {
   /** Widgets are for Panoramica, the one board: it offers every widget of every module. */
   widgets?: ModuleWidget[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
-  zone?: { id: string; label: () => string; icon: Icon; page: ComponentType };
+  zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean };
   /** `page` names an existing deck page to add the tiles to, instead of a page of their own. */
   deck?: { id: string; label: () => string; tiles: ComponentType[]; page?: string };
   /**

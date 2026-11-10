@@ -7,6 +7,10 @@
 
 React 19 SPA built with Vite. In dev, `/trpc` is proxied to the server (`vite.config.ts`). Two layouts: `/desk` (4K dashboard) and `/deck` (iPhone X PWA, 375x812, no scroll, dark).
 
+## Desk layers and scrolling
+
+- The desk title stays above the content scroller. A tab or module zone with `fill: true` owns its scroll regions: keep controls fixed, pass height through flex children with `min-h-0`, and give each list or reader `min-h-0 flex-1 overflow-y-auto overscroll-contain` with the bottom gutter inside it.
+
 ## Where files go
 
 ```

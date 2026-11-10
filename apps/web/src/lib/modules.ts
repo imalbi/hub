@@ -12,7 +12,7 @@ export const moduleUIs: ModuleUI[] = [
   {
     name: 'mail',
     copy: {},
-    sections: [{ zone: 'messages', id: 'mail', label: m.module_mail, component: PostaSection }],
+    sections: [{ zone: 'messages', id: 'mail', label: m.module_mail, component: PostaSection, fill: true }],
   },
   ...[...Object.values(local), ...Object.values(examples)].map((module) => module.default),
 ];

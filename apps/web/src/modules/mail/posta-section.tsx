@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { inferRouterInputs } from '@trpc/server';
 import type { MailRouter } from './use-mail.ts';
 import { useState } from 'react';
@@ -7,7 +7,7 @@ import { Panel } from '../../components/panel.tsx';
 import { Select } from '../../components/ui/select.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { m } from '../../paraglide/messages.js';
-import { useMail, useMailTRPC } from './use-mail.ts';
+import { useMail, useMailAccounts, useMailTRPC } from './use-mail.ts';
 import { SearchForm } from './search-form.tsx';
 import { MailReader } from './reader.tsx';
 import { mailDate } from './mail-date.ts';
@@ -17,6 +17,8 @@ type Filter = inferRouterInputs<MailRouter>['search']['filter'];
 export function PostaSection() {
   const trpc = useMailTRPC();
   const mail = useMail();
+  const mailAccounts = useMailAccounts();
+  const queryClient = useQueryClient();
   const [chosen, setChosen] = useState('');
   const [selected, setSelected] = useState('');
   const [filter, setFilter] = useState<Filter | null>(null);
@@ -30,7 +32,7 @@ export function PostaSection() {
   const result = filter ? search : list;
   const selectedMessage = result.data?.find((message) => message.id === selected);
   return (
-    <div className="flex flex-col gap-lg">
+    <div className="flex min-h-0 flex-1 flex-col gap-lg">
       <SearchForm
         leading={
           <Select
@@ -50,54 +52,75 @@ export function PostaSection() {
           setPage(1);
         }}
       />
-      <div className="grid grid-cols-12 items-start gap-lg">
-        <Panel title={m.mail_inbox()} className="col-span-5">
-          {result.isError && (
-            <div className="flex items-center justify-between gap-md">
-              <p className="text-body text-muted-foreground">{m.mail_error()}</p>
-              <RegistryButton secondary label={m.mail_retry()} action={() => result.refetch()} />
-            </div>
-          )}
-          {result.data?.length === 0 && <p className="text-body text-muted-foreground">{m.mail_empty()}</p>}
-          <ul className="flex flex-col">
-            {result.data?.map((message) => (
-              <li key={message.id} className="border-b border-dashed border-border last:border-b-0">
-                <button
-                  type="button"
-                  aria-pressed={selected === message.id}
-                  onClick={() => setSelected(message.id)}
-                  className={`my-3xs flex w-full items-start gap-sm rounded-lg p-sm text-left ${selected === message.id ? 'bg-muted' : 'hover:bg-muted/50'}`}
-                >
-                  <span
-                    aria-hidden
-                    className={`mt-xs size-xs shrink-0 rounded-full ${message.seen ? '' : 'bg-primary'}`}
-                  />
-                  <span className="flex min-w-0 flex-1 flex-col gap-3xs">
-                    <span className="flex items-baseline justify-between gap-sm">
-                      <span className={`truncate text-label ${message.seen ? 'text-muted-foreground' : ''}`}>
-                        {message.from?.name || message.from?.email}
-                      </span>
-                      <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
-                        {mailDate(message.date)}
-                      </span>
-                    </span>
+      <div className="grid min-h-0 flex-1 grid-cols-12 gap-lg pb-xl">
+        <Panel
+          title={m.mail_inbox()}
+          className="col-span-5 min-h-0"
+          action={
+            <RegistryButton
+              secondary
+              label={m.mail_refresh()}
+              action={async () => {
+                await Promise.all([
+                  result.refetch(),
+                  mailAccounts.refetch(),
+                  queryClient.fetchQuery(trpc.refresh.queryOptions({})),
+                ]);
+              }}
+            />
+          }
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {result.isError && (
+              <div className="flex items-center justify-between gap-md">
+                <p className="text-body text-muted-foreground">{m.mail_error()}</p>
+                <RegistryButton secondary label={m.mail_retry()} action={() => result.refetch()} />
+              </div>
+            )}
+            {!result.data && result.isPending && (
+              <output className="block text-body text-muted-foreground">{m.mail_loading()}</output>
+            )}
+            {result.data?.length === 0 && <p className="text-body text-muted-foreground">{m.mail_empty()}</p>}
+            <ul className="flex flex-col">
+              {result.data?.map((message) => (
+                <li key={message.id} className="border-b border-dashed border-border last:border-b-0">
+                  <button
+                    type="button"
+                    aria-pressed={selected === message.id}
+                    onClick={() => setSelected(message.id)}
+                    className={`my-3xs flex w-full items-start gap-sm rounded-lg p-sm text-left ${selected === message.id ? 'bg-muted' : 'hover:bg-muted/50'}`}
+                  >
                     <span
-                      className={`flex items-center gap-xs text-body ${message.seen ? 'text-muted-foreground' : ''}`}
-                    >
-                      <span className="truncate">{message.subject}</span>
-                      {message.flagged && (
-                        <>
-                          <StarIcon aria-hidden weight="fill" className="size-icon-sm shrink-0" />
-                          <span className="sr-only"> {m.mail_starred()}</span>
-                        </>
-                      )}
+                      aria-hidden
+                      className={`mt-xs size-xs shrink-0 rounded-full ${message.seen ? '' : 'bg-primary'}`}
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col gap-3xs">
+                      <span className="flex items-baseline justify-between gap-sm">
+                        <span className={`truncate text-label ${message.seen ? 'text-muted-foreground' : ''}`}>
+                          {message.from?.name || message.from?.email}
+                        </span>
+                        <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
+                          {mailDate(message.date)}
+                        </span>
+                      </span>
+                      <span
+                        className={`flex items-center gap-xs text-body ${message.seen ? 'text-muted-foreground' : ''}`}
+                      >
+                        <span className="truncate">{message.subject}</span>
+                        {message.flagged && (
+                          <>
+                            <StarIcon aria-hidden weight="fill" className="size-icon-sm shrink-0" />
+                            <span className="sr-only"> {m.mail_starred()}</span>
+                          </>
+                        )}
+                      </span>
                     </span>
-                  </span>
-                  {!message.seen && <span className="sr-only"> {m.mail_unread()}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
+                    {!message.seen && <span className="sr-only"> {m.mail_unread()}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
           <div className="flex gap-xs">
             <RegistryButton
               secondary
@@ -119,13 +142,15 @@ export function PostaSection() {
             />
           </div>
         </Panel>
-        {selectedMessage ? (
-          <MailReader account={account} message={selectedMessage} />
-        ) : (
-          <Panel className="col-span-7">
-            <p className="text-body text-muted-foreground">{m.mail_pick()}</p>
-          </Panel>
-        )}
+        <div className="col-span-7 min-h-0 overflow-y-auto overscroll-contain">
+          {selectedMessage ? (
+            <MailReader account={account} message={selectedMessage} />
+          ) : (
+            <Panel className="col-span-7">
+              <p className="text-body text-muted-foreground">{m.mail_pick()}</p>
+            </Panel>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -173,6 +173,8 @@
   "mail_truncated": "Messaggio abbreviato",
   "mail_inbox": "Posta in arrivo",
   "mail_empty": "Nessun messaggio",
+  "mail_loading": "Caricamento...",
+  "mail_refresh": "Aggiorna",
   "mail_unread": "Non letto",
   "mail_previous": "Precedente",
   "mail_next": "Successiva",

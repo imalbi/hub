@@ -107,6 +107,10 @@ export function createMailRouter({
     // Cheap: answers from the config, so the UI may ask on every page whether Posta is configured.
     accounts: protectedProcedure.query(() => accounts.map(({ account, label }) => ({ account, label }))),
     state: protectedProcedure.query(async ({ ctx }) => forClient(await readMailState(run, accounts), ctx.client.kind)),
+    refresh: protectedProcedure.input(z.object({})).query(async () => {
+      await live.notify();
+      return true;
+    }),
     onState: protectedProcedure.subscription(async function* ({ ctx, signal }) {
       for await (const state of live.subscribe(signal)) yield forClient(state, ctx.client.kind);
     }),

@@ -27,7 +27,7 @@ export function SearchForm({ leading, onSearch }: { leading: ReactNode; onSearch
     onSearch(Object.values(filter).some(Boolean) ? filter : null);
   }
   return (
-    <form onSubmit={submit} className="flex items-end gap-sm">
+    <form onSubmit={submit} className="flex shrink-0 items-end gap-sm">
       <div className="min-w-0 flex-1">{leading}</div>
       <div className="min-w-0 flex-1">
         <Input label={m.mail_from()} value={from} onValueChange={setFrom} maxLength={200} />

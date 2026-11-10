@@ -34,20 +34,45 @@ test('Impostazioni shows the Aspetto picker and a chosen theme applies', async (
   await page.evaluate(() => localStorage.removeItem('hub.theme'));
 });
 
-test('the last row of a page is fully visible with no bottom clearance for a floating layer', async ({ page }) => {
+test('the content scrolls to the last row while the title stays fixed', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 500 });
   await page.goto('/desk/media');
   const outputs = page.getByRole('toolbar', { name: 'Uscite configurate' });
   await expect(outputs).toBeVisible();
-  await outputs.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const content = page.locator('main > div').last();
+  const title = page.getByRole('heading', { level: 1, name: 'Media' });
+  await content.hover();
+  await expect
+    .poll(() =>
+      page
+        .locator('main')
+        .evaluate(
+          (element) =>
+            element
+              .getAnimations({ subtree: true })
+              .filter(
+                (animation) =>
+                  animation.playState === 'running' && Number.isFinite(animation.effect?.getComputedTiming().endTime),
+              ).length,
+        ),
+    )
+    .toBe(0);
+  const before = await title.boundingBox();
+  await page.mouse.wheel(0, 3000);
+  await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  const after = await title.boundingBox();
+  expect(after?.y).toBe(before?.y);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
   const last = await outputs.boundingBox();
   if (!last) throw new Error('missing box');
   expect(last.y + last.height).toBeLessThanOrEqual(500);
   // The page ends one gutter below its last row, like it starts one gutter above the title.
   const padding = await page
     .locator('main')
-    .evaluate((main) => [getComputedStyle(main).paddingTop, getComputedStyle(main).paddingBottom]);
+    .evaluate((main) => [
+      getComputedStyle(main).paddingTop,
+      getComputedStyle(main.querySelector(':scope > div > div')!).paddingBottom,
+    ]);
   expect(padding[1]).toBe(padding[0]);
 });
 

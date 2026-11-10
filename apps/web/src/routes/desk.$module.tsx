@@ -12,5 +12,5 @@ function ModuleZone() {
   const { module } = Route.useParams();
   const zone = useLiveModuleUIs().find((entry) => entry.zone?.id === module)?.zone;
   if (!zone) throw notFound();
-  return <ZonePage zone={zone.id} own={[{ id: zone.id, label: zone.label, component: zone.page }]} />;
+  return <ZonePage zone={zone.id} own={[{ id: zone.id, label: zone.label, component: zone.page, fill: zone.fill }]} />;
 }

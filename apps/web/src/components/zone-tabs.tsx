@@ -11,7 +11,15 @@ export type ZoneTab = { id: string; label: string; count?: number; content: Reac
  * `validateSearch: zoneSearch`), so a reload or a link keeps it; a click replaces the history entry. The first tab is the
  * default and a page with one tab shows no bar at all.
  */
-export function ZoneTabs({ tabs, always = false }: { tabs: ZoneTab[]; always?: boolean }) {
+export function ZoneTabs({
+  tabs,
+  always = false,
+  fill = false,
+}: {
+  tabs: ZoneTab[];
+  always?: boolean;
+  fill?: boolean;
+}) {
   const id = useId();
   const navigate = useNavigate();
   const { tab } = useSearch({ strict: false });
@@ -41,7 +49,12 @@ export function ZoneTabs({ tabs, always = false }: { tabs: ZoneTab[]; always?: b
           });
         }}
       />
-      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${active.id}`}>
+      <div
+        role="tabpanel"
+        id={`${id}-panel`}
+        aria-labelledby={`${id}-tab-${active.id}`}
+        className={fill ? 'flex min-h-0 flex-1 flex-col' : undefined}
+      >
         {active.content}
       </div>
     </>
