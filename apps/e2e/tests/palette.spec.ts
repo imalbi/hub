@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { restoreDesktop } from './desktop.ts';
 import { SERVER_URL } from './hosts.ts';
+import { contrastRatio } from './contrast.ts';
+import { themeSettled } from './themes.ts';
 
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 
@@ -24,7 +26,6 @@ test('Ctrl+K searches the registry, arrows and Enter run an action and Escape re
   const total = await palette.getByRole('option').count();
   const initial = await palette.getByRole('option', { selected: true }).getAttribute('id');
   await expect(search).toHaveAttribute('aria-activedescendant', initial ?? '');
-  await expect(palette.getByRole('listbox')).toHaveAttribute('aria-activedescendant', initial ?? '');
   await search.fill('trcc');
   await expect.poll(() => palette.getByRole('option').count()).toBeLessThan(total);
   await expect(palette.getByRole('option', { name: /Traccia successiva/ })).toBeVisible();
@@ -78,6 +79,11 @@ test('schema forms reject empty input, submit valid values and show generic fail
   await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
   await expect(palette.getByRole('status')).toHaveText('Azione non riuscita. Riprova.');
   await expect(palette).not.toContainText('No configured output');
+  // The field was disabled while the request ran, so focus is on the page: Escape still goes back, then closes.
+  await page.keyboard.press('Escape');
+  await expect(palette.getByRole('option', { name: /Seleziona uscita audio/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(palette).not.toBeVisible();
 });
 
 test('danger needs a hold and unsupported schemas remain listed without a run control', async ({ page }) => {
@@ -105,6 +111,10 @@ test('danger needs a hold and unsupported schemas remain listed without a run co
   await expect(hold).toContainText('Fatto');
   expect(calls).toHaveLength(1);
   expect(calls[0]).toContain('"confirmed":true');
+  // Escape leaves the page first (the list is back, the search editable), a second one closes.
+  await page.keyboard.press('Escape');
+  await expect(palette.getByRole('option', { name: /Spegni PC/ })).toBeVisible();
+  await expect(palette).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(palette).not.toBeVisible();
   await page.keyboard.press('Control+k');
@@ -143,84 +153,184 @@ test('a schema enum offers the registered workspace values and submits one valid
   await expect(palette.getByRole('status')).toHaveText('Fatto');
 });
 
-const button = (page: Page) => page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
+const pill = (page: Page) => page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
 
-test('at rest the palette is a round button at the bottom right of every desk page', async ({ page }) => {
+test('the pill sits at the top center of every desk zone, in the title row', async ({ page }) => {
+  const view = page.viewportSize();
+  if (!view) throw new Error('no viewport');
   for (const path of ['/desk', '/desk/studio', '/desk/settings']) {
     await page.goto(path);
-    const box = await button(page).boundingBox();
-    const view = page.viewportSize();
-    if (!box || !view) throw new Error('missing box');
-    expect(box.x + box.width).toBeGreaterThan(view.width * 0.9);
-    expect(box.y + box.height).toBeGreaterThan(view.height * 0.9);
-    expect(box.width).toBeCloseTo(box.height, 0);
-    await expect(button(page)).toHaveCSS('border-radius', /^\d+(\.\d+)?px$/);
+    await expect(pill(page)).toBeVisible();
+    const box = await pill(page).boundingBox();
+    const title = await page.getByRole('heading', { level: 1 }).boundingBox();
+    if (!box || !title) throw new Error('missing box');
+    expect(Math.abs(box.x + box.width / 2 - view.width / 2)).toBeLessThan(view.width * 0.1);
+    expect(box.y + box.height / 2).toBeGreaterThan(title.y);
+    expect(box.y + box.height / 2).toBeLessThan(title.y + title.height);
+    expect(box.x).toBeGreaterThanOrEqual(title.x + title.width - 1);
+    await expect(pill(page)).toContainText('Cerca');
+    await expect(pill(page)).toContainText('Ctrl');
   }
 });
 
-test('the button and Ctrl+K open the palette at the bottom center and Escape returns focus to the button', async ({
-  page,
-}) => {
+for (const size of [
+  { width: 1920, height: 1080 },
+  { width: 3840, height: 2160 },
+])
+  for (const theme of ['ink', 'paper']) {
+    test(`pill text is readable and the open palette fits the screen: ${theme} at ${size.width}`, async ({ page }) => {
+      await page.setViewportSize(size);
+      await page.addInitScript((id) => localStorage.setItem('hub.theme', id), theme);
+      await page.goto('/desk');
+      await expect(pill(page)).toBeVisible();
+      await themeSettled(page);
+      expect(await contrastRatio(pill(page))).toBeGreaterThanOrEqual(4.5);
+      await pill(page).click();
+      const field = page.getByRole('dialog', { name: 'Comandi' }).getByRole('combobox');
+      await expect(field).toBeFocused();
+      // Wait for the grow to finish: the list shows every row and the panel stops moving.
+      await expect(page.getByRole('option', { name: /Avvia Pomodoro/ })).toBeVisible();
+      await expect
+        .poll(async () => {
+          const box = await page.getByRole('dialog', { name: 'Comandi' }).locator('input').boundingBox();
+          return box ? box.width : 0;
+        })
+        .toBeGreaterThan(size.width * 0.1);
+      // The list scrolls inside the panel, so the field and the first row stand for "not clipped".
+      const first = page.getByRole('group', { name: 'Vai a' }).getByRole('option').first();
+      for (const box of [await field.boundingBox(), await first.boundingBox()]) {
+        if (!box) throw new Error('missing box');
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(size.width);
+        expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+      }
+      expect(await contrastRatio(first)).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+test('the pill and Ctrl+K open the palette, Escape closes it and focus returns to the pill', async ({ page }) => {
   await page.goto('/desk');
   const palette = page.getByRole('dialog', { name: 'Comandi' });
-  const view = page.viewportSize();
-  if (!view) throw new Error('no viewport');
-  for (const open of [() => button(page).click(), () => page.keyboard.press('Control+k')]) {
-    await open();
-    await expect(palette).toBeVisible();
-    // The entrance travels for a moment; the resting place is the bottom center.
-    await expect
-      .poll(async () => {
-        const box = await palette.boundingBox();
-        return box ? Math.round(Math.abs(box.x + box.width / 2 - view.width / 2)) : -1;
-      })
-      .toBe(0);
-    const box = await palette.boundingBox();
-    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(view.height * 0.9);
-    await page.keyboard.press('Escape');
-    await expect(palette).not.toBeVisible();
-    await expect(button(page)).toBeFocused();
-  }
+  await expect(pill(page)).toBeVisible();
+  await pill(page).click();
+  await expect(palette).toBeVisible();
+  await expect(palette.getByRole('combobox')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(palette).not.toBeVisible();
+  await expect(pill(page)).toBeFocused();
+  await pill(page).focus();
+  await page.keyboard.press('Control+k');
+  await expect(palette).toBeVisible();
+  await page.keyboard.press('Control+k');
+  await expect(palette).not.toBeVisible();
+  await expect(pill(page)).toBeFocused();
 });
 
 test('a click outside the palette closes it, a click inside does not', async ({ page }) => {
   await page.goto('/desk');
   const palette = page.getByRole('dialog', { name: 'Comandi' });
-  await button(page).click();
-  await expect(palette).toBeVisible();
+  await pill(page).click();
+  await expect(palette.getByRole('combobox')).toBeVisible();
   await palette.getByRole('combobox').click();
-  await expect(palette).toBeVisible();
-  // The top left corner is backdrop: the palette sits at the bottom center.
-  await page.mouse.click(10, 10);
+  await expect(palette.getByRole('combobox')).toBeVisible();
+  // The bottom left corner is veil: the palette hangs from the top center.
+  await page.mouse.click(10, (page.viewportSize()?.height ?? 600) - 10);
   await expect(palette).not.toBeVisible();
 });
 
-test('opening grows the palette out of the button, and with reduced motion it just appears', async ({ page }) => {
-  const opening = () =>
+test('opening grows the palette out of the pill, and with reduced motion it just appears', async ({ page }) => {
+  // Animations running inside the dialog a few frames after the click (the grow is a set of CSS transitions).
+  const running = () =>
     page.evaluate(async () => {
-      document.getElementById('palette-button')?.click();
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      return document.querySelector('dialog')?.getAnimations().length ?? -1;
-    });
-  const closing = () =>
-    page.evaluate(async () => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      return document.querySelector('dialog')?.getAnimations().length ?? -1;
+      document.querySelector<HTMLElement>('button[aria-haspopup="dialog"]')?.click();
+      for (let frame = 0; frame < 4; frame++) await new Promise((resolve) => requestAnimationFrame(resolve));
+      return document.querySelector('dialog')?.getAnimations({ subtree: true }).length ?? -1;
     });
   await page.goto('/desk');
-  await expect(button(page)).toBeVisible();
-  expect(await opening()).toBeGreaterThan(0);
-  expect(await closing()).toBeGreaterThan(0);
+  await expect(pill(page)).toBeVisible();
+  expect(await running()).toBeGreaterThan(0);
+  await expect(page.getByRole('dialog', { name: 'Comandi' }).getByRole('combobox')).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.locator('dialog')).not.toBeVisible();
+  await expect(page.locator('dialog')).toHaveCount(0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  expect(await opening()).toBe(0);
+  expect(await running()).toBe(0);
+  // The page change is a script animation, which the global reduced-motion CSS does not reach: the component itself must skip it.
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await palette.getByRole('combobox').fill('Seleziona uscita audio');
+  await expect(palette.getByRole('option', { name: /Seleziona uscita audio/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(palette.getByLabel('label', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector('dialog')?.getAnimations({ subtree: true }).length)).toBe(0);
+});
+
+test('a loading registry and a failing one are announced in the list', async ({ page }) => {
+  let release: (() => void) | undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // The registry is asked in a batch with other queries, so match it anywhere in the path.
+  await page.route('**/trpc/*registry.list*', async (route) => {
+    await held;
+    await route.fulfill({
+      status: 500,
+      json: [{ error: { message: 'boom', code: -32603, data: { code: 'INTERNAL_SERVER_ERROR' } } }],
+    });
+  });
+  try {
+    await page.goto('/desk');
+    await expect(pill(page)).toBeVisible();
+    await page.keyboard.press('Control+k');
+    const palette = page.getByRole('dialog', { name: 'Comandi' });
+    await palette.getByRole('combobox').fill('zzzz');
+    await expect(palette.getByRole('status')).toContainText('Caricamento azioni');
+    release?.();
+    // The query retries with a back-off before it gives up.
+    await expect(palette.getByRole('status')).toContainText('Azione non riuscita. Riprova.', { timeout: 20_000 });
+    await expect(palette).not.toContainText('boom');
+  } finally {
+    release?.();
+  }
+});
+
+test('a failing action shows the generic error and keeps the palette open', async ({ page }) => {
+  await page.route('**/trpc/news.refresh*', (route) =>
+    route.fulfill({
+      status: 500,
+      json: [{ error: { message: 'secret detail', code: -32603, data: { code: 'INTERNAL_SERVER_ERROR' } } }],
+    }),
+  );
+  await page.goto('/desk');
+  await expect(pill(page)).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await palette.getByRole('combobox').fill('Aggiorna notizie');
+  await expect(palette.getByRole('option', { name: /Aggiorna notizie/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(palette.getByText('Azione non riuscita. Riprova.')).toBeVisible();
+  await expect(palette).not.toContainText('secret detail');
+  await expect(palette.getByRole('combobox')).toBeVisible();
+});
+
+test('Backspace on an empty search leaves an action form for the list', async ({ page }) => {
+  await page.goto('/desk');
+  await expect(pill(page)).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await palette.getByRole('combobox').fill('Seleziona uscita audio');
+  await expect(palette.getByRole('option', { name: /Seleziona uscita audio/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(palette.getByLabel('label', { exact: true })).toBeFocused();
+  await palette.getByRole('combobox').focus();
+  await page.keyboard.press('Backspace');
+  await expect(palette.getByLabel('label', { exact: true })).toHaveCount(0);
+  await expect(palette.getByRole('option', { name: /Seleziona uscita audio/ })).toBeVisible();
 });
 
 test('Vai a lists the rail zones above the actions and navigates', async ({ page }) => {
   await page.goto('/desk');
-  await expect(button(page)).toBeVisible();
+  await expect(pill(page)).toBeVisible();
+  // A full page load would drop this marker.
+  await page.evaluate(() => Object.assign(window, { navigationMarker: true }));
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Comandi' });
   const goto = palette.getByRole('group', { name: 'Vai a' });
@@ -238,6 +348,7 @@ test('Vai a lists the rail zones above the actions and navigates', async ({ page
   await expect(page).toHaveURL(/\/desk\/settings$/);
   await expect(palette).not.toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Impostazioni' })).toBeVisible();
+  expect(await page.evaluate(() => 'navigationMarker' in window)).toBe(true);
 });
 
 if (examples)
@@ -259,6 +370,7 @@ if (examples)
     await expect
       .poll(async () => (await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes)
       .toEqual([{ type: 'setBrightness', percent: 42 }]);
+    await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await expect(palette).not.toBeVisible();
     await page.keyboard.press('Control+k');

@@ -34,17 +34,21 @@ test('Impostazioni shows the Aspetto picker and a chosen theme applies', async (
   await page.evaluate(() => localStorage.removeItem('hub.theme'));
 });
 
-test('the last row of a page stays clear of the palette button', async ({ page }) => {
+test('the last row of a page is fully visible with no bottom clearance for a floating layer', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 500 });
   await page.goto('/desk/media');
   const outputs = page.getByRole('toolbar', { name: 'Uscite configurate' });
   await expect(outputs).toBeVisible();
   await outputs.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const button = await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).boundingBox();
   const last = await outputs.boundingBox();
-  if (!button || !last) throw new Error('missing box');
-  expect(last.y + last.height).toBeLessThanOrEqual(button.y);
+  if (!last) throw new Error('missing box');
+  expect(last.y + last.height).toBeLessThanOrEqual(500);
+  // The page ends one gutter below its last row, like it starts one gutter above the title.
+  const padding = await page
+    .locator('main')
+    .evaluate((main) => [getComputedStyle(main).paddingTop, getComputedStyle(main).paddingBottom]);
+  expect(padding[1]).toBe(padding[0]);
 });
 
 if (examples) {

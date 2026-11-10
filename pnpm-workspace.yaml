@@ -1,5 +1,3 @@
 packages:
   - apps/*
   - modules.example/*
-patchedDependencies:
-  cmdk@1.1.1: patches/cmdk-1.1.1.patch

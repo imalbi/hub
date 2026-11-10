@@ -35,13 +35,13 @@
   /* Desk rail: touch target, horizontal padding and border; content leaves one gutter on each side. */
   --spacing-desk-rail: calc(var(--spacing-touch) + 2 * var(--spacing-xs) + 2 * var(--spacing-px));
   --spacing-desk-inset: calc(var(--spacing-desk-rail) + 2 * var(--spacing-xl));
-  /* Bottom of a desk page: the palette button's offset, its size and a gap, so the last row stays clear of it. */
-  --spacing-palette-clear: calc(var(--spacing-xl) + var(--spacing-touch) + var(--spacing-md));
   /* Cover grows with the viewport but leaves room for the track's title. */
   /* One widget row: a small widget (3 of 12 columns) is about square on the desk, and the compact panels fit. */
   --spacing-widget-row: 15rem;
   /* The theme editor's side sheet: narrow enough to leave most of the page visible as the live preview. */
   --spacing-sheet: 28rem;
+  /* The label column of a short key/value list (the Lavoro detail summary), so the values line up. */
+  --spacing-label-col: 6rem;
   /* Widths of the Hairline dialog (a confirmation up to a long reading view) and popover (a short form up to a settings list), in rem so they follow the desk root size. */
   --spacing-dialog-sm: 25rem;
   --spacing-dialog-md: 32.5rem;

@@ -10,6 +10,7 @@ test('opening a generated form moves keyboard focus to its first control', async
   await page.keyboard.press('Enter');
   await expect(palette.getByRole('textbox', { name: 'label', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
   await expect(palette).not.toBeVisible();
   await page.keyboard.press('Control+k');
   await palette.getByRole('combobox').fill('Spegni PC');
@@ -70,6 +71,7 @@ test('a palette layout reset refreshes the board without a reload', async ({ pag
     await palette.getByRole('textbox', { name: 'zone', exact: true }).fill('overview');
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
     await expect(palette.getByRole('status')).toHaveText('Fatto');
+    await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await expect(page.locator('[data-widget="pomodoro"]')).toBeVisible();
   } finally {

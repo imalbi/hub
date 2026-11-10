@@ -23,6 +23,8 @@ const licensesFile = 'third-party-licenses.md';
 const extraNotices = [
   { title: '@fontsource-variable/urbanist (OFL-1.1)', file: './node_modules/@fontsource-variable/urbanist/LICENSE' },
   { title: 'Hairline UI, vendored in src/components/ui (MIT)', file: './src/components/ui/LICENSE' },
+  // rough-notation ships roughjs inlined (a devDependency it bundled), so the bundler sees one package and one notice.
+  { title: 'roughjs 4.3.1, inlined in rough-notation (MIT)', file: './third-party/roughjs-LICENSE' },
 ];
 
 function extraLicenses(): Plugin {
@@ -54,6 +56,7 @@ export default defineConfig({
       'motion/react': fileURLToPath(new URL('./node_modules/motion/react', import.meta.url)),
       '@tanstack/react-query': fileURLToPath(new URL('./node_modules/@tanstack/react-query', import.meta.url)),
       motion: fileURLToPath(new URL('./node_modules/motion', import.meta.url)),
+      'rough-notation': fileURLToPath(new URL('./node_modules/rough-notation', import.meta.url)),
       // No leading slash: Vite joins a glob that starts with '/' to the project root and never applies the alias.
       '@hub-private-modules': process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0],
     },

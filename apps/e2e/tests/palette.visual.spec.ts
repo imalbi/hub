@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro } from './pomodoro-visual.ts';
 
-// The palette lives at the bottom center, grown out of a round button at the bottom right (step 07p).
+// The palette grows out of the pill at the top center of the title row (step 20).
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await freezePomodoro(page);
@@ -31,7 +31,7 @@ test('the palette on a 1920x1080 desk matches the baseline', async ({ page }) =>
   await expect(page).toHaveScreenshot('desk-palette.png', { animations: 'disabled' });
 });
 
-test('the resting palette button on a 4K zone matches the baseline', async ({ page }) => {
+test('the resting palette pill on a 4K zone matches the baseline', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Comandi' })).not.toBeVisible();
   await page.mouse.move(0, 0);

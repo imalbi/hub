@@ -42,14 +42,14 @@ export function DeskShell() {
   return (
     <ThemeProvider remote>
       <MediaProvider>
-        <DeskCommandPalette />
         <RestartScreen />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
-        <main className="min-h-dvh px-xl pt-xl pb-palette-clear pl-desk-inset">
-          <header className="mb-xl flex items-center justify-between gap-lg">
-            <h1 className="text-heading">{active?.label() ?? m.desk_title()}</h1>
-            <div className="flex items-center gap-md">
+        <main className="min-h-dvh px-xl py-xl pl-desk-inset">
+          <header className="mb-xl flex items-center gap-lg">
+            <h1 className="flex-1 text-heading">{active?.label() ?? m.desk_title()}</h1>
+            <DeskCommandPalette />
+            <div className="flex flex-1 items-center justify-end gap-md">
               <div ref={setSlot} className="flex items-center gap-xs" />
               <HeaderActivity />
             </div>
