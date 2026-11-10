@@ -50,6 +50,7 @@ export function themeCss(id: string, { mode, colors }: ThemeValues) {
           '--glass-filter:blur(var(--blur-glass))',
           '--backdrop-glow:var(--muted)',
           '--backdrop-art-display:block',
+          'color-scheme:dark',
         ]
       : [
           '--glass:var(--surface)',
@@ -57,6 +58,7 @@ export function themeCss(id: string, { mode, colors }: ThemeValues) {
           '--glass-filter:none',
           '--backdrop-glow:var(--background)',
           '--backdrop-art-display:none',
+          'color-scheme:light',
         ];
   return `[data-theme='${id}']{${[...declarations, ...chrome].join(';')}}`;
 }

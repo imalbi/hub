@@ -207,6 +207,8 @@
   --glass-filter: blur(var(--blur-glass));
   --backdrop-glow: var(--muted);
   --backdrop-art-display: block;
+  /* Native controls (the date picker icon, scrollbars) follow the theme instead of the browser default. */
+  color-scheme: dark;
 }
 
 /* Light paper theme: warm grey ground, black and white contrast cards. */
@@ -228,6 +230,7 @@
   --glass-filter: none;
   --backdrop-glow: var(--background);
   --backdrop-art-display: none;
+  color-scheme: light;
 }
 
 /* Muschio: a deep moss ground with a slight green tint, bone ink and one sage accent (chosen with the taste skills). */
@@ -249,6 +252,7 @@
   --glass-filter: blur(var(--blur-glass));
   --backdrop-glow: var(--muted);
   --backdrop-art-display: block;
+  color-scheme: dark;
 }
 
 /* Pietra: cool stone ground, slate ink, white cards and an oxblood accent (chosen with the taste skills). */
@@ -270,6 +274,7 @@
   --glass-filter: none;
   --backdrop-glow: var(--background);
   --backdrop-art-display: none;
+  color-scheme: light;
 }
 
 html[data-layout='desk'] body {

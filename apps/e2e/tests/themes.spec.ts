@@ -29,6 +29,20 @@ test('every built-in theme has a card whose preview draws its own colors', async
   expect(backgrounds.size).toBe(builtIn.length);
 });
 
+test('native controls follow the theme, so the date picker icon is readable in the dark ones', async ({ page }) => {
+  const scheme = () => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+  for (const [name, expected] of [
+    ['Scuro', 'dark'],
+    ['Chiaro', 'light'],
+    ['Muschio', 'dark'],
+    ['Pietra', 'light'],
+  ] as const) {
+    await chooseTheme(page, name);
+    await expect.poll(scheme).toBe(expected);
+  }
+  await chooseTheme(page, 'Scuro');
+});
+
 test('hovering a card tries the theme on the whole desk, leaving restores the chosen one', async ({ page }) => {
   const html = page.locator('html');
   await expect(html).toHaveAttribute('data-theme', 'ink');
