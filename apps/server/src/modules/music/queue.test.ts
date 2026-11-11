@@ -25,3 +25,21 @@ void test('three consecutive playback errors stop the queue', () => {
   assert.equal(state.current, null);
   assert.equal(state.errors, 3);
 });
+
+void test('loading a playlist preserves its order and lets radio follow its last song', () => {
+  let state = queueReducer(emptyQueue, { type: 'load', songs: ['a', 'b', 'a'].map(song) });
+  assert.equal(state.current?.id, 'a');
+  assert.deepEqual(
+    state.upcoming.map((item) => item.id),
+    ['b', 'a'],
+  );
+  state = queueReducer(state, { type: 'refill', songs: [song('a'), song('c')] });
+  assert.deepEqual(
+    state.upcoming.map((item) => item.id),
+    ['b', 'a', 'c'],
+  );
+  state = queueReducer(state, { type: 'advance', error: false });
+  state = queueReducer(state, { type: 'advance', error: false });
+  state = queueReducer(state, { type: 'advance', error: false });
+  assert.equal(state.current?.id, 'c');
+});

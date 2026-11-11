@@ -71,7 +71,9 @@ test('artist opened from radio returns to radio', async ({ page }) => {
 });
 
 test('search, play and fixed search while results scroll', async ({ page }) => {
-  await page.setViewportSize({ width: 1920, height: 750 });
+  // 4K, the desk's real size: below it the Media page leaves the music list about 48 px (2026-11-11, see 23f), so a
+  // smaller viewport measured a crushed layout, not the fixed search.
+  await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk/media');
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible();
@@ -93,7 +95,11 @@ test('search, play and fixed search while results scroll', async ({ page }) => {
   await expect(upcoming.getByText('Brano 3', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Risultati' }).click();
   const top = (await search.boundingBox())?.y;
+  const list = page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).locator('xpath=ancestor::ul/..');
+  // The list must really scroll here, or the check below proves nothing.
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   await page.getByRole('button', { name: 'Riproduci Brano 30' }).scrollIntoViewIfNeeded();
+  expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   expect((await search.boundingBox())?.y).toBe(top);
 });
 
@@ -130,4 +136,53 @@ test('favorites are available as a view and can seed the radio', async ({ page }
   await expect(page.getByRole('region', { name: 'Prossimi' })).toContainText('Brano 3');
   await page.getByRole('button', { name: 'Cronologia', exact: true }).click();
   await expect(page.getByText('Nessun brano ascoltato')).toBeVisible();
+});
+
+test('playlist can be created, populated, reordered, played and deleted with a hold', async ({ page }) => {
+  await page.goto('/desk/media');
+  await page.getByRole('button', { name: 'Playlist', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Nome playlist' }).fill('Mix test');
+  await page.getByRole('button', { name: 'Crea playlist' }).click();
+  await page.getByRole('button', { name: 'Risultati', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('playlist-test');
+  for (const title of ['Mix 1', 'Mix 2']) {
+    await page.getByRole('button', { name: `Aggiungi ${title} a playlist` }).click();
+    await page.getByRole('dialog', { name: 'Aggiungi a playlist' }).getByRole('button', { name: 'Mix test' }).click();
+    await expect(page.getByRole('dialog', { name: 'Aggiungi a playlist' })).toHaveCount(0);
+  }
+  await page.getByRole('button', { name: 'Playlist', exact: true }).click();
+  await page.getByRole('button', { name: 'Mix test', exact: true }).click();
+  await page.getByRole('button', { name: 'Sposta su Mix 2' }).click();
+  await page.getByRole('button', { name: 'Riproduci playlist' }).click();
+  await page.getByRole('button', { name: 'Radio', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Prossimi' }).getByRole('listitem').first()).toContainText('Mix 1');
+  await page.getByRole('button', { name: 'Playlist', exact: true }).click();
+  await page.getByRole('button', { name: 'Mix test', exact: true }).click();
+  const remove = page.getByRole('button', { name: 'Tieni premuto per eliminare playlist' });
+  await remove.focus();
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(900);
+  await page.keyboard.up('Space');
+  await expect(page.getByRole('button', { name: 'Mix test', exact: true })).toHaveCount(0);
+});
+
+test('public playlist can be found, played and saved locally', async ({ page }) => {
+  await page.goto('/desk/media');
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('mix');
+  await page.getByRole('button', { name: 'Playlist pubbliche' }).click();
+  await page.getByRole('button', { name: 'Playlist pubblica', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Playlist pubblica' })).toContainText('Brano 1');
+  const play = page.waitForResponse((response) => response.url().includes('music.playPublicPlaylist'));
+  await page.getByRole('button', { name: 'Riproduci playlist' }).click();
+  expect((await play).ok()).toBeTruthy();
+  const save = page.waitForResponse((response) => response.url().includes('music.savePublicPlaylist'));
+  await page.getByRole('button', { name: 'Salva', exact: true }).click();
+  expect((await save).ok()).toBeTruthy();
+  await page.getByRole('button', { name: 'Playlist', exact: true }).click();
+  await page.getByRole('button', { name: 'Playlist pubblica', exact: true }).click();
+  await page.getByRole('button', { name: 'Tieni premuto per eliminare playlist' }).focus();
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(900);
+  await page.keyboard.up('Space');
+  await expect(page.getByRole('button', { name: 'Playlist pubblica', exact: true })).toHaveCount(0);
 });

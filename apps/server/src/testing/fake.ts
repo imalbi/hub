@@ -98,6 +98,18 @@ function build() {
     dbPath,
     music: {
       youtube: {
+        async searchPlaylists() {
+          return [{ id: 'PLexample', title: 'Playlist pubblica' }];
+        },
+        async playlist() {
+          return {
+            title: 'Playlist pubblica',
+            songs: [
+              { id: '00000000000', title: 'Brano 1', artists: [{ name: 'Artista' }] },
+              { id: '00000000001', title: 'Brano 2', artists: [{ name: 'Artista' }] },
+            ],
+          };
+        },
         async artist() {
           return {
             name: 'Artista',
@@ -124,7 +136,15 @@ function build() {
             { id: '00000000003', title: 'Brano 4', artists: [{ name: 'Artista' }], seconds: 123 },
           ];
         },
-        async search() {
+        async search(query: string) {
+          if (query === 'playlist-test')
+            return {
+              songs: [
+                { id: 'playlist001', title: 'Mix 1', artists: [{ name: 'Artista' }] },
+                { id: 'playlist002', title: 'Mix 2', artists: [{ name: 'Artista' }] },
+              ],
+              dropped: 0,
+            };
           return {
             songs: Array.from({ length: 30 }, (_, i) => ({
               id: String(i).padStart(11, '0'),

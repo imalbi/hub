@@ -3,6 +3,12 @@ import type { Song } from './youtube.ts';
 export const calls: { queries: string[]; commands: (string | number | boolean)[][] } = { queries: [], commands: [] };
 export const wiring = {
   youtube: {
+    async searchPlaylists() {
+      return [{ id: 'PLexample', title: 'Playlist' }];
+    },
+    async playlist() {
+      return { title: 'Playlist', songs: [{ id: 'abcdefghijk', title: 'Song', artists: [{ name: 'Artist' }] }] };
+    },
     async artist() {
       return {
         name: 'Artist',

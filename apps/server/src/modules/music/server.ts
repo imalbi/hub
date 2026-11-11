@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { desc, eq } from 'drizzle-orm';
-import { favorites, history } from './schema.ts';
+import { favorites, history, playlists, playlistSongs } from './schema.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { emptyQueue, queueReducer } from './queue.ts';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
@@ -138,6 +138,9 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
       }
       let pendingError = false;
       let appended: string | null = null;
+      // mpv's playlist index of the current song: its own start-file must never advance the queue, even when the
+      // next song has the same URL (a playlist can hold one song twice in a row).
+      let currentPos = -1;
       async function appendNext() {
         if (!queue.current) return;
         if (queue.upcoming.length < 3) await refill();
@@ -155,12 +158,13 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
       async function followStart() {
         if (!queue.current) return;
         const position = await ipc.request(['get_property', 'playlist-pos']);
-        if (typeof position !== 'number' || position < 0) return;
+        if (typeof position !== 'number' || position < 0 || position === currentPos) return;
         let path = await ipc.request(['get_property', 'path']).catch(() => null);
         if (path !== `https://music.youtube.com/watch?v=${queue.upcoming[0]?.id}`)
           path = await ipc.request(['get_property', `playlist/${position}/filename`]);
         if (path === `https://music.youtube.com/watch?v=${queue.upcoming[0]?.id}`) {
           queue = queueReducer(queue, { type: 'advance', error: pendingError });
+          currentPos = position;
           pendingError = false;
           appended = null;
           armHistory();
@@ -180,6 +184,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           if (queue.current && queue.errors >= 2) {
             queue = queueReducer(queue, { type: 'advance', error: true });
             appended = null;
+            currentPos = -1;
             await ipc.request(['stop']);
             await ipc.request(['playlist-clear']);
             await live.notify();
@@ -198,8 +203,208 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         }
       }
       ipc.events.on('event', onEvent);
+      const playlistId = z.number().int().positive();
+      const publicPlaylistId = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
+      const position = z.number().int().nonnegative();
+      const songInput = z.object({
+        id: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+        title: z.string().min(1).max(500),
+        artist: z.string().max(500),
+      });
+      function getPlaylist(id: number) {
+        const playlist = db.select().from(playlists).where(eq(playlists.id, id)).get();
+        if (!playlist) throw new TRPCError({ code: 'NOT_FOUND', message: 'Playlist not found' });
+        return {
+          ...playlist,
+          songs: db
+            .select()
+            .from(playlistSongs)
+            .where(eq(playlistSongs.playlistId, id))
+            .orderBy(playlistSongs.position)
+            .all(),
+        };
+      }
+      function replacePlaylistSongs(id: number, rows: ReturnType<typeof getPlaylist>['songs']) {
+        db.transaction((tx) => {
+          tx.delete(playlistSongs).where(eq(playlistSongs.playlistId, id)).run();
+          if (rows.length)
+            tx.insert(playlistSongs)
+              .values(rows.map((row, index) => ({ ...row, position: index })))
+              .run();
+        });
+      }
+      /** YouTube failures reach the client as one short message, never the library's own text. */
+      async function publicList(id: string) {
+        try {
+          return await youtube.playlist(id);
+        } catch {
+          throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Playlist unavailable' });
+        }
+      }
+      async function playSongs(tracks: Song[]) {
+        const first = tracks[0];
+        if (!first) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Playlist is empty' });
+        await schedule(async () => {
+          try {
+            await ipc.request(['get_property', 'idle-active']);
+          } catch {
+            const started = await run('systemctl', ['--user', 'start', 'hub-music']);
+            if (started.code !== 0)
+              throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+            let ready = false;
+            for (let attempt = 0; attempt < 10; attempt++) {
+              try {
+                await ipc.request(['get_property', 'idle-active']);
+                ready = true;
+                break;
+              } catch {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+              }
+            }
+            if (!ready) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+          }
+          try {
+            currentPos = 0;
+            await ipc.request(['loadfile', `https://music.youtube.com/watch?v=${first.id}`, 'replace']);
+            await ipc.request(['set_property', 'pause', false]);
+            generation++;
+            appended = null;
+            pendingError = false;
+            queue = queueReducer(queue, { type: 'load', songs: tracks });
+            for (const song of tracks) songs.set(song.id, song);
+            armHistory();
+            await live.notify();
+            await appendNext();
+          } catch {
+            throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+          }
+        });
+      }
       return {
         router: router({
+          playlists: protectedProcedure.query(() =>
+            db.select().from(playlists).orderBy(desc(playlists.createdAt)).all(),
+          ),
+          searchPlaylists: protectedProcedure
+            .input(z.object({ query: z.string().min(1).max(200) }))
+            .query(async ({ input }) => {
+              try {
+                return (await youtube.searchPlaylists(input.query)).filter(
+                  (item) => publicPlaylistId.safeParse(item.id).success,
+                );
+              } catch {
+                throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Playlist search unavailable' });
+              }
+            }),
+          publicPlaylist: protectedProcedure.input(z.object({ id: publicPlaylistId })).query(async ({ input }) => {
+            try {
+              const list = await youtube.playlist(input.id);
+              const valid = list.songs.filter((song) => songInput.shape.id.safeParse(song.id).success);
+              return { title: list.title, songs: await Promise.all(valid.map(publicSong)) };
+            } catch {
+              throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Playlist unavailable' });
+            }
+          }),
+          playPublicPlaylist: protectedProcedure
+            .meta({ label: 'Riproduci playlist pubblica', description: 'Play a public playlist' })
+            .input(z.object({ id: publicPlaylistId }))
+            .mutation(async ({ input }) => {
+              const list = await publicList(input.id);
+              return playSongs(list.songs.filter((song) => songInput.shape.id.safeParse(song.id).success));
+            }),
+          savePublicPlaylist: protectedProcedure
+            .meta({ label: 'Salva playlist', description: 'Save a public playlist' })
+            .input(z.object({ id: publicPlaylistId }))
+            .mutation(async ({ input }) => {
+              const list = await publicList(input.id);
+              const name = z.string().trim().min(1).max(200).catch('Playlist').parse(list.title);
+              const valid = list.songs.filter(
+                (song) =>
+                  songInput.safeParse({
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artists.map((artist) => artist.name).join(', '),
+                  }).success,
+              );
+              return db.transaction((tx) => {
+                const created = tx.insert(playlists).values({ name, createdAt: Date.now() }).returning().get();
+                if (valid.length)
+                  tx.insert(playlistSongs)
+                    .values(
+                      valid.map((song, index) => ({
+                        playlistId: created.id,
+                        position: index,
+                        id: song.id,
+                        title: song.title,
+                        artist: song.artists.map((artist) => artist.name).join(', '),
+                        addedAt: Date.now(),
+                      })),
+                    )
+                    .run();
+                return created;
+              });
+            }),
+          playlist: protectedProcedure.input(z.object({ id: playlistId })).query(({ input }) => getPlaylist(input.id)),
+          playPlaylist: protectedProcedure
+            .meta({ label: 'Riproduci playlist', description: 'Play a playlist' })
+            .input(z.object({ id: playlistId }))
+            .mutation(({ input }) =>
+              playSongs(
+                getPlaylist(input.id).songs.map((song) => ({
+                  id: song.id,
+                  title: song.title,
+                  artists: song.artist ? [{ name: song.artist }] : [],
+                })),
+              ),
+            ),
+          createPlaylist: protectedProcedure
+            .meta({ label: 'Crea playlist', description: 'Create a playlist' })
+            .input(z.object({ name: z.string().trim().min(1).max(200) }))
+            .mutation(({ input }) =>
+              db.insert(playlists).values({ name: input.name, createdAt: Date.now() }).returning().get(),
+            ),
+          renamePlaylist: protectedProcedure
+            .meta({ label: 'Rinomina playlist', description: 'Rename a playlist' })
+            .input(z.object({ id: playlistId, name: z.string().trim().min(1).max(200) }))
+            .mutation(({ input }) => {
+              getPlaylist(input.id);
+              db.update(playlists).set({ name: input.name }).where(eq(playlists.id, input.id)).run();
+            }),
+          deletePlaylist: protectedProcedure
+            .meta({ label: 'Elimina playlist', description: 'Delete a playlist', danger: true })
+            .input(z.object({ id: playlistId, confirmed: z.literal(true) }))
+            .mutation(({ input }) => {
+              getPlaylist(input.id);
+              db.delete(playlists).where(eq(playlists.id, input.id)).run();
+            }),
+          addToPlaylist: protectedProcedure
+            .meta({ label: 'Aggiungi a playlist', description: 'Add a track to a playlist' })
+            .input(songInput.extend({ playlistId }))
+            .mutation(({ input }) => {
+              const list = getPlaylist(input.playlistId);
+              db.insert(playlistSongs)
+                .values({ ...input, position: list.songs.length, addedAt: Date.now() })
+                .run();
+            }),
+          removePlaylistSong: protectedProcedure
+            .meta({ label: 'Rimuovi brano', description: 'Remove a playlist track' })
+            .input(z.object({ playlistId, position }))
+            .mutation(({ input }) => {
+              const rows = getPlaylist(input.playlistId).songs;
+              if (input.position >= rows.length) throw new TRPCError({ code: 'NOT_FOUND' });
+              rows.splice(input.position, 1);
+              replacePlaylistSongs(input.playlistId, rows);
+            }),
+          movePlaylistSong: protectedProcedure
+            .meta({ label: 'Sposta brano', description: 'Reorder a playlist track' })
+            .input(z.object({ playlistId, from: position, to: position }))
+            .mutation(({ input }) => {
+              const rows = getPlaylist(input.playlistId).songs;
+              if (input.from >= rows.length || input.to >= rows.length) throw new TRPCError({ code: 'NOT_FOUND' });
+              const [row] = rows.splice(input.from, 1);
+              if (row) rows.splice(input.to, 0, row);
+              replacePlaylistSongs(input.playlistId, rows);
+            }),
           favorites: protectedProcedure.query(() => db.select().from(favorites).orderBy(desc(favorites.addedAt)).all()),
           history: protectedProcedure.query(() => db.select().from(history).orderBy(desc(history.playedAt)).all()),
           toggleFavorite: protectedProcedure
@@ -269,53 +474,17 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           play: protectedProcedure
             .meta({ label: 'Riproduci brano', description: 'Play a YouTube Music track by video id' })
             .input(z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
-            .mutation(async ({ input }) =>
-              schedule(async () => {
-                const command = ['loadfile', `https://music.youtube.com/watch?v=${input.id}`, 'replace'];
-                try {
-                  await ipc.request(['get_property', 'idle-active']);
-                } catch {
-                  const started = await run('systemctl', ['--user', 'start', 'hub-music']);
-                  if (started.code !== 0)
-                    throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
-                  let ready = false;
-                  for (let attempt = 0; attempt < 10; attempt++) {
-                    try {
-                      await ipc.request(['get_property', 'idle-active']);
-                      ready = true;
-                      break;
-                    } catch {
-                      await new Promise((resolve) => setTimeout(resolve, 100));
-                    }
-                  }
-                  if (!ready) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
-                }
-                try {
-                  await ipc.request(command);
-                  // mpv keeps `pause` across loadfile: a song loaded while paused would wait silently.
-                  await ipc.request(['set_property', 'pause', false]);
-                  generation++;
-                  appended = null;
-                  pendingError = false;
-                  const saved =
-                    db.select().from(favorites).where(eq(favorites.id, input.id)).get() ??
-                    db.select().from(history).where(eq(history.id, input.id)).orderBy(desc(history.playedAt)).get();
-                  queue = queueReducer(queue, {
-                    type: 'play',
-                    song:
-                      songs.get(input.id) ??
-                      (saved
-                        ? { id: saved.id, title: saved.title, artists: saved.artist ? [{ name: saved.artist }] : [] }
-                        : { id: input.id, title: input.id, artists: [] }),
-                  });
-                  armHistory();
-                  await live.notify();
-                  await appendNext();
-                } catch {
-                  throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
-                }
-              }),
-            ),
+            .mutation(({ input }) => {
+              const saved =
+                db.select().from(favorites).where(eq(favorites.id, input.id)).get() ??
+                db.select().from(history).where(eq(history.id, input.id)).orderBy(desc(history.playedAt)).get();
+              const song =
+                songs.get(input.id) ??
+                (saved
+                  ? { id: saved.id, title: saved.title, artists: saved.artist ? [{ name: saved.artist }] : [] }
+                  : { id: input.id, title: input.id, artists: [] });
+              return playSongs([song]);
+            }),
           state: protectedProcedure.query(async () => {
             try {
               const idle = await ipc.request(['get_property', 'idle-active']);

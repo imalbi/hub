@@ -1,7 +1,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { YTNodes } from 'youtubei.js';
-import { mapArtist, mapSongs } from './youtube.ts';
+import { mapArtist, mapPlaylist, mapSongs } from './youtube.ts';
+
+void test('maps playlist header and songs from youtubei nodes', () => {
+  const header = new YTNodes.MusicResponsiveHeader({
+    title: { runs: [{ text: 'Mix' }] },
+    subtitle: {},
+    straplineTextOne: {},
+    secondSubtitle: {},
+    buttons: [],
+  });
+  const song = new YTNodes.MusicResponsiveListItem({
+    flexColumns: [{ musicResponsiveListItemFlexColumnRenderer: { text: { runs: [{ text: 'Song' }] } } }],
+  });
+  song.id = 'abcdefghijk';
+  song.title = 'Song';
+  song.artists = [{ name: 'Artist' }];
+  assert.deepEqual(mapPlaylist({ header, items: [song] }), {
+    title: 'Mix',
+    songs: [{ id: 'abcdefghijk', title: 'Song', artists: [{ name: 'Artist' }] }],
+  });
+});
 
 void test('maps artist header, top songs and albums from youtubei nodes', () => {
   const header = new YTNodes.MusicVisualHeader({

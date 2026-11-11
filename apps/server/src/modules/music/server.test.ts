@@ -4,6 +4,62 @@ import { buildServer } from '../../server.ts';
 import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 import { calls, wiring } from './test-wiring.ts';
 
+void test('public playlist rejects invalid ids before YouTube is called', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  const response = await app.inject(
+    '/trpc/music.publicPlaylist?input=' + encodeURIComponent(JSON.stringify({ id: '../bad' })),
+  );
+  assert.equal(response.statusCode, 400);
+});
+
+void test('public playlist play and save answer 503 without the YouTube error text', async (t) => {
+  const youtube = {
+    ...wiring.youtube,
+    async playlist(): Promise<never> {
+      throw new Error('upstream detail 1234');
+    },
+  };
+  const app = buildServer({ dbPath: ':memory:', music: { ...wiring, youtube }, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  for (const path of ['playPublicPlaylist', 'savePublicPlaylist']) {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/trpc/music.${path}`,
+      payload: { id: 'PLabc' },
+      headers: { 'content-type': 'application/json' },
+    });
+    assert.equal(response.statusCode, 503, path);
+    assert.equal(response.body.includes('upstream detail'), false, path);
+  }
+});
+
+void test('playlists keep dense positions when songs are reordered and removed', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  const mutate = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/music.${name}`, payload });
+  const created = await mutate('createPlaylist', { name: 'Mix' });
+  assert.equal(created.statusCode, 200);
+  const playlistId = created.json().result.data.id;
+  for (const [id, title] of [
+    ['abcdefghijk', 'First'],
+    ['00000000001', 'Second'],
+    ['00000000002', 'Third'],
+  ]) {
+    assert.equal((await mutate('addToPlaylist', { playlistId, id, title, artist: 'Artist' })).statusCode, 200);
+  }
+  assert.equal((await mutate('movePlaylistSong', { playlistId, from: 2, to: 0 })).statusCode, 200);
+  assert.equal((await mutate('removePlaylistSong', { playlistId, position: 1 })).statusCode, 200);
+  const list = await app.inject('/trpc/music.playlist?input=' + encodeURIComponent(JSON.stringify({ id: playlistId })));
+  assert.deepEqual(
+    list.json().result.data.songs.map(({ id, position }: { id: string; position: number }) => [id, position]),
+    [
+      ['00000000002', 0],
+      ['00000000001', 1],
+    ],
+  );
+});
+
 void test('artist rejects invalid channel ids before accessing YouTube', async (t) => {
   const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
   t.after(() => app.close());

@@ -13,3 +13,20 @@ export const favorites = sqliteTable('favorites', {
   artist: text('artist').notNull(),
   addedAt: integer('added_at').notNull(),
 });
+
+export const playlists = sqliteTable('playlists', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const playlistSongs = sqliteTable('playlist_songs', {
+  playlistId: integer('playlist_id')
+    .notNull()
+    .references(() => playlists.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  id: text('id').notNull(),
+  title: text('title').notNull(),
+  artist: text('artist').notNull(),
+  addedAt: integer('added_at').notNull(),
+});

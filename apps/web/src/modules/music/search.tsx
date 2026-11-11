@@ -4,6 +4,7 @@ import { useSubscription } from '@trpc/tanstack-react-query';
 import { PlayIcon, MusicNoteIcon } from '@phosphor-icons/react';
 import { ButtonGroup } from '@/components/ui/button-group.tsx';
 import { Favorite } from './favorite.tsx';
+import { AddToPlaylist, Playlists, PublicPlaylists } from './playlists.tsx';
 import { SearchInput } from '@/components/ui/search-input.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
@@ -11,7 +12,8 @@ import { m } from '../../paraglide/messages.js';
 export function MusicSearch() {
   const trpc = useTRPC();
   const [query, setQuery] = React.useState('');
-  const [view, setView] = React.useState<'results' | 'queue' | 'favorites' | 'history'>('results');
+  const [view, setView] = React.useState<'results' | 'queue' | 'favorites' | 'history' | 'playlists'>('results');
+  const [searchType, setSearchType] = React.useState<'songs' | 'playlists'>('songs');
   const [artistId, setArtistId] = React.useState<string | null>(null);
   const artist = useQuery({
     ...trpc.music.artist.queryOptions({ id: artistId ?? '' }),
@@ -30,14 +32,36 @@ export function MusicSearch() {
   const queue = useSubscription(trpc.music.onQueue.subscriptionOptions()).data;
   return (
     <div className="flex h-full min-h-0 flex-col gap-md">
-      <SearchInput
-        aria-label={m.music_search()}
-        placeholder={m.music_search()}
-        clearLabel={m.music_clear()}
-        shortcut={null}
-        onSearch={setQuery}
-        loading={results.isFetching}
-      />
+      <div className="flex items-center gap-sm">
+        <SearchInput
+          aria-label={m.music_search()}
+          placeholder={m.music_search()}
+          clearLabel={m.music_clear()}
+          shortcut={null}
+          onSearch={setQuery}
+          loading={results.isFetching}
+        />
+        {!artistId && view === 'results' && (
+          <ButtonGroup
+            label={m.music_search()}
+            collapseLabels={false}
+            items={[
+              {
+                id: 'songs',
+                label: m.music_search_songs(),
+                active: searchType === 'songs',
+                onClick: () => setSearchType('songs'),
+              },
+              {
+                id: 'playlists',
+                label: m.music_search_playlists(),
+                active: searchType === 'playlists',
+                onClick: () => setSearchType('playlists'),
+              },
+            ]}
+          />
+        )}
+      </div>
       {!artistId && (
         <ButtonGroup
           label={m.music_views()}
@@ -59,6 +83,12 @@ export function MusicSearch() {
                 setView('history');
                 void history.refetch();
               },
+            },
+            {
+              id: 'playlists',
+              label: m.music_playlists(),
+              active: view === 'playlists',
+              onClick: () => setView('playlists'),
             },
           ]}
         />
@@ -93,6 +123,7 @@ export function MusicSearch() {
                         </p>
                       </div>
                       <Duration seconds={song.seconds} />
+                      <AddToPlaylist song={song} />
                       <Favorite song={song} />
                       <button
                         type="button"
@@ -122,6 +153,8 @@ export function MusicSearch() {
         )}
         {!artistId && (
           <>
+            {view === 'playlists' && <Playlists />}
+            {view === 'results' && searchType === 'playlists' && <PublicPlaylists query={query} />}
             {view === 'queue' && !queue?.current && <output>{m.music_queue_empty()}</output>}
             {view === 'queue' && queue?.current && (
               <section aria-label={m.music_next()} className="mb-lg">
@@ -153,6 +186,7 @@ export function MusicSearch() {
                         </p>
                       </div>
                       <Duration seconds={song.seconds} />
+                      <AddToPlaylist song={song} />
                       <Favorite song={song} />
                     </li>
                   ))}
@@ -161,11 +195,15 @@ export function MusicSearch() {
             )}
             {queue?.errors === 3 && <output>{m.music_radio_error()}</output>}
             {skip.isError && <output>{m.music_player_error()}</output>}
-            {view === 'results' && results.isError && <output>{m.music_search_error()}</output>}
-            {play.isError && <output>{m.music_player_error()}</output>}
-            {view === 'results' && query && results.isSuccess && results.data.length === 0 && (
-              <output>{m.music_empty()}</output>
+            {view === 'results' && searchType === 'songs' && results.isError && (
+              <output>{m.music_search_error()}</output>
             )}
+            {play.isError && <output>{m.music_player_error()}</output>}
+            {view === 'results' &&
+              searchType === 'songs' &&
+              query &&
+              results.isSuccess &&
+              results.data.length === 0 && <output>{m.music_empty()}</output>}
             {view === 'favorites' && favorites.isSuccess && favorites.data.length === 0 && (
               <output>{m.music_favorites_empty()}</output>
             )}
@@ -173,7 +211,7 @@ export function MusicSearch() {
               <output>{m.music_history_empty()}</output>
             )}
             <ul>
-              {(view === 'queue'
+              {(view === 'queue' || view === 'playlists' || (view === 'results' && searchType === 'playlists')
                 ? undefined
                 : view === 'results'
                   ? results.data
@@ -199,6 +237,7 @@ export function MusicSearch() {
                     </p>
                   </div>
                   <Duration seconds={song.seconds} />
+                  <AddToPlaylist song={song} />
                   <Favorite song={song} />
                   <button
                     type="button"

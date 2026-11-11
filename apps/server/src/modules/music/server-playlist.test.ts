@@ -175,3 +175,35 @@ void test('start-file follows the playlist when path is not populated yet', asyn
   await f.tick();
   assert.equal((await f.app.inject('/trpc/music.queue')).json().result.data.current.id, '00000000001');
 });
+
+void test('the same song twice in a row plays twice and the queue stays on the first', async (t) => {
+  // Regression (23f review): the start-file of the song just loaded matched the next song by URL, so the queue
+  // advanced while mpv was still on the first copy.
+  const f = await fixture(t);
+  const mutate = (path: string, payload: object) =>
+    f.app.inject({
+      method: 'POST',
+      url: `/trpc/music.${path}`,
+      payload,
+      headers: { 'content-type': 'application/json' },
+    });
+  const playlistId = (await mutate('createPlaylist', { name: 'Twice' })).json().result.data.id;
+  for (const [id, title] of [
+    ['bbbbbbbbbbb', 'Again'],
+    ['bbbbbbbbbbb', 'Again'],
+    ['ccccccccccc', 'After'],
+  ])
+    await mutate('addToPlaylist', { playlistId, id, title, artist: 'Artista' });
+  assert.equal((await mutate('playPlaylist', { id: playlistId })).statusCode, 200);
+  await f.tick();
+  let queue = (await f.app.inject('/trpc/music.queue')).json().result.data;
+  assert.equal(queue.current.id, 'bbbbbbbbbbb');
+  assert.equal(queue.upcoming[0].id, 'bbbbbbbbbbb');
+  assert.deepEqual(f.playlist, [url('bbbbbbbbbbb'), url('bbbbbbbbbbb')]);
+  f.next('eof');
+  await f.tick();
+  queue = (await f.app.inject('/trpc/music.queue')).json().result.data;
+  assert.equal(queue.current.id, 'bbbbbbbbbbb');
+  assert.equal(queue.upcoming[0].id, 'ccccccccccc');
+  assert.equal(f.position, 1);
+});

@@ -19,6 +19,14 @@ export type Song = {
 };
 
 type ArtistSource = Awaited<ReturnType<Innertube['music']['getArtist']>>;
+type PlaylistSource = Awaited<ReturnType<Innertube['music']['getPlaylist']>>;
+
+export function mapPlaylist(playlist: { header?: PlaylistSource['header']; items: PlaylistSource['items'][number][] }) {
+  const header = playlist.header;
+  const title = header?.is(YTNodes.MusicResponsiveHeader, YTNodes.MusicDetailHeader) ? header.title.toString() : '';
+  const songs = mapSongs(playlist.items.filter((item) => item.is(YTNodes.MusicResponsiveListItem))).songs;
+  return { title, songs };
+}
 
 export function mapArtist(artist: { header?: ArtistSource['header']; sections: ArtistSource['sections'][number][] }) {
   const header = artist.header;
@@ -75,6 +83,23 @@ export function createYouTube() {
     });
   }
   return {
+    async searchPlaylists(query: string) {
+      const yt = await client();
+      const result = await yt.music.search(query, { type: 'playlist' });
+      return (result.playlists?.contents ?? []).flatMap((item) =>
+        item.id && item.title ? [{ id: item.id, title: item.title }] : [],
+      );
+    },
+    async playlist(id: string) {
+      const yt = await client();
+      let page = await yt.music.getPlaylist(id);
+      const result = mapPlaylist(page);
+      while (page.has_continuation) {
+        page = await page.getContinuation();
+        result.songs.push(...mapPlaylist(page).songs);
+      }
+      return result;
+    },
     async artist(id: string) {
       const yt = await client();
       return mapArtist(await yt.music.getArtist(id));

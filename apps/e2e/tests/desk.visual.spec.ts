@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 import { chooseTheme } from './themes.ts';
+import { PC_URL } from './hosts.ts';
 
 // A fixed clock and fixed answers for everything that moves: uptime, the countdown, "last seen", the random code.
 const NOW = new Date('2026-11-04T12:00:00Z');
@@ -147,6 +148,25 @@ test('Media artist at 4K matches the baseline', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Artista', exact: true })).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-music-artist-4k.png', { animations: 'disabled' });
+});
+
+test('Media playlist at 4K matches the baseline', async ({ page, request }) => {
+  const created = await request.post(`${PC_URL}/trpc/music.createPlaylist`, { data: { name: 'Mix esempio' } });
+  const id = (await created.json()).result.data.id;
+  try {
+    await request.post(`${PC_URL}/trpc/music.addToPlaylist`, {
+      data: { playlistId: id, id: 'playlist001', title: 'Brano esempio', artist: 'Artista' },
+    });
+    await page.setViewportSize({ width: 3840, height: 2160 });
+    await page.goto('/desk/media');
+    await page.getByRole('button', { name: 'Playlist', exact: true }).click();
+    await page.getByRole('button', { name: 'Mix esempio', exact: true }).click();
+    await expect(page.getByText('Brano esempio')).toBeVisible();
+    await page.mouse.move(0, 0);
+    await expect(page).toHaveScreenshot('desk-music-playlist-4k.png', { animations: 'disabled' });
+  } finally {
+    await request.post(`${PC_URL}/trpc/music.deletePlaylist`, { data: { id, confirmed: true } });
+  }
 });
 
 test('Dispositivi at 4K matches the baseline', async ({ page }) => {

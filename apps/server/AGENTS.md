@@ -112,6 +112,7 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Failures stay local: the database is opened after the name and zone checks and before `create`; if opening, `create` or the instance check throws, the module's `close` and the database handle are closed and the module is skipped.
 - Close order: Fastify runs `onClose` hooks last in, first out, so the database hook is registered before the module's `close` and runs after it (a module can still write in `close`; the same reason the core database hook is registered first in `buildServer`).
 - Generating a module's migrations is in `docs/modules.md`; `pnpm --filter @hub/server db:generate` is for the core only.
+- drizzle names a foreign key `fk_<table>_<column>_<table>_<column>_fk`, which the private-data guard reads as a token. A new migration with a foreign key gets `-- guard-private: allow generated foreign key name` at the end of that line, before its first run (music `playlist_songs`, 23f). `pnpm check` misses it while the folder is untracked; the guard sees it after `git add`.
 
 ## HTML for modules
 
@@ -206,6 +207,6 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Smoke: `himalaya --version` and `json-schema himalaya-envelope-list` checked for the fields Hub reads. No account command is in the smoke list.
 
 - Music is public (`modules/music/server.ts`); `buildServer({ music })` injects its YouTube and mpv fakes for isolated tests. Public module databases still need an explicit integration before Music persistence is added.
-- Music follows mpv's `start-file` and keeps one upcoming song in its playlist; the IPC fake must emit playlist events for skip to update the queue.
+- Music follows mpv's `start-file` and keeps one upcoming song in its playlist; the IPC fake must emit playlist events for skip to update the queue. `followStart` ignores the start-file of mpv's current index (`currentPos`): a playlist can hold one song twice in a row, so matching the next song by URL alone advanced the queue on the first copy's own start (23f). YouTube calls that a mutation awaits go through a wrapper that answers 503 with a fixed message (`publicList`), never the library's text.
 
 - Public modules declaring `migrations` receive a separate database via `createAppRouter`, at the same `moduleDbPath` as discovered modules; module cleanup runs before database closure.
