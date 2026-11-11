@@ -1,0 +1,10 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "music_search": "Cerca musica",
+  "music_clear": "Cancella ricerca",
+  "music_search_error": "YouTube non raggiungibile",
+  "music_player_error": "Lettore musicale non raggiungibile",
+  "music_empty": "Nessun risultato",
+  "music_output": "Cambia uscita audio",
+  "music_play": "Riproduci {title}"
+}

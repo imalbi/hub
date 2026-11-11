@@ -57,12 +57,13 @@ test('number keys switch zones but do not interfere with typing or modified shor
   await expect(page).toHaveURL(/\/desk\/?$/);
 });
 
-test('Media controls existing playback and switches outputs with the output switch', async ({ page, pc }) => {
+test('Media controls playback and Sistema switches outputs', async ({ page, pc }) => {
   try {
     await restoreDesktop(pc);
     await page.goto('/desk/media');
     await page.getByRole('button', { name: 'Metti in pausa la musica', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Riproduci musica', exact: true })).toBeVisible();
+    await page.goto('/desk/system');
     const outputs = page.getByRole('main').getByRole('toolbar', { name: 'Uscite configurate' });
     await expect(outputs.getByRole('button', { name: 'Cuffie' })).toHaveAttribute('aria-pressed', 'true');
     await outputs.getByRole('button', { name: 'Casse' }).click();
@@ -99,9 +100,9 @@ test('Pomodoro secondary controls remain readable when hovered in paper', async 
   }
 });
 
-test('Media volume follows a second client and can be changed from the slider', async ({ page, pc }) => {
+test('Sistema volume follows a second client and can be changed from the slider', async ({ page, pc }) => {
   try {
-    await page.goto('/desk/media');
+    await page.goto('/desk/system');
     const slider = page.getByRole('slider', { name: 'Volume' });
     await expect(slider).toHaveValue('80');
     const response = await pc.post('/trpc/audio.setVolume', { data: { value: 0.45 } });
@@ -115,9 +116,9 @@ test('Media volume follows a second client and can be changed from the slider', 
   }
 });
 
-test('dragging the Media volume slider writes once, on release, with the final value', async ({ page, pc }) => {
+test('dragging the Sistema volume slider writes once, on release, with the final value', async ({ page, pc }) => {
   try {
-    await page.goto('/desk/media');
+    await page.goto('/desk/system');
     const slider = page.getByRole('slider', { name: 'Volume' });
     await expect(slider).toHaveValue('80');
     const writes: string[] = [];

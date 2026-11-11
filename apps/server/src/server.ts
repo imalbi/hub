@@ -22,6 +22,7 @@ import { emptyConfig, type Config } from './core/config.ts';
 import { openDb } from './db/index.ts';
 import { run as realRun, type Run } from './core/exec.ts';
 import { publicModules } from './modules.ts';
+import { createMusicModule } from './modules/music/server.ts';
 import { discoverModules } from './core/discovery.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
 import { createModuleStates } from './core/module-states.ts';
@@ -39,8 +40,10 @@ export function buildServer({
   exampleModules = process.env.HUB_EXAMPLE_MODULES === '1',
   onlyModules,
   settings,
+  music,
 }: {
   dbPath: string;
+  music?: Parameters<typeof createMusicModule>[0];
   deps?: { run?: Run; fetch?: typeof fetch };
   config?: Config;
   isLoopback?: IsLoopback;
@@ -114,7 +117,10 @@ export function buildServer({
       states,
       off: config.modulesOff,
     });
-    const appRouter = createAppRouter(publicModules, moduleDeps, config, onClose, extra, {
+    const modules = music
+      ? publicModules.map((module) => (module.name === 'music' ? createMusicModule(music) : module))
+      : publicModules;
+    const appRouter = createAppRouter(modules, moduleDeps, config, onClose, extra, {
       states,
       off: config.modulesOff,
       configPath: settings?.configPath,

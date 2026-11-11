@@ -122,15 +122,22 @@ for (const zone of [
     if (zone.name === 'Dispositivi') await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
     if (zone.name === 'Media') {
       await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
-      await page.getByRole('button', { name: 'Silenzia microfono' }).scrollIntoViewIfNeeded();
-      await expect(page.getByRole('slider', { name: 'Volume' })).toBeInViewport({ ratio: 1 });
-      await expect(page.getByRole('button', { name: 'Silenzia uscita audio' })).toBeInViewport({ ratio: 1 });
-      await expect(page.getByRole('button', { name: 'Silenzia microfono' })).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cambia uscita audio' })).toBeVisible();
     }
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled' });
   });
 }
+
+test('Media search at 4K matches the baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/media');
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('canzone');
+  await expect(page.getByRole('button', { name: 'Riproduci Brano 1', exact: true })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-media-search-4k.png', { animations: 'disabled' });
+});
 
 test('Dispositivi at 4K matches the baseline', async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });

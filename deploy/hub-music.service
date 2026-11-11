@@ -1,0 +1,10 @@
+[Unit]
+Description=Hub music player
+
+[Service]
+# YouTube stream URLs answer 403 for about 5 s after yt-dlp resolves them; ffmpeg retries until they open.
+ExecStart=/usr/bin/mpv --idle=yes --no-video --input-ipc-server=%t/hub-music.sock --ytdl-format=bestaudio --stream-lavf-o=reconnect=1,reconnect_on_http_error=403,reconnect_delay_max=8
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

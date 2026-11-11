@@ -16,6 +16,7 @@ if (args.includes('--help')) {
   try {
     const repo = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
     const templates = {
+      music: readFileSync(new URL('./hub-music.service', import.meta.url), 'utf8'),
       service: readFileSync(new URL('./hub.service', import.meta.url), 'utf8'),
       hyprland: readFileSync(new URL('./hypr-hub.lua', import.meta.url), 'utf8'),
       toggle: readFileSync(new URL('./caelestia-toggle.json', import.meta.url), 'utf8'),

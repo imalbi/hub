@@ -14,6 +14,7 @@ const publicNames: Record<string, () => string> = {
   theme: m.module_theme,
   airplay: m.module_airplay,
   mail: m.module_mail,
+  music: m.module_music,
 };
 
 /** What the list calls a module: Italian copy for the public ones, the zone's own label for a private one, else its name. */

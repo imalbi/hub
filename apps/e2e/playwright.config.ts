@@ -53,7 +53,14 @@ export default defineConfig({
       testMatch: privateFolder
         ? []
         : examples
-          ? ['modules.spec.ts', 'hue.spec.ts', 'palette.spec.ts', 'zone-pages.spec.ts', 'settings.spec.ts']
+          ? [
+              'modules.spec.ts',
+              'hue.spec.ts',
+              'palette.spec.ts',
+              'zone-pages.spec.ts',
+              'music.spec.ts',
+              'settings.spec.ts',
+            ]
           : [
               'palette.spec.ts',
               'palette-regressions.spec.ts',
@@ -72,6 +79,7 @@ export default defineConfig({
               'system.spec.ts',
               'news.spec.ts',
               'mail.spec.ts',
+              'music.spec.ts',
               'settings.spec.ts',
               'settings.visual.spec.ts',
             ],

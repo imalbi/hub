@@ -92,6 +92,27 @@ function build() {
   };
   const app = buildServer({
     dbPath,
+    music: {
+      youtube: {
+        async search() {
+          return {
+            songs: Array.from({ length: 30 }, (_, i) => ({
+              id: String(i).padStart(11, '0'),
+              title: `Brano ${i + 1}`,
+              artists: [{ name: 'Artista' }],
+              seconds: 123,
+            })),
+            dropped: 0,
+          };
+        },
+      },
+      ipc: {
+        async request() {
+          return null;
+        },
+        close() {},
+      },
+    },
     moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
     deps: { run },
     config: configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) }),

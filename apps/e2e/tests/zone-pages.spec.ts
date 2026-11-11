@@ -36,11 +36,11 @@ test('Impostazioni shows the Aspetto picker and a chosen theme applies', async (
 
 test('the content scrolls to the last row while the title stays fixed', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 500 });
-  await page.goto('/desk/media');
+  await page.goto('/desk/system');
   const outputs = page.getByRole('toolbar', { name: 'Uscite configurate' });
   await expect(outputs).toBeVisible();
   const content = page.locator('main > div').last();
-  const title = page.getByRole('heading', { level: 1, name: 'Media' });
+  const title = page.getByRole('heading', { level: 1, name: 'Sistema' });
   await content.hover();
   await expect
     .poll(() =>

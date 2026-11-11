@@ -14,12 +14,23 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-export type DesktopFiles = { service: string | null; hyprland: string | null; cli: string | null };
-type Templates = { service: string; hyprland: string; toggle: string };
-type InstallState = { version: 1; original: DesktopFiles; installed: DesktopFiles; pending?: DesktopFiles };
+export type DesktopFiles = {
+  music: string | null;
+  service: string | null;
+  hyprland: string | null;
+  cli: string | null;
+};
+type Templates = { music: string; service: string; hyprland: string; toggle: string };
+type InstallState = {
+  version: 1;
+  original: DesktopFiles;
+  installed: DesktopFiles;
+  pending?: DesktopFiles;
+  legacyMusic?: boolean;
+};
 type Plan = { next: DesktopFiles; state: InstallState | null };
 type Command = (binary: string, args: string[], repo: string) => void;
-const keys: (keyof DesktopFiles)[] = ['service', 'hyprland', 'cli'];
+const keys: (keyof DesktopFiles)[] = ['service', 'music', 'hyprland', 'cli'];
 const start = '-- >>> hub';
 const end = '-- <<< hub';
 
@@ -117,9 +128,29 @@ export function prepareInstall(
   previous: InstallState | null,
 ): Plan & { state: InstallState } {
   checkOwnership(current, previous);
+  if (
+    previous &&
+    previous.original.music === null &&
+    previous.installed.music === null &&
+    current.music === templates.music
+  ) {
+    previous = {
+      ...previous,
+      original: { ...previous.original, music: current.music },
+      installed: { ...previous.installed, music: current.music },
+    };
+  }
+  if (
+    current.music !== null &&
+    current.music !== templates.music &&
+    current.music !== previous?.installed.music &&
+    current.music !== previous?.pending?.music
+  )
+    throw new Error('An existing hub-music.service is not owned by this installer');
   const toggle: unknown = JSON.parse(templates.toggle);
   const next = {
     service: templates.service,
+    music: templates.music,
     hyprland: setMarkerBlock(current.hyprland ?? '', templates.hyprland),
     cli: mergeToggle(current.cli, toggle),
   };
@@ -130,6 +161,13 @@ export function prepareInstall(
 export function prepareUninstall(current: DesktopFiles, previous: InstallState | null): Plan {
   if (!previous) return { next: current, state: null };
   checkOwnership(current, previous);
+  if (previous.legacyMusic) {
+    previous = {
+      ...previous,
+      original: { ...previous.original, music: current.music },
+      installed: { ...previous.installed, music: current.music },
+    };
+  }
   const original = previous.original;
   let cli = current.cli === null ? null : original.cli;
   if (
@@ -151,7 +189,14 @@ export function prepareUninstall(current: DesktopFiles, previous: InstallState |
       : current.hyprland === null
         ? null
         : setMarkerBlock(current.hyprland, null);
-  return { next: { service: original.service, hyprland, cli }, state: null };
+  if (
+    current.music !== null &&
+    current.music !== previous.installed.music &&
+    current.music !== previous.pending?.music &&
+    current.music !== original.music
+  )
+    throw new Error('Owned music service was changed; refusing to overwrite it');
+  return { next: { music: original.music, service: original.service, hyprland, cli }, state: null };
 }
 
 function isSnapshot(value: unknown): value is DesktopFiles {
@@ -161,6 +206,13 @@ function isSnapshot(value: unknown): value is DesktopFiles {
 function parseState(text: string | null): InstallState | null {
   if (text === null) return null;
   const value: unknown = JSON.parse(text);
+  const legacyMusic = isObject(value) && isObject(value.original) && !('music' in value.original);
+  if (isObject(value)) {
+    for (const key of ['original', 'installed', 'pending']) {
+      const snapshot = value[key];
+      if (isObject(snapshot) && !('music' in snapshot)) snapshot.music = null;
+    }
+  }
   if (
     !isObject(value) ||
     value.version !== 1 ||
@@ -175,6 +227,7 @@ function parseState(text: string | null): InstallState | null {
     original: value.original,
     installed: value.installed,
     ...(isSnapshot(value.pending) ? { pending: value.pending } : {}),
+    ...(legacyMusic ? { legacyMusic: true } : {}),
   };
 }
 
@@ -261,13 +314,19 @@ export function runInstaller({
 }): string {
   const paths = {
     service: join(configDir, 'systemd/user/hub.service'),
+    music: join(configDir, 'systemd/user/hub-music.service'),
     hyprland: join(configDir, 'caelestia/hypr-user.lua'),
     cli: join(configDir, 'caelestia/cli.json'),
   };
   const manifest = join(stateDir, 'desktop-install.json');
   const manifestBefore = readText(manifest);
   const previous = parseState(manifestBefore);
-  const current = { service: readText(paths.service), hyprland: readText(paths.hyprland), cli: readText(paths.cli) };
+  const current = {
+    music: readText(paths.music),
+    service: readText(paths.service),
+    hyprland: readText(paths.hyprland),
+    cli: readText(paths.cli),
+  };
   const filled = {
     ...templates,
     service: fillTemplate(templates.service, { REPO: systemdPath(repo), NODE: systemdPath(node) }),

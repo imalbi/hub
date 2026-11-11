@@ -203,3 +203,5 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Threads are built from both INBOX and `sent` (role lookup by himalaya). "Waiting for a reply" means the last message of the thread is in `sent`.
 - The fake (`testing/fake-himalaya.ts`, through `createFakeDesktop({ mail })`) answers the exact argv Hub builds, keeps flags per desktop and refuses anything else. Fixtures are invented (`example.org`).
 - Smoke: `himalaya --version` and `json-schema himalaya-envelope-list` checked for the fields Hub reads. No account command is in the smoke list.
+
+- Music is public (`modules/music/server.ts`); `buildServer({ music })` injects its YouTube and mpv fakes for isolated tests. Public module databases still need an explicit integration before Music persistence is added.

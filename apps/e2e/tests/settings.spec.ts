@@ -62,6 +62,9 @@ if (!example) {
     expect(states.length).toBeGreaterThan(5);
     await expect(list.getByRole('link')).toHaveCount(states.length + 1);
     await expect(list.getByRole('link', { name: /^Pomodoro\s*Attivo/ })).toBeVisible();
+    // Every public module has Italian copy: Musica once listed as the raw name "Music".
+    await expect(list.getByRole('link', { name: /^YouTube Music\s*Attivo/ })).toBeVisible();
+    await expect(list.getByRole('link', { name: /^Music\b/ })).toHaveCount(0);
   });
 
   test('a module row opens its page beside the list; the back row, browser back and a deep link work', async ({
@@ -152,6 +155,23 @@ if (!example) {
       expect(Array.isArray(enabled) && enabled.includes('news')).toBe(false);
     } finally {
       await ensureOn(pc, 'news');
+    }
+  });
+}
+
+if (!example) {
+  test('with Musica off, Media keeps the player and the output button but has no music search', async ({
+    page,
+    pc,
+  }) => {
+    try {
+      await saveSwitch(page, 'music');
+      await page.goto('/desk/media');
+      await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible(RESTARTED);
+      await expect(page.getByRole('button', { name: 'Cambia uscita audio' })).toBeVisible();
+      await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toHaveCount(0);
+    } finally {
+      await ensureOn(pc, 'music');
     }
   });
 }

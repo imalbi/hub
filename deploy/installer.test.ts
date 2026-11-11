@@ -16,12 +16,14 @@ import {
 } from './installer.ts';
 
 const templates = {
+  music: '[Service]\nExecStart=/usr/bin/mpv\n',
   service: '# >>> hub\n[Service]\nExecStart=/opt/node /opt/hub/server.ts\n# <<< hub\n',
   hyprland: 'hl.bind("SUPER + H", hl.dsp.exec_cmd("caelestia toggle hub"))\n',
   toggle:
     '{"chrome":{"enable":true,"command":["chrome","--app=http://127.0.0.1:4180/desk"],"match":[{"class":"hub-app"}],"move":true}}',
 };
 const original: DesktopFiles = {
+  music: null,
   service: null,
   hyprland: '-- Existing config\nhl.config({})',
   cli: '{ "other": true, "toggles": { "music": { "enabled": true } } }\n',
@@ -294,4 +296,47 @@ void test('an edit during the build aborts before writing any desktop file', (t)
   );
   assert.deepEqual(readdirSync(configDir), ['caelestia']);
   assert.equal(readFileSync(lua, 'utf8'), '-- edited during build\n');
+});
+
+void test('music service is installed safely and an existing identical service is preserved on uninstall', () => {
+  const first = prepareInstall(original, templates, null);
+  assert.equal(first.next.music, templates.music);
+  assert.equal(prepareUninstall(first.next, first.state).next.music, null);
+  const existing = { ...original, music: templates.music };
+  const upgraded = prepareInstall(existing, templates, null);
+  assert.equal(prepareUninstall(upgraded.next, upgraded.state).next.music, templates.music);
+  assert.throws(() => prepareInstall({ ...original, music: 'foreign' }, templates, null), /music/i);
+  assert.throws(() => prepareUninstall({ ...first.next, music: 'changed' }, first.state), /music/i);
+});
+
+void test('uninstalling a legacy manifest leaves an unmanaged music service untouched', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'hub-legacy-test-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const configDir = join(root, 'config');
+  const stateDir = join(root, 'state');
+  const first = prepareInstall(original, templates, null);
+  const { music: _originalMusic, ...oldOriginal } = first.state.original;
+  const { music: _installedMusic, ...oldInstalled } = first.state.installed;
+  mkdirSync(join(configDir, 'systemd/user'), { recursive: true });
+  mkdirSync(join(configDir, 'caelestia'), { recursive: true });
+  mkdirSync(stateDir);
+  writeFileSync(join(configDir, 'systemd/user/hub.service'), first.next.service ?? '');
+  writeFileSync(join(configDir, 'systemd/user/hub-music.service'), 'unmanaged');
+  writeFileSync(join(configDir, 'caelestia/hypr-user.lua'), first.next.hyprland ?? '');
+  writeFileSync(join(configDir, 'caelestia/cli.json'), first.next.cli ?? '');
+  writeFileSync(
+    join(stateDir, 'desktop-install.json'),
+    JSON.stringify({ version: 1, original: oldOriginal, installed: oldInstalled }),
+  );
+  runInstaller({
+    repo: '/opt/hub',
+    node: process.execPath,
+    configDir,
+    stateDir,
+    templates,
+    apply: true,
+    uninstall: true,
+    run: () => {},
+  });
+  assert.equal(readFileSync(join(configDir, 'systemd/user/hub-music.service'), 'utf8'), 'unmanaged');
 });
