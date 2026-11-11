@@ -11,6 +11,9 @@ test('search, play and fixed search while results scroll', async ({ page }) => {
   const request = page.waitForRequest((r) => r.url().includes('music.play') && r.method() === 'POST');
   await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
   expect((await request).postData()).toContain('00000000000');
+  // Prossimi (the radio's suggestions) lives in its own Radio view, never above the results.
+  await expect(page.getByRole('region', { name: 'Prossimi' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Radio' }).click();
   const upcoming = page.getByRole('region', { name: 'Prossimi' });
   await expect(upcoming.getByText('Brano 2', { exact: true })).toBeVisible();
   // Prossimi shows each song's duration, as the search results do.
@@ -18,6 +21,7 @@ test('search, play and fixed search while results scroll', async ({ page }) => {
   await upcoming.getByRole('button', { name: 'Salta' }).click();
   await expect(upcoming.getByText('Brano 2', { exact: true })).toHaveCount(0);
   await expect(upcoming.getByText('Brano 3', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Risultati' }).click();
   const top = (await search.boundingBox())?.y;
   await page.getByRole('button', { name: 'Riproduci Brano 30' }).scrollIntoViewIfNeeded();
   expect((await search.boundingBox())?.y).toBe(top);
@@ -52,6 +56,7 @@ test('favorites are available as a view and can seed the radio', async ({ page }
   );
   await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
   await played;
+  await page.getByRole('button', { name: 'Radio' }).click();
   await expect(page.getByRole('region', { name: 'Prossimi' })).toContainText('Brano 3');
   await page.getByRole('button', { name: 'Cronologia', exact: true }).click();
   await expect(page.getByText('Nessun brano ascoltato')).toBeVisible();

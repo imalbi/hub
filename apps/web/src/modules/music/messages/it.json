@@ -14,6 +14,8 @@
   "music_favorites": "Preferiti",
   "music_history": "Cronologia",
   "music_results": "Risultati",
+  "music_queue": "Radio",
+  "music_queue_empty": "Nessuna radio attiva: fai partire un brano",
   "music_views": "Viste musica",
   "music_favorites_empty": "Nessun preferito",
   "music_history_empty": "Nessun brano ascoltato"

@@ -11,7 +11,7 @@ import { m } from '../../paraglide/messages.js';
 export function MusicSearch() {
   const trpc = useTRPC();
   const [query, setQuery] = React.useState('');
-  const [view, setView] = React.useState<'results' | 'favorites' | 'history'>('results');
+  const [view, setView] = React.useState<'results' | 'queue' | 'favorites' | 'history'>('results');
   const favorites = useQuery(trpc.music.favorites.queryOptions());
   const history = useQuery(trpc.music.history.queryOptions());
   const results = useQuery({
@@ -37,6 +37,7 @@ export function MusicSearch() {
         collapseLabels={false}
         items={[
           { id: 'results', label: m.music_results(), active: view === 'results', onClick: () => setView('results') },
+          { id: 'queue', label: m.music_queue(), active: view === 'queue', onClick: () => setView('queue') },
           {
             id: 'favorites',
             label: m.music_favorites(),
@@ -55,7 +56,8 @@ export function MusicSearch() {
         ]}
       />
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-xl">
-        {queue?.current && (
+        {view === 'queue' && !queue?.current && <output>{m.music_queue_empty()}</output>}
+        {view === 'queue' && queue?.current && (
           <section aria-label={m.music_next()} className="mb-lg">
             <div className="flex items-center justify-between">
               <h3 className="text-body">{m.music_next()}</h3>
@@ -105,14 +107,16 @@ export function MusicSearch() {
           <output>{m.music_history_empty()}</output>
         )}
         <ul>
-          {(view === 'results'
-            ? results.data
-            : (view === 'favorites' ? favorites.data : history.data)?.map((song) => ({
-                ...song,
-                artists: song.artist ? [{ name: song.artist }] : [],
-                cover: null,
-                seconds: undefined,
-              }))
+          {(view === 'queue'
+            ? undefined
+            : view === 'results'
+              ? results.data
+              : (view === 'favorites' ? favorites.data : history.data)?.map((song) => ({
+                  ...song,
+                  artists: song.artist ? [{ name: song.artist }] : [],
+                  cover: null,
+                  seconds: undefined,
+                }))
           )?.map((song, index) => (
             <li key={`${song.id}-${index}`} className="flex items-center gap-md border-b border-border py-sm">
               <div className="flex size-touch shrink-0 items-center justify-center overflow-hidden rounded-sm bg-muted">
