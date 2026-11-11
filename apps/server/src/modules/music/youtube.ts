@@ -1,4 +1,4 @@
-import { Innertube } from 'youtubei.js';
+import { Innertube, YTNodes } from 'youtubei.js';
 
 type SourceSong = {
   id?: string;
@@ -17,6 +17,30 @@ export type Song = {
   seconds?: number;
   cover?: string;
 };
+
+type ArtistSource = Awaited<ReturnType<Innertube['music']['getArtist']>>;
+
+export function mapArtist(artist: { header?: ArtistSource['header']; sections: ArtistSource['sections'][number][] }) {
+  const header = artist.header;
+  const banner = header?.is(YTNodes.MusicVisualHeader)
+    ? header.thumbnail.at(-1)?.url
+    : header?.is(YTNodes.MusicImmersiveHeader)
+      ? header.thumbnail?.contents.at(-1)?.url
+      : undefined;
+  const songs = artist.sections.flatMap((section) =>
+    section.is(YTNodes.MusicShelf) && section.title.toString() === 'Top songs' ? mapSongs(section.contents).songs : [],
+  );
+  const albums = artist.sections.flatMap((section) =>
+    section.is(YTNodes.MusicCarouselShelf)
+      ? section.contents.flatMap((item) =>
+          item.is(YTNodes.MusicTwoRowItem) && item.item_type === 'album'
+            ? [{ title: item.title.toString(), cover: item.thumbnail.at(-1)?.url }]
+            : [],
+        )
+      : [],
+  );
+  return { name: header?.title?.toString() ?? '', banner, songs, albums };
+}
 
 export function mapSongs(items: SourceSong[]) {
   const songs: Song[] = [];
@@ -51,6 +75,10 @@ export function createYouTube() {
     });
   }
   return {
+    async artist(id: string) {
+      const yt = await client();
+      return mapArtist(await yt.music.getArtist(id));
+    },
     async search(query: string) {
       const yt = await client();
       const result = await yt.music.search(query, { type: 'song' });

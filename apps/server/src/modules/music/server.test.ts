@@ -4,6 +4,35 @@ import { buildServer } from '../../server.ts';
 import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 import { calls, wiring } from './test-wiring.ts';
 
+void test('artist rejects invalid channel ids before accessing YouTube', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  const response = await app.inject('/trpc/music.artist?input=' + encodeURIComponent(JSON.stringify({ id: 'bad' })));
+  assert.equal(response.statusCode, 400);
+});
+
+void test('artist proxies its banner and album art and keeps top songs for playback', async (t) => {
+  calls.commands.length = 0;
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: wiring,
+    deps: {
+      run: createFakeDesktop(),
+      fetch: async () => new Response(Buffer.from('524946460400000057454250', 'hex')),
+    },
+  });
+  t.after(() => app.close());
+  const response = await app.inject(
+    '/trpc/music.artist?input=' + encodeURIComponent(JSON.stringify({ id: 'UCabcdefghijklmnopqrstuv' })),
+  );
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.includes('ytimg.com'), false);
+  assert.equal(response.json().result.data.banner, 'data:image/webp;base64,UklGRgQAAABXRUJQ');
+  assert.equal(response.json().result.data.albums[0].cover, 'data:image/webp;base64,UklGRgQAAABXRUJQ');
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  assert.equal((await app.inject('/trpc/music.queue')).json().result.data.current.title, 'Artist song');
+});
+
 void test('search and play validate and conceal remote artwork', async (t) => {
   calls.queries.length = 0;
   calls.commands.length = 0;

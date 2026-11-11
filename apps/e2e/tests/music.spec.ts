@@ -1,5 +1,37 @@
 import { expect, test } from './fixtures.ts';
 
+test('artist opens from a row, plays a top song and returns to its source', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/media');
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('canzone');
+  await page.getByRole('button', { name: 'Artista', exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Artista', exact: true })).toBeVisible();
+  await expect(page.getByText('Disco esempio', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Artista' }).locator('img')).toHaveCount(2);
+  const played = page.waitForResponse(
+    (response) => response.url().includes('music.play') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Riproduci Brano artista' }).click();
+  await played;
+  await page.getByRole('button', { name: 'Torna indietro' }).click();
+  await expect(page.getByRole('button', { name: 'Riproduci Brano 1', exact: true })).toBeVisible();
+});
+
+test('artist opened from radio returns to radio', async ({ page }) => {
+  await page.goto('/desk/media');
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('canzone');
+  await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Radio', exact: true }).click();
+  await page
+    .getByRole('region', { name: 'Prossimi' })
+    .getByRole('button', { name: 'Artista', exact: true })
+    .first()
+    .click();
+  await expect(page.getByRole('heading', { name: 'Artista', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Torna indietro' }).click();
+  await expect(page.getByRole('region', { name: 'Prossimi' })).toBeVisible();
+});
+
 test('search, play and fixed search while results scroll', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 750 });
   await page.goto('/desk/media');

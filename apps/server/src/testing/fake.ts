@@ -98,9 +98,28 @@ function build() {
     dbPath,
     music: {
       youtube: {
+        async artist() {
+          return {
+            name: 'Artista',
+            banner: 'https://i.ytimg.com/banner',
+            songs: [
+              {
+                id: '00000000000',
+                title: 'Brano artista',
+                artists: [{ name: 'Artista', id: 'UCabcdefghijklmnopqrstuv' }],
+              },
+            ],
+            albums: [{ title: 'Disco esempio', cover: 'https://i.ytimg.com/album' }],
+          };
+        },
         async upNext() {
           return [
-            { id: '00000000001', title: 'Brano 2', artists: [{ name: 'Artista' }], seconds: 123 },
+            {
+              id: '00000000001',
+              title: 'Brano 2',
+              artists: [{ name: 'Artista', id: 'UCabcdefghijklmnopqrstuv' }],
+              seconds: 123,
+            },
             { id: '00000000002', title: 'Brano 3', artists: [{ name: 'Artista' }], seconds: 123 },
             { id: '00000000003', title: 'Brano 4', artists: [{ name: 'Artista' }], seconds: 123 },
           ];
@@ -110,7 +129,7 @@ function build() {
             songs: Array.from({ length: 30 }, (_, i) => ({
               id: String(i).padStart(11, '0'),
               title: `Brano ${i + 1}`,
-              artists: [{ name: 'Artista' }],
+              artists: [{ name: 'Artista', id: 'UCabcdefghijklmnopqrstuv' }],
               seconds: 123,
             })),
             dropped: 0,
@@ -139,7 +158,15 @@ function build() {
       },
     },
     moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
-    deps: { run },
+    deps: {
+      run,
+      fetch: async (input, init) =>
+        (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url).startsWith(
+          'https://i.ytimg.com/',
+        )
+          ? new Response(readFileSync(new URL('./music-art.png', import.meta.url)))
+          : fetch(input, init),
+    },
     config: configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) }),
     isLoopback,
     settings: { configPath, onRestart: () => void restart() },

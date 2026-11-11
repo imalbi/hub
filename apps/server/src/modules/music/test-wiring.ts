@@ -3,6 +3,14 @@ import type { Song } from './youtube.ts';
 export const calls: { queries: string[]; commands: (string | number | boolean)[][] } = { queries: [], commands: [] };
 export const wiring = {
   youtube: {
+    async artist() {
+      return {
+        name: 'Artist',
+        banner: 'https://i.ytimg.com/banner',
+        songs: [{ id: 'abcdefghijk', title: 'Artist song', artists: [{ name: 'Artist' }] }],
+        albums: [{ title: 'Album', cover: 'https://i.ytimg.com/album' }],
+      };
+    },
     async upNext() {
       return [
         { id: '00000000001', title: 'Brano 2', artists: [{ name: 'Artista' }] },

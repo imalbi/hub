@@ -18,5 +18,10 @@
   "music_queue_empty": "Nessuna radio attiva: fai partire un brano",
   "music_views": "Viste musica",
   "music_favorites_empty": "Nessun preferito",
-  "music_history_empty": "Nessun brano ascoltato"
+  "music_history_empty": "Nessun brano ascoltato",
+  "music_artist_back": "Torna indietro",
+  "music_artist_songs": "Brani più ascoltati",
+  "music_artist_albums": "Album",
+  "music_artist_error": "Artista non raggiungibile",
+  "music_artist_loading": "Caricamento artista"
 }

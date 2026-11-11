@@ -221,6 +221,24 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
             }),
           queue: protectedProcedure.query(publicQueue),
           onQueue: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
+          artist: protectedProcedure
+            .input(z.object({ id: z.string().regex(/^UC[A-Za-z0-9_-]{22}$/) }))
+            .query(async ({ input }) => {
+              try {
+                const artist = await youtube.artist(input.id);
+                for (const song of artist.songs) songs.set(song.id, song);
+                return {
+                  ...artist,
+                  banner: await cover(artist.banner),
+                  songs: await Promise.all(artist.songs.map(publicSong)),
+                  albums: await Promise.all(
+                    artist.albums.map(async (album) => ({ ...album, cover: await cover(album.cover) })),
+                  ),
+                };
+              } catch {
+                throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music artist unavailable' });
+              }
+            }),
           skip: protectedProcedure
             .meta({ label: 'Salta brano', description: 'Skip to the next radio track' })
             .mutation(async () => {

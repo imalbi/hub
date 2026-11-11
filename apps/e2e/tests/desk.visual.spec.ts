@@ -139,6 +139,16 @@ test('Media search at 4K matches the baseline', async ({ page }) => {
   await expect(page).toHaveScreenshot('desk-media-search-4k.png', { animations: 'disabled' });
 });
 
+test('Media artist at 4K matches the baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/media');
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('canzone');
+  await page.getByRole('button', { name: 'Artista', exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Artista', exact: true })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-music-artist-4k.png', { animations: 'disabled' });
+});
+
 test('Dispositivi at 4K matches the baseline', async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk/devices');
