@@ -17,6 +17,8 @@ export type ModuleUI = {
   copy: Record<string, string>;
   /** Widgets are for Panoramica, the one board: it offers every widget of every module. */
   widgets?: ModuleWidget[];
+  /** Short lines in Oggi, rendered in module order. Components may return null or link to a zone. */
+  todayItems?: ComponentType | ComponentType[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
   zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean };
   /** `page` names an existing deck page to add the tiles to, instead of a page of their own. */

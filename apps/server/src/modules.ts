@@ -12,6 +12,8 @@ import { airplayModule } from './modules/airplay/module.ts';
 import { musicModule } from './modules/music/server.ts';
 import { mailModule } from './modules/mail/module.ts';
 
+import { weatherModule } from './modules/weather/module.ts';
+
 export const publicModules = [
   healthModule,
   audioModule,
@@ -26,4 +28,5 @@ export const publicModules = [
   airplayModule,
   mailModule,
   musicModule,
+  weatherModule,
 ] as const;

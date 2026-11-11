@@ -23,9 +23,8 @@ const trpcClient = createTRPCClient<AppRouter>({
       condition: (op) => op.type === 'subscription',
       true: wsLink({ client: wsClient }),
       false: splitLink({
-        // Asked on every page by the rail, in the same tick as `health`: alone, it never rides in the header's batch,
-        // so a page that pins `health` (the visual specs) keeps seeing exactly that request.
-        condition: (op) => op.path === 'modules.enabled',
+        // The rail and Oggi query alongside health; keep these separate so a test pinning health does not replace their answers.
+        condition: (op) => op.path === 'modules.enabled' || op.path === 'weather.state',
         true: httpLink({ url: '/trpc', headers: authHeaders }),
         false: httpBatchLink({ url: '/trpc', headers: authHeaders }),
       }),

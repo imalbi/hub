@@ -12,6 +12,7 @@ import { ControlsWidget } from '../modules/system/controls-widget.tsx';
 import { PowerWidget } from '../modules/system/power-widget.tsx';
 import { ServerWidget } from '../modules/system/widget.tsx';
 import { m } from '../paraglide/messages.js';
+import { TodayWidget } from '../modules/weather/today-widget.tsx';
 import { ThemeWidget } from '../theme/widget.tsx';
 
 export type WidgetItem = { widget: string; size: WidgetSize; x: number; y: number };
@@ -23,6 +24,7 @@ export const widgets: Array<{
   sizes: readonly WidgetSize[];
   component: ComponentType<{ size: WidgetSize }>;
 }> = [
+  { id: 'today', label: m.today_title, sizes: ['wide'], component: TodayWidget },
   { id: 'pomodoro', label: m.pomodoro_title, sizes: ['small', 'medium', 'large', 'wide'], component: PomodoroWidget },
   { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide'], component: MediaWidget },
   { id: 'server', label: m.server_panel_title, sizes: ['small', 'medium', 'wide'], component: ServerWidget },
@@ -38,11 +40,12 @@ export const widgets: Array<{
 
 /** What Panoramica shows until the owner rearranges it. */
 export const defaultLayout: WidgetItem[] = [
-  { widget: 'pomodoro', size: 'medium', x: 0, y: 0 },
-  { widget: 'media', size: 'medium', x: 6, y: 0 },
-  { widget: 'server', size: 'small', x: 0, y: 1 },
-  { widget: 'audio', size: 'small', x: 3, y: 1 },
-  { widget: 'news', size: 'medium', x: 6, y: 1 },
+  { widget: 'today', size: 'wide', x: 0, y: 0 },
+  { widget: 'pomodoro', size: 'medium', x: 0, y: 1 },
+  { widget: 'media', size: 'medium', x: 6, y: 1 },
+  { widget: 'server', size: 'small', x: 0, y: 2 },
+  { widget: 'audio', size: 'small', x: 3, y: 2 },
+  { widget: 'news', size: 'medium', x: 6, y: 2 },
 ];
 
 // The module each widget belongs to, so a module that is off takes its widgets out of the offer and the board.
@@ -69,5 +72,5 @@ for (const module of moduleUIs)
 /** The widgets whose module is on. A saved layout keeps the ones that are off, so switching a module back on restores them. */
 export function useWidgets() {
   const isOn = useIsOn();
-  return widgets.filter((widget) => isOn(widgetOwner.get(widget.id) ?? ''));
+  return widgets.filter((widget) => !widgetOwner.has(widget.id) || isOn(widgetOwner.get(widget.id) ?? ''));
 }

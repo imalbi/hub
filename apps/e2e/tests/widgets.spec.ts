@@ -31,6 +31,22 @@ test.afterEach(async ({ pc }) => {
   });
 });
 
+test('Oggi leads the default board and shows the Italian date and weather', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
+  await page.reload();
+  await expect(page.locator('[data-widget]').first()).toHaveAttribute('data-widget', 'today');
+  const today = cell(page, 'today');
+  await expect(today.getByText('mercoledì 4 novembre')).toBeVisible();
+  await expect(today.getByText('Località esempio')).toBeVisible();
+});
+
+test('Oggi omits the weather when it is not configured', async ({ page }) => {
+  await page.route('**/trpc/weather.state*', (route) => route.fulfill({ json: [{ result: { data: null } }] }));
+  await page.reload();
+  await expect(cell(page, 'today')).toBeVisible();
+  await expect(cell(page, 'today').getByText('Località esempio')).toHaveCount(0);
+});
+
 test('widgets on the same row have the same height, two small ones fill a medium width', async ({ page }) => {
   const [pomodoro, media, server, audio] = await Promise.all(
     ['pomodoro', 'media', 'server', 'audio'].map((widget) => box(page, widget)),
@@ -94,16 +110,17 @@ test('Sposta dopo moves a widget without dragging, for the keyboard', async ({ p
 });
 
 test('dragging a widget in edit mode rearranges the board and is saved', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.getByRole('button', { name: 'Modifica' }).click();
-  const from = await box(page, 'audio');
-  const to = await box(page, 'pomodoro');
+  const from = await box(page, 'pomodoro');
+  const to = await box(page, 'media');
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  await page.mouse.move(to.x + to.width / 4, to.y + to.height / 2, { steps: 20 });
+  await page.mouse.move(to.x + (to.width * 3) / 4, to.y + to.height / 2, { steps: 20 });
   await andSaved(page, () => page.mouse.up());
-  await expect.poll(async () => (await box(page, 'audio')).y).toBeLessThan(from.y);
+  await expect.poll(async () => (await box(page, 'pomodoro')).x).toBeGreaterThan(from.x);
   await page.reload();
-  await expect.poll(async () => (await box(page, 'audio')).y).toBeLessThan(from.y);
+  await expect.poll(async () => (await box(page, 'pomodoro')).x).toBeGreaterThan(from.x);
 });
 
 test('outside edit mode nothing drags and the widgets work as usual', async ({ page }) => {

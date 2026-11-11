@@ -51,6 +51,40 @@ async function ensureOn(pc: APIRequestContext, name: string) {
 }
 
 if (!example) {
+  test('weather location search shows empty and failed results and can retry', async ({ page }) => {
+    let calls = 0;
+    await page.route('**/trpc/weather.search*', async (route) => {
+      calls++;
+      if (calls === 2) await route.abort();
+      else await route.fulfill({ json: [{ result: { data: [] } }] });
+    });
+    await page.goto('/desk/settings/weather');
+    const search = page.getByLabel('Cerca località');
+    const submit = page.getByRole('button', { name: 'Cerca', exact: true });
+    await search.fill('Nessuno');
+    await submit.click();
+    await expect(page.getByText('Nessuna località trovata')).toBeVisible();
+    await search.fill('Errore');
+    await submit.click();
+    await expect(page.getByRole('alert')).toHaveText('Ricerca non riuscita');
+    await submit.click();
+    await expect(page.getByText('Nessuna località trovata')).toBeVisible();
+  });
+
+  test('weather location search fills the settings draft', async ({ page }) => {
+    await page.goto('/desk/settings/weather');
+    await page.getByLabel('Cerca località').fill('Località');
+    await page.getByRole('button', { name: 'Cerca', exact: true }).click();
+    await page.getByRole('button', { name: 'Località esempio, Regione esempio' }).click();
+    await expect(page.getByLabel('name', { exact: true })).toHaveValue('Località esempio');
+    await expect(page.getByLabel('latitude', { exact: true })).toHaveValue('1');
+    await expect(page.getByLabel('longitude', { exact: true })).toHaveValue('2');
+    await page.getByRole('button', { name: 'Salva e riavvia' }).click();
+    await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
+    await page.reload();
+    await expect(page.getByLabel('name', { exact: true })).toHaveValue('Località esempio');
+  });
+
   test('the list has Generale with Aspetto and Moduli with a row per module and its state', async ({ page, pc }) => {
     await page.goto('/desk/settings');
     const list = page.getByRole('navigation', { name: 'Sezioni' });

@@ -9,6 +9,7 @@ import { Switch } from '../components/ui/switch.tsx';
 import { Tabs } from '../components/ui/tabs.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
+import { LocationSearch } from '../modules/weather/location-search.tsx';
 import { FieldControl } from './field-control.tsx';
 import { JsonBlock } from './json-block.tsx';
 import { moduleLabel } from './module-label.ts';
@@ -161,6 +162,9 @@ export function ModulePage({ name }: { name: string }) {
       {schema && (
         <div className="grid grid-cols-12 items-start gap-lg">
           <Panel title={m.settings_essential()} className="col-span-5">
+            {name === 'weather' && serverEnabled && (
+              <LocationSearch onSelect={(location) => setEdit({ value: location })} />
+            )}
             {form.fields.length === 0 && <p className="text-body text-muted-foreground">{m.settings_no_essential()}</p>}
             {[...grouped].map(([section, fields]) => (
               <fieldset key={section} className="flex flex-col gap-md">

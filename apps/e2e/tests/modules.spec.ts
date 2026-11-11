@@ -12,7 +12,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await freezePomodoro(page);
     await page.goto('/desk');
-    await rail(page).getByRole('link', { name: 'Esempio', exact: true }).click();
+    await page.locator('[data-widget="today"]').getByRole('link', { name: 'Ciao dal modulo di esempio' }).click();
     await expect(page).toHaveURL(/\/desk\/hello$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Esempio' })).toBeVisible();
     await expect(page.getByText('Ciao dal modulo di esempio', { exact: true })).toBeVisible();

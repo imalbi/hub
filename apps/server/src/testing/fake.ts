@@ -63,6 +63,7 @@ const config: Config = {
       { account: 'personal', label: 'Personale' },
     ],
   },
+  weather: { name: 'Località esempio', latitude: 1, longitude: 2 },
   airplay: { command: 'airplay' },
 };
 
@@ -82,6 +83,23 @@ const dbPath = join(runDir, 'hub-e2e.db');
 const restartDelayMs = Number(process.env.HUB_E2E_RESTART_MS ?? 1500);
 let failMail = false;
 const mailCalls: string[][] = [];
+
+/** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
+async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (url.startsWith('https://api.open-meteo.com/'))
+    return Response.json({
+      current: { temperature_2m: 19, weather_code: 3 },
+      daily: { temperature_2m_min: [12], temperature_2m_max: [23] },
+    });
+  if (url.startsWith('https://geocoding-api.open-meteo.com/'))
+    return Response.json({
+      results: [{ name: 'Località esempio', latitude: 1, longitude: 2, admin1: 'Regione esempio' }],
+    });
+  if (url.startsWith('https://i.ytimg.com/'))
+    return new Response(readFileSync(new URL('./music-art.png', import.meta.url)));
+  return fetch(input, init);
+}
 
 function build() {
   const musicEvents = new EventEmitter();
@@ -180,12 +198,7 @@ function build() {
     moduleRoots: process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : [],
     deps: {
       run,
-      fetch: async (input, init) =>
-        (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url).startsWith(
-          'https://i.ytimg.com/',
-        )
-          ? new Response(readFileSync(new URL('./music-art.png', import.meta.url)))
-          : fetch(input, init),
+      fetch: fakeFetch,
     },
     config: configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) }),
     isLoopback,

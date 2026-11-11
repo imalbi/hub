@@ -25,6 +25,8 @@ The server runs `.ts` files directly with Node 24, so only erasable TypeScript i
 
 ## Patterns
 
+- Weather (`modules/weather`): optional `{ name, latitude, longitude }` config; Open-Meteo forecast is cached for 30 minutes and the last result becomes stale on failure. Geocoding search is loopback-only. Tests inject `fetch` and fictional locations.
+
 - Procedures take zod schemas as input (`.input(z.object(...))`); never trust a client value without one.
 - Procedures live in module sub-routers (see "Action registry"), never as a flat list in `appRouter`.
 - Plain functions and factories over classes. Return values, throw `TRPCError` for client-facing failures.

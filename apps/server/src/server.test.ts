@@ -25,3 +25,21 @@ void test('health answers through tRPC', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.json().result.data.ok, true);
 });
+
+void test('weather without a location makes no request and has no value', async (t) => {
+  let requests = 0;
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: {
+      fetch: async () => {
+        requests++;
+        throw new Error('unexpected');
+      },
+    },
+  });
+  t.after(() => app.close());
+  const response = await app.inject({ method: 'GET', url: '/trpc/weather.state' });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().result.data, null);
+  assert.equal(requests, 0);
+});

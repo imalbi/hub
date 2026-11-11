@@ -49,6 +49,9 @@ function HelloPage() {
     </PageGrid>
   );
 }
+function HelloToday() {
+  return <a href="/desk/hello">{copy.greeting}</a>;
+}
 function HelloTile() {
   const { state, greet } = useHello();
   const stale = useConnectionLost();
@@ -67,6 +70,7 @@ function HelloTile() {
 export default {
   name: 'hello',
   copy,
+  todayItems: HelloToday,
   widgets: [{ id: 'hello', label: () => copy.title, sizes: ['medium', 'large'], component: HelloPanel }],
   zone: { id: 'hello', label: () => copy.title, icon: HandWavingIcon, page: HelloPage },
   // The Lavoro zone has no content of its own: it appears in the rail because this module adds a section to it.
