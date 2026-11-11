@@ -38,3 +38,21 @@ test('audio controls are on Sistema and the output shortcut remains on Media', a
   await expect(page.getByRole('button', { name: 'Silenzia microfono' })).toBeVisible();
   await expect(page.getByRole('toolbar', { name: 'Uscite configurate' })).toBeVisible();
 });
+
+test('favorites are available as a view and can seed the radio', async ({ page }) => {
+  await page.goto('/desk/media');
+  await page.getByRole('searchbox', { name: 'Cerca musica' }).fill('canzone');
+  const heart = page.getByRole('button', { name: 'Preferito Brano 1', exact: true });
+  await expect(heart).toHaveAttribute('aria-pressed', 'false');
+  await heart.click();
+  await expect(heart).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Preferiti', exact: true }).click();
+  const played = page.waitForResponse(
+    (response) => response.url().includes('music.play') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
+  await played;
+  await expect(page.getByRole('region', { name: 'Prossimi' })).toContainText('Brano 3');
+  await page.getByRole('button', { name: 'Cronologia', exact: true }).click();
+  await expect(page.getByText('Nessun brano ascoltato')).toBeVisible();
+});

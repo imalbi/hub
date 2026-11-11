@@ -1,4 +1,7 @@
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { desc, eq } from 'drizzle-orm';
+import { favorites, history } from './schema.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { emptyQueue, queueReducer } from './queue.ts';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
@@ -12,7 +15,8 @@ type Ipc = Pick<ReturnType<typeof createMpvIpc>, 'request' | 'close' | 'events'>
 export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}) {
   return defineModule({
     name: 'music',
-    create({ run, fetch, log }) {
+    migrations: fileURLToPath(new URL('./drizzle', import.meta.url)),
+    create({ db, run, fetch, log }) {
       const youtube = options.youtube ?? createYouTube();
       const ipc =
         options.ipc ??
@@ -95,6 +99,43 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           log.warn('Music radio unavailable');
         }
       }
+      let historyTimer: ReturnType<typeof setTimeout> | undefined;
+      let historyGeneration = 0;
+      function cancelHistory() {
+        historyGeneration++;
+        clearTimeout(historyTimer);
+      }
+      function armHistory() {
+        cancelHistory();
+        const song = queue.current;
+        if (!song) return;
+        const track = song;
+        const version = historyGeneration;
+        function check(delay: number) {
+          historyTimer = setTimeout(() => {
+            void ipc
+              .request(['get_property', 'playback-time'])
+              .then((time) => {
+                if (version !== historyGeneration || queue.current !== track) return;
+                if (typeof time === 'number' && time >= 30) {
+                  db.insert(history)
+                    .values({
+                      id: track.id,
+                      title: track.title,
+                      artist: track.artists.map((artist) => artist.name).join(', '),
+                      playedAt: Date.now(),
+                    })
+                    .run();
+                } else check(typeof time === 'number' ? Math.max(1000, (30 - time) * 1000) : 30000);
+                return undefined;
+              })
+              .catch(() => {
+                if (version === historyGeneration) check(30000);
+              });
+          }, delay);
+        }
+        check(30000);
+      }
       let pendingError = false;
       let appended: string | null = null;
       async function appendNext() {
@@ -122,6 +163,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           queue = queueReducer(queue, { type: 'advance', error: pendingError });
           pendingError = false;
           appended = null;
+          armHistory();
           await live.notify();
           await appendNext();
         }
@@ -148,14 +190,35 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         if (!event || typeof event !== 'object' || !('event' in event)) return;
         if (event.event === 'start-file')
           void schedule(followStart).catch(() => log.warn('Music player unavailable while advancing'));
-        else if (event.event === 'end-file' && 'reason' in event)
+        else if (event.event === 'end-file' && 'reason' in event) {
+          cancelHistory();
           void schedule(() => followEnd(event.reason)).catch(() =>
             log.warn('Music player unavailable while advancing'),
           );
+        }
       }
       ipc.events.on('event', onEvent);
       return {
         router: router({
+          favorites: protectedProcedure.query(() => db.select().from(favorites).orderBy(desc(favorites.addedAt)).all()),
+          history: protectedProcedure.query(() => db.select().from(history).orderBy(desc(history.playedAt)).all()),
+          toggleFavorite: protectedProcedure
+            .meta({ label: 'Preferito', description: 'Toggle a favorite track' })
+            .input(
+              z.object({
+                id: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+                title: z.string().min(1).max(500),
+                artist: z.string().max(500),
+              }),
+            )
+            .mutation(({ input }) => {
+              const existing = db.select().from(favorites).where(eq(favorites.id, input.id)).get();
+              if (existing) db.delete(favorites).where(eq(favorites.id, input.id)).run();
+              else
+                db.insert(favorites)
+                  .values({ ...input, addedAt: Date.now() })
+                  .run();
+            }),
           queue: protectedProcedure.query(publicQueue),
           onQueue: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
           skip: protectedProcedure
@@ -163,6 +226,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
             .mutation(async () => {
               await schedule(async () => {
                 try {
+                  cancelHistory();
                   await ipc.request(['playlist-next']);
                   await ipc.request(['set_property', 'pause', false]);
                 } catch {
@@ -215,10 +279,18 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                   generation++;
                   appended = null;
                   pendingError = false;
+                  const saved =
+                    db.select().from(favorites).where(eq(favorites.id, input.id)).get() ??
+                    db.select().from(history).where(eq(history.id, input.id)).orderBy(desc(history.playedAt)).get();
                   queue = queueReducer(queue, {
                     type: 'play',
-                    song: songs.get(input.id) ?? { id: input.id, title: input.id, artists: [] },
+                    song:
+                      songs.get(input.id) ??
+                      (saved
+                        ? { id: saved.id, title: saved.title, artists: saved.artist ? [{ name: saved.artist }] : [] }
+                        : { id: input.id, title: input.id, artists: [] }),
                   });
+                  armHistory();
                   await live.notify();
                   await appendNext();
                 } catch {
@@ -255,6 +327,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           }),
         }),
         close: () => {
+          cancelHistory();
           ipc.events.off('event', onEvent);
           ipc.close();
         },

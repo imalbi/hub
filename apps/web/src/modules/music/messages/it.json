@@ -9,5 +9,12 @@
   "music_play": "Riproduci {title}",
   "music_next": "Prossimi",
   "music_skip": "Salta",
-  "music_radio_error": "Riproduzione interrotta dopo tre errori"
+  "music_radio_error": "Riproduzione interrotta dopo tre errori",
+  "music_favorite": "Preferito {title}",
+  "music_favorites": "Preferiti",
+  "music_history": "Cronologia",
+  "music_results": "Risultati",
+  "music_views": "Viste musica",
+  "music_favorites_empty": "Nessun preferito",
+  "music_history_empty": "Nessun brano ascoltato"
 }

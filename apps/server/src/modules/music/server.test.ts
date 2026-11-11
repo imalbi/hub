@@ -59,3 +59,64 @@ void test('search and play validate and conceal remote artwork', async (t) => {
   assert.equal(state.json().result.data.available, true);
   assert.equal(state.json().result.data.playing.id, 'abcdefghijk');
 });
+
+void test('favorites toggle twice and retain metadata without the network', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  const song = { id: 'abcdefghijk', title: 'Song', artist: 'Artist' };
+  const toggle = () => app.inject({ method: 'POST', url: '/trpc/music.toggleFavorite', payload: song });
+  assert.equal((await toggle()).statusCode, 200);
+  const first = await app.inject('/trpc/music.favorites');
+  assert.deepEqual(
+    first.json().result.data.map(({ id, title, artist }: typeof song) => ({ id, title, artist })),
+    [song],
+  );
+  assert.equal((await toggle()).statusCode, 200);
+  assert.deepEqual((await app.inject('/trpc/music.favorites')).json().result.data, []);
+});
+
+void test('history records only after 30 seconds of playback, excluding paused time', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  let playback = 0;
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return playback;
+      return wiring.ipc.request(command);
+    },
+  };
+  const app = buildServer({ dbPath: ':memory:', music: { ...wiring, ipc }, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'song' })));
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  const history = async () => (await app.inject('/trpc/music.history')).json().result.data;
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(await history(), []);
+  playback = 30;
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal((await history()).length, 1);
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal((await history()).length, 1);
+});
+
+void test('skipping before 30 seconds leaves the song out of history', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return 30;
+      return wiring.ipc.request(command);
+    },
+  };
+  const app = buildServer({ dbPath: ':memory:', music: { ...wiring, ipc }, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  t.mock.timers.tick(29000);
+  await app.inject({ method: 'POST', url: '/trpc/music.skip', payload: {} });
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual((await app.inject('/trpc/music.history')).json().result.data, []);
+});

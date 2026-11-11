@@ -200,3 +200,35 @@ void test('the example module keeps its greeting count across a restart', async 
   assert.deepEqual(data(await get(second, 'hello.state')), { greeting: 'Ciao dal modulo di esempio', count: 2 });
   assert.ok(existsSync(join(dir, 'modules', 'hello.db')));
 });
+
+void test('a public module with migrations receives its own migrated database', async (t) => {
+  const { createAppRouter } = await import('./router.ts');
+  const { openDb } = await import('./db/index.ts');
+  const fastify = (await import('fastify')).default;
+  const root = await scratch(t);
+  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
+  const db = openDb(':memory:');
+  const closes: Array<() => void | Promise<void>> = [];
+  let created = false;
+  const module = defineModule({
+    name: 'public-notes',
+    migrations: join(root, 'notes', 'drizzle'),
+    create: ({ db: own }) => {
+      created = true;
+      assert.notEqual(own, db);
+      assert.ok(own.$client.prepare("select name from sqlite_master where name = 'notes'").get());
+      return { router: router({}) };
+    },
+  });
+  createAppRouter(
+    [module],
+    { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set() },
+    {},
+    (close) => closes.push(close),
+    {},
+    { dbPath: ':memory:' },
+  );
+  assert.equal(created, true);
+  for (const close of closes.toReversed()) await close();
+  db.$client.close();
+});

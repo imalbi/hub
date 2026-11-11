@@ -206,3 +206,5 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 
 - Music is public (`modules/music/server.ts`); `buildServer({ music })` injects its YouTube and mpv fakes for isolated tests. Public module databases still need an explicit integration before Music persistence is added.
 - Music follows mpv's `start-file` and keeps one upcoming song in its playlist; the IPC fake must emit playlist events for skip to update the queue.
+
+- Public modules declaring `migrations` receive a separate database via `createAppRouter`, at the same `moduleDbPath` as discovered modules; module cleanup runs before database closure.

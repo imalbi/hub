@@ -123,6 +123,7 @@ export function buildServer({
     const appRouter = createAppRouter(modules, moduleDeps, config, onClose, extra, {
       states,
       off: config.modulesOff,
+      dbPath,
       configPath: settings?.configPath,
     });
     scope.register(fastifyTRPCPlugin, {

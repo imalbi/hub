@@ -3,10 +3,13 @@ import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { Cover, PlaybackIcon, Transport } from './controls.tsx';
 import { useMedia } from './media-provider.tsx';
+import { useIsOn } from '../../lib/enabled-modules.ts';
+import { CurrentFavorite } from '../music/favorite.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 
 function PlayerPill() {
   const media = useMedia();
+  const isOn = useIsOn();
   const length = media.state?.lengthMs;
   const seconds = length === null || length === undefined ? null : Math.floor(length / 1000);
   const duration = seconds === null ? null : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -21,6 +24,7 @@ function PlayerPill() {
         <p className="truncate text-label">{media.state?.title || m.media_nothing_playing()}</p>
         <p className="truncate text-caption text-muted-foreground">{media.state?.artist}</p>
       </div>
+      {isOn('music') && <CurrentFavorite />}
       {duration && (
         <span className="text-caption text-muted-foreground tabular-nums" aria-label={m.media_duration({ duration })}>
           {duration}

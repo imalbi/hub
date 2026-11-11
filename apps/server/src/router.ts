@@ -1,4 +1,5 @@
 /* oxlint-disable no-underscore-dangle -- Compose the existing typed router record with registry discovery. */
+import { moduleDbPath, openDatabase } from './db/index.ts';
 import { router } from './core/trpc.ts';
 import { createRegistryRouter } from './core/registry.ts';
 import { createEnabledRouter, createSettingsRouter } from './core/settings-router.ts';
@@ -16,7 +17,8 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     states = createModuleStates(),
     off = [],
     configPath,
-  }: { states?: ModuleStates; off?: readonly string[]; configPath?: string } = {},
+    dbPath = ':memory:',
+  }: { states?: ModuleStates; off?: readonly string[]; configPath?: string; dbPath?: string } = {},
 ) {
   type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
   const entries = modules.map((definition) => {
@@ -32,7 +34,12 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
       states.set({ ...info, status: 'off' });
       return [definition.name, router({})];
     }
-    const instance = definition.create({ ...deps, config: config[definition.name] });
+    // A public module that fails to open its database or to start stops the server, as before: it is shipped code.
+    const ownDb = definition.migrations
+      ? openDatabase(moduleDbPath(dbPath, definition.name), definition.migrations)
+      : undefined;
+    if (ownDb) onClose(() => ownDb.$client.close());
+    const instance = definition.create({ ...deps, ...(ownDb && { db: ownDb }), config: config[definition.name] });
     if (instance.close) onClose(instance.close);
     states.set({ ...info, status: 'on' });
     return [definition.name, instance.router];

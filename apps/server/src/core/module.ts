@@ -20,11 +20,12 @@ export type ModuleDefinition = {
   config?: z.ZodType;
   settingsSchema?: z.ZodType;
   zones?: readonly string[];
+  migrations?: string;
   create: (deps: ModuleDeps & { config: unknown }) => ModuleInstance;
 };
 
 /**
- * `migrations` (absolute path of the module's own Drizzle folder, discovered modules only) gives the module its own
+ * `migrations` (absolute path of the module's own Drizzle folder, public and discovered modules) gives the module its own
  * SQLite file as `deps.db`; `coreDb: true` (public modules only, discovery
  * refuses it) gives the core one; a module that declares neither has no `db` at all.
  */

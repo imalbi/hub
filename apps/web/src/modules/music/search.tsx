@@ -2,6 +2,8 @@ import * as React from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { PlayIcon, MusicNoteIcon } from '@phosphor-icons/react';
+import { ButtonGroup } from '@/components/ui/button-group.tsx';
+import { Favorite } from './favorite.tsx';
 import { SearchInput } from '@/components/ui/search-input.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
@@ -9,6 +11,9 @@ import { m } from '../../paraglide/messages.js';
 export function MusicSearch() {
   const trpc = useTRPC();
   const [query, setQuery] = React.useState('');
+  const [view, setView] = React.useState<'results' | 'favorites' | 'history'>('results');
+  const favorites = useQuery(trpc.music.favorites.queryOptions());
+  const history = useQuery(trpc.music.history.queryOptions());
   const results = useQuery({
     ...trpc.music.search.queryOptions({ query }),
     enabled: query.trim().length > 0,
@@ -26,6 +31,28 @@ export function MusicSearch() {
         shortcut={null}
         onSearch={setQuery}
         loading={results.isFetching}
+      />
+      <ButtonGroup
+        label={m.music_views()}
+        collapseLabels={false}
+        items={[
+          { id: 'results', label: m.music_results(), active: view === 'results', onClick: () => setView('results') },
+          {
+            id: 'favorites',
+            label: m.music_favorites(),
+            active: view === 'favorites',
+            onClick: () => setView('favorites'),
+          },
+          {
+            id: 'history',
+            label: m.music_history(),
+            active: view === 'history',
+            onClick: () => {
+              setView('history');
+              void history.refetch();
+            },
+          },
+        ]}
       />
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-xl">
         {queue?.current && (
@@ -58,6 +85,7 @@ export function MusicSearch() {
                     </p>
                   </div>
                   <Duration seconds={song.seconds} />
+                  <Favorite song={song} />
                 </li>
               ))}
             </ul>
@@ -65,12 +93,28 @@ export function MusicSearch() {
         )}
         {queue?.errors === 3 && <output>{m.music_radio_error()}</output>}
         {skip.isError && <output>{m.music_player_error()}</output>}
-        {results.isError && <output>{m.music_search_error()}</output>}
+        {view === 'results' && results.isError && <output>{m.music_search_error()}</output>}
         {play.isError && <output>{m.music_player_error()}</output>}
-        {query && results.isSuccess && results.data.length === 0 && <output>{m.music_empty()}</output>}
+        {view === 'results' && query && results.isSuccess && results.data.length === 0 && (
+          <output>{m.music_empty()}</output>
+        )}
+        {view === 'favorites' && favorites.isSuccess && favorites.data.length === 0 && (
+          <output>{m.music_favorites_empty()}</output>
+        )}
+        {view === 'history' && history.isSuccess && history.data.length === 0 && (
+          <output>{m.music_history_empty()}</output>
+        )}
         <ul>
-          {results.data?.map((song) => (
-            <li key={song.id} className="flex items-center gap-md border-b border-border py-sm">
+          {(view === 'results'
+            ? results.data
+            : (view === 'favorites' ? favorites.data : history.data)?.map((song) => ({
+                ...song,
+                artists: song.artist ? [{ name: song.artist }] : [],
+                cover: null,
+                seconds: undefined,
+              }))
+          )?.map((song, index) => (
+            <li key={`${song.id}-${index}`} className="flex items-center gap-md border-b border-border py-sm">
               <div className="flex size-touch shrink-0 items-center justify-center overflow-hidden rounded-sm bg-muted">
                 {song.cover ? (
                   <img src={song.cover} alt="" className="size-full object-cover" />
@@ -85,6 +129,7 @@ export function MusicSearch() {
                 </p>
               </div>
               <Duration seconds={song.seconds} />
+              <Favorite song={song} />
               <button
                 type="button"
                 aria-label={m.music_play({ title: song.title })}
