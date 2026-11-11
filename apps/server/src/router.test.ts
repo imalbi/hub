@@ -61,6 +61,7 @@ void test('every mutation carries an Italian label and an English description in
     'media.playPause',
     'media.previous',
     'music.play',
+    'music.skip',
     'news.open',
     'news.refresh',
     'pairing.createCode',

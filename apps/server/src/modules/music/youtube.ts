@@ -43,15 +43,38 @@ export function mapSongs(items: SourceSong[]) {
 
 export function createYouTube() {
   let session: Promise<Innertube> | undefined;
+  async function client() {
+    session ??= Innertube.create({ generate_session_locally: true, retrieve_player: false });
+    return session.catch((error: unknown) => {
+      session = undefined;
+      throw error;
+    });
+  }
   return {
     async search(query: string) {
-      session ??= Innertube.create({ generate_session_locally: true, retrieve_player: false });
-      const yt = await session.catch((error: unknown) => {
-        session = undefined;
-        throw error;
-      });
+      const yt = await client();
       const result = await yt.music.search(query, { type: 'song' });
       return mapSongs(result.songs?.contents ?? []);
+    },
+    async upNext(id: string) {
+      const yt = await client();
+      const result = await yt.music.getUpNext(id);
+      return mapSongs(
+        result.contents.flatMap((item) => {
+          const video = 'video_id' in item ? item : 'primary' in item ? item.primary : null;
+          if (!video) return [];
+          return [
+            {
+              id: video.video_id,
+              title: video.title.toString(),
+              artists: video.artists,
+              album: video.album,
+              duration: video.duration,
+              thumbnail: { contents: video.thumbnail },
+            },
+          ];
+        }),
+      ).songs;
     },
   };
 }

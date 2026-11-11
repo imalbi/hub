@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { copyFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -94,6 +95,13 @@ function build() {
     dbPath,
     music: {
       youtube: {
+        async upNext() {
+          return [
+            { id: '00000000001', title: 'Brano 2', artists: [{ name: 'Artista' }], seconds: 123 },
+            { id: '00000000002', title: 'Brano 3', artists: [{ name: 'Artista' }], seconds: 123 },
+            { id: '00000000003', title: 'Brano 4', artists: [{ name: 'Artista' }], seconds: 123 },
+          ];
+        },
         async search() {
           return {
             songs: Array.from({ length: 30 }, (_, i) => ({
@@ -107,6 +115,7 @@ function build() {
         },
       },
       ipc: {
+        events: new EventEmitter(),
         async request() {
           return null;
         },

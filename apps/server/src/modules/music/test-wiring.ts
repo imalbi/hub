@@ -1,7 +1,15 @@
+import { EventEmitter } from 'node:events';
 import type { Song } from './youtube.ts';
 export const calls: { queries: string[]; commands: (string | number | boolean)[][] } = { queries: [], commands: [] };
 export const wiring = {
   youtube: {
+    async upNext() {
+      return [
+        { id: '00000000001', title: 'Brano 2', artists: [{ name: 'Artista' }] },
+        { id: '00000000002', title: 'Brano 3', artists: [{ name: 'Artista' }] },
+        { id: '00000000003', title: 'Brano 4', artists: [{ name: 'Artista' }] },
+      ];
+    },
     async search(query: string): Promise<{ songs: Song[]; dropped: number }> {
       calls.queries.push(query);
       return {
@@ -13,6 +21,7 @@ export const wiring = {
     },
   },
   ipc: {
+    events: new EventEmitter(),
     async request(command: (string | number | boolean)[]): Promise<unknown> {
       calls.commands.push(command);
       if (command[1] === 'idle-active') return !calls.commands.some((item) => item[0] === 'loadfile');

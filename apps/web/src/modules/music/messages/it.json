@@ -6,5 +6,8 @@
   "music_player_error": "Lettore musicale non raggiungibile",
   "music_empty": "Nessun risultato",
   "music_output": "Cambia uscita audio",
-  "music_play": "Riproduci {title}"
+  "music_play": "Riproduci {title}",
+  "music_next": "Prossimi",
+  "music_skip": "Salta",
+  "music_radio_error": "Riproduzione interrotta dopo tre errori"
 }

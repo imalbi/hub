@@ -1,11 +1,13 @@
 import { join } from 'node:path';
+import { createLiveHub } from '../../core/live.ts';
+import { emptyQueue, queueReducer } from './queue.ts';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
 import { protectedProcedure, router } from '../../core/trpc.ts';
 import { createMpvIpc } from './mpv-ipc.ts';
 import { createYouTube, type Song } from './youtube.ts';
 
 type YouTube = ReturnType<typeof createYouTube>;
-type Ipc = Pick<ReturnType<typeof createMpvIpc>, 'request' | 'close'>;
+type Ipc = Pick<ReturnType<typeof createMpvIpc>, 'request' | 'close' | 'events'>;
 
 export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}) {
   return defineModule({
@@ -62,8 +64,82 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
       async function publicSong(song: Song) {
         return { ...song, cover: await cover(song.cover) };
       }
+      let queue = emptyQueue;
+      let generation = 0;
+      let operations = Promise.resolve();
+      async function publicQueue() {
+        const snapshot = queue;
+        const upcoming: Awaited<ReturnType<typeof publicSong>>[] = [];
+        for (let i = 0; i < snapshot.upcoming.length; i += 4)
+          upcoming.push(...(await Promise.all(snapshot.upcoming.slice(i, i + 4).map(publicSong))));
+        return {
+          current: snapshot.current ? await publicSong(snapshot.current) : null,
+          upcoming,
+          errors: snapshot.errors,
+        };
+      }
+      const live = createLiveHub(publicQueue, null);
+      async function refill() {
+        if (!queue.current || queue.upcoming.length >= 3) return;
+        const version = generation;
+        const seed = queue.upcoming.at(-1)?.id ?? queue.current.id;
+        try {
+          const next = await youtube.upNext(seed);
+          if (version !== generation) return;
+          queue = queueReducer(queue, {
+            type: 'refill',
+            songs: next.filter((song) => /^[A-Za-z0-9_-]{11}$/.test(song.id)),
+          });
+          await live.notify();
+        } catch {
+          log.warn('Music radio unavailable');
+        }
+      }
+      async function advance(error: boolean) {
+        if (!queue.current) return;
+        const version = generation;
+        try {
+          if (queue.upcoming.length === 0) await refill();
+          if (version !== generation) return;
+          queue = queueReducer(queue, { type: 'advance', error });
+          await live.notify();
+          if (queue.current) {
+            await ipc.request(['loadfile', `https://music.youtube.com/watch?v=${queue.current.id}`, 'replace']);
+            await ipc.request(['set_property', 'pause', false]);
+            void refill();
+          }
+        } catch {
+          throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+        }
+      }
+      function schedule(operation: () => Promise<void>) {
+        const result = operations.then(operation);
+        operations = result.catch(() => {});
+        return result;
+      }
+      function onEvent(event: unknown) {
+        if (
+          event &&
+          typeof event === 'object' &&
+          'event' in event &&
+          event.event === 'end-file' &&
+          'reason' in event &&
+          (event.reason === 'eof' || event.reason === 'error')
+        )
+          void schedule(() => advance(event.reason === 'error')).catch(() =>
+            log.warn('Music player unavailable while advancing'),
+          );
+      }
+      ipc.events.on('event', onEvent);
       return {
         router: router({
+          queue: protectedProcedure.query(publicQueue),
+          onQueue: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
+          skip: protectedProcedure
+            .meta({ label: 'Salta brano', description: 'Skip to the next radio track' })
+            .mutation(async () => {
+              await schedule(() => advance(false));
+            }),
           search: protectedProcedure.input(z.object({ query: z.string().min(1).max(200) })).query(async ({ input }) => {
             try {
               const result = await youtube.search(input.query);
@@ -81,34 +157,43 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           play: protectedProcedure
             .meta({ label: 'Riproduci brano', description: 'Play a YouTube Music track by video id' })
             .input(z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
-            .mutation(async ({ input }) => {
-              const command = ['loadfile', `https://music.youtube.com/watch?v=${input.id}`, 'replace'];
-              try {
-                await ipc.request(['get_property', 'idle-active']);
-              } catch {
-                const started = await run('systemctl', ['--user', 'start', 'hub-music']);
-                if (started.code !== 0)
-                  throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
-                let ready = false;
-                for (let attempt = 0; attempt < 10; attempt++) {
-                  try {
-                    await ipc.request(['get_property', 'idle-active']);
-                    ready = true;
-                    break;
-                  } catch {
-                    await new Promise((resolve) => setTimeout(resolve, 100));
+            .mutation(async ({ input }) =>
+              schedule(async () => {
+                const command = ['loadfile', `https://music.youtube.com/watch?v=${input.id}`, 'replace'];
+                try {
+                  await ipc.request(['get_property', 'idle-active']);
+                } catch {
+                  const started = await run('systemctl', ['--user', 'start', 'hub-music']);
+                  if (started.code !== 0)
+                    throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+                  let ready = false;
+                  for (let attempt = 0; attempt < 10; attempt++) {
+                    try {
+                      await ipc.request(['get_property', 'idle-active']);
+                      ready = true;
+                      break;
+                    } catch {
+                      await new Promise((resolve) => setTimeout(resolve, 100));
+                    }
                   }
+                  if (!ready) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
                 }
-                if (!ready) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
-              }
-              try {
-                await ipc.request(command);
-                // mpv keeps `pause` across loadfile: a song loaded while paused would wait silently.
-                await ipc.request(['set_property', 'pause', false]);
-              } catch {
-                throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
-              }
-            }),
+                try {
+                  await ipc.request(command);
+                  // mpv keeps `pause` across loadfile: a song loaded while paused would wait silently.
+                  await ipc.request(['set_property', 'pause', false]);
+                  generation++;
+                  queue = queueReducer(queue, {
+                    type: 'play',
+                    song: songs.get(input.id) ?? { id: input.id, title: input.id, artists: [] },
+                  });
+                  await live.notify();
+                  void refill();
+                } catch {
+                  throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+                }
+              }),
+            ),
           state: protectedProcedure.query(async () => {
             try {
               const idle = await ipc.request(['get_property', 'idle-active']);
@@ -137,7 +222,10 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
             }
           }),
         }),
-        close: () => ipc.close(),
+        close: () => {
+          ipc.events.off('event', onEvent);
+          ipc.close();
+        },
       };
     },
   });
