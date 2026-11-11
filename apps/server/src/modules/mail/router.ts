@@ -74,6 +74,7 @@ async function listThreadEntries(
         inReplyTo: envelope['in-reply-to'],
         subject: message.subject,
         date: message.date,
+        counterpart: (side === 'inbox' ? envelope.from[0]?.email : envelope.to[0]?.email)?.toLowerCase() ?? null,
       };
     });
     return { entries, truncated: envelopes.length >= THREAD_WINDOW };

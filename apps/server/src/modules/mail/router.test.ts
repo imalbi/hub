@@ -256,3 +256,45 @@ void test('the configured accounts are listed without running himalaya, so the U
   ]);
   assert.equal(calls.length, 0);
 });
+
+void test('thread links share a stable key using inbox sender and sent recipient from the listing', async (t) => {
+  const run: Run = (_bin, args) =>
+    Promise.resolve({
+      code: 0,
+      stderr: '',
+      stdout: JSON.stringify({
+        envelopes: args.includes('sent')
+          ? [
+              {
+                id: '2',
+                'message-id': 'b@example.com',
+                subject: 'Accepted: Meeting',
+                to: [{ email: 'PERSON@example.com' }],
+                date: '2026-11-02',
+              },
+            ]
+          : [
+              {
+                id: '1',
+                'message-id': 'a@example.com',
+                subject: 'Meeting',
+                from: [{ email: 'person@example.com' }],
+                date: '2026-11-01',
+              },
+            ],
+      }),
+    });
+  const { get } = setup(t, withMail, run);
+  const result = await get('mail.threads', {
+    links: [
+      { account: 'work', messageId: 'a@example.com' },
+      { account: 'work', messageId: 'b@example.com' },
+    ],
+  });
+  assert.equal(result.statusCode, 200);
+  const [first, second] = result.json().result.data.threads;
+  assert.equal(first.thread.key, 'a@example.com');
+  assert.equal(second.thread.key, first.thread.key);
+  assert.equal(second.thread.messages.length, 2);
+  assert.equal(second.thread.messages[1].counterpart, 'person@example.com');
+});

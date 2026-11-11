@@ -179,3 +179,12 @@ void test('a row tells seen and flagged from himalaya flags, and keeps only the 
     hasAttachment: null,
   });
 });
+
+void test('envelope recipients are parsed and checked against the installed schema', () => {
+  const envelope = envelopesSchema.parse({ envelopes: [{ id: '1', to: [{ email: 'person@example.com' }] }] })
+    .envelopes[0];
+  assert.equal(envelope?.to[0]?.email, 'person@example.com');
+  const schema = JSON.parse(schemaText);
+  delete schema.$defs.Envelope.properties.to;
+  assert.deepEqual(missingEnvelopeFields(JSON.stringify(schema)), ['to']);
+});

@@ -6,11 +6,13 @@ export type ThreadEntry = {
   inReplyTo: readonly string[];
   subject: string;
   date: string | null;
+  counterpart: string | null;
 };
 
 export type ThreadView = {
   /** The seed the thread was asked for. */
   messageId: string;
+  key: string;
   /** The last message is the owner's: the other side has not answered yet. */
   waiting: boolean;
   messages: ThreadEntry[];
@@ -39,10 +41,22 @@ function createGroups() {
   return { find, join };
 }
 
+const PREFIXES =
+  'updated invitation|invito aggiornato|accettato|accepted|rifiutato|declined|provvisorio|tentative|invitation|invito|inoltro|fwd|re|ri|fw|r|i';
+const prefix = new RegExp(`^(?:${PREFIXES})(?:\\[\\d+\\])?\\s*:\\s*`, 'i');
+const calendarReply = /^(?:accettato|accepted|rifiutato|declined|provvisorio|tentative)(?:\[\d+\])?\s*:/i;
+const automated = /^(?:noreply|no-reply|donotreply|do-not-reply|notifications?|mailer-daemon)$/;
+
+export function normalizeSubject(subject: string): string {
+  let normalized = subject.toLowerCase().trim().replace(/\s+/g, ' ');
+  while (prefix.test(normalized)) normalized = normalized.replace(prefix, '').trim();
+  return normalized.replace(/\s+@\s+.+$/, '').trim();
+}
+
 const byDate = (a: ThreadEntry, b: ThreadEntry) => {
-  const left = a.date ?? '';
-  const right = b.date ?? '';
-  return left < right ? -1 : left > right ? 1 : 0;
+  if (a.date === null) return b.date === null ? 0 : 1;
+  if (b.date === null) return -1;
+  return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
 };
 
 /**
@@ -52,15 +66,27 @@ const byDate = (a: ThreadEntry, b: ThreadEntry) => {
 export function threadOf(entries: readonly ThreadEntry[], messageId: string): ThreadView | null {
   if (!entries.some((entry) => entry.messageId === messageId)) return null;
   const groups = createGroups();
+  const subjects = new Map<string, string>();
   for (const entry of entries) {
     if (entry.messageId === null) continue;
     for (const parentId of entry.inReplyTo) groups.join(entry.messageId, parentId);
+    const subject = normalizeSubject(entry.subject);
+    const counterpart = entry.counterpart?.toLowerCase();
+    if (!counterpart || automated.test(counterpart.split('@')[0] ?? '') || subject.length < 4) continue;
+    const key = JSON.stringify([counterpart, subject]);
+    const previous = subjects.get(key);
+    if (previous) groups.join(entry.messageId, previous);
+    else subjects.set(key, entry.messageId);
   }
 
   const root = groups.find(messageId);
   const messages = entries
     .filter((entry) => entry.messageId !== null && groups.find(entry.messageId) === root)
     .toSorted(byDate);
-  const last = messages.at(-1);
-  return { messageId, waiting: last?.mailbox === 'sent', messages };
+  const last = messages.findLast(
+    (entry) => entry.date !== null && !(entry.mailbox === 'sent' && calendarReply.test(entry.subject.trim())),
+  );
+  const key =
+    messages.flatMap((entry) => (entry.messageId === null ? [] : [entry.messageId])).toSorted()[0] ?? messageId;
+  return { messageId, key, waiting: last?.mailbox === 'sent', messages };
 }
