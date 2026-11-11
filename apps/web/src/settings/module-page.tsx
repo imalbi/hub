@@ -166,14 +166,16 @@ export function ModulePage({ name }: { name: string }) {
               <fieldset key={section} className="flex flex-col gap-md">
                 {section && <legend className="mb-sm text-label text-muted-foreground">{section}</legend>}
                 {fields.map((field) => (
-                  <FieldControl
-                    key={key(field.path)}
-                    field={field}
-                    value={getAt(value, field.path)}
-                    saved={getAt(stored, field.path)}
-                    error={issueText(field.path)}
-                    onChange={(next) => edited(field.path, next)}
-                  />
+                  <div key={key(field.path)}>
+                    <FieldControl
+                      field={field}
+                      value={getAt(value, field.path)}
+                      saved={getAt(stored, field.path)}
+                      error={issueText(field.path)}
+                      onChange={(next) => edited(field.path, next)}
+                    />
+                    {field.description && <p className="text-caption text-muted-foreground">{field.description}</p>}
+                  </div>
                 ))}
               </fieldset>
             ))}

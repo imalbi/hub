@@ -3,6 +3,7 @@ import { MultiSelect } from '../components/ui/multi-select.tsx';
 import { Select } from '../components/ui/select.tsx';
 import { Switch } from '../components/ui/switch.tsx';
 import { TagInput } from '../components/ui/tag-input.tsx';
+import { Textarea } from '../components/ui/textarea.tsx';
 import { m } from '../paraglide/messages.js';
 import { SecretField } from './secret-field.tsx';
 import type { Field } from './schema-fields.ts';
@@ -51,6 +52,16 @@ export function FieldControl({
 }) {
   const { label, placeholder } = field;
   switch (field.kind) {
+    case 'multiline':
+      return (
+        <Textarea
+          label={label}
+          error={error}
+          placeholder={placeholder}
+          value={typeof value === 'string' ? value : ''}
+          onValueChange={(text) => onChange(text === '' ? undefined : text)}
+        />
+      );
     case 'secret':
       return <SecretField label={label} value={value} saved={saved} onChange={onChange} />;
     case 'boolean':

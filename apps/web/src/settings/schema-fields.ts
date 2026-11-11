@@ -5,9 +5,10 @@
 
 export type Path = readonly string[];
 
-type Base = { path: Path; label: string; placeholder?: string };
+type Base = { path: Path; label: string; placeholder?: string; description?: string };
 export type Field =
   | (Base & { kind: 'text' })
+  | (Base & { kind: 'multiline' })
   | (Base & { kind: 'number'; integer: boolean })
   | (Base & { kind: 'boolean' })
   | (Base & { kind: 'choice'; options: readonly string[] })
@@ -40,7 +41,7 @@ function leaf(node: Schema, base: Base): Field | undefined {
   if (node.secret === true) return { ...base, kind: 'secret' };
   const choices = strings(node.enum);
   if (choices) return { ...base, kind: 'choice', options: choices };
-  if (node.type === 'string') return { ...base, kind: 'text' };
+  if (node.type === 'string') return { ...base, kind: node.multiline === true ? 'multiline' : 'text' };
   if (node.type === 'number' || node.type === 'integer')
     return { ...base, kind: 'number', integer: node.type === 'integer' };
   if (node.type === 'boolean') return { ...base, kind: 'boolean' };
@@ -58,7 +59,12 @@ export function buildForm(schema: unknown): Form {
   const walk = (raw: unknown, path: Path) => {
     if (!isSchema(raw)) return;
     const node = unwrap(raw);
-    const field = leaf(node, { path, label: path.at(-1) ?? '', placeholder: placeholderOf(node) });
+    const field = leaf(node, {
+      path,
+      label: typeof node.title === 'string' ? node.title : (path.at(-1) ?? ''),
+      placeholder: placeholderOf(node),
+      description: typeof node.description === 'string' ? node.description : undefined,
+    });
     if (field) form.fields.push(field);
     // A plain object recurses; a map (`additionalProperties` schema), an open object, a union or a list of objects is a block.
     else if (node.type === 'object' && isSchema(node.properties) && !isSchema(node.additionalProperties))

@@ -7,6 +7,7 @@ const schema = {
   type: 'object',
   properties: {
     location: { type: 'string', default: 'Torino' },
+    profile: { type: 'string', multiline: true },
     hours: { type: 'integer' },
     remote: { type: 'boolean' },
     mode: { type: 'string', enum: ['a', 'b'] },
@@ -25,6 +26,7 @@ void test('flat leaves become controls, even inside plain objects', () => {
   const byPath = Object.fromEntries(fields.map((f) => [f.path.join('.'), f.kind]));
   assert.deepEqual(byPath, {
     location: 'text',
+    profile: 'multiline',
     hours: 'number',
     remote: 'boolean',
     mode: 'choice',
