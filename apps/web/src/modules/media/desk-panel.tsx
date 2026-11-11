@@ -6,13 +6,42 @@ import { useMedia } from './media-provider.tsx';
 import { useIsOn } from '../../lib/enabled-modules.ts';
 import { CurrentFavorite } from '../music/favorite.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
+import { Slider } from '../../components/ui/slider.tsx';
+import { useState } from 'react';
+
+function time(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+function Position({ position, length }: { position: number; length: number }) {
+  const media = useMedia();
+  const [draft, setDraft] = useState<number | null>(null);
+  const value = Math.min(length, draft ?? position);
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-sm">
+      <span className="text-caption text-muted-foreground tabular-nums">{time(value)}</span>
+      <Slider
+        label={m.media_position()}
+        min={0}
+        max={length}
+        value={value}
+        format={time}
+        disabled={media.disabled}
+        onValueChange={([next]) => setDraft(next)}
+        onValueCommit={([seconds]) => media.seek.mutate({ seconds }, { onSettled: () => setDraft(null) })}
+      />
+      <span className="text-caption text-muted-foreground tabular-nums">{time(length)}</span>
+    </div>
+  );
+}
 
 function PlayerPill() {
   const media = useMedia();
   const isOn = useIsOn();
   const length = media.state?.lengthMs;
   const seconds = length === null || length === undefined ? null : Math.floor(length / 1000);
-  const duration = seconds === null ? null : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const duration = seconds === null ? null : time(seconds);
+  const position = media.state?.positionMs;
   return (
     <section
       aria-label={m.media_player()}
@@ -25,10 +54,14 @@ function PlayerPill() {
         <p className="truncate text-caption text-muted-foreground">{media.state?.artist}</p>
       </div>
       {isOn('music') && <CurrentFavorite />}
-      {duration && (
-        <span className="text-caption text-muted-foreground tabular-nums" aria-label={m.media_duration({ duration })}>
-          {duration}
-        </span>
+      {seconds !== null && seconds > 0 && position !== null && position !== undefined ? (
+        <Position key={media.state?.title} position={Math.floor(position / 1000)} length={seconds} />
+      ) : (
+        duration && (
+          <span className="text-caption text-muted-foreground tabular-nums" aria-label={m.media_duration({ duration })}>
+            {duration}
+          </span>
+        )
       )}
     </section>
   );

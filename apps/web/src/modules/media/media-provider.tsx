@@ -24,6 +24,7 @@ function useMediaSource() {
   const playPause = useMutation(trpc.media.playPause.mutationOptions());
   const next = useMutation(trpc.media.next.mutationOptions());
   const previous = useMutation(trpc.media.previous.mutationOptions());
+  const seek = useMutation(trpc.media.seek.mutationOptions());
   const connectionLost = useConnectionLost();
   return {
     state: media.data,
@@ -34,6 +35,7 @@ function useMediaSource() {
     playPause,
     next,
     previous,
+    seek,
   };
 }
 const MediaContext = createContext<ReturnType<typeof useMediaSource> | null>(null);

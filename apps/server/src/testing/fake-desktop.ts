@@ -32,6 +32,7 @@ export function createFakeDesktop({
   let sinkName = defaultName ?? '';
   let status = 'Playing';
   let track = 0;
+  let position = 12;
   let sinkVolume = 0.8;
   let sinkMuted = false;
   let micMuted = false;
@@ -139,6 +140,10 @@ export function createFakeDesktop({
       return Promise.resolve({ stdout: '', stderr: 'No players found', code: 1 });
     if (bin === 'playerctl' && command === 'metadata')
       return Promise.resolve(ok(`${status}\tArtist\t${titles[track]}\t${artUrl}\t213000000\n`));
+    if (bin === 'playerctl' && command === 'position') {
+      if (target !== undefined && Number.isFinite(Number(target)) && Number(target) >= 0) position = Number(target);
+      return Promise.resolve(ok(`${position}\n`));
+    }
     if (bin === 'playerctl' && args.length === 1 && (command === 'next' || command === 'previous')) {
       track = (track + (command === 'next' ? 1 : titles.length - 1)) % titles.length;
       return Promise.resolve(ok());

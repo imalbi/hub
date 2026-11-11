@@ -87,7 +87,7 @@ void test('media.onState pushes the current state, then the new one right after 
   assert.deepEqual(await client.next(), started);
   assert.deepEqual(
     await client.next(),
-    data({ status: 'Playing', artist: 'Artist', title: 'Title', lengthMs: 213000, artKey }),
+    data({ status: 'Playing', artist: 'Artist', title: 'Title', lengthMs: 213000, artKey, positionMs: 12000 }),
   );
 
   // The poll interval is 1 s and `next` gives up after 0.5 s: only the refresh after the mutation can win.
@@ -100,7 +100,7 @@ void test('media.onState pushes the current state, then the new one right after 
   assert.equal(res.statusCode, 200);
   assert.deepEqual(
     await client.next(),
-    data({ status: 'Paused', artist: 'Artist', title: 'Title', lengthMs: 213000, artKey }),
+    data({ status: 'Paused', artist: 'Artist', title: 'Title', lengthMs: 213000, artKey, positionMs: 12000 }),
   );
   client.close();
 });

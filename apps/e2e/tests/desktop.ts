@@ -7,7 +7,7 @@ const post = (request: APIRequestContext, path: string, data: unknown = {}) =>
 export const playPause = (pc: APIRequestContext) => post(pc, 'media.playPause');
 
 /**
- * Puts the shared fake desktop back to where it starts (playing, first output). A test that fails halfway leaves it
+ * Puts the shared fake desktop back to where it starts (playing at 0:12, first output). A test that fails halfway leaves it
  * flipped, and without this every test after it would fail too, hiding which one is the cause.
  */
 export async function restoreDesktop(pc: APIRequestContext) {
@@ -16,6 +16,7 @@ export async function restoreDesktop(pc: APIRequestContext) {
     await post(pc, 'media.next');
   }
   if ((await (await pc.get('/trpc/media.state')).text()).includes('"Paused"')) await playPause(pc);
+  await post(pc, 'media.seek', { seconds: 12 });
   if ((await (await pc.get('/trpc/audio.state')).text()).includes('"current":{"label":"Casse"}'))
     await post(pc, 'audio.cycleOutput');
 }

@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseMediaState } from './playerctl.ts';
+import { parsePosition, youtubeArtwork } from './playerctl.ts';
+
+void test('position accepts non-negative seconds and rejects invalid results', () => {
+  assert.equal(parsePosition({ stdout: '12.5\n', stderr: '', code: 0 }), 12500);
+  for (const stdout of ['', '-1', 'Infinity', 'bad'])
+    assert.equal(parsePosition({ stdout, stderr: '', code: 0 }), null);
+  assert.equal(parsePosition({ stdout: '1', stderr: '', code: 1 }), null);
+});
+
+void test('only a validated YouTube Music watch URL yields artwork', () => {
+  assert.equal(
+    youtubeArtwork('https://music.youtube.com/watch?v=abcdefghijk'),
+    'https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg',
+  );
+  for (const url of ['', 'https://example.com/watch?v=abcdefghijk', 'https://music.youtube.com/watch?v=bad'])
+    assert.equal(youtubeArtwork(url), null);
+});
 
 void test('parses a playing track', () => {
   assert.deepEqual(parseMediaState({ stdout: 'Playing\tSome Artist\tSome Title\n', stderr: '', code: 0 }), {

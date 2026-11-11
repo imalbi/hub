@@ -198,6 +198,8 @@ export function Slider({
               onPointerCancel={end}
               onKeyDown={(e) => {
                 if (e.key === 'Home' || e.key === 'End' || e.key.startsWith('Arrow') || e.key.startsWith('Page')) {
+                  // A pointer release clears `active` while focus stays, and `end` commits only when active.
+                  setActive(0);
                   setBubble(0);
                   setMode('throw');
                 }

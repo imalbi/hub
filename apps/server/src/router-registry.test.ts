@@ -11,7 +11,7 @@ void test('registry lists all public mutations with labels, descriptions and the
   const response = await app.inject('/trpc/registry.list');
   assert.equal(response.statusCode, 200);
   const actions = response.json().result.data;
-  assert.equal(actions.length, 35);
+  assert.equal(actions.length, 36);
   for (const action of actions) {
     assert.ok(action.label.trim());
     assert.ok(action.description.trim());
@@ -41,7 +41,7 @@ void test('registry is protected and automatically includes optional module acti
   const response = await app.inject('/trpc/registry.list');
   assert.equal(response.statusCode, 200);
   const actions = response.json().result.data;
-  assert.equal(actions.length, 39);
+  assert.equal(actions.length, 40);
   const brightness = actions.find((a: { path: string }) => a.path === 'hue.setBrightness');
   assert.equal(brightness.schema.properties.percent.minimum, 1);
   assert.equal(brightness.schema.properties.percent.maximum, 100);
