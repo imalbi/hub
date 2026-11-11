@@ -15,22 +15,41 @@ void test('the daily cap blocks calls and resets on the next local day', async (
   assert.equal(await gate(2, call), 3);
 });
 
-void test('another call is refused while a call is in flight', async () => {
+void test('calls wait in FIFO order and start at least the configured interval apart', async (t) => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 100_000 });
   const gate = createLlmGate();
   let finish: (() => void) | undefined;
+  const starts: number[] = [];
   const first = gate(
     3,
-    () =>
-      new Promise<void>((resolve) => {
+    () => {
+      starts.push(Date.now());
+      return new Promise<void>((resolve) => {
         finish = resolve;
-      }),
+      });
+    },
+    { minIntervalMs: 4_000 },
   );
-  await assert.rejects(
-    gate(3, () => Promise.resolve()),
-    { reason: 'busy' },
+  const second = gate(
+    3,
+    () => {
+      starts.push(Date.now());
+      return Promise.resolve();
+    },
+    { minIntervalMs: 4_000 },
   );
+  assert.deepEqual(starts, [100_000]);
+  assert.equal(gate.used(), 1);
   finish?.();
   await first;
+  await Promise.resolve();
+  t.mock.timers.tick(3_999);
+  await Promise.resolve();
+  assert.deepEqual(starts, [100_000]);
+  t.mock.timers.tick(1);
+  await second;
+  assert.deepEqual(starts, [100_000, 104_000]);
+  assert.equal(gate.used(), 2);
 });
 
 void test('the timeout aborts the provider and rejects', async (t) => {
@@ -59,11 +78,13 @@ void test('a timed-out call stays in flight until its provider settles', async (
   );
   t.mock.timers.tick(30_000);
   await assert.rejects(first, { reason: 'timeout' });
-  await assert.rejects(
-    gate(3, () => Promise.resolve()),
-    { reason: 'busy' },
-  );
+  let started = false;
+  const second = gate(3, () => {
+    started = true;
+    return Promise.resolve();
+  });
+  assert.equal(started, false);
   finish?.();
-  await Promise.resolve();
-  await gate(3, () => Promise.resolve());
+  await second;
+  assert.equal(started, true);
 });

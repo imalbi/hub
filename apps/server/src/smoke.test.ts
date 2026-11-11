@@ -8,6 +8,19 @@ import { runSmoke } from './smoke.ts';
 const ok = (stdout: string): RunResult => ({ stdout, stderr: '', code: 0 });
 const statuses = (results: Awaited<ReturnType<typeof runSmoke>>) => results.map((r) => [r.name, r.status]);
 
+void test('pdftotext version is checked from stderr and rejects unknown output', async () => {
+  const version = await runSmoke(
+    healthy((bin, args) =>
+      bin === 'pdftotext' && args.join(' ') === '-v'
+        ? { stdout: '', stderr: 'pdftotext version 26.10.0\n', code: 0 }
+        : undefined,
+    ),
+  );
+  assert.equal(version.find((result) => result.name === 'pdftotext -v')?.status, 'ok');
+  const changed = await runSmoke(healthy((bin) => (bin === 'pdftotext' ? ok('unexpected output') : undefined)));
+  assert.equal(changed.find((result) => result.name === 'pdftotext -v')?.status, 'unparseable');
+});
+
 /** The fake desktop plus the help and version answers it does not give. */
 function healthy(override: (bin: string, args: string[]) => RunResult | undefined = () => undefined): Run {
   const desktop = createFakeDesktop();
@@ -21,6 +34,8 @@ function healthy(override: (bin: string, args: string[]) => RunResult | undefine
       return Promise.resolve(ok('usage: caelestia toggle [-h] workspace\n'));
     if (bin === 'notify-send' && args[0] === '--help')
       return Promise.resolve(ok('Usage: notify-send --app-name=APP_NAME SUMMARY BODY'));
+    if (bin === 'pdftotext' && args[0] === '-v')
+      return Promise.resolve({ stdout: '', stderr: 'pdftotext version 26.10.0\n', code: 0 });
     if (args[0] === '--version') return Promise.resolve(ok(`${bin} 1.0\n`));
     return desktop(bin, args);
   };
@@ -37,6 +52,7 @@ void test('every check is ok on a healthy desktop', async () => {
     ['playerctl --player=mpv status', 'ok'],
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
+    ['pdftotext -v', 'ok'],
     ['systemctl --version', 'ok'],
     ['busctl --version', 'ok'],
     ['caelestia shell -s', 'ok'],
@@ -61,6 +77,7 @@ void test('only read-only commands are run', async () => {
     'himalaya --version',
     'himalaya json-schema',
     'notify-send --help',
+    'pdftotext -v',
     'playerctl --player=mpv',
     'playerctl --version',
     'playerctl metadata',
@@ -85,6 +102,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['playerctl --player=mpv status', 'missing'],
     ['notify-send --help', 'ok'],
     ['pw-play --version', 'ok'],
+    ['pdftotext -v', 'ok'],
     ['systemctl --version', 'ok'],
     ['busctl --version', 'ok'],
     ['caelestia shell -s', 'ok'],

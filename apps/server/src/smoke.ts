@@ -19,6 +19,13 @@ const judgeVersion = (result: RunResult): Verdict =>
     ? { status: 'ok', detail: result.stdout.trim().split('\n')[0] ?? '' }
     : { status: 'unparseable', detail: exitDetail(result) };
 
+function judgePdftotext(result: RunResult): Verdict {
+  const version = `${result.stderr}\n${result.stdout}`.match(/^pdftotext version \d+(?:\.\d+)+/m)?.[0];
+  return result.code === 0 && version
+    ? { status: 'ok', detail: version }
+    : { status: 'unparseable', detail: result.code === 0 ? 'unknown version format' : exitDetail(result) };
+}
+
 // wpctl has no --version. Its help is a cheap, read-only proof that the one subcommand Hub mutates with is still there.
 function judgeWpctlHelp(result: RunResult): Verdict {
   if (result.code !== 0) return { status: 'unparseable', detail: exitDetail(result) };
@@ -97,6 +104,7 @@ const checks = [
   { name: 'playerctl --player=mpv status', bin: 'playerctl', args: ['--player=mpv', 'status'], judge: judgeMpvStatus },
   { name: 'notify-send --help', bin: 'notify-send', args: ['--help'], judge: judgeNotifyHelp },
   { name: 'pw-play --version', bin: 'pw-play', args: ['--version'], judge: judgeVersion },
+  { name: 'pdftotext -v', bin: 'pdftotext', args: ['-v'], judge: judgePdftotext },
   { name: 'systemctl --version', bin: 'systemctl', args: ['--version'], judge: judgeVersion },
   // The Hue light is driven through BlueZ with busctl; this only proves the binary is there.
   { name: 'busctl --version', bin: 'busctl', args: ['--version'], judge: judgeVersion },
