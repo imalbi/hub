@@ -84,6 +84,9 @@ let failMail = false;
 const mailCalls: string[][] = [];
 
 function build() {
+  const musicEvents = new EventEmitter();
+  const playlist: string[] = [];
+  let position = -1;
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
   const desktop = createFakeDesktop({ mail: mailCalls });
   const run: Run = (bin, args, options) => {
@@ -115,8 +118,21 @@ function build() {
         },
       },
       ipc: {
-        events: new EventEmitter(),
-        async request() {
+        events: musicEvents,
+        async request(command) {
+          if (command[0] === 'loadfile' && typeof command[1] === 'string') {
+            if (command[2] === 'replace') {
+              playlist.splice(0, playlist.length, command[1]);
+              position = 0;
+            } else playlist.push(command[1]);
+          }
+          if (command[0] === 'playlist-next' && position + 1 < playlist.length) {
+            position++;
+            musicEvents.emit('event', { event: 'end-file', reason: 'stop' });
+            musicEvents.emit('event', { event: 'start-file' });
+          }
+          if (command[0] === 'get_property' && command[1] === 'playlist-pos') return position;
+          if (command[0] === 'get_property' && command[1] === 'path') return playlist[position];
           return null;
         },
         close() {},

@@ -95,21 +95,15 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           log.warn('Music radio unavailable');
         }
       }
-      async function advance(error: boolean) {
+      let pendingError = false;
+      let appended: string | null = null;
+      async function appendNext() {
         if (!queue.current) return;
-        const version = generation;
-        try {
-          if (queue.upcoming.length === 0) await refill();
-          if (version !== generation) return;
-          queue = queueReducer(queue, { type: 'advance', error });
-          await live.notify();
-          if (queue.current) {
-            await ipc.request(['loadfile', `https://music.youtube.com/watch?v=${queue.current.id}`, 'replace']);
-            await ipc.request(['set_property', 'pause', false]);
-            void refill();
-          }
-        } catch {
-          throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+        if (queue.upcoming.length < 3) await refill();
+        const next = queue.upcoming[0];
+        if (next && appended !== next.id) {
+          await ipc.request(['loadfile', `https://music.youtube.com/watch?v=${next.id}`, 'append']);
+          appended = next.id;
         }
       }
       function schedule(operation: () => Promise<void>) {
@@ -117,16 +111,45 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         operations = result.catch(() => {});
         return result;
       }
+      async function followStart() {
+        if (!queue.current) return;
+        const position = await ipc.request(['get_property', 'playlist-pos']);
+        if (typeof position !== 'number' || position < 0) return;
+        let path = await ipc.request(['get_property', 'path']).catch(() => null);
+        if (path !== `https://music.youtube.com/watch?v=${queue.upcoming[0]?.id}`)
+          path = await ipc.request(['get_property', `playlist/${position}/filename`]);
+        if (path === `https://music.youtube.com/watch?v=${queue.upcoming[0]?.id}`) {
+          queue = queueReducer(queue, { type: 'advance', error: pendingError });
+          pendingError = false;
+          appended = null;
+          await live.notify();
+          await appendNext();
+        }
+      }
+      async function followEnd(reason: unknown) {
+        if ((reason === 'eof' || reason === 'error') && queue.current && !appended && !queue.upcoming.length) {
+          queue = queueReducer(queue, { type: 'advance', error: reason === 'error' });
+          pendingError = false;
+          await live.notify();
+          return;
+        }
+        if (reason === 'error') {
+          pendingError = true;
+          if (queue.current && queue.errors >= 2) {
+            queue = queueReducer(queue, { type: 'advance', error: true });
+            appended = null;
+            await ipc.request(['stop']);
+            await ipc.request(['playlist-clear']);
+            await live.notify();
+          }
+        } else if (reason === 'eof' || reason === 'stop') pendingError = false;
+      }
       function onEvent(event: unknown) {
-        if (
-          event &&
-          typeof event === 'object' &&
-          'event' in event &&
-          event.event === 'end-file' &&
-          'reason' in event &&
-          (event.reason === 'eof' || event.reason === 'error')
-        )
-          void schedule(() => advance(event.reason === 'error')).catch(() =>
+        if (!event || typeof event !== 'object' || !('event' in event)) return;
+        if (event.event === 'start-file')
+          void schedule(followStart).catch(() => log.warn('Music player unavailable while advancing'));
+        else if (event.event === 'end-file' && 'reason' in event)
+          void schedule(() => followEnd(event.reason)).catch(() =>
             log.warn('Music player unavailable while advancing'),
           );
       }
@@ -138,7 +161,14 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           skip: protectedProcedure
             .meta({ label: 'Salta brano', description: 'Skip to the next radio track' })
             .mutation(async () => {
-              await schedule(() => advance(false));
+              await schedule(async () => {
+                try {
+                  await ipc.request(['playlist-next']);
+                  await ipc.request(['set_property', 'pause', false]);
+                } catch {
+                  throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+                }
+              });
             }),
           search: protectedProcedure.input(z.object({ query: z.string().min(1).max(200) })).query(async ({ input }) => {
             try {
@@ -183,12 +213,14 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                   // mpv keeps `pause` across loadfile: a song loaded while paused would wait silently.
                   await ipc.request(['set_property', 'pause', false]);
                   generation++;
+                  appended = null;
+                  pendingError = false;
                   queue = queueReducer(queue, {
                     type: 'play',
                     song: songs.get(input.id) ?? { id: input.id, title: input.id, artists: [] },
                   });
                   await live.notify();
-                  void refill();
+                  await appendNext();
                 } catch {
                   throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
                 }

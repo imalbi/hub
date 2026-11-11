@@ -205,3 +205,4 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Smoke: `himalaya --version` and `json-schema himalaya-envelope-list` checked for the fields Hub reads. No account command is in the smoke list.
 
 - Music is public (`modules/music/server.ts`); `buildServer({ music })` injects its YouTube and mpv fakes for isolated tests. Public module databases still need an explicit integration before Music persistence is added.
+- Music follows mpv's `start-file` and keeps one upcoming song in its playlist; the IPC fake must emit playlist events for skip to update the queue.
