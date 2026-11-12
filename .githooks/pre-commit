@@ -1,8 +1,15 @@
 #!/bin/sh
 # A regression blocks the commit. Skip with --no-verify only when the owner says so.
 # The staged guard always runs. The full gate is skipped only when the index is exactly the tree a green
-# `pnpm verify` last tested (scripts/verify-stamp.ts); any other change runs it in full.
+# `pnpm verify` last tested (scripts/verify-stamp.ts), or when only Markdown is staged (no code, test or build
+# reads tracked .md files; Prettier still checks them); any other change runs it in full.
 HUB_GUARD_STAGED=1 pnpm guard || exit 1
+staged=$(git diff --cached --name-only --no-renames)
+if [ -n "$staged" ] && ! printf '%s\n' "$staged" | grep -qv '\.md$'; then
+  git diff --cached --name-only -z --diff-filter=ACMR | xargs -0 -r pnpm exec prettier --check || exit 1
+  echo "pre-commit: only Markdown staged; full gate skipped, staged guard and Prettier ran"
+  exit 0
+fi
 if node scripts/verify-stamp.ts check; then
   echo "pre-commit: this exact tree already passed pnpm verify; full gate skipped, staged guard ran"
   exit 0
