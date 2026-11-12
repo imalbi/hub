@@ -1,5 +1,23 @@
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+export const agents = sqliteTable('agents', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export const agentCalls = sqliteTable('agent_calls', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  agentId: integer('agent_id'),
+  name: text('name').notNull(),
+  action: text('action').notNull(),
+  input: text('input').notNull(),
+  result: text('result').notNull(),
+  durationMs: integer('duration_ms').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
   action: text('action').notNull(),

@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures.ts';
 import type { APIRequestContext, Page } from '@playwright/test';
+import { SERVER_PORT } from './hosts.ts';
 
 // Switching a module on or off restarts the fake server in place (`testing/fake.ts`): it is down for a moment and the
 // socket reconnects with a back-off, so waiting for it is slower than any other assertion here.
@@ -51,6 +52,27 @@ async function ensureOn(pc: APIRequestContext, name: string) {
 }
 
 if (!example) {
+  test('core settings apply MCP and job limits after restart', async ({ page, pc }) => {
+    const server = `http://localhost:${SERVER_PORT}`;
+    const core = async () => await (await pc.get(`${server}/__fake/core`)).json();
+    const original = await core();
+    try {
+      await page.goto('/desk/settings');
+      await page.getByRole('link', { name: 'Sistema e agenti' }).click();
+      await page.getByRole('switch', { name: 'Attivo' }).uncheck();
+      await page.getByRole('button', { name: 'Aumenta Job simultanei' }).click();
+      await page.getByRole('button', { name: 'Salva e riavvia' }).click();
+      await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
+      await expect.poll(async () => core(), RESTARTED).toEqual({ mcp: false, jobs: original.jobs + 1 });
+      expect((await pc.get(`${server}/mcp`)).status()).toBe(404);
+    } finally {
+      await pc.post('/trpc/settings.saveCore', {
+        data: { mcp: { enabled: original.mcp }, jobs: { maxConcurrent: original.jobs } },
+      });
+      await expect.poll(async () => core().catch(() => null), RESTARTED).toEqual(original);
+    }
+  });
+
   test('weather location search shows empty and failed results and can retry', async ({ page }) => {
     let calls = 0;
     await page.route('**/trpc/weather.search*', async (route) => {
@@ -94,7 +116,7 @@ if (!example) {
     // One row for Aspetto and one for every module the server knows, so a module cannot be left out of the list.
     const states = await moduleStates(pc);
     expect(states.length).toBeGreaterThan(5);
-    await expect(list.getByRole('link')).toHaveCount(states.length + 1);
+    await expect(list.getByRole('link')).toHaveCount(states.length + 2);
     await expect(list.getByRole('link', { name: /^Pomodoro\s*Attivo/ })).toBeVisible();
     // Every public module has Italian copy: Musica once listed as the raw name "Music".
     await expect(list.getByRole('link', { name: /^YouTube Music\s*Attivo/ })).toBeVisible();

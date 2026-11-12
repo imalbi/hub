@@ -64,11 +64,13 @@ export function DeskCommandPalette() {
     await queryClient.invalidateQueries();
   }
 
-  const actions = (registry.data ?? []).toSorted((a, b) => {
-    const first = recent.indexOf(a.path);
-    const second = recent.indexOf(b.path);
-    return (first < 0 ? recent.length : first) - (second < 0 ? recent.length : second);
-  });
+  const actions = (registry.data ?? [])
+    .filter((action) => action.kind === 'mutation')
+    .toSorted((a, b) => {
+      const first = recent.indexOf(a.path);
+      const second = recent.indexOf(b.path);
+      return (first < 0 ? recent.length : first) - (second < 0 ? recent.length : second);
+    });
 
   const items: CommandItem[] = [
     ...zones.map((zone) => ({

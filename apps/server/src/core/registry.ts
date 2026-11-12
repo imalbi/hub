@@ -28,19 +28,23 @@ function inputSchema(inputs: AnyProcedure['_def']['inputs']): RegistrySchema | n
       if (!(input instanceof z.ZodType)) throw new Error('Unsupported parser');
       return z.toJSONSchema(input, { io: 'input' });
     });
-    return schemas.length === 1 ? schemas[0] : { allOf: schemas };
+    const first = schemas[0];
+    if (schemas.length === 1 && first?.type === 'object') return first;
+    return { type: 'object', allOf: schemas };
   } catch {
     // An opaque parser stays discoverable, but no generated client may guess its input.
-    return { not: {} };
+    return { type: 'object', not: {} };
   }
 }
 
 export function listActions(app: AnyRouter) {
   return Object.entries<unknown>(app._def.procedures).flatMap(([path, procedure]) => {
-    if (!isProcedure(procedure) || procedure._def.type !== 'mutation') return [];
+    if (!isProcedure(procedure)) return [];
+    const kind = procedure._def.type;
+    if (kind !== 'mutation' && kind !== 'query') return [];
     // A private module escapes the repo typecheck: an action with bad metadata is left out, not the whole list.
     const meta = metadata.safeParse(procedure._def.meta);
-    return meta.success ? [{ path, ...meta.data, schema: inputSchema(procedure._def.inputs) }] : [];
+    return meta.success ? [{ path, kind, ...meta.data, schema: inputSchema(procedure._def.inputs) }] : [];
   });
 }
 

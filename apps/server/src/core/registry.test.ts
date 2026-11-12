@@ -4,6 +4,24 @@ import { z } from 'zod';
 import { listActions } from './registry.ts';
 import { protectedProcedure, router } from './trpc.ts';
 
+void test('only queries with metadata join mutations in the registry', () => {
+  const app = router({
+    action: protectedProcedure.meta({ label: 'Azione', description: 'Run an action' }).mutation(() => null),
+    query: protectedProcedure.meta({ label: 'Lettura', description: 'Read a value' }).query(() => null),
+    privateQuery: protectedProcedure.query(() => null),
+    subscription: protectedProcedure
+      .meta({ label: 'Eventi', description: 'Read events' })
+      .subscription(async function* () {}),
+  });
+  assert.deepEqual(
+    listActions(app).map(({ path, kind }) => ({ path, kind })),
+    [
+      { path: 'action', kind: 'mutation' },
+      { path: 'query', kind: 'query' },
+    ],
+  );
+});
+
 void test('unrepresentable parsers stay discoverable with a non-runnable schema', () => {
   const app = router({
     opaque: protectedProcedure
@@ -11,7 +29,7 @@ void test('unrepresentable parsers stay discoverable with a non-runnable schema'
       .input(z.custom<string>())
       .mutation(() => null),
   });
-  assert.deepEqual(listActions(app)[0]?.schema, { not: {} });
+  assert.deepEqual(listActions(app)[0]?.schema, { type: 'object', not: {} });
 });
 
 void test('composed inputs retain every constraint rather than claiming to be a flat form', () => {
@@ -24,6 +42,7 @@ void test('composed inputs retain every constraint rather than claiming to be a 
   });
   const schema = listActions(app)[0]?.schema;
   assert.ok(schema && 'allOf' in schema);
+  assert.equal(schema.type, 'object');
   assert.equal(schema.allOf?.length, 2);
 });
 

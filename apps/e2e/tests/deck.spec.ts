@@ -2,10 +2,37 @@ import type { Page } from '@playwright/test';
 import { playPause, restoreDesktop } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { controlSockets } from './sockets.ts';
-import { SERVER_URL } from './hosts.ts';
+import { SERVER_PORT, SERVER_URL } from './hosts.ts';
 
 const audioTile = (page: Page) => page.getByRole('button', { name: /^Uscita audio/ });
 const mediaTile = (page: Page) => page.getByRole('button', { name: /^Musica/ });
+
+test('the deck banner confirms an agent request', async ({ page, pc }) => {
+  await expect
+    .poll(async () => {
+      const response = await pc.post(`http://localhost:${SERVER_PORT}/mcp`, {
+        headers: { accept: 'application/json, text/event-stream' },
+        data: {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'system.suspend', arguments: { confirmed: true } },
+        },
+      });
+      return JSON.stringify(await response.json());
+    })
+    .toContain('awaiting confirmation');
+  const banner = page.getByRole('complementary', { name: 'Richiesta di conferma' });
+  await expect(banner).toBeVisible();
+  await page.screenshot({ path: '/tmp/hub-step32-deck.png', fullPage: true });
+  await expect(banner).toHaveScreenshot('agent-confirmation-banner.png');
+  const button = banner.getByRole('button', { name: 'Tieni premuto per confermare' });
+  await button.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(900);
+  await page.mouse.up();
+  await expect(banner).toHaveCount(0);
+});
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/deck');

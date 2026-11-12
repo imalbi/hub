@@ -2,9 +2,13 @@ import { eq } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingHttpHeaders } from 'node:http';
 import type { Db } from '../db/index.ts';
-import { devices } from '../db/schema.ts';
+import { agents, devices } from '../db/schema.ts';
 
-export type Client = { kind: 'loopback' } | { kind: 'device'; deviceId: number } | { kind: 'anonymous' };
+export type Client =
+  | { kind: 'loopback' }
+  | { kind: 'device'; deviceId: number }
+  | { kind: 'agent'; agentId: number; name: string }
+  | { kind: 'anonymous' };
 
 /** What decides who is calling. A Fastify request and the raw WebSocket upgrade request both have this shape. */
 export type Peer = { socket: { remoteAddress?: string | undefined }; headers: IncomingHttpHeaders };
@@ -17,6 +21,16 @@ export const isLoopbackPeer: IsLoopback = ({ socket }) => LOOPBACK_ADDRESSES.has
 
 export const newToken = () => randomBytes(32).toString('base64url');
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+export async function resolveAgent(db: Db, token: string | null): Promise<Client> {
+  if (!token) return { kind: 'anonymous' };
+  const [agent] = await db
+    .select()
+    .from(agents)
+    .where(eq(agents.tokenHash, hashToken(token)))
+    .limit(1);
+  return agent ? { kind: 'agent', agentId: agent.id, name: agent.name } : { kind: 'anonymous' };
+}
 
 /** `Authorization: Bearer <token>` over HTTP; a WebSocket cannot set headers from a browser, so it sends `token` in its connection params. */
 export function extractToken(

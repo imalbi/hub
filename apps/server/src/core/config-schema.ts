@@ -1,5 +1,14 @@
 import { z } from 'zod';
 export const coreConfigSchema = z.object({
+  mcp: z
+    .object({
+      enabled: z
+        .boolean()
+        .default(true)
+        .meta({ title: 'Attivo', description: 'Consente agli agenti di collegarsi a Hub.' }),
+    })
+    .default({ enabled: true })
+    .meta({ title: 'MCP', description: 'Collegamento degli agenti a Hub.' }),
   jobs: z
     .object({
       maxConcurrent: z
@@ -16,6 +25,7 @@ export const coreConfigSchema = z.object({
     .object({
       // Where to listen. Loopback until the deck is paired; `0.0.0.0` (or a LAN address) opens Hub to the home network.
       host: z.string().min(1).default('127.0.0.1').meta({
+        manual: true,
         title: 'Indirizzo di ascolto',
         description: 'Dove Hub accetta connessioni; 127.0.0.1 solo questo computer, 0.0.0.0 anche la rete di casa.',
       }),

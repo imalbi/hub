@@ -1,4 +1,6 @@
 import { createFiles } from './core/files.ts';
+import { registerMcp } from './core/mcp.ts';
+import { createConfirmations } from './core/confirmations.ts';
 import { registerFiles } from './core/file-routes.ts';
 import type { IncomingMessage } from 'node:http';
 import type { AnyRouter } from '@trpc/server';
@@ -72,7 +74,11 @@ export function buildServer({
   const db = openDb(dbPath);
   const jobs = createJobRunner(db, deps.spawn ?? streamSpawn, config.jobs.maxConcurrent);
   deps.onJobs?.(jobs);
-  const app = fastify({ logger: process.env.NODE_ENV !== 'test' });
+  const app = fastify({
+    logger: process.env.NODE_ENV !== 'test',
+    // A tRPC HTTP batch puts every procedure in one path parameter; the default 100 refused a page's batch with 414.
+    routerOptions: { maxParamLength: 5000 },
+  });
   app.addHook('onClose', () => db.$client.close());
   app.addHook('onClose', () => jobs.close());
   const files = createFiles();
@@ -87,6 +93,7 @@ export function buildServer({
     }),
   );
   const sockets = createDeviceSockets();
+  const confirmations = createConfirmations();
   const allowlist = allowedOrigins(config);
   // CORS does not cover WebSockets, so any page open in the browser could otherwise drive the desktop through
   // localhost. `verifyClient` runs inside the upgrade, before the connection is bound.
@@ -120,7 +127,7 @@ export function buildServer({
       roots: moduleRoots,
       examples: exampleModules,
       onlyModules,
-      reserved: [...publicModules.map((m) => m.name), 'registry', 'settings', 'modules'],
+      reserved: [...publicModules.map((m) => m.name), 'registry', 'settings', 'modules', 'agents', 'confirmations'],
       deps: discoveredDeps,
       dbPath,
       config: config.modules ?? {},
@@ -143,8 +150,23 @@ export function buildServer({
         dbPath,
         configPath: settings?.configPath,
         jobs,
+        confirmations,
       },
     );
+    if (config.mcp.enabled)
+      registerMcp(scope, allowlist, isLoopback, db, appRouter, confirmations, {
+        db,
+        run,
+        jobs,
+        config,
+        files,
+        sockets,
+        restart: () => {
+          if (!settings?.onRestart) return false;
+          setTimeout(settings.onRestart, 200);
+          return true;
+        },
+      });
     scope.register(fastifyTRPCPlugin, {
       prefix: '/trpc',
       useWSS: true,

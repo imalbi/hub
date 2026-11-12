@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures.ts';
 import { pairDevice, revokeDevices } from './desktop.ts';
+import { SERVER_PORT } from './hosts.ts';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/desk/devices');
@@ -81,3 +82,28 @@ for (const viewport of [
     expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
   });
 }
+
+test('an agent token is shown once, its calls are listed and it can be revoked', async ({ page, pc }) => {
+  await page.getByLabel('Nome agente').fill('Agente di prova');
+  await page.getByRole('button', { name: 'Crea agente' }).click();
+  await expect(page.getByRole('status', { name: 'Token agente' })).not.toBeEmpty();
+  const token = await page.getByRole('status', { name: 'Token agente' }).innerText();
+  await expect(page.getByText('Agente di prova', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Agent', exact: true })).toHaveScreenshot('agent-section.png', {
+    mask: [page.getByRole('status', { name: 'Token agente' })],
+  });
+  const call = await pc.post(`http://localhost:${SERVER_PORT}/mcp`, {
+    headers: { authorization: `Bearer ${token}`, accept: 'application/json, text/event-stream' },
+    data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'media.playPause', arguments: {} } },
+  });
+  expect(call.ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByRole('status', { name: 'Token agente' })).toHaveCount(0);
+  await expect(page.getByText('media.playPause', { exact: true })).toBeVisible();
+  const revoke = page.getByRole('button', { name: 'Tieni premuto per revocare Agente di prova' });
+  await revoke.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(900);
+  await page.mouse.up();
+  await expect(page.getByText('Agente di prova', { exact: true })).toHaveCount(0);
+});

@@ -32,6 +32,9 @@ export function SettingsLayout() {
           <span className="grow">{m.theme_title()}</span>
           {themeName && <span className="text-label text-muted-foreground">{themeName}</span>}
         </Link>
+        <Link to="/desk/settings/core" className={rowClass} activeProps={rowActive}>
+          <span className="grow">{m.settings_core()}</span>
+        </Link>
         <p className="px-md pt-md text-label text-muted-foreground">{m.settings_modules()}</p>
         {modules.data?.map(({ name, status }) => (
           <Link

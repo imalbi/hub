@@ -28,6 +28,8 @@ const pages = [
   { path: '/desk/settings/pomodoro', ready: 'Durata del focus', file: 'desk-settings-module-4k.png' },
   // Audio's outputs are a list of flat objects: the rows editor, shown here empty with its Aggiungi button.
   { path: '/desk/settings/audio', ready: 'Uscite audio', file: 'desk-settings-rows-4k.png' },
+  // The core config page: MCP and job limits, never `server`.
+  { path: '/desk/settings/core', ready: 'Job simultanei', file: 'desk-settings-core-4k.png' },
 ] as const;
 
 for (const { path, ready, file } of pages) {

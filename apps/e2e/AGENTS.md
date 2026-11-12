@@ -119,3 +119,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 ## Jobs
 
 - `jobs.spec.ts` and the jobs case in `deck.spec.ts` start the fake timer-driven command through `/__fake/jobs`, never a real desktop process. The desk test covers streaming, duration, hold cancellation and the new log/pill baselines; the deck test checks the count appears and disappears. The log baseline hides variable timestamps, counts and rows after the first three.
+
+## MCP agents
+
+- `mcp.spec.ts`, the deck confirmation test and the Agent test in `devices.spec.ts` use the fake server and `/__fake/system`; never run a real desktop action. The intended new baselines are the desk dialog, deck banner and Agent section. The Dispositivi page baselines also include that new section.

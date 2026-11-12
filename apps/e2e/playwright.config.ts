@@ -70,6 +70,7 @@ export default defineConfig({
               'hue.spec.ts',
               'desk.spec.ts',
               'devices.spec.ts',
+              'mcp.spec.ts',
               'desk.visual.spec.ts',
               'pomodoro.spec.ts',
               'zones.spec.ts',

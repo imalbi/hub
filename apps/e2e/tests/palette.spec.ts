@@ -7,6 +7,19 @@ import { themeSettled } from './themes.ts';
 
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 
+test('query tools stay out of the command palette', async ({ page, pc }) => {
+  const registry = (await (await pc.get('/trpc/registry.list')).json()).result.data;
+  expect(
+    registry.some((item: { path: string; kind: string }) => item.path === 'jobs.output' && item.kind === 'query'),
+  ).toBe(true);
+  await page.goto('/desk');
+  await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).click();
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await palette.getByRole('combobox').fill('Leggi output job');
+  await expect(palette.getByRole('status')).toContainText('Nessun risultato');
+  await expect(palette.getByRole('option', { name: /Leggi output job/ })).toHaveCount(0);
+});
+
 test.afterEach(async ({ pc, request }) => {
   await restoreDesktop(pc);
   if (examples) await request.post(`${SERVER_URL}/__fake/hue`, { data: { reset: true } });

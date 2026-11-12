@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { HoldButton } from '../../components/hold-button.tsx';
 import { useNow } from '../../lib/use-now.ts';
+import { AgentsSection } from './agents-section.tsx';
 
 function lastSeen(at: number, now: number) {
   const minutes = Math.floor((now - at) / 60_000);
@@ -81,6 +82,7 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
           </li>
         ))}
       </ul>
+      <AgentsSection enabled={devices.isSuccess} />
     </Panel>
   );
 }

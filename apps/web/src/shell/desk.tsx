@@ -11,6 +11,7 @@ import { HeaderActivity } from './header-activity.tsx';
 import { HeaderSlot } from './header-slot.tsx';
 import { DeskCommandPalette } from './command-palette.tsx';
 import { RestartScreen } from '../settings/restart-screen.tsx';
+import { AgentConfirmation } from './agent-confirmation.tsx';
 
 /** The desk frame: theme, backdrop, rail, header, keys 1-9 and the zone grid the child routes render into. */
 export function DeskShell() {
@@ -43,6 +44,7 @@ export function DeskShell() {
     <ThemeProvider remote>
       <MediaProvider>
         <RestartScreen />
+        <AgentConfirmation />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
         <main className="flex h-dvh flex-col overflow-hidden px-xl pt-xl pl-desk-inset">

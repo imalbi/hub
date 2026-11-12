@@ -25,6 +25,8 @@ export type Context = {
   files: Files;
   /** Who is calling, decided once per request (per connection for a WebSocket) in `createContext`. */
   client: Client;
+  /** A human approved a pending agent action; settings still enforce the agent's limits. */
+  agentRequest?: boolean;
   remoteAddress: string;
   sockets: DeviceSockets;
   /** Restart once the response to this request is sent (only a settings save asks); false when nothing will restart. */
@@ -37,8 +39,10 @@ export const router = t.router;
 
 // Runs before input validation, so a missing confirmation is PRECONDITION_FAILED whatever else the input lacks. The
 // danger mutations also declare `confirmed: z.literal(true)`, which makes the web client pass it.
-const confirmDanger = t.middleware(async ({ meta, getRawInput, next }) => {
+const confirmDanger = t.middleware(async ({ ctx, meta, getRawInput, next }) => {
   if (meta?.danger) {
+    if (ctx.client.kind === 'agent')
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'An agent cannot confirm this action' });
     const input = await getRawInput();
     if (!(typeof input === 'object' && input !== null && 'confirmed' in input && input.confirmed === true))
       throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Hold to confirm this action' });
@@ -66,5 +70,12 @@ export const jobProcedure = protectedProcedure.use(({ ctx, meta, path, next }) =
 /** The PC only: device administration and pairing codes. A paired phone cannot pair or revoke other phones. */
 export const loopbackProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.client.kind !== 'loopback') throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the PC can do this' });
+  return next();
+});
+
+/** Settings exposed to agents remain unavailable to paired devices. */
+export const agentOrLoopbackProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.client.kind !== 'loopback' && ctx.client.kind !== 'agent')
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the PC or an agent can do this' });
   return next();
 });

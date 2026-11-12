@@ -46,6 +46,8 @@ const mutations = Object.entries<unknown>(appRouter._def.procedures).flatMap(([p
 // Later steps derive LLM tools from this meta, so no action may lack it.
 void test('every mutation carries an Italian label and an English description in its meta', () => {
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
+    'agents.create',
+    'agents.revoke',
     'airplay.start',
     'airplay.stop',
     'audio.cycleOutput',
@@ -54,6 +56,8 @@ void test('every mutation carries an Italian label and an English description in
     'audio.stepVolume',
     'audio.toggleMicMute',
     'audio.toggleMute',
+    'confirmations.confirm',
+    'confirmations.deny',
     'devices.revoke',
     'jobs.cancel',
     'layout.reset',
@@ -86,6 +90,7 @@ void test('every mutation carries an Italian label and an English description in
     'pomodoro.stop',
     'settings.restore',
     'settings.save',
+    'settings.saveCore',
     'system.lock',
     'system.powerOff',
     'system.reboot',
@@ -107,6 +112,7 @@ void test('every danger mutation is refused without confirmed: true and runs wit
     ({ procedure }) => z.object({ danger: z.literal(true) }).safeParse(procedure._def.meta).success,
   );
   assert.deepEqual(danger.map((m) => m.path).toSorted(), [
+    'agents.revoke',
     'devices.revoke',
     'jobs.cancel',
     'music.deletePlaylist',

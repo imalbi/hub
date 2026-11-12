@@ -2,6 +2,9 @@
 import { moduleDbPath, openDatabase } from './db/index.ts';
 import { router } from './core/trpc.ts';
 import { createRegistryRouter } from './core/registry.ts';
+import { createConfirmations } from './core/confirmations.ts';
+import { createConfirmationsRouter } from './core/confirmations-router.ts';
+import { agentsRouter } from './core/agents-router.ts';
 import { createJobRunner } from './core/jobs.ts';
 import { createJobsRouter } from './core/jobs-router.ts';
 import { streamSpawn } from './core/exec.ts';
@@ -22,12 +25,14 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     configPath,
     dbPath = ':memory:',
     jobs = createJobRunner(deps.db, streamSpawn, 2),
+    confirmations = createConfirmations(),
   }: {
     states?: ModuleStates;
     off?: readonly string[];
     configPath?: string;
     dbPath?: string;
     jobs?: ReturnType<typeof createJobRunner>;
+    confirmations?: ReturnType<typeof createConfirmations>;
   } = {},
 ) {
   type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
@@ -59,10 +64,15 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   const app = router({ ...Object.fromEntries(entries), ...extra, jobs: createJobsRouter(jobs) } as Entries & {
     jobs: ReturnType<typeof createJobsRouter>;
   });
+  const settings = createSettingsRouter({ states, configPath });
+  const confirmationRouter = createConfirmationsRouter(confirmations);
+  const registered = router({ ...app._def.record, settings, agents: agentsRouter, confirmations: confirmationRouter });
   return router({
     ...app._def.record,
-    registry: createRegistryRouter(() => app),
-    settings: createSettingsRouter({ states, configPath }),
+    registry: createRegistryRouter(() => registered),
+    settings,
+    agents: agentsRouter,
+    confirmations: confirmationRouter,
     modules: createEnabledRouter(states),
   });
 }

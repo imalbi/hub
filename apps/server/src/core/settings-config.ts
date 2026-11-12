@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDeepStrictEqual } from 'node:util';
 
 /** Pure helpers for Impostazioni: secret fields of a module schema, and the config file as plain JSON. */
 
@@ -11,6 +12,81 @@ const isKept = (value: unknown) => isObject(value) && Object.keys(value).length 
 
 /** The module's JSON Schema as the form reads it: input side, with anything zod cannot draw left open. */
 export const formSchema = (schema: z.ZodType) => z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' });
+
+/** Detect changes to any manually managed field, including secrets in arrays and unions. */
+export function hasManualChanges(schema: z.ZodType, before: unknown, after: unknown): boolean {
+  const walk = (node: unknown, oldValue: unknown, newValue: unknown): boolean => {
+    if (!isObject(node)) return false;
+    if (node.manual === true || node.secret === true) return !isDeepStrictEqual(oldValue, newValue);
+    const branches = [node.anyOf, node.oneOf, node.allOf].flatMap((list) => (Array.isArray(list) ? list : []));
+    if (branches.some((branch) => walk(branch, oldValue, newValue))) return true;
+    if (isObject(node.properties)) {
+      for (const [key, child] of Object.entries(node.properties)) {
+        if (walk(child, isObject(oldValue) ? oldValue[key] : undefined, isObject(newValue) ? newValue[key] : undefined))
+          return true;
+      }
+    }
+    if (isObject(node.additionalProperties)) {
+      const oldObject = isObject(oldValue) ? oldValue : {};
+      const newObject = isObject(newValue) ? newValue : {};
+      const properties = isObject(node.properties) ? node.properties : {};
+      for (const key of new Set([...Object.keys(oldObject), ...Object.keys(newObject)]))
+        if (!(key in properties) && walk(node.additionalProperties, oldObject[key], newObject[key])) return true;
+    }
+    if (node.items && (Array.isArray(oldValue) || Array.isArray(newValue))) {
+      const oldItems = Array.isArray(oldValue) ? oldValue : [];
+      const newItems = Array.isArray(newValue) ? newValue : [];
+      for (let index = 0; index < Math.max(oldItems.length, newItems.length); index++)
+        if (walk(node.items, oldItems[index], newItems[index])) return true;
+    }
+    return false;
+  };
+  return walk(formSchema(schema), before, after);
+}
+
+function mapSecrets(node: unknown, value: unknown, stored: unknown, restoring: boolean): unknown {
+  if (!isObject(node)) return value;
+  if (node.secret === true) {
+    if (restoring) return isKept(value) ? stored : value;
+    return value === undefined ? undefined : { set: true };
+  }
+  let result = value;
+  for (const branches of [node.anyOf, node.oneOf, node.allOf])
+    if (Array.isArray(branches)) for (const branch of branches) result = mapSecrets(branch, result, stored, restoring);
+  if (isObject(node.properties) && isObject(result)) {
+    const copy = { ...result };
+    for (const [key, child] of Object.entries(node.properties)) {
+      if (key in copy) copy[key] = mapSecrets(child, copy[key], isObject(stored) ? stored[key] : undefined, restoring);
+    }
+    result = copy;
+  }
+  if (isObject(node.additionalProperties) && isObject(result)) {
+    const copy = { ...result };
+    const properties = isObject(node.properties) ? node.properties : {};
+    for (const key of Object.keys(copy))
+      if (!(key in properties))
+        copy[key] = mapSecrets(
+          node.additionalProperties,
+          copy[key],
+          isObject(stored) ? stored[key] : undefined,
+          restoring,
+        );
+    result = copy;
+  }
+  if (node.items && Array.isArray(result)) {
+    const previous = Array.isArray(stored) ? stored : [];
+    result = result.map((item, index) => mapSecrets(node.items, item, previous[index], restoring));
+  }
+  return result;
+}
+
+export function redactSchema(schema: z.ZodType, value: unknown): unknown {
+  return mapSecrets(formSchema(schema), value, undefined, false);
+}
+
+export function restoreSchemaSecrets(schema: z.ZodType, incoming: unknown, stored: unknown): unknown {
+  return mapSecrets(formSchema(schema), incoming, stored, true);
+}
 
 /** Property paths marked `.meta({ secret: true })`, at any depth through objects and unions. */
 export function secretPaths(schema: z.ZodType): string[][] {

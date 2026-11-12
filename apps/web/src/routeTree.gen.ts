@@ -24,6 +24,7 @@ import { Route as DeskSystemRouteImport } from './routes/desk.system'
 import { Route as DeskSettingsIndexRouteImport } from './routes/desk.settings.index'
 import { Route as DeskSettingsModuleRouteImport } from './routes/desk.settings.$module'
 import { Route as DeskSettingsAppearanceRouteImport } from './routes/desk.settings.appearance'
+import { Route as DeskSettingsCoreRouteImport } from './routes/desk.settings.core'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,6 +101,11 @@ const DeskSettingsAppearanceRoute = DeskSettingsAppearanceRouteImport.update({
   path: '/appearance',
   getParentRoute: () => DeskSettingsRoute,
 } as any)
+const DeskSettingsCoreRoute = DeskSettingsCoreRouteImport.update({
+  id: '/core',
+  path: '/core',
+  getParentRoute: () => DeskSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/desk/': typeof DeskIndexRoute
   '/desk/settings/$module': typeof DeskSettingsModuleRoute
   '/desk/settings/appearance': typeof DeskSettingsAppearanceRoute
+  '/desk/settings/core': typeof DeskSettingsCoreRoute
   '/desk/settings/': typeof DeskSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/desk': typeof DeskIndexRoute
   '/desk/settings/$module': typeof DeskSettingsModuleRoute
   '/desk/settings/appearance': typeof DeskSettingsAppearanceRoute
+  '/desk/settings/core': typeof DeskSettingsCoreRoute
   '/desk/settings': typeof DeskSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/desk/': typeof DeskIndexRoute
   '/desk/settings/$module': typeof DeskSettingsModuleRoute
   '/desk/settings/appearance': typeof DeskSettingsAppearanceRoute
+  '/desk/settings/core': typeof DeskSettingsCoreRoute
   '/desk/settings/': typeof DeskSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/desk/'
     | '/desk/settings/$module'
     | '/desk/settings/appearance'
+    | '/desk/settings/core'
     | '/desk/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/desk'
     | '/desk/settings/$module'
     | '/desk/settings/appearance'
+    | '/desk/settings/core'
     | '/desk/settings'
   id:
     | '__root__'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/desk/'
     | '/desk/settings/$module'
     | '/desk/settings/appearance'
+    | '/desk/settings/core'
     | '/desk/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -316,18 +328,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskSettingsAppearanceRouteImport
       parentRoute: typeof DeskSettingsRoute
     }
+    '/desk/settings/core': {
+      id: '/desk/settings/core'
+      path: '/core'
+      fullPath: '/desk/settings/core'
+      preLoaderRoute: typeof DeskSettingsCoreRouteImport
+      parentRoute: typeof DeskSettingsRoute
+    }
   }
 }
 
 interface DeskSettingsRouteChildren {
   DeskSettingsModuleRoute: typeof DeskSettingsModuleRoute
   DeskSettingsAppearanceRoute: typeof DeskSettingsAppearanceRoute
+  DeskSettingsCoreRoute: typeof DeskSettingsCoreRoute
   DeskSettingsIndexRoute: typeof DeskSettingsIndexRoute
 }
 
 const DeskSettingsRouteChildren: DeskSettingsRouteChildren = {
   DeskSettingsModuleRoute: DeskSettingsModuleRoute,
   DeskSettingsAppearanceRoute: DeskSettingsAppearanceRoute,
+  DeskSettingsCoreRoute: DeskSettingsCoreRoute,
   DeskSettingsIndexRoute: DeskSettingsIndexRoute,
 }
 

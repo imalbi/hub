@@ -11,6 +11,7 @@ import { ServerStatus } from '../modules/system/server-status.tsx';
 import { useConnectionLost } from '../lib/trpc.ts';
 import { useLayout } from '../shell/use-layout.ts';
 import { ThemeProvider } from '../theme/theme.tsx';
+import { AgentConfirmation } from '../shell/agent-confirmation.tsx';
 
 export const Route = createFileRoute('/deck')({ component: Deck });
 
@@ -29,6 +30,7 @@ function PairedDeck() {
   return (
     <DeckFrame status={connectionLost ? m.connection_lost() : <ServerStatus />}>
       <MediaProvider>
+        <AgentConfirmation deck />
         <DeckPages />
         <DeckPlayer />
       </MediaProvider>

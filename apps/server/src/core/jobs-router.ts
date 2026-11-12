@@ -8,6 +8,7 @@ export function createJobsRouter(jobs: ReturnType<typeof createJobRunner>) {
     list: protectedProcedure.query(() => jobs.list()),
     onUpdate: protectedProcedure.subscription(({ signal }) => jobs.updates(signal)),
     output: protectedProcedure
+      .meta({ label: 'Leggi output job', description: 'Read the latest output lines of a job' })
       .input(z.object({ jobId: z.string().uuid(), limit: z.number().int().min(1).max(500).optional() }))
       .query(({ input }) => jobs.output(input.jobId, input.limit)),
     onOutput: protectedProcedure
