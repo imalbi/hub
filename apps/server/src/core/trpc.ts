@@ -4,6 +4,7 @@ import type { Client, DeviceSockets } from './auth.ts';
 import type { CoreConfig } from './config-schema.ts';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
+import type { createJobRunner } from './jobs.ts';
 /** Registry metadata for an action (a mutation). Later steps derive LLM tools and the danger check from it. */
 export type ActionMeta = {
   /** Short Italian label shared by registry interfaces. */
@@ -12,11 +13,14 @@ export type ActionMeta = {
   description: string;
   /** Refused unless the input carries `confirmed: true`, set only by a hold-to-confirm (see `confirmDanger`). */
   danger?: boolean;
+  job?: boolean;
+  timeoutMs?: number;
 };
 
 export type Context = {
   db: Db;
   run: Run;
+  jobs: ReturnType<typeof createJobRunner>;
   config: CoreConfig;
   files: Files;
   /** Who is calling, decided once per request (per connection for a WebSocket) in `createContext`. */
@@ -49,6 +53,14 @@ export const publicProcedure = t.procedure.use(confirmDanger);
 export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
   if (ctx.client.kind === 'anonymous') throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Pair this device first' });
   return next();
+});
+
+/** Binds a declared job's registry path and timeout to the handler's fixed command. */
+export const jobProcedure = protectedProcedure.use(({ ctx, meta, path, next }) => {
+  if (!meta?.job) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Job metadata required' });
+  return next({
+    ctx: { startJob: (bin: string, args: string[]) => ({ jobId: ctx.jobs.start(path, bin, args, meta.timeoutMs) }) },
+  });
 });
 
 /** The PC only: device administration and pairing codes. A paired phone cannot pair or revoke other phones. */

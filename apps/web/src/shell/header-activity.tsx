@@ -5,13 +5,20 @@ import { LiveActivity } from '../components/ui/live-activity.tsx';
 import { m } from '../paraglide/messages.js';
 import { usePomodoro } from '../modules/pomodoro/use-pomodoro.ts';
 import { useConnectionLost } from '../lib/trpc.ts';
+import { useJobs } from '../modules/jobs/jobs.tsx';
 
 export function HeaderActivity() {
   const timer = usePomodoro();
+  const running = useJobs().filter((job) => job.status === 'running').length;
   const lost = useConnectionLost();
   const navigate = useNavigate();
   return (
     <div className="flex items-center gap-md">
+      {running > 0 && (
+        <button type="button" onClick={() => void navigate({ to: '/desk/system', search: { tab: 'jobs' } })}>
+          <Badge>{m.jobs_running({ count: running })}</Badge>
+        </button>
+      )}
       <LiveActivity
         expanded={false}
         triggerLabel={m.zone_open({ zone: m.zone_study() })}

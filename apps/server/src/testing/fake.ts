@@ -10,7 +10,8 @@ import type { IsLoopback } from '../core/auth.ts';
 import { z } from 'zod';
 import { configSchema, emptyConfig, type Config } from '../core/config.ts';
 import { hueStateSchema } from '../integrations/hue/contracts.ts';
-import { createFakeDesktop } from './fake-desktop.ts';
+import { createFakeDesktop, fakeStreamSpawn } from './fake-desktop.ts';
+import type { createJobRunner } from '../core/jobs.ts';
 import { getFakeHue } from './fake-hue.ts';
 import { buildServer } from '../server.ts';
 import type { Run } from '../core/exec.ts';
@@ -85,6 +86,7 @@ const dbPath = join(runDir, 'hub-e2e.db');
 // How long the server stays down on a restart, long enough for the page to show it.
 const restartDelayMs = Number(process.env.HUB_E2E_RESTART_MS ?? 1500);
 let failMail = false;
+let jobs: ReturnType<typeof createJobRunner> | undefined;
 const mailCalls: string[][] = [];
 
 /** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
@@ -226,6 +228,10 @@ function build() {
     deps: {
       run,
       fetch: fakeFetch,
+      spawn: fakeStreamSpawn,
+      onJobs: (runner) => {
+        jobs = runner;
+      },
     },
     config: configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) }),
     isLoopback,
@@ -251,6 +257,7 @@ function restart() {
 const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HUB_PORT ?? 4190) });
 
 function hooks(server: typeof app) {
+  server.post('/__fake/jobs', () => ({ jobId: jobs?.start('fake.job', 'fake-job', []) }));
   server.post('/__fake/sites', (request, reply) => {
     const body = z.object({ enabled: z.boolean() }).safeParse(request.body);
     if (!body.success) return reply.code(400).send();

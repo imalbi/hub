@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { playPause, restoreDesktop } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { controlSockets } from './sockets.ts';
+import { SERVER_URL } from './hosts.ts';
 
 const audioTile = (page: Page) => page.getByRole('button', { name: /^Uscita audio/ });
 const mediaTile = (page: Page) => page.getByRole('button', { name: /^Musica/ });
@@ -287,5 +288,18 @@ test('volume, microphone and AirPlay controls update the fake desktop', async ({
     if (state.micMuted) await pc.post('/trpc/audio.toggleMicMute', { data: {} });
     await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
     await pc.post('/trpc/airplay.stop', { data: {} });
+  }
+});
+
+test('the jobs badge shows only while a fake job runs', async ({ page, pc, request }, testInfo) => {
+  const started = await request.post(`${SERVER_URL}/__fake/jobs`);
+  const { jobId } = await started.json();
+  try {
+    await expect(page.getByLabel('Job in esecuzione: 1')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('deck-jobs.png') });
+    await pc.post('/trpc/jobs.cancel', { data: { jobId, confirmed: true } });
+    await expect(page.getByLabel('Job in esecuzione: 1')).toHaveCount(0);
+  } finally {
+    await pc.post('/trpc/jobs.cancel', { data: { jobId, confirmed: true } });
   }
 });

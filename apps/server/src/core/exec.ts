@@ -1,4 +1,25 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { createInterface } from 'node:readline';
+
+export type StreamSpawn = (
+  bin: string,
+  args: string[],
+  line: (text: string, stream: 'stdout' | 'stderr') => void,
+  end: (code: number | null) => void,
+) => { kill: () => void };
+
+export const streamSpawn: StreamSpawn = (bin, args, line, end) => {
+  const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  createInterface({ input: child.stdout }).on('line', (text) => line(text, 'stdout'));
+  createInterface({ input: child.stderr }).on('line', (text) => line(text, 'stderr'));
+  child.on('error', () => {});
+  child.on('close', end);
+  return {
+    kill: () => {
+      child.kill('SIGKILL');
+    },
+  };
+};
 
 export type RunResult = { stdout: string; stderr: string; code: number };
 export type Run = (bin: string, args: string[], options?: { timeoutMs?: number }) => Promise<RunResult>;

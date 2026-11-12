@@ -1,6 +1,7 @@
 import { createFiles } from './core/files.ts';
 import { registerFiles } from './core/file-routes.ts';
 import type { IncomingMessage } from 'node:http';
+import type { AnyRouter } from '@trpc/server';
 import { extname } from 'node:path';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -20,7 +21,8 @@ import {
 } from './core/auth.ts';
 import { emptyConfig, type Config } from './core/config.ts';
 import { openDb } from './db/index.ts';
-import { run as realRun, type Run } from './core/exec.ts';
+import { run as realRun, streamSpawn, type Run, type StreamSpawn } from './core/exec.ts';
+import { createJobRunner } from './core/jobs.ts';
 import { publicModules } from './modules.ts';
 import { createMusicModule } from './modules/music/server.ts';
 import { discoverModules } from './core/discovery.ts';
@@ -44,7 +46,13 @@ export function buildServer({
 }: {
   dbPath: string;
   music?: Parameters<typeof createMusicModule>[0];
-  deps?: { run?: Run; fetch?: typeof fetch };
+  deps?: {
+    run?: Run;
+    fetch?: typeof fetch;
+    spawn?: StreamSpawn;
+    onJobs?: (jobs: ReturnType<typeof createJobRunner>) => void;
+    testRouters?: Record<string, AnyRouter>;
+  };
   config?: Config;
   isLoopback?: IsLoopback;
   /** The built web app (`apps/web/dist`). Without it the server answers the API only. */
@@ -62,8 +70,11 @@ export function buildServer({
 }) {
   const run = deps.run ?? realRun;
   const db = openDb(dbPath);
+  const jobs = createJobRunner(db, deps.spawn ?? streamSpawn, config.jobs.maxConcurrent);
+  deps.onJobs?.(jobs);
   const app = fastify({ logger: process.env.NODE_ENV !== 'test' });
   app.addHook('onClose', () => db.$client.close());
+  app.addHook('onClose', () => jobs.close());
   const files = createFiles();
   app.addHook('onClose', () => files.close());
   app.register(async (scope) =>
@@ -120,12 +131,20 @@ export function buildServer({
     const modules = music
       ? publicModules.map((module) => (module.name === 'music' ? createMusicModule(music) : module))
       : publicModules;
-    const appRouter = createAppRouter(modules, moduleDeps, config, onClose, extra, {
-      states,
-      off: config.modulesOff,
-      dbPath,
-      configPath: settings?.configPath,
-    });
+    const appRouter = createAppRouter(
+      modules,
+      moduleDeps,
+      config,
+      onClose,
+      { ...extra, ...deps.testRouters },
+      {
+        states,
+        off: config.modulesOff,
+        dbPath,
+        configPath: settings?.configPath,
+        jobs,
+      },
+    );
     scope.register(fastifyTRPCPlugin, {
       prefix: '/trpc',
       useWSS: true,
@@ -143,6 +162,7 @@ export function buildServer({
           return {
             db,
             run,
+            jobs,
             config,
             files,
             client,

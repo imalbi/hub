@@ -2,6 +2,9 @@
 import { moduleDbPath, openDatabase } from './db/index.ts';
 import { router } from './core/trpc.ts';
 import { createRegistryRouter } from './core/registry.ts';
+import { createJobRunner } from './core/jobs.ts';
+import { createJobsRouter } from './core/jobs-router.ts';
+import { streamSpawn } from './core/exec.ts';
 import { createEnabledRouter, createSettingsRouter } from './core/settings-router.ts';
 import type { ModuleDefinition, ModuleDeps, ModuleInstance } from './core/module.ts';
 import { configSchemaOf, createModuleStates, type ModuleStates } from './core/module-states.ts';
@@ -18,7 +21,14 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     off = [],
     configPath,
     dbPath = ':memory:',
-  }: { states?: ModuleStates; off?: readonly string[]; configPath?: string; dbPath?: string } = {},
+    jobs = createJobRunner(deps.db, streamSpawn, 2),
+  }: {
+    states?: ModuleStates;
+    off?: readonly string[];
+    configPath?: string;
+    dbPath?: string;
+    jobs?: ReturnType<typeof createJobRunner>;
+  } = {},
 ) {
   type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
   const entries = modules.map((definition) => {
@@ -46,7 +56,9 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   });
   // fromEntries erases the literal name/router association; extra routers remain runtime-only.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tRPC consumes the mapped record proven by each factory.
-  const app = router({ ...Object.fromEntries(entries), ...extra } as Entries);
+  const app = router({ ...Object.fromEntries(entries), ...extra, jobs: createJobsRouter(jobs) } as Entries & {
+    jobs: ReturnType<typeof createJobsRouter>;
+  });
   return router({
     ...app._def.record,
     registry: createRegistryRouter(() => app),

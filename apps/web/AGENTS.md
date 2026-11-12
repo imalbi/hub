@@ -210,3 +210,7 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - Media music uses `modules/music/favorite.tsx` for the current song and list rows; its three-view `ButtonGroup` in `search.tsx` is the extension point for playlists.
 
 - `ui/status-bars.tsx` adapts Hairline status-bars for the Sites history: copy is required from the caller, bars are keyboard-readable, and the last 30 remain visible in narrow containers. Sites with no configured entries are hidden from the rail and widget picker, decided by `sites.configured` (answered from the config; never `sites.state`, which waits for a running check); the settings restart invalidates their configuration query. `ZonePage` waits for that query on a direct Lavoro load before deciding the page is missing; the rail keeps an unknown configuration hidden to avoid changing keyboard shortcuts during load.
+
+## Jobs
+
+- The Sistema `Job` fill tab uses `modules/jobs/jobs.tsx` and the vendored MIT Hairline `ui/log-stream.tsx`, with Italian copy from Paraglide. It loads up to 500 output lines and subscribes for more; cancellation uses `HoldButton`. Upstream `bg-accent` (shadcn's subtle hover) was mapped to `bg-muted` in `log-stream.tsx`: here `accent` is the theme color and turned the level chips teal with unreadable counts. `rounded-panel` does not exist (radii are sm..xl); a wrong radius name compiles to nothing. The running count appears in `shell/header-activity.tsx` and the deck badge strip in `shell/deck-pages.tsx`.

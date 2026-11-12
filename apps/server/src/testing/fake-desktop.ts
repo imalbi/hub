@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Run, RunResult } from '../core/exec.ts';
+import type { Run, RunResult, StreamSpawn } from '../core/exec.ts';
 import { parsePwDump } from '../modules/audio/pipewire.ts';
 import { createFakeHimalaya } from './fake-himalaya.ts';
 
@@ -8,6 +8,21 @@ const { sinks, defaultName } = parsePwDump(dump);
 
 const ok = (stdout = ''): RunResult => ({ stdout, stderr: '', code: 0 });
 const refused: RunResult = { stdout: '', stderr: 'fake desktop: command not supported', code: 127 };
+
+export const fakeStreamSpawn: StreamSpawn = (bin, _args, line, end) => {
+  if (bin !== 'fake-job') {
+    queueMicrotask(() => end(127));
+    return { kill() {} };
+  }
+  let count = 0;
+  const timer = setInterval(() => line(`Riga ${++count}`, 'stdout'), 250);
+  return {
+    kill: () => {
+      clearInterval(timer);
+      end(null);
+    },
+  };
+};
 
 /**
  * A desktop in memory for tests and the e2e server: the `pw-dump` fixture with a movable default sink and one

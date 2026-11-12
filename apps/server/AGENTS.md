@@ -214,3 +214,8 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Public modules declaring `migrations` receive a separate database via `createAppRouter`, at the same `moduleDbPath` as discovered modules; module cleanup runs before database closure.
 
 - Sites (`src/modules/sites/`) uses one module database: raw checks are retained for 24 hours, local-date rollups for 90 days. Each failed five-minute poll counts as five estimated down minutes; an unobserved day is no data. The poller must close before its database and tests inject fetch.
+
+## Jobs
+
+- `core/jobs.ts` runs registry jobs with `jobs.maxConcurrent` (default 2), a 10-minute default timeout and a fakeable `StreamSpawn` from `core/exec.ts`; commands use a binary plus argument array, never a shell. A job action uses `jobProcedure.meta({ label, description, job: true, timeoutMs? })` and returns `ctx.startJob(binary, args)`; only registered actions choose commands.
+- `jobs.list/onUpdate/output/onOutput/cancel` are protected. Cancellation is `danger: true` and requires `confirmed: true`. The core SQLite history retains 100 records and 50 output lines per record; the live runner keeps 500 lines per job. Shutdown kills and records active and queued jobs as cancelled. No real job action ships yet.

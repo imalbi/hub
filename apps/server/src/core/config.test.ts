@@ -17,6 +17,7 @@ function configFile(content: string) {
 void test('a missing config file is an empty config', () => {
   assert.deepEqual(loadConfig(join(dir, 'missing.json')), {
     audio: { outputs: [] },
+    jobs: { maxConcurrent: 2 },
     modulesOff: [],
     server: { host: '127.0.0.1', allowedOrigins: [] },
     pomodoro: { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },

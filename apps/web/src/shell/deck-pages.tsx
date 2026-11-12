@@ -10,6 +10,7 @@ import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m } from '../paraglide/messages.js';
 import { useDeckPages } from './pages.ts';
+import { useJobs } from '../modules/jobs/jobs.tsx';
 
 const storageKey = 'hub.deck.page';
 
@@ -28,6 +29,7 @@ function storedPage(pages: { id: string }[]) {
  */
 export function DeckPages() {
   const trpc = useTRPC();
+  const runningJobs = useJobs().filter((job) => job.status === 'running').length;
   const isOn = useIsOn();
   // A module that is off has no router: its subscription would only fail.
   const news = useSubscription(trpc.news.onState.subscriptionOptions(undefined, { enabled: isOn('news') }));
@@ -70,6 +72,11 @@ export function DeckPages() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-md">
       <nav aria-label={m.deck_activity()} className="flex justify-center gap-xs">
+        {runningJobs > 0 && (
+          <span aria-label={m.jobs_running({ count: runningJobs })}>
+            <Badge count={runningJobs} /> {m.jobs_title()}
+          </span>
+        )}
         {unread !== null && unread > 0 && (
           <button
             type="button"

@@ -7,6 +7,8 @@ const metadata = z.object({
   label: z.string().trim().min(1),
   description: z.string().min(1),
   danger: z.boolean().default(false),
+  job: z.boolean().default(false),
+  timeoutMs: z.number().int().positive().optional(),
 });
 
 function isProcedure(value: unknown): value is AnyProcedure {

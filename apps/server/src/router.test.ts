@@ -55,6 +55,7 @@ void test('every mutation carries an Italian label and an English description in
     'audio.toggleMicMute',
     'audio.toggleMute',
     'devices.revoke',
+    'jobs.cancel',
     'layout.reset',
     'layout.save',
     'media.next',
@@ -107,6 +108,7 @@ void test('every danger mutation is refused without confirmed: true and runs wit
   );
   assert.deepEqual(danger.map((m) => m.path).toSorted(), [
     'devices.revoke',
+    'jobs.cancel',
     'music.deletePlaylist',
     'settings.restore',
     'system.powerOff',
@@ -124,8 +126,8 @@ void test('every danger mutation is refused without confirmed: true and runs wit
       });
     // From the PC, so only the missing confirmation can refuse it. The ids do not exist (a delete answers 404) and the
     // fake desktop only records power commands (200): either way the action ran.
-    assert.equal((await call({ id: 999 })).statusCode, 412, path);
-    assert.equal((await call({ id: 999, confirmed: false })).statusCode, 412, path);
-    assert.ok([200, 404].includes((await call({ id: 999, confirmed: true })).statusCode), path);
+    assert.equal((await call({ id: 999, jobId: 'missing' })).statusCode, 412, path);
+    assert.equal((await call({ id: 999, jobId: 'missing', confirmed: false })).statusCode, 412, path);
+    assert.ok([200, 404].includes((await call({ id: 999, jobId: 'missing', confirmed: true })).statusCode), path);
   }
 });

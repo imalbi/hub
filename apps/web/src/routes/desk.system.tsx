@@ -5,6 +5,7 @@ import { AudioPanel } from '../modules/audio/desk-panel.tsx';
 import { ControlsWidget } from '../modules/system/controls-widget.tsx';
 import { StatusPanel } from '../modules/system/desk-panel.tsx';
 import { PowerWidget } from '../modules/system/power-widget.tsx';
+import { JobsPage } from '../modules/jobs/jobs.tsx';
 import { m } from '../paraglide/messages.js';
 import { ZonePage } from '../shell/zone-page.tsx';
 
@@ -26,7 +27,10 @@ function SystemTab() {
   );
 }
 
-const own = [{ id: 'system', label: m.zone_system, component: SystemTab }];
+const own = [
+  { id: 'system', label: m.zone_system, component: SystemTab },
+  { id: 'jobs', label: m.jobs_title, component: JobsPage, fill: true },
+];
 
 function System() {
   return <ZonePage zone="system" own={own} />;

@@ -1,5 +1,15 @@
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+export const jobs = sqliteTable('jobs', {
+  id: text('id').primaryKey(),
+  action: text('action').notNull(),
+  status: text('status').notNull(),
+  startedAt: integer('started_at').notNull(),
+  endedAt: integer('ended_at'),
+  exitCode: integer('exit_code'),
+  output: text('output').notNull().default('[]'),
+});
+
 export const pomodoroSessions = sqliteTable('pomodoro_sessions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   kind: text('kind', { enum: ['focus', 'break'] }).notNull(),

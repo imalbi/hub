@@ -1,5 +1,17 @@
 import { z } from 'zod';
 export const coreConfigSchema = z.object({
+  jobs: z
+    .object({
+      maxConcurrent: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(2)
+        .meta({ title: 'Job simultanei', description: 'Numero massimo di job eseguiti contemporaneamente.' }),
+    })
+    .default({ maxConcurrent: 2 })
+    .meta({ title: 'Job', description: 'Limiti dei job in esecuzione.' }),
   server: z
     .object({
       // Where to listen. Loopback until the deck is paired; `0.0.0.0` (or a LAN address) opens Hub to the home network.
