@@ -205,6 +205,7 @@ export function MultiSelect({
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-label={`${label}: ${names.length ? names.join(', ') : copy.none}`}
+          aria-describedby={error ? `${ids.id}-error` : hint ? `${ids.id}-hint` : undefined}
           onClick={() => (open ? close(false) : (setActive(null), setOpen(true)))}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') {
@@ -213,7 +214,7 @@ export function MultiSelect({
               setOpen(true);
             }
           }}
-          className={`h-9 pl-4 pr-3 flex w-full cursor-pointer items-center gap-xs rounded-full bg-background text-left text-[13.5px] shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-200 hover:bg-accent/40 disabled:cursor-default disabled:opacity-50 ${
+          className={`flex h-touch w-full cursor-pointer items-center gap-xs rounded-full bg-background pr-sm pl-md text-left text-body shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-200 hover:bg-accent/40 disabled:cursor-default disabled:opacity-50 sm:text-label ${
             error
               ? 'shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-red-500)_55%,transparent)]'
               : open
@@ -233,7 +234,7 @@ export function MultiSelect({
             }}
           >
             <span className="min-w-0 overflow-hidden">
-              <span className="block rounded-full bg-muted px-[0.375rem] text-[11.5px] font-medium text-muted-foreground tabular-nums">
+              <span className="block rounded-full bg-muted px-xs text-caption text-muted-foreground tabular-nums">
                 +<NumberRoll value={Math.max(1, extra)} />
               </span>
             </span>
@@ -242,7 +243,7 @@ export function MultiSelect({
             viewBox="0 0 16 16"
             fill="none"
             aria-hidden="true"
-            className="size-[0.875rem] shrink-0 text-muted-foreground"
+            className="size-icon-sm shrink-0 text-muted-foreground"
             style={{
               transform: open ? 'rotate(180deg)' : 'none',
               transition: reduced ? 'none' : `transform 380ms ${EASE_OUT}`,

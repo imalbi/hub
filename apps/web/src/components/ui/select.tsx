@@ -61,6 +61,7 @@ export function Select({
         block={block}
         size={size}
         label={label}
+        describedBy={error ? `${ids.id}-error` : hint ? `${ids.id}-hint` : undefined}
         value={current}
         onValueChange={(v) => {
           if (value === undefined) setOwn(v);

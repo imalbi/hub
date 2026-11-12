@@ -9,7 +9,14 @@ import { createHueBluez, HueError, type HueErrorCode, type HueTransport } from '
 import { setBrightnessInput, setPowerInput } from './contracts.ts';
 
 /** `modules.hue` in the owner's config, and all of it optional: with one paired Hue light nothing is needed. */
-export const hueConfigSchema = z.object({ address: z.string().min(1).optional() }).default({});
+export const hueConfigSchema = z
+  .object({
+    address: z.string().min(1).optional().meta({
+      title: 'Indirizzo',
+      description: 'Indirizzo Bluetooth della luce; se vuoto usa la prima luce Hue accoppiata.',
+    }),
+  })
+  .default({});
 export type HueConfig = z.output<typeof hueConfigSchema>;
 
 const trpcCodes = {

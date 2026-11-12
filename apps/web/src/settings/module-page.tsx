@@ -3,19 +3,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, notFound } from '@tanstack/react-router';
 import { useState } from 'react';
 import { HoldButton } from '../components/hold-button.tsx';
-import { Panel } from '../components/panel.tsx';
 import { ActionButton } from '../components/ui/action-button.tsx';
 import { Switch } from '../components/ui/switch.tsx';
-import { Tabs } from '../components/ui/tabs.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
 import { LocationSearch } from '../modules/weather/location-search.tsx';
-import { FieldControl } from './field-control.tsx';
-import { JsonBlock } from './json-block.tsx';
+import { AdvancedPanel } from './advanced-panel.tsx';
+import { ChangesPanel } from './changes-panel.tsx';
+import { ModuleForm } from './module-form.tsx';
 import { moduleLabel } from './module-label.ts';
-import { getAt, setAt, startsWith } from './path.ts';
+import { setAt, startsWith } from './path.ts';
 import { beginRestart } from './restart.ts';
-import { buildForm, type Field, type Path } from './schema-fields.ts';
+import { buildForm, type Path } from './schema-fields.ts';
 
 type Issue = { path: Path; message: string };
 const key = (path: Path) => path.join('\u0000');
@@ -31,9 +30,8 @@ export function ModulePage({ name }: { name: string }) {
   // The draft: `null` means untouched, so the page shows what the server holds without copying it into state.
   const [edit, setEdit] = useState<{ value: unknown } | null>(null);
   const [enabledEdit, setEnabledEdit] = useState<boolean | null>(null);
-  const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
+  const [blocked, setBlocked] = useState<Record<string, string>>({});
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [tab, setTab] = useState<string | null>(null);
   // Remounts the JSON blocks, which keep their own text, when the draft is dropped.
   const [resetCount, setResetCount] = useState(0);
   const [note, setNote] = useState<string | null>(null);
@@ -51,14 +49,9 @@ export function ModulePage({ name }: { name: string }) {
   const dirty =
     (edit !== null && JSON.stringify(edit.value) !== JSON.stringify(stored)) ||
     (enabledEdit !== null && enabledEdit !== serverEnabled);
-  const invalidJson = Object.keys(jsonErrors).length > 0;
+  const invalidJson = Object.keys(blocked).length > 0;
   const label = moduleLabel(name);
 
-  const grouped = new Map<string, Field[]>();
-  for (const field of form.fields) {
-    const section = field.path.slice(0, -1).join(' › ');
-    grouped.set(section, [...(grouped.get(section) ?? []), field]);
-  }
   const matched = (path: Path) =>
     form.fields.some((field) => startsWith(path, field.path)) ||
     form.blocks.some((block) => startsWith(path, block.path));
@@ -72,11 +65,17 @@ export function ModulePage({ name }: { name: string }) {
   const reset = () => {
     setEdit(null);
     setEnabledEdit(null);
-    setJsonErrors({});
+    setBlocked({});
     setIssues([]);
     setResetCount((count) => count + 1);
   };
   const edited = (path: Path, next: unknown) => setEdit({ value: setAt(value, path, next) });
+  // A control with rows or text that is not a valid value yet holds Salva back until it is.
+  const block = (path: Path, error: string | null) =>
+    setBlocked((previous) => {
+      const { [key(path)]: _dropped, ...rest } = previous;
+      return error === null ? rest : { ...rest, [key(path)]: error };
+    });
 
   async function submit() {
     const result = await save.mutateAsync({ module: name, enabled, value: schema ? value : undefined });
@@ -99,9 +98,7 @@ export function ModulePage({ name }: { name: string }) {
     await queryClient.invalidateQueries();
   }
 
-  const blocks = form.blocks;
-  const current = blocks.find((block) => key(block.path) === tab) ?? blocks[0];
-  const tabsId = `settings-blocks-${name}`;
+  const showAside = dirty || form.blocks.length > 0;
 
   return (
     <div className="flex flex-col gap-lg">
@@ -161,62 +158,43 @@ export function ModulePage({ name }: { name: string }) {
       {!schema && <p className="text-body text-muted-foreground">{m.settings_no_form()}</p>}
       {schema && (
         <div className="grid grid-cols-12 items-start gap-lg">
-          <Panel title={m.settings_essential()} className="col-span-5">
+          <ModuleForm
+            form={form}
+            value={value}
+            stored={stored}
+            resetCount={resetCount}
+            issueText={issueText}
+            onEdit={edited}
+            onBlock={block}
+          >
             {name === 'weather' && serverEnabled && (
               <LocationSearch onSelect={(location) => setEdit({ value: location })} />
             )}
-            {form.fields.length === 0 && <p className="text-body text-muted-foreground">{m.settings_no_essential()}</p>}
-            {[...grouped].map(([section, fields]) => (
-              <fieldset key={section} className="flex flex-col gap-md">
-                {section && <legend className="mb-sm text-label text-muted-foreground">{section}</legend>}
-                {fields.map((field) => (
-                  <div key={key(field.path)}>
-                    <FieldControl
-                      field={field}
-                      value={getAt(value, field.path)}
-                      saved={getAt(stored, field.path)}
-                      error={issueText(field.path)}
-                      onChange={(next) => edited(field.path, next)}
-                    />
-                    {field.description && <p className="text-caption text-muted-foreground">{field.description}</p>}
-                  </div>
-                ))}
-              </fieldset>
-            ))}
-          </Panel>
-          <Panel title={m.settings_advanced()} className="col-span-7">
-            {!current && <p className="text-body text-muted-foreground">{m.settings_no_advanced()}</p>}
-            {current && (
-              <>
-                {blocks.length > 1 && (
-                  <Tabs
-                    id={tabsId}
-                    label={m.settings_advanced_label()}
-                    value={key(current.path)}
-                    onValueChange={setTab}
-                    items={blocks.map((block) => ({ value: key(block.path), label: block.label }))}
-                  />
-                )}
-                <div role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-tab-${key(current.path)}`}>
-                  <JsonBlock
-                    key={`${key(current.path)}-${resetCount}`}
-                    label={current.label}
-                    value={getAt(value, current.path)}
-                    issues={issues
-                      .filter((issue) => startsWith(issue.path, current.path))
-                      .map((issue) => ({ path: issue.path.slice(current.path.length), message: issue.message }))}
-                    onChange={(next, error) => {
-                      setJsonErrors((previous) => {
-                        const { [key(current.path)]: _dropped, ...rest } = previous;
-                        return error === null ? rest : { ...rest, [key(current.path)]: error };
-                      });
-                      if (error === null) edited(current.path, next);
-                    }}
-                  />
-                </div>
-              </>
-            )}
-          </Panel>
+          </ModuleForm>
+          {showAside && (
+            <aside className="sticky top-0 col-span-5 flex flex-col gap-lg">
+              {dirty && (
+                <ChangesPanel
+                  draft={value}
+                  saved={stored}
+                  enabledChange={enabledEdit !== null && enabledEdit !== serverEnabled ? enabled : null}
+                />
+              )}
+              {form.blocks.length > 0 && (
+                <AdvancedPanel
+                  blocks={form.blocks}
+                  value={value}
+                  issues={issues}
+                  resetCount={resetCount}
+                  idKey={key}
+                  onChange={(blockItem, next, error) => {
+                    block(blockItem.path, error);
+                    if (error === null) edited(blockItem.path, next);
+                  }}
+                />
+              )}
+            </aside>
+          )}
         </div>
       )}
 

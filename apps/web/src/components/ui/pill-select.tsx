@@ -46,6 +46,8 @@ export interface PillSelectProps {
   onValueChange: (value: string) => void;
   /** Accessible name, e.g. "Column for Email". */
   label: string;
+  /** id of the element that describes the trigger (a hint or an error). */
+  describedBy?: string;
   /** Shown while nothing is chosen. */
   placeholder?: string;
   /** What the pill shows for a choice; the option's label by default. */
@@ -103,6 +105,7 @@ export function PillSelect({
   value,
   onValueChange,
   label,
+  describedBy,
   placeholder = 'Choose',
   display,
   renderValue,
@@ -362,6 +365,7 @@ export function PillSelect({
         aria-expanded={expanded}
         aria-controls={mounted ? listId : undefined}
         aria-label={`${label}: ${selected?.label ?? placeholder}`}
+        aria-describedby={describedBy}
         disabled={disabled}
         onClick={() => (expanded ? close() : open())}
         onKeyDown={(e) => {

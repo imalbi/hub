@@ -1,9 +1,17 @@
 import { z } from 'zod';
 
 export const locationSchema = z.object({
-  name: z.string().min(1),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
+  name: z.string().min(1).meta({ title: 'Nome', description: 'Nome del luogo mostrato accanto al meteo.' }),
+  latitude: z
+    .number()
+    .min(-90)
+    .max(90)
+    .meta({ title: 'Latitudine', description: 'Posizione nord-sud del luogo, da -90 a 90.', unit: 'gradi' }),
+  longitude: z
+    .number()
+    .min(-180)
+    .max(180)
+    .meta({ title: 'Longitudine', description: 'Posizione est-ovest del luogo, da -180 a 180.', unit: 'gradi' }),
 });
 const forecastSchema = z.object({
   current: z.object({ temperature_2m: z.number(), weather_code: z.number().int() }),

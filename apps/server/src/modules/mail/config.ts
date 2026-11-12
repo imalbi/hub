@@ -7,16 +7,26 @@ export const configSchema = z
     accounts: z
       .array(
         z.object({
-          label: z.string().trim().min(1).max(40),
+          label: z
+            .string()
+            .trim()
+            .min(1)
+            .max(40)
+            .meta({ title: 'Nome', description: "Come appare l'account nell'interfaccia." }),
           account: z
             .string()
             .min(1)
             .max(60)
-            .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/),
+            .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)
+            .meta({ title: 'Account himalaya', description: "Nome dell'account nella configurazione di himalaya." }),
         }),
       )
       .min(1)
-      .max(10),
+      .max(10)
+      .meta({
+        title: 'Account di posta',
+        description: 'Gli account da leggere; senza questa sezione la posta resta spenta.',
+      }),
   })
   .optional();
 

@@ -76,13 +76,13 @@ if (!example) {
     await page.getByLabel('Cerca località').fill('Località');
     await page.getByRole('button', { name: 'Cerca', exact: true }).click();
     await page.getByRole('button', { name: 'Località esempio, Regione esempio' }).click();
-    await expect(page.getByLabel('name', { exact: true })).toHaveValue('Località esempio');
-    await expect(page.getByLabel('latitude', { exact: true })).toHaveValue('1');
-    await expect(page.getByLabel('longitude', { exact: true })).toHaveValue('2');
+    await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Località esempio');
+    await expect(page.getByRole('group', { name: 'Latitudine' }).getByRole('status')).toHaveText(/^1\b/);
+    await expect(page.getByRole('group', { name: 'Longitudine' }).getByRole('status')).toHaveText(/^2\b/);
     await page.getByRole('button', { name: 'Salva e riavvia' }).click();
     await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
     await page.reload();
-    await expect(page.getByLabel('name', { exact: true })).toHaveValue('Località esempio');
+    await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Località esempio');
   });
 
   test('the list has Generale with Aspetto and Moduli with a row per module and its state', async ({ page, pc }) => {
@@ -133,45 +133,30 @@ if (!example) {
     ).toHaveAttribute('aria-current', 'page');
   });
 
-  test('a flat field is a control, a nested one a JSON block; a bad value or JSON shows its message and saves nothing', async ({
+  test('a flat field is a control and a list of objects is rows; a refused value shows its message and saves nothing', async ({
     page,
     pc,
   }) => {
     await page.goto('/desk/settings/pomodoro');
     const save = page.getByRole('button', { name: 'Salva e riavvia' });
     await expect(save).toBeDisabled();
-    const focus = page.getByRole('spinbutton', { name: 'focusMinutes' });
-    await focus.fill('30');
+    await page.getByRole('button', { name: 'Aumenta Durata del focus' }).click();
     await expect(save).toBeEnabled();
-    // A value the schema refuses comes back as a message next to the field, and nothing restarts.
-    await focus.fill('-1');
-    await save.click();
-    await expect(page.getByText(/Too small/)).toBeVisible();
-    await expect(page.getByText('Riavvio in corso')).toHaveCount(0);
-    const stored = (
-      await (
-        await pc.get('/trpc/settings.config?input=' + encodeURIComponent(JSON.stringify({ module: 'pomodoro' })))
-      ).json()
-    ).result.data.value;
-    expect(stored).toBeUndefined();
     await page.getByRole('button', { name: 'Annulla' }).click();
     await expect(save).toBeDisabled();
 
-    // Audio's outputs are a list of objects: not a flat field, so a JSON block with its own validation line.
+    // Audio's outputs are rows of objects: an empty required cell is left for the server to refuse, next to the field.
     await page.goto('/desk/settings/audio');
-    const block = page.getByRole('textbox', { name: 'Valore di outputs' });
-    await expect(block).toBeVisible();
-    await expect(block).toHaveCSS('font-family', /mono/i);
-    const audioSave = page.getByRole('button', { name: 'Salva e riavvia' });
-    // The switch makes the draft dirty on its own, so only the broken JSON can be what holds Salva back.
-    await page.getByRole('switch', { name: 'Modulo attivo' }).click();
-    await expect(audioSave).toBeEnabled();
-    await block.fill('{');
-    await expect(page.getByText(/JSON non valido/)).toBeVisible();
-    await expect(audioSave).toBeDisabled();
-    await block.fill('[]');
-    await expect(page.getByText('JSON valido')).toBeVisible();
-    await expect(audioSave).toBeEnabled();
+    await page.getByRole('button', { name: 'Aggiungi: Uscite audio' }).click();
+    await expect(page.getByRole('textbox', { name: 'Nome riga 1' })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Testo da cercare riga 1' })).toBeVisible();
+    await expect(save).toBeEnabled();
+    await save.click();
+    await expect(page.getByText(/Invalid input|expected string|Too small/).first()).toBeVisible();
+    await expect(page.getByText('Riavvio in corso')).toHaveCount(0);
+    const input = encodeURIComponent(JSON.stringify({ module: 'audio' }));
+    const config = data(await (await pc.get(`/trpc/settings.config?input=${input}`)).json());
+    expect(isRecord(config) && config.value).toBeFalsy();
   });
 
   test('a save restarts Hub: Riavvio in corso shows, then the page is back by itself and the module is off', async ({
@@ -207,6 +192,168 @@ if (!example) {
     } finally {
       await ensureOn(pc, 'music');
     }
+  });
+}
+
+/** The saved slice of a module's config as the server holds it now. */
+async function savedValue(pc: APIRequestContext, name: string) {
+  const input = encodeURIComponent(JSON.stringify({ module: name }));
+  const config = data(await (await pc.get(`/trpc/settings.config?input=${input}`)).json());
+  if (!isRecord(config)) throw new Error('no config');
+  return config.value;
+}
+
+/** Saves the draft and waits for Hub to be back, like a real owner would. */
+async function saveDraft(page: Page) {
+  await page.getByRole('button', { name: 'Salva e riavvia' }).click();
+  await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
+}
+
+/** Back to nothing written, for the next test (a plain API save restarts the fake in place). */
+async function clearExample(pc: APIRequestContext) {
+  if ((await savedValue(pc, 'hello')) === undefined) return;
+  await pc.post('/trpc/settings.save', { data: { module: 'hello', enabled: true, value: {} } });
+  await expect
+    .poll(async () => JSON.stringify(await savedValue(pc, 'hello').catch(() => 'down')), RESTARTED)
+    .toBe('{}');
+}
+
+if (example) {
+  test('a field shows its Italian title as name and its help as description, with the fallback when unset', async ({
+    page,
+  }) => {
+    await page.goto('/desk/settings/hello');
+    const greeting = page.getByRole('textbox', { name: 'Saluto', exact: true });
+    await expect(greeting).toHaveAccessibleDescription(/La frase che il modulo mostra\./);
+    const interval = page.getByRole('group', { name: 'Intervallo', exact: true });
+    await expect(interval).toHaveAccessibleDescription(/Ogni quanto ripete il saluto\./);
+    // Unset with a default: the fallback is named, through the option label for a choice.
+    await expect(interval).toHaveAccessibleDescription(/Predefinito: 15 minuti/);
+    await expect(page.getByRole('button', { name: /^Luogo:/ })).toHaveAccessibleDescription(/Predefinito: In sede/);
+    // Optional with no default.
+    await expect(page.getByRole('textbox', { name: 'Soprannome', exact: true })).toHaveAccessibleDescription(
+      /Non impostato/,
+    );
+  });
+
+  test('picking a labelled number saves the number and nothing unset is written', async ({ page, pc }) => {
+    try {
+      await page.goto('/desk/settings/hello');
+      await page.getByRole('button', { name: /^Luogo:/ }).click();
+      await page.getByRole('option', { name: 'Ibrido' }).click();
+      await saveDraft(page);
+      // Only what the owner set: no `repeatMinutes`, no `nickname`, no other default.
+      expect(await savedValue(pc, 'hello')).toEqual({ place: 3 });
+    } finally {
+      await clearExample(pc);
+    }
+  });
+
+  test('a map of numbers is rows: add, change and remove save exactly that map; a bad key holds Salva', async ({
+    page,
+    pc,
+  }) => {
+    // Two saves, each restarting Hub.
+    test.setTimeout(90_000);
+    try {
+      await page.goto('/desk/settings/hello');
+      const save = page.getByRole('button', { name: 'Salva e riavvia' });
+      const add = page.getByRole('button', { name: 'Aggiungi: Pesi' });
+      await add.click();
+      // A new row has no key yet: refused before anything is saved.
+      await expect(page.getByRole('alert').filter({ hasText: 'La chiave non può essere vuota.' })).toBeVisible();
+      await page.getByRole('textbox', { name: 'Pesi: chiave, riga 1' }).fill('alfa');
+      await page.getByRole('button', { name: 'Aumenta alfa' }).click();
+      await page.getByRole('button', { name: 'Aumenta alfa' }).click();
+      await add.click();
+      await page.getByRole('textbox', { name: 'Pesi: chiave, riga 2' }).fill('alfa');
+      await expect(page.getByRole('alert').filter({ hasText: "c'è già" })).toBeVisible();
+      await expect(save).toBeDisabled();
+      await page.getByRole('textbox', { name: 'Pesi: chiave, riga 2' }).fill('beta');
+      await expect(save).toBeEnabled();
+      await saveDraft(page);
+      expect(await savedValue(pc, 'hello')).toEqual({ weights: { alfa: 0.2, beta: 0 } });
+
+      await page.reload();
+      await page.getByRole('button', { name: 'Aumenta alfa' }).click();
+      await page.getByRole('button', { name: 'Rimuovi beta' }).click();
+      await saveDraft(page);
+      expect(await savedValue(pc, 'hello')).toEqual({ weights: { alfa: 0.3 } });
+    } finally {
+      await clearExample(pc);
+    }
+  });
+
+  for (const size of [
+    { width: 1920, height: 1080 },
+    { width: 3840, height: 2160 },
+  ]) {
+    test(`Avanzate fits its panel at ${size.width}x${size.height}`, async ({ page }) => {
+      await page.setViewportSize(size);
+      await page.goto('/desk/settings/hello');
+      const panel = page.getByRole('region', { name: 'Avanzate' });
+      const disclosure = panel.getByRole('button', { name: /^Gruppi/ });
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      await disclosure.click();
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+      await panel.getByRole('textbox', { name: 'Valore di Gruppi' }).fill(`[{"name":"${'x'.repeat(300)}","tags":[]}]`);
+      const overflow = await panel.evaluate((root) => {
+        const edge = root.getBoundingClientRect().right;
+        const wider = [...root.querySelectorAll('*')].filter((el) => el.getBoundingClientRect().right > edge + 0.5);
+        return { scrolls: root.scrollWidth > root.clientWidth, wider: wider.map((el) => el.tagName) };
+      });
+      expect(overflow).toEqual({ scrolls: false, wider: [] });
+    });
+  }
+
+  test('a long module page scrolls only inside the desk, never the document', async ({ page }) => {
+    // Screen-reader-only live regions are absolutely positioned: without a containing block inside the
+    // scroller they were placed against the body and stretched the document, so the page had two scrollbars.
+    await page.setViewportSize({ width: 1280, height: 500 });
+    await page.goto('/desk/settings/hello');
+    await expect(page.getByRole('heading', { name: 'Essenziale' })).toBeVisible();
+    const sizes = await page.evaluate(() => ({
+      document: document.documentElement.scrollHeight,
+      viewport: window.innerHeight,
+    }));
+    expect(sizes.document).toBeLessThanOrEqual(sizes.viewport);
+  });
+
+  test('broken JSON in an advanced block holds Salva until it parses again', async ({ page }) => {
+    await page.goto('/desk/settings/hello');
+    const save = page.getByRole('button', { name: 'Salva e riavvia' });
+    // The switch makes the draft dirty on its own, so only the broken JSON can be what holds Salva back.
+    await page.getByRole('switch', { name: 'Modulo attivo' }).click();
+    await expect(save).toBeEnabled();
+    const block = page.getByRole('region', { name: 'Avanzate' });
+    await block.getByRole('button', { name: /^Gruppi/ }).click();
+    const text = block.getByRole('textbox', { name: 'Valore di Gruppi' });
+    await expect(text).toHaveCSS('font-family', /mono/i);
+    await text.fill('{');
+    await expect(page.getByText(/JSON non valido/)).toBeVisible();
+    await expect(save).toBeDisabled();
+    await text.fill('[]');
+    await expect(page.getByText('JSON valido')).toBeVisible();
+    await expect(save).toBeEnabled();
+  });
+
+  test('a stepper, a select, a multi-select and a text input share height and text size', async ({ page }) => {
+    await page.goto('/desk/settings/hello');
+    const controls = [
+      page.getByRole('group', { name: 'Intervallo', exact: true }),
+      page.getByRole('button', { name: /^Luogo:/ }),
+      page.getByRole('button', { name: /^Luoghi accettati:/ }),
+      page.getByRole('textbox', { name: 'Saluto', exact: true }).locator('xpath=..'),
+    ];
+    const measured = [];
+    for (const control of controls) {
+      await expect(control).toBeVisible();
+      const box = await control.boundingBox();
+      const size = await control.evaluate((el) => getComputedStyle(el).fontSize);
+      measured.push({ height: Math.round(box?.height ?? 0), size });
+    }
+    expect(new Set(measured.map((entry) => entry.height)).size, JSON.stringify(measured)).toBe(1);
+    expect(new Set(measured.map((entry) => entry.size)).size, JSON.stringify(measured)).toBe(1);
   });
 }
 

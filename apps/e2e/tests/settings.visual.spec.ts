@@ -25,9 +25,9 @@ test.beforeEach(async ({ page }) => {
 
 const pages = [
   { path: '/desk/settings', ready: "Scegli una voce dall'elenco.", file: 'desk-settings-4k.png' },
-  { path: '/desk/settings/pomodoro', ready: 'focusMinutes', file: 'desk-settings-module-4k.png' },
-  // Audio has no flat field: its outputs are a list of objects, so the page is the JSON block and its validation line.
-  { path: '/desk/settings/audio', ready: 'JSON valido', file: 'desk-settings-advanced-4k.png' },
+  { path: '/desk/settings/pomodoro', ready: 'Durata del focus', file: 'desk-settings-module-4k.png' },
+  // Audio's outputs are a list of flat objects: the rows editor, shown here empty with its Aggiungi button.
+  { path: '/desk/settings/audio', ready: 'Uscite audio', file: 'desk-settings-rows-4k.png' },
 ] as const;
 
 for (const { path, ready, file } of pages) {

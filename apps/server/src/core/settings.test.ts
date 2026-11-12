@@ -7,7 +7,7 @@ import { test, type TestContext } from 'node:test';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { buildServer } from '../server.ts';
 import { emptyConfig } from './config.ts';
-import { secretPaths, getAt, setAt } from './settings-config.ts';
+import { formSchema, secretPaths, getAt, setAt } from './settings-config.ts';
 import { z } from 'zod';
 
 process.env.NODE_ENV = 'test';
@@ -272,4 +272,31 @@ void test('the switch alone is a save: no value, the slice stays as it is, only 
   const written = JSON.parse(await read());
   assert.deepEqual(written.modulesOff, ['vault']);
   assert.deepEqual(written.modules.vault, initialFile.modules.vault);
+});
+
+void test('the form schema carries title, description, unit, optionLabels and default', () => {
+  const schema = z.object({
+    hours: z.number().int().default(4).meta({ title: 'Ore', description: 'Quante ore', unit: 'ore' }),
+    mode: z
+      .number()
+      .int()
+      .min(1)
+      .max(3)
+      .meta({ title: 'Modalita', optionLabels: { 1: 'In sede', 2: 'Remoto' } }),
+    modes: z.array(z.number().int()).meta({ optionLabels: { 1: 'In sede' } }),
+  });
+  const props = z
+    .object({ properties: z.record(z.string(), z.record(z.string(), z.unknown())) })
+    .parse(formSchema(schema)).properties;
+  assert.deepEqual(
+    {
+      title: props.hours?.title,
+      description: props.hours?.description,
+      unit: props.hours?.unit,
+      def: props.hours?.default,
+    },
+    { title: 'Ore', description: 'Quante ore', unit: 'ore', def: 4 },
+  );
+  assert.deepEqual(props.mode?.optionLabels, { 1: 'In sede', 2: 'Remoto' });
+  assert.deepEqual(props.modes?.optionLabels, { 1: 'In sede' });
 });

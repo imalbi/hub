@@ -54,7 +54,8 @@ export function DeskShell() {
               <HeaderActivity />
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto [&:has([data-fill])]:overflow-hidden">
+          {/* `relative`: the containing block of absolutely placed sr-only nodes, or they stretch the document past the scroller. */}
+          <div className="relative min-h-0 flex-1 overflow-y-auto [&:has([data-fill])]:overflow-hidden">
             <div className="grid min-h-full grid-cols-12 items-start gap-lg pb-xl [&:has([data-fill])]:h-full [&:has([data-fill])]:pb-0">
               <HeaderSlot value={slot}>
                 <Outlet />

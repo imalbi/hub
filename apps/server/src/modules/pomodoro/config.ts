@@ -12,9 +12,19 @@ const durations = pomodoroDurationsSchema.shape;
 
 export const configSchema = z
   .object({
-    focusMinutes: durations.focusMinutes.default(25),
-    shortBreakMinutes: durations.shortBreakMinutes.default(5),
-    longBreakMinutes: durations.longBreakMinutes.default(15),
-    longBreakEvery: durations.longBreakEvery.default(4),
+    focusMinutes: durations.focusMinutes
+      .default(25)
+      .meta({ title: 'Durata del focus', description: 'Quanto dura una sessione di lavoro.', unit: 'minuti' }),
+    shortBreakMinutes: durations.shortBreakMinutes
+      .default(5)
+      .meta({ title: 'Pausa breve', description: 'Quanto dura la pausa tra due sessioni.', unit: 'minuti' }),
+    longBreakMinutes: durations.longBreakMinutes
+      .default(15)
+      .meta({ title: 'Pausa lunga', description: 'Quanto dura la pausa dopo un ciclo di sessioni.', unit: 'minuti' }),
+    longBreakEvery: durations.longBreakEvery.default(4).meta({
+      title: 'Pausa lunga ogni',
+      description: 'Dopo quante sessioni arriva la pausa lunga; 0 la disattiva.',
+      unit: 'sessioni',
+    }),
   })
   .default({ focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 });
