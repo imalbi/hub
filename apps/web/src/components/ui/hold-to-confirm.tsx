@@ -119,13 +119,13 @@ export function HoldToConfirm({
         <span aria-hidden="true" className="relative size-md shrink-0">
           <span
             className="absolute inset-0 flex items-center justify-center [&>svg]:size-md"
-            style={interactionIcon(status === 'idle' || status === 'holding', reduced)}
+            style={interactionIcon(status === 'idle' || status === 'holding', reduced || pending)}
           >
             {icon ?? <FingerprintIcon />}
           </span>
           <svg
             viewBox="0 0 24 24"
-            className="-inset-1 absolute size-lg -rotate-90"
+            className="absolute -inset-2xs size-lg -rotate-90"
             style={{ opacity: status === 'holding' ? 1 : 0, transition: reduced ? 'none' : 'opacity 180ms ease-out' }}
           >
             <circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" />
