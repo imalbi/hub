@@ -76,6 +76,7 @@ export default defineConfig({
               'design.spec.ts',
               'themes.spec.ts',
               'widgets.spec.ts',
+              'sites.spec.ts',
               'system.spec.ts',
               'news.spec.ts',
               'mail.spec.ts',

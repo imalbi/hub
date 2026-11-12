@@ -13,6 +13,7 @@ import { musicModule } from './modules/music/server.ts';
 import { mailModule } from './modules/mail/module.ts';
 
 import { weatherModule } from './modules/weather/module.ts';
+import { sitesModule } from './modules/sites/server.ts';
 
 export const publicModules = [
   healthModule,
@@ -29,4 +30,5 @@ export const publicModules = [
   mailModule,
   musicModule,
   weatherModule,
+  sitesModule,
 ] as const;

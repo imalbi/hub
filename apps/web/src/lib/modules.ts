@@ -1,3 +1,4 @@
+import { SitesSection, SitesWidget } from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
 import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
@@ -9,6 +10,12 @@ const examples =
     ? import.meta.glob<{ default: ModuleUI }>('../../../../modules.example/*/ui.tsx', { eager: true })
     : {};
 export const moduleUIs: ModuleUI[] = [
+  {
+    name: 'sites',
+    copy: {},
+    sections: [{ zone: 'work', id: 'siti', label: m.sites_title, component: SitesSection }],
+    widgets: [{ id: 'sites', label: m.sites_title, sizes: ['small', 'medium'], component: SitesWidget }],
+  },
   {
     name: 'mail',
     copy: {},

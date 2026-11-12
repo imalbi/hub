@@ -208,3 +208,5 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - `Tile` without `onPress` is a status tile: a `role="group"` named like the button would be, same look, no press state (the Posta tile: the count only, the mail stays on the PC). Never pass a no-op `onPress` to keep a tile a button.
 
 - Media music uses `modules/music/favorite.tsx` for the current song and list rows; its three-view `ButtonGroup` in `search.tsx` is the extension point for playlists.
+
+- `ui/status-bars.tsx` adapts Hairline status-bars for the Sites history: copy is required from the caller, bars are keyboard-readable, and the last 30 remain visible in narrow containers. Sites with no configured entries are hidden from the rail and widget picker, decided by `sites.configured` (answered from the config; never `sites.state`, which waits for a running check); the settings restart invalidates their configuration query. `ZonePage` waits for that query on a direct Lavoro load before deciding the page is missing; the rail keeps an unknown configuration hidden to avoid changing keyboard shortcuts during load.

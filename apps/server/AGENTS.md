@@ -212,3 +212,5 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Music follows mpv's `start-file` and keeps one upcoming song in its playlist; the IPC fake must emit playlist events for skip to update the queue. `followStart` ignores the start-file of mpv's current index (`currentPos`): a playlist can hold one song twice in a row, so matching the next song by URL alone advanced the queue on the first copy's own start (23f). YouTube calls that a mutation awaits go through a wrapper that answers 503 with a fixed message (`publicList`), never the library's text.
 
 - Public modules declaring `migrations` receive a separate database via `createAppRouter`, at the same `moduleDbPath` as discovered modules; module cleanup runs before database closure.
+
+- Sites (`src/modules/sites/`) uses one module database: raw checks are retained for 24 hours, local-date rollups for 90 days. Each failed five-minute poll counts as five estimated down minutes; an unobserved day is no data. The poller must close before its database and tests inject fetch.

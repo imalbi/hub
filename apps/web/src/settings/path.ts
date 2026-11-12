@@ -12,10 +12,10 @@ export function getAt(value: unknown, path: Path): unknown {
 }
 
 /** A copy with `value` at `path`; `undefined` removes the key, and an object left empty by that is dropped too. */
-export function setAt(root: unknown, path: Path, value: unknown): Json {
+export function setAt(root: unknown, path: Path, value: unknown): unknown {
   const base = isObject(root) ? root : {};
   const [key, ...rest] = path;
-  if (key === undefined) return base;
+  if (key === undefined) return value;
   const next = { ...base };
   const child = rest.length === 0 ? value : setAt(next[key], rest, value);
   if (child === undefined || (rest.length > 0 && isObject(child) && Object.keys(child).length === 0)) delete next[key];

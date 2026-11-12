@@ -2,6 +2,9 @@ import { EventEmitter } from 'node:events';
 import { copyFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { moduleDbPath, openDatabase } from '../db/index.ts';
+import { recordCheck } from '../modules/sites/sites.ts';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { IsLoopback } from '../core/auth.ts';
 import { z } from 'zod';
@@ -87,6 +90,8 @@ const mailCalls: string[][] = [];
 /** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (url === 'https://example.com/up') return new Response(null, { status: 200 });
+  if (url === 'https://example.com/down') return new Response(null, { status: 503 });
   if (url.startsWith('https://api.open-meteo.com/'))
     return Response.json({
       current: { temperature_2m: 19, weather_code: 3 },
@@ -106,6 +111,28 @@ function build() {
   const playlist: string[] = [];
   let position = -1;
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  if (stored && typeof stored === 'object' && 'sites' in stored) {
+    const fixtureDb = openDatabase(
+      moduleDbPath(dbPath, 'sites'),
+      fileURLToPath(new URL('../modules/sites/drizzle', import.meta.url)),
+    );
+    try {
+      const count = fixtureDb.$client.prepare('select count(*) as n from site_days').get();
+      if (count?.n === 0) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(12, 0, 0, 0);
+        recordCheck(fixtureDb, 'https://example.com/down', {
+          at: yesterday.getTime(),
+          status: 503,
+          latency: 10,
+          error: null,
+        });
+      }
+    } finally {
+      fixtureDb.$client.close();
+    }
+  }
   const desktop = createFakeDesktop({ mail: mailCalls });
   const run: Run = (bin, args, options) => {
     if (failMail && bin === 'himalaya' && args.includes('envelope') && args.includes('25'))
@@ -224,6 +251,25 @@ function restart() {
 const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HUB_PORT ?? 4190) });
 
 function hooks(server: typeof app) {
+  server.post('/__fake/sites', (request, reply) => {
+    const body = z.object({ enabled: z.boolean() }).safeParse(request.body);
+    if (!body.success) return reply.code(400).send();
+    writeFileSync(
+      configPath,
+      JSON.stringify(
+        body.data.enabled
+          ? {
+              sites: [
+                { name: 'Sito pronto', url: 'https://example.com/up' },
+                { name: 'Sito non raggiungibile', url: 'https://example.com/down' },
+              ],
+            }
+          : {},
+      ),
+    );
+    setTimeout(() => void restart(), 50);
+    return { ok: true };
+  });
   server.get('/__fake/mail', () => ({ calls: mailCalls }));
   server.post('/__fake/mail', (request, reply) => {
     const body = z.object({ fail: z.boolean() }).safeParse(request.body);
