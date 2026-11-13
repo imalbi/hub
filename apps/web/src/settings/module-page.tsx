@@ -102,7 +102,7 @@ export function ModulePage({ name }: { name: string }) {
 
   return (
     <div className="flex flex-col gap-lg">
-      <header className="flex flex-col gap-xs">
+      <header className="sticky top-0 z-10 -mb-sm flex flex-col gap-xs bg-background pb-sm">
         <Link to="/desk/settings" className="inline-flex w-fit items-center gap-2xs text-label text-muted-foreground">
           <CaretLeftIcon aria-hidden className="size-icon-sm" />
           {m.settings_back()}
@@ -172,7 +172,7 @@ export function ModulePage({ name }: { name: string }) {
             )}
           </ModuleForm>
           {showAside && (
-            <aside className="sticky top-0 col-span-5 flex flex-col gap-lg">
+            <aside className="sticky top-4xl col-span-5 flex flex-col gap-lg">
               {dirty && (
                 <ChangesPanel
                   draft={value}

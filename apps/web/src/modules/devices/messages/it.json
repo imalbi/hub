@@ -27,6 +27,8 @@
   "device_revoke_hold": "Tieni premuto per revocare {name}",
   "device_revoked": "Revocato",
   "devices_qr_title": "Apri il deck da un telefono",
+  "devices_qr_show": "Mostra QR",
+  "devices_qr_close": "Chiudi",
   "devices_qr_label": "QR code dell'indirizzo del deck",
   "agents_title": "Agent",
   "agents_name": "Nome agente",

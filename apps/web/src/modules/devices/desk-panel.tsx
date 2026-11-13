@@ -36,12 +36,15 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
   return (
     <Panel title={m.devices_title()} className={className}>
       <div className="flex flex-col items-start gap-md">
-        <RegistryButton
-          secondary
-          label={m.devices_create_code()}
-          action={() => createCode.mutateAsync()}
-          disabled={createCode.isPending}
-        />
+        <div className="flex items-center gap-sm">
+          <RegistryButton
+            secondary
+            label={m.devices_create_code()}
+            action={() => createCode.mutateAsync()}
+            disabled={createCode.isPending}
+          />
+          <QrSection />
+        </div>
         {createCode.data && remaining > 0 && (
           <div className="flex flex-col gap-xs">
             <output aria-label={m.devices_code_label()} className="text-display tabular-nums">
@@ -83,7 +86,6 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
           </li>
         ))}
       </ul>
-      <QrSection />
       <AgentsSection enabled={devices.isSuccess} />
     </Panel>
   );

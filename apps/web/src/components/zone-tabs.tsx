@@ -53,7 +53,12 @@ export function ZoneTabs({
         role="tabpanel"
         id={`${id}-panel`}
         aria-labelledby={`${id}-tab-${active.id}`}
-        className={fill ? 'flex min-h-0 flex-1 flex-col' : undefined}
+        // The bar stays put and the panel scrolls under a clean edge (as Ricerca lavoro); `-mr-xl pr-xl` puts its scrollbar at the window edge, `relative` contains sr-only nodes.
+        className={
+          fill
+            ? 'flex min-h-0 flex-1 flex-col'
+            : 'relative -mr-xl min-h-0 flex-1 overflow-y-auto overscroll-contain pr-xl pb-xl'
+        }
       >
         {active.content}
       </div>

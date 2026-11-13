@@ -47,7 +47,7 @@ export function CoreSettings() {
         <CaretLeftIcon aria-hidden className="size-icon-sm" />
         {m.settings_back()}
       </Link>
-      <div className="flex flex-wrap items-center gap-lg">
+      <div className="sticky top-0 z-10 -my-xs flex flex-wrap items-center gap-lg bg-background py-xs">
         <h2 className="text-heading">{m.settings_core()}</h2>
         <div className="ml-auto flex items-center gap-sm">
           <ActionButton
@@ -87,7 +87,7 @@ export function CoreSettings() {
           onBlock={() => {}}
         />
         {dirty && (
-          <aside className="sticky top-0 col-span-5">
+          <aside className="sticky top-3xl col-span-5">
             <ChangesPanel draft={value} saved={stored} enabledChange={null} />
           </aside>
         )}

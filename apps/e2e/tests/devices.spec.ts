@@ -108,25 +108,30 @@ test('an agent token is shown once, its calls are listed and it can be revoked',
   await expect(page.getByText('Agente di prova', { exact: true })).toHaveCount(0);
 });
 
-test('no QR is offered while the config has no LAN origin', async ({ page }) => {
+test('no QR action is offered while the config has no LAN origin', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Dispositivi' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Genera codice' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mostra QR' })).toHaveCount(0);
   await expect(page.getByRole('img', { name: "QR code dell'indirizzo del deck" })).toHaveCount(0);
 });
 
-test('with a LAN origin the QR shows the deck address', async ({ page }) => {
+test('with a LAN origin Mostra QR opens a dialog with the QR and the address, Escape closes it', async ({ page }) => {
   const deckUrl = 'http://hub.example.test:4180/deck';
   // The fake config only lists loopback origins; the LAN case is the server's `deckUrl` unit test plus this answer.
   await answerQueries(page, { 'devices.deckUrl': deckUrl });
   await page.goto('/desk/devices');
   const qr = page.getByRole('img', { name: "QR code dell'indirizzo del deck" });
+  // Not inline: the QR exists only inside the dialog.
+  await expect(qr).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mostra QR' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apri il deck da un telefono' });
+  await expect(dialog).toBeVisible();
   await expect(qr).toBeVisible();
-  await expect(page.getByText(deckUrl, { exact: true })).toBeVisible();
+  await expect(dialog.getByText(deckUrl, { exact: true })).toBeVisible();
   // No decoder in the repo: the module drawing is pinned by `qr.test.ts`, here only that the QR is a real drawing.
   expect(await qr.locator('path').getAttribute('d')).toMatch(/^M4 4h1v1h-1z/);
-  // A phone camera needs room: at 4K the panel must still hold the QR without scrolling.
-  await page.setViewportSize({ width: 3840, height: 2160 });
-  const box = await qr.boundingBox();
-  expect(box?.width).toBeGreaterThanOrEqual(150);
-  const panel = page.getByRole('region', { name: 'Dispositivi', exact: true });
-  expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+  // A phone camera needs room.
+  expect((await qr.boundingBox())?.width).toBeGreaterThanOrEqual(150);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 });

@@ -35,12 +35,52 @@ test('Impostazioni shows the Aspetto picker and a chosen theme applies', async (
   await page.evaluate(() => localStorage.removeItem('hub.theme'));
 });
 
+test('the desk scroller reaches the window edge, so its scrollbar is flush', async ({ page }) => {
+  await page.goto('/desk/studio');
+  await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();
+  const edge = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const scroller = main?.querySelector(':scope > div');
+    return { right: scroller?.getBoundingClientRect().right, width: window.innerWidth };
+  });
+  expect(edge.right).toBe(edge.width);
+});
+
+test('the tab bar of a long zone page stays in view while the content scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 400 });
+  await page.goto('/desk/studio');
+  const tabs = page.getByRole('tablist');
+  await expect(tabs).toBeVisible();
+  // The bar sits outside the scroll: only the tab panel scrolls, its scrollbar at the window edge.
+  const panel = page.getByRole('tabpanel');
+  await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();
+  await expect.poll(() => panel.evaluate((el) => (el.scrollTo(0, el.scrollHeight), el.scrollTop))).toBeGreaterThan(0);
+  await expect(tabs).toBeInViewport();
+  const tabsBox = await tabs.boundingBox();
+  const panelBox = await panel.boundingBox();
+  expect(panelBox!.y).toBeGreaterThanOrEqual(tabsBox!.y + tabsBox!.height);
+  expect(await panel.evaluate((el) => el.getBoundingClientRect().right)).toBe(1920);
+});
+
+test('the core settings actions stay in view while the form scrolls past it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 300 });
+  await page.goto('/desk/settings/core');
+  const save = page.getByRole('button', { name: 'Salva e riavvia' });
+  await expect(save).toBeVisible();
+  // Sticky lasts as long as the form does, so scroll part of the way, not to the end of the longer settings list.
+  const scroller = page.locator('main > div').last();
+  await scroller.evaluate((el) => el.scrollTo(0, 200));
+  expect(await scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(save).toBeInViewport();
+});
+
 test('the content scrolls to the last row while the title stays fixed', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 500 });
   await page.goto('/desk/system');
   const outputs = page.getByRole('toolbar', { name: 'Uscite configurate' });
   await expect(outputs).toBeVisible();
-  const content = page.locator('main > div').last();
+  // Sistema has tabs (Sistema, Job), so its tab panel is the scroller under the fixed bar.
+  const content = page.getByRole('tabpanel');
   const title = page.getByRole('heading', { level: 1, name: 'Sistema' });
   await content.hover();
   await expect
@@ -67,14 +107,9 @@ test('the content scrolls to the last row while the title stays fixed', async ({
   const last = await outputs.boundingBox();
   if (!last) throw new Error('missing box');
   expect(last.y + last.height).toBeLessThanOrEqual(500);
-  // The page ends one gutter below its last row, like it starts one gutter above the title.
-  const padding = await page
-    .locator('main')
-    .evaluate((main) => [
-      getComputedStyle(main).paddingTop,
-      getComputedStyle(main.querySelector(':scope > div > div')!).paddingBottom,
-    ]);
-  expect(padding[1]).toBe(padding[0]);
+  // The page ends one gutter below its last row, like it starts one gutter above the title (the gutter is inside the scrolling panel).
+  const top = await page.locator('main').evaluate((main) => getComputedStyle(main).paddingTop);
+  expect(await content.evaluate((panel) => getComputedStyle(panel).paddingBottom)).toBe(top);
 });
 
 if (examples) {

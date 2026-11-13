@@ -47,8 +47,8 @@ export function DeskShell() {
         <AgentConfirmation />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
-        <main className="flex h-dvh flex-col overflow-hidden px-xl pt-xl pl-desk-inset">
-          <header className="mb-xl flex shrink-0 items-center gap-lg">
+        <main className="flex h-dvh flex-col overflow-hidden pt-xl pl-desk-inset">
+          <header className="mb-xl flex shrink-0 items-center gap-lg pr-xl">
             <h1 className="flex-1 text-heading">{active?.label() ?? m.desk_title()}</h1>
             <DeskCommandPalette />
             <div className="flex flex-1 items-center justify-end gap-md">
@@ -56,8 +56,8 @@ export function DeskShell() {
               <HeaderActivity />
             </div>
           </header>
-          {/* `relative`: the containing block of absolutely placed sr-only nodes, or they stretch the document past the scroller. */}
-          <div className="relative min-h-0 flex-1 overflow-y-auto [&:has([data-fill])]:overflow-hidden">
+          {/* `relative`: the containing block of absolutely placed sr-only nodes, or they stretch the document past the scroller. The right padding sits inside it so the scrollbar is flush with the window edge. */}
+          <div className="relative min-h-0 flex-1 overflow-y-auto pr-xl [&:has([data-fill])]:overflow-hidden">
             <div className="grid min-h-full grid-cols-12 items-start gap-lg pb-xl [&:has([data-fill])]:h-full [&:has([data-fill])]:pb-0">
               <HeaderSlot value={slot}>
                 <Outlet />

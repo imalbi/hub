@@ -12,6 +12,9 @@ React 19 SPA built with Vite. In dev, `/trpc` is proxied to the server (`vite.co
 - The desk content scroller (`shell/desk.tsx`) is `relative` on purpose: it is the containing block of every absolutely placed node in a page (the `sr-only` live regions of steppers, rows, inspector). Without it they were placed against the body and a long page grew a second, document-level scrollbar (step 33, guarded in `settings.spec.ts`).
 - The desk title stays above the content scroller. A tab or module zone with `fill: true` owns its scroll regions: keep controls fixed, pass height through flex children with `min-h-0`, and give each list or reader `min-h-0 flex-1 overflow-y-auto overscroll-contain` with the bottom gutter inside it.
 
+- Step 46: the desk's right padding lives inside the scroller (`pr-xl`) and on the header, not on `<main>`, so the scrollbar is flush with the window edge. A page with a tab bar is a fill page (`ZonePage` sets `data-fill` whenever `ZoneTabs` shows a bar): the bar stays fixed above and the tab panel is the scroller (`relative -mr-xl min-h-0 flex-1 overflow-y-auto pr-xl pb-xl`, scrollbar at the window edge, bottom gutter inside), like Ricerca lavoro. A sticky bar with content passing under it was tried and refused by the owner (review of 46). The Impostazioni action rows are `sticky top-0 z-10 bg-background` with a matching negative margin and padding, so the layout stays identical. A sticky element lasts only as long as its parent: the settings pages stick through the form, not past the end of a longer module list. The side `aside` sticks below those rows (`top-3xl` core, `top-4xl` module).
+- The Dispositivi QR is a `Dialog` opened by "Mostra QR" (`devices/qr-section.tsx`), mounted only when `devices.deckUrl` is non-null; the dialog mounts its body only while open, so the QR img does not exist in the DOM when closed.
+
 ## Where files go
 
 ```
