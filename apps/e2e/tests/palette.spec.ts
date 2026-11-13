@@ -12,8 +12,6 @@ test('the rail button opens the palette, says Ctrl K under it and Escape returns
   const rail = page.getByRole('navigation', { name: 'Zone' });
   const trigger = rail.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
   await expect(rail.getByText('Ctrl K', { exact: true })).toBeVisible();
-  const box = await trigger.boundingBox();
-  expect(box && box.y < 200).toBe(true);
   await trigger.click();
   const palette = page.getByRole('dialog', { name: 'Comandi' });
   await expect(palette).toBeVisible();

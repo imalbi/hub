@@ -5,6 +5,10 @@ import { m } from '../paraglide/messages.js';
 import { useConnectionLost } from '../lib/trpc.ts';
 import { DeskCommandPalette } from './command-palette.tsx';
 
+function Separator() {
+  return <span aria-hidden className="h-px w-xl bg-border" />;
+}
+
 export function DeskRail({ pathname }: { pathname: string }) {
   const reduced = useInteractionReducedMotion();
   const zones = useZones();
@@ -14,19 +18,18 @@ export function DeskRail({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label={m.desk_zones()}
-      className="desk-rail fixed inset-y-xl left-xl z-40 grid w-desk-rail justify-items-center"
+      className="desk-glass fixed inset-y-0 left-xl z-40 my-auto flex h-fit w-desk-rail flex-col items-center gap-xs rounded-full border py-xs"
     >
-      <div className="flex flex-col items-center gap-3xs self-start">
-        <DeskCommandPalette />
-        <span aria-hidden className="text-caption whitespace-nowrap text-muted-foreground">
-          Ctrl K
-        </span>
-      </div>
-      <div className="desk-glass relative flex flex-col items-center gap-xs rounded-full border p-xs">
+      <DeskCommandPalette />
+      <span aria-hidden className="-mt-xs text-caption whitespace-nowrap text-muted-foreground">
+        Ctrl K
+      </span>
+      <Separator />
+      <div className="relative flex flex-col items-center gap-xs">
         <span
           data-rail-indicator
           aria-hidden
-          className="absolute top-xs left-xs size-touch rounded-full bg-primary"
+          className="absolute top-0 left-0 size-touch rounded-full bg-primary"
           style={{
             transform: `translateY(calc(${index} * (var(--spacing-touch) + var(--spacing-xs))))`,
             transition: reduced ? 'none' : `transform var(--motion-standard) ${EASE_THROW}`,
@@ -54,10 +57,11 @@ export function DeskRail({ pathname }: { pathname: string }) {
           </Link>
         ))}
       </div>
+      <Separator />
       <output
         aria-label={lost ? m.connection_lost() : m.connection_ready()}
         title={lost ? m.connection_lost() : m.connection_ready()}
-        className="flex size-touch items-center justify-center self-end"
+        className="flex size-touch items-center justify-center"
       >
         <span className="relative flex size-xs">
           {!lost && (

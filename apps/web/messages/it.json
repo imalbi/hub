@@ -4,6 +4,7 @@
   "jobs_empty": "Nessun job",
   "jobs_duration": "Durata: {seconds} s",
   "jobs_running": "Job in esecuzione: {count}",
+  "activity_running": "Attività in corso",
   "jobs_cancel": "Annulla",
   "jobs_cancel_hold": "Tieni premuto per annullare job",
   "jobs_cancelled": "Annullato",

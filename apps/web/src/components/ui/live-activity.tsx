@@ -69,6 +69,8 @@ export interface LiveActivityProps extends Omit<React.HTMLAttributes<HTMLDivElem
   onExpandedChange?: (expanded: boolean) => void;
   /** The panel's width when expanded. */
   panelWidth?: number;
+  /** Hub: no surface of its own, for a pill that sits inside a glass region. */
+  bare?: boolean;
 }
 
 const EASE = 'cubic-bezier(0.16,1,0.3,1)';
@@ -181,6 +183,7 @@ export function LiveActivity({
   defaultExpanded = false,
   onExpandedChange,
   panelWidth = 320,
+  bare = false,
   className = '',
   ...props
 }: LiveActivityProps) {
@@ -286,7 +289,7 @@ export function LiveActivity({
   return (
     <div ref={rootRef} className={`relative inline-block ${className}`} {...props}>
       <div
-        className="bg-popover text-popover-foreground relative overflow-hidden shadow-[0_0_0_1px_var(--border)]"
+        className={`text-popover-foreground relative overflow-hidden ${bare ? '' : 'bg-popover shadow-[0_0_0_1px_var(--border)]'}`}
         style={{
           width: w,
           height: h,

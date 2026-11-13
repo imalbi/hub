@@ -878,7 +878,7 @@ export function CommandPalette({
         aria-expanded={isOpen}
         aria-label={copy.triggerName}
         onClick={() => setOpen(true)}
-        className={`group inline-flex cursor-pointer items-center rounded-full bg-surface text-label ${rail ? 'size-touch justify-center' : 'h-[2.25rem] gap-xs pr-xs pl-sm'} text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,color] duration-300 hover:text-foreground hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--foreground)_22%,transparent)] ${FOCUS}`}
+        className={`group inline-flex cursor-pointer items-center rounded-full ${rail ? 'bg-muted' : 'bg-surface'} text-label ${rail ? 'size-touch justify-center' : 'h-[2.25rem] gap-xs pr-xs pl-sm'} ${rail ? 'text-foreground' : 'text-muted-foreground'} shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,color] duration-300 hover:text-foreground hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--foreground)_22%,transparent)] ${FOCUS}`}
         // When the palette folded back into the pill, it already looks exactly like it: take over without a fade.
         style={{ opacity: mounted ? 0 : 1, transition: mounted || reduced || from ? 'none' : 'opacity 160ms ease-out' }}
       >

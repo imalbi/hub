@@ -14,17 +14,18 @@ export function HeaderActivity() {
   // Only while something runs; the idle desk has nothing floating.
   if (running === 0 && !timing) return null;
   return (
-    <div className="flex items-center gap-md">
+    <section aria-label={m.activity_running()} className="desk-glass flex items-center gap-xs rounded-full border p-xs">
       {running > 0 && (
         <button
           type="button"
-          className="desk-glass rounded-full border p-xs"
+          className="rounded-full"
           onClick={() => void navigate({ to: '/desk/system', search: { tab: 'jobs' } })}
         >
           <Badge>{m.jobs_running({ count: running })}</Badge>
         </button>
       )}
       <LiveActivity
+        bare
         expanded={false}
         triggerLabel={m.zone_open({ zone: m.zone_study() })}
         announcement={timing ? timer.phaseLabel : ''}
@@ -42,6 +43,6 @@ export function HeaderActivity() {
             : null
         }
       />
-    </div>
+    </section>
   );
 }

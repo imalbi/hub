@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { answerQueries, restoreDesktop } from './desktop.ts';
 import { controlSockets } from './sockets.ts';
@@ -50,10 +51,16 @@ test('the floating activity pill exists only while Pomodoro runs and links to St
   await page.goto('/desk/media');
   await expect(page.getByRole('navigation', { name: 'Zone' })).toBeVisible();
   await expect(page.locator('header').getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Attività in corso' })).toHaveCount(0);
   await freezePomodoro(page, { ...pausedPomodoro, pausedRemainingMs: null, endsAt: Date.now() + 750_000 });
   await page.goto('/desk/media');
   const pill = page.locator('header').getByRole('button', { name: /Studio/ });
   await expect(pill).toBeVisible();
+  // One glass region wraps the activity: the pill has no surface of its own.
+  const region = page.getByRole('region', { name: 'Attività in corso' });
+  await expect(region).toHaveClass(/desk-glass/);
+  await expect(region).toHaveCSS('border-top-width', '1px');
+  await expect(region.getByRole('button', { name: /Studio/ })).toBeVisible();
   const box = await pill.boundingBox();
   const viewport = page.viewportSize();
   expect(box && viewport && box.x + box.width > viewport.width / 2 && box.y < 120).toBe(true);
@@ -106,6 +113,44 @@ test('Media exposes the cover and floating player controls drive the fake track'
   await expect(page.getByRole('img', { name: 'Copertina di Title', exact: true })).toBeVisible();
 });
 
+test('the rail is one pill: trigger, zones and status dot inside, indicator on the current zone', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const view = page.viewportSize();
+  if (!view) throw new Error('no viewport');
+  await page.goto('/desk');
+  const rail = page.getByRole('navigation', { name: 'Zone' });
+  const railBox = await rail.boundingBox();
+  if (!railBox) throw new Error('no rail box');
+  expect(Math.abs(railBox.y + railBox.height / 2 - view.height / 2)).toBeLessThan(2);
+  const trigger = rail.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
+  const dot = rail.getByRole('status', { name: 'Connesso', exact: true });
+  const links = rail.getByRole('link');
+  const inside = async (locator: Locator) => {
+    const box = await locator.boundingBox();
+    if (!box) throw new Error('no box');
+    expect(box.y).toBeGreaterThanOrEqual(railBox.y);
+    expect(box.y + box.height).toBeLessThanOrEqual(railBox.y + railBox.height);
+    return box;
+  };
+  const triggerBox = await inside(trigger);
+  const dotBox = await inside(dot);
+  const firstBox = await inside(links.first());
+  const lastBox = await inside(links.last());
+  expect(triggerBox.y).toBeLessThan(firstBox.y);
+  expect(lastBox.y).toBeLessThan(dotBox.y);
+  const indicator = rail.locator('[data-rail-indicator]');
+  for (const link of [links.first(), links.last()]) {
+    await link.click();
+    await expect(link).toHaveAttribute('aria-current', 'page');
+    await expect
+      .poll(async () => {
+        const [i, l] = [await indicator.boundingBox(), await link.boundingBox()];
+        return i && l ? Math.abs(i.x - l.x) + Math.abs(i.y - l.y) + Math.abs(i.height - l.height) : Infinity;
+      })
+      .toBeLessThan(1);
+  }
+});
+
 test('rail selection moves, glass follows the theme and reduced motion stops transitions', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/desk/media');
@@ -113,7 +158,7 @@ test('rail selection moves, glass follows the theme and reduced motion stops tra
   const indicator = rail.locator('[data-rail-indicator]');
   await expect(indicator).toBeVisible();
   const before = await indicator.evaluate((element) => getComputedStyle(element).transform);
-  await expect(rail.locator('.desk-glass')).not.toHaveCSS('backdrop-filter', 'none');
+  await expect(rail).not.toHaveCSS('backdrop-filter', 'none');
   const player = page.getByRole('region', { name: 'Player musicale' });
   await expect(player).not.toHaveCSS('backdrop-filter', 'none');
   await rail.getByRole('link', { name: 'Impostazioni' }).click();
@@ -121,7 +166,7 @@ test('rail selection moves, glass follows the theme and reduced motion stops tra
   // Aspetto is a page under the settings list now, so the theme is chosen one step further in.
   await page.getByRole('link', { name: /^Aspetto/ }).click();
   await chooseTheme(page, 'Chiaro');
-  await expect(rail.locator('.desk-glass')).toHaveCSS('backdrop-filter', 'none');
+  await expect(rail).toHaveCSS('backdrop-filter', 'none');
   await rail.getByRole('link', { name: 'Media', exact: true }).click();
   await expect(player).toHaveCSS('backdrop-filter', 'none');
   await expect(indicator).toHaveCSS('transition-duration', '0s');
