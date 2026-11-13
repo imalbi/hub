@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 import { chooseTheme } from './themes.ts';
+import { answerQueries } from './desktop.ts';
 import { PC_URL } from './hosts.ts';
 
 // A fixed clock and fixed answers for everything that moves: uptime, the countdown, "last seen", the random code.
@@ -12,13 +13,11 @@ test.beforeEach(async ({ page }) => {
   await freezePomodoro(page);
   await page.clock.setFixedTime(NOW);
   await page.route('**/trpc/health*', (route) => route.fulfill({ json: json({ ok: true, uptime: 42 }) }));
-  await page.route('**/trpc/devices.list*', (route) =>
-    route.fulfill({
-      json: json([
-        { id: 1, name: 'iPhone', createdAt: NOW.getTime() - 3_600_000, lastSeenAt: NOW.getTime() - 300_000 },
-      ]),
-    }),
-  );
+  await answerQueries(page, {
+    'devices.list': [
+      { id: 1, name: 'iPhone', createdAt: NOW.getTime() - 3_600_000, lastSeenAt: NOW.getTime() - 300_000 },
+    ],
+  });
   await page.goto('/desk');
   await expect(page.getByText('42 s', { exact: true })).toBeVisible();
   const playback = page.getByRole('button', { name: 'Metti in pausa la musica', exact: true });

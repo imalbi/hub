@@ -2,9 +2,13 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { devices } from '../../db/schema.ts';
+import { deckUrl } from '../../core/origin.ts';
 import { loopbackProcedure, router } from '../../core/trpc.ts';
 
 export const devicesRouter = router({
+  // Only the PC shows the QR, so the LAN address stays off device connections.
+  deckUrl: loopbackProcedure.query(({ ctx }) => deckUrl(ctx.config)),
+
   list: loopbackProcedure.query(async ({ ctx }) =>
     (await ctx.db.select().from(devices).orderBy(devices.id)).map(({ id, name, createdAt, lastSeenAt }) => ({
       id,

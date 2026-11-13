@@ -1,4 +1,4 @@
-import type { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 
 const post = (request: APIRequestContext, path: string, data: unknown = {}) =>
   request.post(`/trpc/${path}`, { data, headers: { 'content-type': 'application/json' } });
@@ -34,4 +34,17 @@ export async function revokeDevices(pc: APIRequestContext, name: string) {
   const devices: Array<{ id: number; name: string }> = await result(await pc.get('/trpc/devices.list'));
   for (const device of devices.filter((d) => d.name === name))
     await post(pc, 'devices.revoke', { id: device.id, confirmed: true });
+}
+
+// tRPC batches queries made together into one URL (`/trpc/a,b`): ask the real server, then swap the mocked results.
+export async function answerQueries(page: Page, answers: Record<string, unknown>) {
+  await page.route('**/trpc/devices.*', async (route, request) => {
+    const names = decodeURIComponent(new URL(request.url()).pathname.replace('/trpc/', '')).split(',');
+    if (!names.some((name) => name in answers)) return route.fallback();
+    const real: unknown = await (await route.fetch()).json();
+    const results = Array.isArray(real) ? real : [];
+    return route.fulfill({
+      json: names.map((name, i) => (name in answers ? { result: { data: answers[name] } } : results[i])),
+    });
+  });
 }

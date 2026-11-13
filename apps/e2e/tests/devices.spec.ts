@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures.ts';
-import { pairDevice, revokeDevices } from './desktop.ts';
+import { answerQueries, pairDevice, revokeDevices } from './desktop.ts';
 import { SERVER_PORT } from './hosts.ts';
 
 test.beforeEach(async ({ page }) => {
@@ -72,7 +72,7 @@ for (const viewport of [
 ]) {
   test(`a generated code replaces the empty state in the Dispositivi panel (${viewport.width}px)`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.route('**/trpc/devices.list*', (route) => route.fulfill({ json: [{ result: { data: [] } }] }));
+    await answerQueries(page, { 'devices.list': [] });
     await page.goto('/desk/devices');
     await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
     await page.getByRole('button', { name: 'Genera codice' }).click();
@@ -106,4 +106,27 @@ test('an agent token is shown once, its calls are listed and it can be revoked',
   await page.waitForTimeout(900);
   await page.mouse.up();
   await expect(page.getByText('Agente di prova', { exact: true })).toHaveCount(0);
+});
+
+test('no QR is offered while the config has no LAN origin', async ({ page }) => {
+  await expect(page.getByRole('heading', { level: 1, name: 'Dispositivi' })).toBeVisible();
+  await expect(page.getByRole('img', { name: "QR code dell'indirizzo del deck" })).toHaveCount(0);
+});
+
+test('with a LAN origin the QR shows the deck address', async ({ page }) => {
+  const deckUrl = 'http://hub.example.test:4180/deck';
+  // The fake config only lists loopback origins; the LAN case is the server's `deckUrl` unit test plus this answer.
+  await answerQueries(page, { 'devices.deckUrl': deckUrl });
+  await page.goto('/desk/devices');
+  const qr = page.getByRole('img', { name: "QR code dell'indirizzo del deck" });
+  await expect(qr).toBeVisible();
+  await expect(page.getByText(deckUrl, { exact: true })).toBeVisible();
+  // No decoder in the repo: the module drawing is pinned by `qr.test.ts`, here only that the QR is a real drawing.
+  expect(await qr.locator('path').getAttribute('d')).toMatch(/^M4 4h1v1h-1z/);
+  // A phone camera needs room: at 4K the panel must still hold the QR without scrolling.
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  const box = await qr.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(150);
+  const panel = page.getByRole('region', { name: 'Dispositivi', exact: true });
+  expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
 });

@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { HoldButton } from '../../components/hold-button.tsx';
 import { useNow } from '../../lib/use-now.ts';
+import { QrSection } from './qr-section.tsx';
 import { AgentsSection } from './agents-section.tsx';
 
 function lastSeen(at: number, now: number) {
@@ -82,6 +83,7 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
           </li>
         ))}
       </ul>
+      <QrSection />
       <AgentsSection enabled={devices.isSuccess} />
     </Panel>
   );

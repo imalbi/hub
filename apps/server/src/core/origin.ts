@@ -11,3 +11,17 @@ export function isAllowedOrigin(origin: string | undefined, allowlist: readonly 
 }
 
 export const allowedOrigins = ({ server }: Pick<Config, 'server'>) => [...DEV_ORIGINS, ...server.allowedOrigins];
+
+const isLoopbackHost = (hostname: string) =>
+  hostname === 'localhost' || hostname === '[::1]' || hostname.startsWith('127.');
+
+/** The deck on the first configured LAN origin, or null when only loopback origins are listed (the dev origins are never in the config). */
+export function deckUrl({ server }: { server: { allowedOrigins: readonly string[] } }) {
+  for (const origin of server.allowedOrigins) {
+    const url = URL.parse(origin);
+    if (url && (url.protocol === 'http:' || url.protocol === 'https:') && !isLoopbackHost(url.hostname)) {
+      return `${url.origin}/deck`;
+    }
+  }
+  return null;
+}

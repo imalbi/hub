@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures.ts';
-import { restoreDesktop } from './desktop.ts';
+import { answerQueries, restoreDesktop } from './desktop.ts';
 import { controlSockets } from './sockets.ts';
 import { contrastRatio } from './contrast.ts';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
@@ -59,7 +59,7 @@ test('rail labels remain readable when the active link is hovered in either them
 });
 
 test('the empty devices list uses an accessible empty state', async ({ page }) => {
-  await page.route('**/trpc/devices.list*', (route) => route.fulfill({ json: [{ result: { data: [] } }] }));
+  await answerQueries(page, { 'devices.list': [] });
   await page.goto('/desk/devices');
   await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
   await expect(page.getByText('Il deck si collega con un codice temporaneo.')).toBeVisible();

@@ -124,3 +124,5 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 ## MCP agents
 
 - `mcp.spec.ts`, the deck confirmation test and the Agent test in `devices.spec.ts` use the fake server and `/__fake/system`; never run a real desktop action. The intended new baselines are the desk dialog, deck banner and Agent section. The Dispositivi page baselines also include that new section.
+
+- Mocking a tRPC query with `page.route` breaks when the page batches it with others (`/trpc/a,b`): the single-result answer replaces the whole batch. Use `answerQueries` in `tests/devices.spec.ts` (fetches the real batch, swaps only the mocked results).

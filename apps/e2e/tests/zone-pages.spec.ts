@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { answerQueries } from './desktop.ts';
 import { freezePomodoro } from './pomodoro-visual.ts';
 import { chooseTheme } from './themes.ts';
 
@@ -127,7 +128,7 @@ if (examples) {
     await page.route('**/trpc/health*', (route) =>
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
-    await page.route('**/trpc/devices.list*', (route) => route.fulfill({ json: [{ result: { data: [] } }] }));
+    await answerQueries(page, { 'devices.list': [] });
     await page.goto('/desk/devices');
     await expect(page.getByRole('tablist', { name: 'Sezioni' })).toBeVisible();
     await page.evaluate(async () => {

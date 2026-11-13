@@ -102,6 +102,7 @@ void test('device administration and codes are for the PC only', async () => {
   const token = await pair();
   for (const [method, path] of [
     ['GET', 'devices.list'],
+    ['GET', 'devices.deckUrl'],
     ['POST', 'pairing.createCode'],
   ] as const) {
     assert.equal((await call(method, path, { remoteAddress: LAN, token })).code, 'FORBIDDEN', `${path} as a device`);

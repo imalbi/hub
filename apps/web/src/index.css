@@ -29,6 +29,8 @@
   --spacing-4xl: 6rem;
   /* Fixed sizes that are not gaps: minimum touch target and icon boxes. */
   --spacing-touch: 2.75rem;
+  /* The deck QR: about 4 px per module so a phone camera reads it across a desk. */
+  --spacing-qr: 10rem;
   --spacing-icon-sm: 1rem;
   --spacing-icon: 1.25rem;
   --spacing-icon-lg: 1.5rem;
