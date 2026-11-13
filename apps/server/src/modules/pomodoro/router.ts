@@ -10,6 +10,15 @@ export function createPomodoroRouter(pomodoro: PomodoroLive) {
     start: protectedProcedure
       .meta({ label: 'Avvia Pomodoro', description: 'Start a Pomodoro focus session from idle' })
       .mutation(() => pomodoro.act('start')),
+    // Separate from start so the palette keeps running "Avvia Pomodoro" without a form.
+    startTagged: protectedProcedure
+      .meta({
+        label: 'Avvia concentrazione con etichetta',
+        description:
+          'Start a Pomodoro focus session from idle, counting its minutes under a tag such as study/<plan>/<day>',
+      })
+      .input(z.object({ tag: z.string().min(1).max(160) }))
+      .mutation(({ input }) => pomodoro.act('start', input.tag)),
     pause: protectedProcedure
       .meta({
         label: 'Metti in pausa Pomodoro',

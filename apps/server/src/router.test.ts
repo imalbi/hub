@@ -1,3 +1,4 @@
+import { createFocusHistory } from './core/focus-history.ts';
 /* oxlint-disable no-underscore-dangle -- tRPC exposes procedure type and meta only through _def */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -23,7 +24,7 @@ const db = openDb(':memory:');
 const closes: Array<() => void | Promise<void>> = [];
 const appRouter = createAppRouter(
   publicModules,
-  { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set() },
+  { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set(), focusHistory: createFocusHistory(db) },
   emptyConfig,
   (close) => closes.push(close),
 );
@@ -87,11 +88,13 @@ void test('every mutation carries an Italian label and an English description in
     'pomodoro.resume',
     'pomodoro.skip',
     'pomodoro.start',
+    'pomodoro.startTagged',
     'pomodoro.stop',
     'settings.restore',
     'settings.save',
     'settings.saveCore',
     'study.activate',
+    'study.openMaterial',
     'study.openToday',
     'study.setAutonomy',
     'study.setCurrent',

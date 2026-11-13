@@ -8,6 +8,7 @@ import { defineModule, TRPCError, z } from '../../core/module.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { protectedProcedure, router } from '../../core/trpc.ts';
 import { listInbox, readPlan } from './inbox.ts';
+import { listMaterials, readMaterial } from './library.ts';
 import { planShape } from './plan.ts';
 import { activeHeaders, GLOBAL, readDays, readDaysById, readIndex, subjectKey } from './read.ts';
 import { plans, preferences, progress } from './schema.ts';
@@ -29,7 +30,7 @@ export const studyModule = defineModule({
         .meta({ title: 'Cartelle materiali', description: 'Cartelle dei materiali di studio.' }),
     })
     .default({ plansDir: '', materialDirs: [] }),
-  create({ db, config, log }) {
+  create({ db, config, log, focusHistory }) {
     const inboxDir = join(config.plansDir, 'in-arrivo');
     const archiveDir = join(config.plansDir, 'archivio');
     let watcher: FSWatcher | undefined;
@@ -53,9 +54,16 @@ export const studyModule = defineModule({
       }
     }
     const live = createLiveHub(inbox, null);
-    const state = createStateWriter(db, config.plansDir, (error) =>
-      log.warn({ err: error }, 'Study state export failed'),
+    const state = createStateWriter(
+      db,
+      config.plansDir,
+      (error) => log.warn({ err: error }, 'Study state export failed'),
+      focusHistory,
     );
+    const unsubscribeFocus = focusHistory.subscribe((tag) => {
+      const [prefix, planId] = tag.split('/');
+      if (prefix === 'study' && planId) state.schedule(planId);
+    });
     function save(planId: string, kind: string, id: string, value: string) {
       db.insert(progress)
         .values({ planId, kind, id, value })
@@ -74,6 +82,15 @@ export const studyModule = defineModule({
     }
     return {
       router: router({
+        focusMinutes: protectedProcedure.query(() => focusHistory.minutesByTag('study/')),
+        library: protectedProcedure.query(() => listMaterials(config.materialDirs)),
+        openMaterial: protectedProcedure
+          .meta({ label: 'Apri materiale', description: 'Open a PDF from the configured study material folders' })
+          .input(z.object({ path: z.string().min(1), folder: z.int().min(0).optional() }))
+          .mutation(async ({ input, ctx }) => {
+            const file = await readMaterial(config.materialDirs, input.path, input.folder);
+            return ctx.files.put(file.bytes, { name: file.name, mime: 'application/pdf' });
+          }),
         inbox: protectedProcedure.query(inbox),
         onInbox: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
         active: protectedProcedure.query(() => activeHeaders(db)),
@@ -272,6 +289,7 @@ export const studyModule = defineModule({
         closed = true;
         await ready;
         watcher?.close();
+        unsubscribeFocus();
         await state.close();
       },
     };

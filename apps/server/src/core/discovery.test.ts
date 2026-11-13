@@ -1,3 +1,5 @@
+import { createFocusHistory } from './focus-history.ts';
+import { openDb } from '../db/index.ts';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -33,7 +35,13 @@ void test('folders that cannot be module names are never tried, so a git reposit
   const routers = await discoverModules({
     roots: [root],
     reserved: [],
-    deps: { run: createFakeDesktop(), fetch, log, zones: new Set() },
+    deps: {
+      run: createFakeDesktop(),
+      fetch,
+      log,
+      zones: new Set(),
+      focusHistory: createFocusHistory(openDb(':memory:')),
+    },
     dbPath: ':memory:',
     config: {},
     onClose: () => {},
@@ -68,7 +76,13 @@ void test('a module that fails is reported as failed and its log line carries no
   await discoverModules({
     roots: [root],
     reserved: [],
-    deps: { run: createFakeDesktop(), fetch, log, zones: new Set() },
+    deps: {
+      run: createFakeDesktop(),
+      fetch,
+      log,
+      zones: new Set(),
+      focusHistory: createFocusHistory(openDb(':memory:')),
+    },
     dbPath: ':memory:',
     config: { picky: { count: 'PAYLOAD-MARKER' } },
     onClose: () => {},

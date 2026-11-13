@@ -1,3 +1,4 @@
+import { MaterialAction } from './material.tsx';
 import { Badge } from '../../components/ui/badge.tsx';
 import { Checkbox } from '../../components/ui/checkbox.tsx';
 import { m } from '../../paraglide/messages.js';
@@ -65,6 +66,7 @@ export function DayBody({
                       <span className="block text-caption text-muted-foreground">
                         {step.file.path}
                         {step.file.page && ` · ${m.study_page({ page: step.file.page })}`}
+                        <MaterialAction path={step.file.path} page={step.file.page} />
                       </span>
                     )}
                   </span>

@@ -7,7 +7,7 @@ import { useNow } from '../../lib/use-now.ts';
 
 type Action = 'start' | 'pause' | 'resume' | 'skip' | 'stop';
 
-export function usePomodoro() {
+export function usePomodoro(tag?: string) {
   const trpc = useTRPC();
   const connectionLost = useConnectionLost();
   // The server's clock minus ours, from the latest push: the countdown runs on the server's time.
@@ -22,6 +22,7 @@ export function usePomodoro() {
     resume: useMutation(trpc.pomodoro.resume.mutationOptions()),
     skip: useMutation(trpc.pomodoro.skip.mutationOptions()),
     stop: useMutation(trpc.pomodoro.stop.mutationOptions()),
+    startTagged: useMutation(trpc.pomodoro.startTagged.mutationOptions()),
   };
   const state = subscription.data;
   const endsAt = state?.endsAt ?? null;
@@ -46,7 +47,8 @@ export function usePomodoro() {
   async function act(action: Action) {
     if (!state || connectionLost) throw new Error('Pomodoro unavailable');
     for (const mutation of Object.values(mutations)) mutation.reset();
-    await mutations[action].mutateAsync();
+    if (action === 'start' && tag) await mutations.startTagged.mutateAsync({ tag });
+    else await mutations[action].mutateAsync();
   }
 
   return {

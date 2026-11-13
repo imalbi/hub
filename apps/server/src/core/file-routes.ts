@@ -50,11 +50,12 @@ export async function registerFiles(
       mime: /^[\w.+-]+\/[\w.+-]+$/.test(uploaded.mime) ? uploaded.mime : 'application/octet-stream',
     });
   });
-  app.get<{ Params: { id: string } }>('/files/:id', async (req, reply) => {
+  app.get<{ Params: { id: string }; Querystring: { inline?: string } }>('/files/:id', async (req, reply) => {
     try {
       const file = await files.get(req.params.id);
+      const disposition = req.query.inline === '1' && file.mime === 'application/pdf' ? 'inline' : 'attachment';
       return reply
-        .header('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`)
+        .header('content-disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(file.name)}`)
         .header('x-content-type-options', 'nosniff')
         .type(file.mime)
         .send(createReadStream(file.path));

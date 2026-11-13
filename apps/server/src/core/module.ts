@@ -3,6 +3,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
+import type { FocusHistory } from './focus-history.ts';
 
 /** What a discovered (private or example) module gets: never the core database. */
 export type DiscoveredDeps = {
@@ -11,6 +12,7 @@ export type DiscoveredDeps = {
   log: FastifyBaseLogger;
   /** Shared with the layout module; only successfully created modules add zones. */
   zones: Set<string>;
+  focusHistory: FocusHistory;
 };
 /** What a public module gets: the discovered deps plus the core database. */
 export type ModuleDeps = DiscoveredDeps & { db: Db };

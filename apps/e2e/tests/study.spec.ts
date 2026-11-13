@@ -15,7 +15,7 @@ test('activates a plan and opens its days in place', async ({ page }) => {
   );
   await expect(page.getByText('Nuovo piano trovato')).toBeVisible();
   await page.getByRole('button', { name: 'Attiva' }).click();
-  await expect(page.getByText('Piano di esempio')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Piano di esempio', level: 2 })).toBeVisible();
   const hours = page.getByRole('spinbutton', { name: 'Ore a settimana' });
   expect((await hours.boundingBox())?.width).toBeGreaterThan(200);
   await page.getByRole('tab', { name: 'Piano', exact: true }).click();

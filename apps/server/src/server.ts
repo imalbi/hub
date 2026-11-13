@@ -1,3 +1,4 @@
+import { createFocusHistory } from './core/focus-history.ts';
 import { createFiles } from './core/files.ts';
 import { registerMcp } from './core/mcp.ts';
 import { createConfirmations } from './core/confirmations.ts';
@@ -117,6 +118,7 @@ export function buildServer({
       fetch: deps.fetch ?? fetch,
       log: app.log,
       zones: new Set(publicModules.flatMap((m) => m.zones ?? [])),
+      focusHistory: createFocusHistory(db),
     };
     const moduleDeps = { ...discoveredDeps, db };
     const onClose = (close: () => void | Promise<void>) => {

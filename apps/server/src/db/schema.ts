@@ -34,6 +34,8 @@ export const pomodoroSessions = sqliteTable('pomodoro_sessions', {
   startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
   endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  tag: text('tag'),
+  durationMs: integer('duration_ms'),
 });
 
 // The Pomodoro settings saved from the UI, one row (id 1). Absent means the config defaults and sound on.

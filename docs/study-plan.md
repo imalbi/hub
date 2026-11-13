@@ -10,6 +10,6 @@ If the plan declares phases, every day must name its `phase` by id. If it declar
 
 For a long plan, write a folder in `in-arrivo` containing `plan.json` with the header (all plan fields except `days`) and `days-*.json` files, each containing an array of days. Hub reads the chunks in filename order. A single JSON file with the full plan remains valid.
 
-Before revising an active plan, read `stato/<planId>.json` when it exists. Preserve ids for retained work and do not invent completion times. The state lists open step ids, completion and actual completion time per day, notes, thread autonomy, subject states and progress whose ids were removed. Completed step ids can be inferred from the plan and open steps.
+Before revising an active plan, read `stato/<planId>.json` when it exists. Preserve ids for retained work and do not invent completion times. The state lists open step ids, completion and actual completion time per day, completed focus minutes per day, notes, thread autonomy, subject states and progress whose ids were removed. Completed step ids can be inferred from the plan and open steps.
 
 The JSON Schema describes the document's structure. Hub additionally checks uniqueness and cross-references, including subjects, threads, recall days and phases; validation errors identify the location and reason.

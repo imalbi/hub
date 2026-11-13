@@ -102,6 +102,8 @@ function DayRow({
   const subject = subjects.find((item) => item.key === day.subject);
   const bodyId = useId();
   const trpc = useStudyTRPC();
+  const focus = useQuery(trpc.focusMinutes.queryOptions());
+  const studied = focus.data?.[`study/${day.key}`] ?? 0;
   const queries = useQueryClient();
   const navigate = useNavigate();
   const select = useMutation(trpc.setCurrent.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
@@ -148,6 +150,11 @@ function DayRow({
           <Badge tone="success" size="sm">
             {m.study_done()}
           </Badge>
+        )}
+        {studied > 0 && (
+          <span className="text-caption text-muted-foreground tabular-nums">
+            {m.study_focus_minutes({ minutes: studied.toLocaleString('it') })}
+          </span>
         )}
         {day.minutes !== undefined && (
           <span className="w-label-col text-right text-caption text-muted-foreground tabular-nums">

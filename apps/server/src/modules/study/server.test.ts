@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -359,4 +359,82 @@ void test('progress and subject state survive reload and export valid state afte
   index = (await app.inject('/trpc/study.index')).json().result.data;
   assert.equal(index.current, 'example/B01');
   assert.ok(index.days.some((day: { id: string }) => day.id === 'A01'));
+});
+
+void test('library confines PDF reads to configured material folders', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'study-library-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const materials = join(root, 'materials');
+  await mkdir(join(materials, 'nested'), { recursive: true });
+  await writeFile(join(materials, 'nested', 'lesson.pdf'), 'PDF');
+  await writeFile(join(materials, 'notes.txt'), 'text');
+  await writeFile(join(root, 'outside.pdf'), 'private');
+  await symlink(join(root, 'outside.pdf'), join(materials, 'escape.pdf'));
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, study: { plansDir: '', materialDirs: [materials] } },
+  });
+  t.after(() => app.close());
+  const list = (await app.inject('/trpc/study.library')).json().result.data;
+  assert.deepEqual(
+    list.map((item: { path: string }) => item.path),
+    ['nested/lesson.pdf'],
+  );
+  for (const path of ['../outside.pdf', join(root, 'outside.pdf'), 'escape.pdf', 'notes.txt']) {
+    const response = await app.inject({ method: 'POST', url: '/trpc/study.openMaterial', payload: { path } });
+    assert.notEqual(response.statusCode, 200, path);
+  }
+  const opened = await app.inject({
+    method: 'POST',
+    url: '/trpc/study.openMaterial',
+    payload: { path: 'nested/lesson.pdf' },
+  });
+  assert.equal(opened.statusCode, 200);
+  const fileId = opened.json().result.data.fileId;
+  assert.equal((await app.inject(`/files/${fileId}?inline=1`)).body, 'PDF');
+});
+
+void test('tagged focus minutes reach Study and survive restart in the state file', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'study-focus-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'in-arrivo'));
+  await writeFile(
+    join(root, 'in-arrivo', 'example.json'),
+    await readFile(new URL('./fixtures/example.json', import.meta.url)),
+  );
+  const options = {
+    dbPath: join(root, 'core.db'),
+    deps: { run: createFakeDesktop() },
+    config: {
+      ...emptyConfig,
+      study: { plansDir: root, materialDirs: [] },
+      pomodoro: { ...emptyConfig.pomodoro, focusMinutes: 0.001 },
+    },
+  };
+  const app = buildServer(options);
+  assert.equal(
+    (await app.inject({ method: 'POST', url: '/trpc/study.activate', payload: { name: 'example.json' } })).statusCode,
+    200,
+  );
+  assert.equal(
+    (await app.inject({ method: 'POST', url: '/trpc/pomodoro.startTagged', payload: { tag: 'study/example/A01' } }))
+      .statusCode,
+    200,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await app.inject('/trpc/pomodoro.state');
+  await app.inject({ method: 'POST', url: '/trpc/pomodoro.stop', payload: {} });
+  assert.equal((await app.inject({ method: 'POST', url: '/trpc/pomodoro.start', payload: {} })).statusCode, 200);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await app.inject('/trpc/pomodoro.state');
+  const minutes = (await app.inject('/trpc/study.focusMinutes')).json().result.data;
+  assert.equal(minutes['study/example/A01'], 0.001);
+  assert.equal(Object.keys(minutes).length, 1);
+  await app.close();
+  const state = JSON.parse(await readFile(join(root, 'stato', 'example.json'), 'utf8'));
+  assert.equal(state.days.find((day: { id: string }) => day.id === 'A01').minutes, 0.001);
+  const restarted = buildServer(options);
+  t.after(() => restarted.close());
+  assert.equal((await restarted.inject('/trpc/study.focusMinutes')).json().result.data['study/example/A01'], 0.001);
 });

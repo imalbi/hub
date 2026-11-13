@@ -32,6 +32,7 @@ for (const theme of [
       { name: 'Oggi', id: 'studio' },
       { name: 'Piano', id: 'piano' },
       { name: 'Piani', id: 'piani' },
+      { name: 'Libreria', id: 'libreria' },
     ]) {
       test(`${tab.name} ${size.width} ${theme.id}`, async ({ page }) => {
         await page.setViewportSize(size);
@@ -43,7 +44,8 @@ for (const theme of [
         if (tab.id === 'studio') {
           await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
           await expect(page.getByText('Sessioni completate oggi: 0')).toBeVisible();
-        } else await expect(page.getByText('Piano di esempio').first()).toBeVisible();
+        } else if (tab.id === 'libreria') await expect(page.getByText('dispensa.pdf', { exact: false })).toBeVisible();
+        else await expect(page.getByText('Piano di esempio').first()).toBeVisible();
         await page.evaluate(async () => {
           await document.fonts.ready;
         });

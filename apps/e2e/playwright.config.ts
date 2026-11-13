@@ -79,6 +79,7 @@ export default defineConfig({
               'widgets.spec.ts',
               'sites.spec.ts',
               'study.spec.ts',
+              'study-library.spec.ts',
               'study.visual.spec.ts',
               'jobs.spec.ts',
               'system.spec.ts',

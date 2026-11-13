@@ -15,7 +15,10 @@ void test('registry lists all public mutations with labels, descriptions and the
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.config')?.kind, 'query');
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.save')?.kind, 'mutation');
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.restore')?.kind, 'mutation');
-  assert.equal(actions.length, 65);
+  assert.equal(actions.length, 67);
+  assert.equal(actions.find((a: { path: string }) => a.path === 'study.openMaterial')?.kind, 'mutation');
+  // The palette runs an input-less action at once: a tag field here would turn "Avvia Pomodoro" into a form.
+  assert.equal(actions.find((a: { path: string }) => a.path === 'pomodoro.start')?.schema, null);
   for (const action of actions) {
     assert.ok(action.label.trim());
     assert.ok(action.description.trim());
@@ -45,7 +48,7 @@ void test('registry is protected and automatically includes optional module acti
   const response = await app.inject('/trpc/registry.list');
   assert.equal(response.statusCode, 200);
   const actions = response.json().result.data;
-  assert.equal(actions.length, 69);
+  assert.equal(actions.length, 71);
   const brightness = actions.find((a: { path: string }) => a.path === 'hue.setBrightness');
   assert.equal(brightness.schema.properties.percent.minimum, 1);
   assert.equal(brightness.schema.properties.percent.maximum, 100);

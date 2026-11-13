@@ -1,3 +1,4 @@
+import { createFocusHistory } from './core/focus-history.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -86,13 +87,20 @@ void test('a module that declares migrations gets its own database: its table ex
   );
 });
 
-void test('a discovered module without migrations gets no db and none of the core', async (t) => {
+void test('a discovered module without migrations gets no database', async (t) => {
   const root = await scratch(t);
   await writeModule(root, 'plain', '');
   const app = buildServer({ dbPath: ':memory:', moduleRoots: [root], deps: { run: createFakeDesktop() } });
   t.after(() => app.close());
   assert.equal(data(await get(app, 'plain.hasDb')), false);
-  assert.deepEqual(data(await get(app, 'plain.hasCoreDeps')), ['config', 'fetch', 'log', 'run', 'zones']);
+  assert.deepEqual(data(await get(app, 'plain.hasCoreDeps')), [
+    'config',
+    'fetch',
+    'focusHistory',
+    'log',
+    'run',
+    'zones',
+  ]);
 });
 
 void test('the type of a module without migrations has no db, with migrations it has one', () => {
@@ -222,7 +230,7 @@ void test('a public module with migrations receives its own migrated database', 
   });
   createAppRouter(
     [module],
-    { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set() },
+    { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set(), focusHistory: createFocusHistory(db) },
     {},
     (close) => closes.push(close),
     {},

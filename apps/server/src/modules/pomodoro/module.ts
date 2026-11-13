@@ -6,8 +6,14 @@ export const pomodoroModule = defineModule({
   name: 'pomodoro',
   coreDb: true,
   config: configSchema,
-  create({ db, run, config, log }) {
-    const live = createPomodoro(db, run, config, (err) => log.error({ err }, 'Pomodoro deadline failed'));
+  create({ db, run, config, log, focusHistory }) {
+    const live = createPomodoro(
+      db,
+      run,
+      config,
+      (err) => log.error({ err }, 'Pomodoro deadline failed'),
+      (tag) => focusHistory.changed(tag),
+    );
     return { router: createPomodoroRouter(live), close: () => live.close() };
   },
 });

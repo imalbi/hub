@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
+import type { FocusHistory } from '../../core/focus-history.ts';
 import type { Db } from '../../db/index.ts';
 import { planShape } from './plan.ts';
 import { readIndex } from './read.ts';
 import { days, plans, progress } from './schema.ts';
 
-export function createStateWriter(db: Db, root: string, onError: (error: unknown) => void) {
+export function createStateWriter(db: Db, root: string, onError: (error: unknown) => void, focusHistory: FocusHistory) {
   const dirty = new Set<string>();
   let timer: NodeJS.Timeout | undefined;
   let pending: Promise<void> = Promise.resolve();
@@ -32,12 +33,14 @@ export function createStateWriter(db: Db, root: string, onError: (error: unknown
       subject: new Set(header.subjects.map((subject) => subject.id)),
     };
     const current = readIndex(db)?.current;
+    const minutes = focusHistory.minutesByTag(`study/${planId}/`);
     const state = {
       planId,
       version: header.version,
       currentDay: current?.startsWith(`${planId}/`) ? current.slice(planId.length + 1) : null,
       days: entries.map((day) => ({
         id: day.id,
+        minutes: minutes[`study/${planId}/${day.id}`] ?? 0,
         done: get('day', day.id) === 'done',
         doneAt: get('day', day.id) === 'done' ? get('doneAt', day.id) || null : null,
         note: get('note', day.id) ?? '',

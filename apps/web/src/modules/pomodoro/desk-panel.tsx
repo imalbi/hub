@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
@@ -6,8 +7,18 @@ import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { PomodoroSettings } from './settings.tsx';
 
-export function PomodoroPanel({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
-  const timer = usePomodoro();
+export function PomodoroPanel({
+  compact = false,
+  className = '',
+  tag,
+  footer,
+}: {
+  compact?: boolean;
+  className?: string;
+  tag?: string;
+  footer?: ReactNode;
+}) {
+  const timer = usePomodoro(tag);
   const disabled = timer.pending || timer.state === undefined || timer.connectionLost;
   return (
     <Panel
@@ -76,7 +87,11 @@ export function PomodoroPanel({ compact = false, className = '' }: { compact?: b
         </p>
       )}
       <div className="flex flex-wrap gap-xs">
-        <RegistryButton label={timer.primaryLabel} action={() => timer.act(timer.primaryAction)} disabled={disabled} />
+        <RegistryButton
+          label={tag && timer.primaryAction === 'start' ? m.study_start_pomodoro() : timer.primaryLabel}
+          action={() => timer.act(timer.primaryAction)}
+          disabled={disabled}
+        />
         {!compact && timer.state?.phase !== 'idle' && timer.state !== undefined && (
           <>
             <RegistryButton secondary label={m.pomodoro_skip()} action={timer.skip} disabled={disabled} />
@@ -87,6 +102,11 @@ export function PomodoroPanel({ compact = false, className = '' }: { compact?: b
       {timer.error && (
         <p role="alert" className="text-caption text-danger">
           {m.pomodoro_error()}
+        </p>
+      )}
+      {footer && (
+        <p className="border-t border-dashed border-border pt-md text-caption text-muted-foreground tabular-nums">
+          {footer}
         </p>
       )}
     </Panel>

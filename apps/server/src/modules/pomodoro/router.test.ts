@@ -51,9 +51,9 @@ void test('HTTP actions validate transitions and trust, complete to history, and
   }
   const started = await app.inject({
     method: 'POST',
-    url: '/trpc/pomodoro.start',
+    url: '/trpc/pomodoro.startTagged',
     headers: { 'content-type': 'application/json' },
-    payload: '{}',
+    payload: { tag: 'study/example/A01' },
   });
   assert.equal(started.statusCode, 200);
   mock.timers.tick(3000);
@@ -65,10 +65,10 @@ void test('HTTP actions validate transitions and trust, complete to history, and
   const db = new DatabaseSync(dbPath);
   assert.deepEqual(
     db
-      .prepare('SELECT kind, completed FROM pomodoro_sessions')
+      .prepare('SELECT kind, completed, tag FROM pomodoro_sessions')
       .all()
-      .map((row) => [row.kind, row.completed]),
-    [['focus', 1]],
+      .map((row) => [row.kind, row.completed, row.tag]),
+    [['focus', 1, 'study/example/A01']],
   );
   db.close();
   await app.close();

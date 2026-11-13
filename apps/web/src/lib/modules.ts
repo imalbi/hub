@@ -2,6 +2,7 @@ import { SitesSection, SitesWidget } from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
 import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
+import { StudyLibrary } from '../modules/study/library.tsx';
 import { StudyPlan } from '../modules/study/plan.tsx';
 import { StudyPlans } from '../modules/study/plans.tsx';
 
@@ -17,6 +18,7 @@ export const moduleUIs: ModuleUI[] = [
     copy: {},
     sections: [
       { zone: 'study', id: 'piano', label: m.study_plan, component: StudyPlan },
+      { zone: 'study', id: 'libreria', label: m.study_library, component: StudyLibrary },
       { zone: 'study', id: 'piani', label: m.study_plans, component: StudyPlans },
     ],
   },

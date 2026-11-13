@@ -375,5 +375,12 @@
   "study_next_days": "Prossime G",
   "study_step_count": "{done} di {total} passi",
   "study_select_status": "Stato materia",
-  "study_next": "Vai alla prossima G"
+  "study_next": "Vai alla prossima G",
+  "study_library": "Libreria",
+  "study_search_material": "Cerca materiale",
+  "study_material_folder": "Cartella",
+  "study_open_material": "Apri",
+  "study_download": "Scarica",
+  "study_focus_minutes": "Studio: {minutes} min",
+  "study_start_pomodoro": "Avvia Pomodoro"
 }

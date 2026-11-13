@@ -60,3 +60,18 @@ void test('a page on another origin cannot upload or download through the PC, th
   const file = metadata.parse(allowed.json());
   assert.equal((await app.inject({ url: `/files/${file.fileId}`, headers: foreign })).statusCode, 403);
 });
+
+void test('only a requested PDF is displayed inline', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, moduleRoots: [] });
+  t.after(() => app.close());
+  const pdf = upload('pdf');
+  pdf.payload = pdf.payload.replace('example.txt', 'example.pdf').replace('text/plain', 'application/pdf');
+  const file = metadata.parse((await app.inject(pdf)).json());
+  assert.match((await app.inject(`/files/${file.fileId}?inline=1`)).headers['content-disposition'] ?? '', /^inline;/);
+  assert.match((await app.inject(`/files/${file.fileId}`)).headers['content-disposition'] ?? '', /^attachment;/);
+  const text = metadata.parse((await app.inject(upload('text'))).json());
+  assert.match(
+    (await app.inject(`/files/${text.fileId}?inline=1`)).headers['content-disposition'] ?? '',
+    /^attachment;/,
+  );
+});

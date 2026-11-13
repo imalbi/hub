@@ -88,6 +88,8 @@ function TodayDay({
   const queries = useQueryClient();
   const draft = getStepDraft(day.key);
   const [, refresh] = useState(0);
+  // shortcut: polls while Oggi is open because a focus ends on the server; a study push would replace it.
+  const minutes = useQuery(trpc.focusMinutes.queryOptions(undefined, { refetchInterval: 3000 }));
   const step = useMutation(trpc.setStep.mutationOptions());
   const autonomy = useMutation(
     trpc.setAutonomy.mutationOptions({
@@ -219,7 +221,10 @@ function TodayDay({
         {day.done && <RegistryButton label={m.study_next()} action={() => open.mutateAsync()} />}
       </Panel>
       <div className="col-span-4 flex flex-col gap-lg">
-        <PomodoroPanel />
+        <PomodoroPanel
+          tag={`study/${day.key}`}
+          footer={m.study_focus_minutes({ minutes: (minutes.data?.[`study/${day.key}`] ?? 0).toLocaleString('it') })}
+        />
         <Panel title={m.study_next_days()}>
           <ul>
             {index.days
