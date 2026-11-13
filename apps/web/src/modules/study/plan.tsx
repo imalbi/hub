@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
-import { subjectShade, useStudyTRPC, type StudyDay, type StudyHeader } from './use-study.ts';
+import { studySubjects, subjectShade, useStudyTRPC, type StudyDay, type StudySubject } from './use-study.ts';
 import { PlanGroup } from './plan-group.tsx';
 
 const WEEK = 7;
@@ -16,19 +16,27 @@ export function StudyPlan() {
   const [showPaused, setShowPaused] = useState(false);
   if (active.isError || index.isError) return <p>{m.study_error()}</p>;
   if (active.isPending || index.isPending) return <p>{m.tile_loading()}</p>;
-  if (!active.data || !index.data) return <p>{m.study_no_plan()}</p>;
-  const header = active.data;
+  if (!active.data?.length || !index.data) return <p>{m.study_no_plan()}</p>;
+  const headers = active.data;
+  const subjects = studySubjects(headers);
+  // Phases belong to one plan: with several active plans the days group by week of study order (decision 15).
+  const single = headers.length === 1 ? headers[0] : undefined;
   const all = [...index.data.days, ...index.data.hiddenDays];
   const source = showPaused ? all : index.data.days;
   const visible = source.filter((day) => (!subject || day.subject === subject) && (!unfinished || !day.done));
-  const phases = header.phases.length ? header.phases : [{ id: '', title: m.study_no_phase() }];
-  const currentId = index.data.days.find((day) => !day.done)?.id;
-  const titles = new Map(all.map((day) => [day.id, day]));
+  const phases = single?.phases.length ? single.phases : [{ id: '', title: m.study_no_phase() }];
+  const currentId = index.data.days.find((day) => !day.done)?.key;
+  const titles = new Map(all.map((day) => [day.key, day]));
+  const currentShown = visible.some((day) => day.key === currentId);
   let week = 0;
   return (
     <div className="flex flex-col gap-lg">
       <Panel
-        title={`${m.study_plan()} · ${header.title}`}
+        title={
+          single
+            ? `${m.study_plan()} · ${single.title}`
+            : `${m.study_plan()} · ${m.study_plan_count({ count: headers.length })}`
+        }
         action={
           <span className="text-caption text-muted-foreground tabular-nums">
             {m.study_count({ total: index.data.days.length, done: all.filter((day) => day.done).length })}
@@ -38,12 +46,12 @@ export function StudyPlan() {
         <div className="flex flex-wrap items-center gap-sm">
           <fieldset className="flex flex-wrap items-center gap-sm">
             <legend className="sr-only">{m.study_subjects()}</legend>
-            {[{ id: '', name: m.study_all() }, ...header.subjects].map((item) => (
+            {[{ key: '', label: m.study_all() }, ...subjects].map((item) => (
               <Toggle
-                key={item.id}
-                label={item.name}
-                pressed={subject === item.id}
-                onChange={() => setSubject(item.id)}
+                key={item.key}
+                label={item.label}
+                pressed={subject === item.key}
+                onChange={() => setSubject(item.key)}
               />
             ))}
           </fieldset>
@@ -52,7 +60,7 @@ export function StudyPlan() {
             <Toggle label={m.study_show_paused()} pressed={showPaused} onChange={setShowPaused} />
           )}
         </div>
-        {visible.length > 0 && <DayStrip days={visible} header={header} currentId={currentId} />}
+        {visible.length > 0 && <DayStrip days={visible} subjects={subjects} currentId={currentId} />}
       </Panel>
       <section
         aria-label={m.study_days()}
@@ -60,7 +68,7 @@ export function StudyPlan() {
       >
         {visible.length === 0 && <p>{m.study_empty()}</p>}
         {phases.map((phase) => {
-          const phaseDays = visible.filter((day) => (day.phase ?? '') === phase.id);
+          const phaseDays = single ? visible.filter((day) => (day.phase ?? '') === phase.id) : visible;
           if (!phaseDays.length) return null;
           const groups = Array.from({ length: Math.ceil(phaseDays.length / WEEK) }, (_, i) =>
             phaseDays.slice(i * WEEK, i * WEEK + WEEK),
@@ -72,12 +80,14 @@ export function StudyPlan() {
                 week += 1;
                 return (
                   <PlanGroup
-                    key={`${phase.id}-${group[0]?.id}-${currentId}`}
+                    key={`${phase.id}-${group[0]?.key}-${currentId}`}
                     title={m.study_week_range({ number: week, range: range(group) })}
                     days={group}
-                    header={header}
+                    headers={headers}
+                    subjects={subjects}
                     titles={titles}
                     currentId={currentId}
+                    first={!currentShown && week === 1}
                   />
                 );
               })}
@@ -111,7 +121,7 @@ function Toggle({ label, pressed, onChange }: { label: string; pressed: boolean;
 }
 
 /** Every visible day as one cell in study order: subject shade, done in the accent, the current day ringed. */
-function DayStrip({ days, header, currentId }: { days: StudyDay[]; header: StudyHeader; currentId?: string }) {
+function DayStrip({ days, subjects, currentId }: { days: StudyDay[]; subjects: StudySubject[]; currentId?: string }) {
   const first = days[0]?.g;
   const last = days.at(-1)?.g;
   return (
@@ -119,18 +129,18 @@ function DayStrip({ days, header, currentId }: { days: StudyDay[]; header: Study
       <div aria-hidden="true" className="flex h-2xl gap-px">
         {days.map((day) => (
           <span
-            key={day.id}
-            className={`min-w-0 flex-1 rounded-sm ${day.done ? 'bg-accent' : subjectShade(header, day.subject)} ${day.id === currentId ? 'ring-2 ring-accent ring-inset' : ''}`}
+            key={day.key}
+            className={`min-w-0 flex-1 rounded-sm ${day.done ? 'bg-accent' : subjectShade(subjects, day.subject)} ${day.key === currentId ? 'ring-2 ring-accent ring-inset' : ''}`}
           />
         ))}
       </div>
       <div className="flex items-center justify-between gap-md text-caption text-muted-foreground tabular-nums">
         <span>{first ? `G${first}` : ''}</span>
         <span className="flex flex-wrap items-center gap-lg">
-          {header.subjects.map((item) => (
-            <span key={item.id} className="flex items-center gap-xs">
-              <span aria-hidden="true" className={`size-icon-sm rounded-sm ${subjectShade(header, item.id)}`} />
-              {item.name}
+          {subjects.map((item) => (
+            <span key={item.key} className="flex items-center gap-xs">
+              <span aria-hidden="true" className={`size-icon-sm rounded-sm ${subjectShade(subjects, item.key)}`} />
+              {item.label}
             </span>
           ))}
           <span className="flex items-center gap-xs">

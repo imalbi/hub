@@ -3,10 +3,10 @@ import type { Db } from '../../db/index.ts';
 import type { StudyPlan } from './plan.ts';
 import { days, plans } from './schema.ts';
 
+/** Adds the plan to the active ones (decision 15); a new version replaces its days and keeps its progress. */
 export function savePlan(db: Db, plan: StudyPlan) {
   const { days: entries, ...header } = plan;
   db.transaction((tx) => {
-    tx.update(plans).set({ active: false }).run();
     tx.insert(plans)
       .values({ id: plan.id, version: plan.version, header: JSON.stringify(header), active: true })
       .onConflictDoUpdate({

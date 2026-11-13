@@ -93,6 +93,7 @@ void test('every mutation carries an Italian label and an English description in
     'settings.saveCore',
     'study.activate',
     'study.setMix',
+    'study.setPlan',
     'study.setSubject',
     'system.lock',
     'system.powerOff',

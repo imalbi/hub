@@ -73,6 +73,14 @@ if (!example) {
     }
   });
 
+  test('a word list field shows its title and its caption like the other fields', async ({ page }) => {
+    await page.goto('/desk/settings/study');
+    // Regression (2026-11-13): the tag input had only an accessible name, no visible title, and its own smaller caption.
+    await expect(page.getByText('Cartelle materiali', { exact: true })).toBeVisible();
+    const size = (text: RegExp) => page.getByText(text).evaluate((node) => getComputedStyle(node).fontSize);
+    expect(await size(/^Cartelle dei materiali di studio\./)).toBe(await size(/^Cartella dei piani;/));
+  });
+
   test('weather location search shows empty and failed results and can retry', async ({ page }) => {
     let calls = 0;
     await page.route('**/trpc/weather.search*', async (route) => {

@@ -92,14 +92,17 @@ void test('inbox reports plans and activation archives a valid file', async (t) 
   );
   const response = await app.inject({ method: 'POST', url: '/trpc/study.activate', payload: { name: 'example.json' } });
   assert.equal(response.statusCode, 200);
-  assert.equal((await app.inject('/trpc/study.active')).json().result.data.id, 'example');
+  assert.deepEqual(
+    (await app.inject('/trpc/study.active')).json().result.data.map((plan: { id: string }) => plan.id),
+    ['example'],
+  );
   const page = await app.inject('/trpc/study.days?input=%7B%22offset%22%3A0%2C%22limit%22%3A1%7D');
   assert.equal(page.json().result.data.length, 1);
   assert.equal(page.json().result.data[0].id, 'A01');
   const paused = await app.inject({
     method: 'POST',
     url: '/trpc/study.setSubject',
-    payload: { id: 'b', state: 'paused' },
+    payload: { plan: 'example', id: 'b', state: 'paused' },
   });
   assert.equal(paused.statusCode, 200);
   const index = (await app.inject('/trpc/study.index')).json().result.data;
@@ -244,4 +247,65 @@ void test('activates 500 days and 5000 steps within two seconds', async (t) => {
   assert.equal(response.statusCode, 200);
   assert.ok(performance.now() - start < 2000);
   assert.equal((await app.inject('/trpc/study.index')).json().result.data.days.length, 500);
+});
+
+/** A one-subject plan of `count` equal days, the usual "one plan per course" case of decision 15. */
+function course(id: string, count: number) {
+  return planSchema.parse({
+    schema: 'hub.study-plan/1',
+    id,
+    title: `Corso ${id}`,
+    version: 1,
+    subjects: [{ id: 'a', name: `Materia ${id}` }],
+    threads: [],
+    phases: [],
+    method: [],
+    days: Array.from({ length: count }, (_, i) => ({
+      id: `D${i + 1}`,
+      subject: 'a',
+      title: `${id} ${i + 1}`,
+      threads: [],
+      recall: [],
+      kind: 'study',
+      blocks: [],
+      check: '',
+    })),
+  });
+}
+
+void test('several active plans interleave by the global mix, and a paused plan leaves the sequence', async (t) => {
+  const { readDaysById, readIndex } = await import('./read.ts');
+  const db = openDatabase(':memory:', fileURLToPath(new URL('./drizzle', import.meta.url)));
+  t.after(() => db.$client.close());
+  // Same day ids in both plans: days are told apart by plan.
+  savePlan(db, course('p', 10));
+  savePlan(db, course('q', 10));
+  const order = () => readIndex(db)?.days.map((day) => day.planId) ?? [];
+  // Activating a second plan keeps the first; with no mix they share equally.
+  assert.deepEqual(order().slice(0, 4), ['p', 'q', 'p', 'q']);
+  assert.equal(readIndex(db)?.mixSet, false);
+  db.$client
+    .prepare('INSERT INTO preferences (plan_id, weekly_hours, mix) VALUES (?, ?, ?)')
+    .run('*', 600, JSON.stringify({ 'p:a': 75, 'q:a': 25 }));
+  const mixed = order().slice(0, 8);
+  assert.equal(mixed.filter((plan) => plan === 'p').length, 6);
+  assert.deepEqual(
+    readIndex(db)
+      ?.days.slice(0, 2)
+      .map((day) => day.key),
+    ['p/D1', 'q/D1'],
+  );
+  assert.deepEqual(
+    readDaysById(db, ['q/D1']).map((day) => [day.planId, day.title]),
+    [['q', 'q 1']],
+  );
+  // A third plan the mix does not name: the stored mix is set aside and the three share equally.
+  savePlan(db, course('r', 3));
+  assert.equal(readIndex(db)?.mixSet, false);
+  assert.deepEqual(order().slice(0, 3).sort(), ['p', 'q', 'r']);
+  // Pausing a plan takes its days out; resuming brings them back with the same mix.
+  db.$client.prepare('UPDATE plans SET active = 0 WHERE id = ?').run('r');
+  assert.equal(readIndex(db)?.mixSet, true);
+  assert.ok(!order().includes('r'));
+  assert.equal(readIndex(db)?.days.length, 20);
 });

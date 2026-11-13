@@ -93,3 +93,63 @@ test('a large plan loads only the first open group', async ({ page, pc }) => {
   expect(decodeURIComponent(calls[0] ?? '')).not.toContain('day-7');
   await expect(page.getByRole('button', { name: /^Settimana 2 ·/ })).toHaveAttribute('aria-expanded', 'false');
 });
+
+test('a second plan is active next to the first, filters by plan and pauses from Piani', async ({ page }) => {
+  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
+  await mkdir(inbox, { recursive: true });
+  const base = JSON.parse(
+    await readFile(new URL('../../server/src/modules/study/fixtures/example.json', import.meta.url), 'utf8'),
+  );
+  await copyFile(
+    new URL('../../server/src/modules/study/fixtures/example.json', import.meta.url),
+    join(inbox, 'first.json'),
+  );
+  // One subject, the same day ids as the first plan: days are told apart by plan (decision 15).
+  const second = {
+    ...base,
+    id: 'second',
+    title: 'Secondo corso',
+    subjects: [{ id: 'a', name: 'Geologia' }],
+    threads: [{ id: 'plants', subject: 'a', title: 'Rocce' }],
+    phases: [],
+    days: base.days.map((day: { id: string }) => ({
+      ...day,
+      subject: 'a',
+      phase: undefined,
+      threads: ['plants'],
+      title: `Rocce ${day.id}`,
+    })),
+  };
+  await writeFile(join(inbox, 'second.json'), JSON.stringify(second));
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  try {
+    await page.goto(`${PC_URL}/desk/studio?tab=piani`);
+    for (const name of ['Piano di esempio', 'Secondo corso']) {
+      const found = page.getByRole('region', { name: 'Nuovo piano trovato' }).filter({ hasText: name });
+      await found.getByRole('button', { name: 'Attiva' }).click();
+      await expect(found).not.toBeVisible();
+    }
+    await expect(page.getByRole('heading', { name: 'Piano di esempio' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Secondo corso' })).toBeVisible();
+    await page.getByRole('tab', { name: 'Piano', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Piano · 2 piani' })).toBeVisible();
+    const subjects = page.getByRole('group', { name: 'Materie' });
+    await subjects.getByRole('button', { name: 'Secondo corso' }).click();
+    await expect(page.getByRole('button', { name: /· Rocce A01$/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /· La foglia$/ })).not.toBeVisible();
+    await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+    await page
+      .getByRole('region', { name: 'Secondo corso' })
+      .getByRole('button', { name: 'Metti in pausa il piano' })
+      .click();
+    const pausedPlans = page.getByRole('region', { name: 'Piani in pausa' });
+    await expect(pausedPlans.getByText('Secondo corso')).toBeVisible();
+    await pausedPlans.getByRole('button', { name: 'Riprendi' }).click();
+    await expect(page.getByRole('heading', { name: 'Secondo corso' })).toBeVisible();
+  } finally {
+    for (const table of ['plans', 'progress', 'preferences'])
+      db.prepare(`DELETE FROM ${table} WHERE ${table === 'plans' ? 'id' : 'plan_id'} IN ('second', '*')`).run();
+    db.prepare("DELETE FROM days WHERE plan_id = 'second'").run();
+    db.close();
+  }
+});

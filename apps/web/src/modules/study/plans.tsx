@@ -7,7 +7,7 @@ import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { Badge } from '../../components/ui/badge.tsx';
 import { m } from '../../paraglide/messages.js';
-import { useStudyTRPC, type StudyHeader, type StudyIndex } from './use-study.ts';
+import { studySubjects, useStudyTRPC, type StudyHeader, type StudyIndex } from './use-study.ts';
 import { StudyMix } from './mix.tsx';
 import { SubjectEstimate } from './subject-estimate.tsx';
 
@@ -32,16 +32,33 @@ export function StudyPlans() {
   const inbox = useSubscription(trpc.onInbox.subscriptionOptions());
   const activate = useMutation(trpc.activate.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
   const subject = useMutation(trpc.setSubject.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
-  const current = index.data?.days.find((day) => !day.done);
-  const suggested = active.data?.phases.find((phase) => phase.id === current?.phase)?.mix;
-  if (active.isError || index.isError || inbox.error) return <p>{m.study_error()}</p>;
-  const header = active.data;
+  const paused = useQuery(trpc.paused.queryOptions());
+  const setPlan = useMutation(trpc.setPlan.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
+  if (active.isError || index.isError || inbox.error || paused.isError) return <p>{m.study_error()}</p>;
+  const headers = active.data ?? [];
   const data = index.data;
+  const subjects = studySubjects(headers);
+  // A phase suggests a mix for its own plan's subjects: offered only while that plan is the one active (decision 15).
+  const single = headers.length === 1 ? headers[0] : undefined;
+  const current = data?.days.find((day) => !day.done);
+  const phaseMix = single?.phases.find((phase) => phase.id === current?.phase)?.mix;
+  const suggested =
+    single && phaseMix
+      ? Object.fromEntries(Object.entries(phaseMix).map(([id, share]) => [`${single.id}:${id}`, share]))
+      : undefined;
   return (
     <div className="grid grid-cols-12 items-start gap-lg">
       <div className="col-span-7 flex flex-col gap-lg">
-        {active.data && index.data ? (
-          <ActivePlan header={active.data} index={index.data} />
+        {headers.length > 0 && data ? (
+          headers.map((header) => (
+            <ActivePlan
+              key={header.id}
+              header={header}
+              index={data}
+              single={headers.length === 1}
+              onPause={() => setPlan.mutateAsync({ id: header.id, active: false })}
+            />
+          ))
         ) : (
           <Panel>
             <p className="text-body">{m.study_no_plan()}</p>
@@ -109,42 +126,63 @@ export function StudyPlans() {
         ))}
       </div>
       <div className="col-span-5 flex flex-col gap-lg">
-        {header && data && (
+        {headers.length > 0 && data && (
           <Panel title={m.study_subjects()}>
             <ul>
-              {header.subjects.map((item) => {
-                const paused = data.states[item.id] === 'paused';
+              {subjects.map((item) => {
+                const off = data.states[item.key] === 'paused';
                 return (
                   <li
-                    key={item.id}
+                    key={item.key}
                     className="flex items-center justify-between gap-md border-b border-dashed border-border py-sm last:border-b-0"
                   >
                     <span className="flex flex-col gap-2xs">
                       <span className="flex items-center gap-sm text-body">
-                        {item.name}
+                        {item.label}
                         <Badge outline size="sm">
-                          {paused ? m.study_paused() : m.study_active()}
+                          {off ? m.study_paused() : m.study_active()}
                         </Badge>
                       </span>
-                      <SubjectEstimate id={item.id} index={data} />
+                      <SubjectEstimate id={item.key} index={data} />
                     </span>
                     <RegistryButton
                       secondary
-                      label={paused ? m.study_resume() : m.study_pause()}
-                      action={() => subject.mutateAsync({ id: item.id, state: paused ? 'active' : 'paused' })}
+                      label={off ? m.study_resume() : m.study_pause()}
+                      action={() =>
+                        subject.mutateAsync({ plan: item.planId, id: item.id, state: off ? 'active' : 'paused' })
+                      }
                     />
                   </li>
                 );
               })}
             </ul>
             <StudyMix
-              key={`${header.id}-${JSON.stringify(data.mix)}`}
-              subjects={header.subjects}
+              key={`${data.planIds.join()}-${JSON.stringify(data.mix)}`}
+              subjects={subjects.map((item) => ({ id: item.key, name: item.label }))}
               mix={data.mix}
               hours={data.weeklyHours}
               suggested={suggested}
               states={data.states}
             />
+          </Panel>
+        )}
+        {paused.data && paused.data.length > 0 && (
+          <Panel title={m.study_paused_plans()}>
+            <ul>
+              {paused.data.map((plan) => (
+                <li
+                  key={plan.id}
+                  className="flex items-center justify-between gap-md border-b border-dashed border-border py-sm last:border-b-0"
+                >
+                  <span className="text-body">{plan.title}</span>
+                  <RegistryButton
+                    secondary
+                    label={m.study_resume()}
+                    action={() => setPlan.mutateAsync({ id: plan.id, active: true })}
+                  />
+                </li>
+              ))}
+            </ul>
           </Panel>
         )}
         <section className="flex flex-col gap-sm rounded-xl border border-dashed border-border p-lg">
@@ -163,16 +201,33 @@ export function StudyPlans() {
   );
 }
 
-function ActivePlan({ header, index }: { header: StudyHeader; index: StudyIndex }) {
+function ActivePlan({
+  header,
+  index,
+  single,
+  onPause,
+}: {
+  header: StudyHeader;
+  index: StudyIndex;
+  single: boolean;
+  onPause: () => Promise<unknown>;
+}) {
   const titleId = useId();
-  const all = [...index.days, ...index.hiddenDays];
+  const all = [...index.days, ...index.hiddenDays].filter((day) => day.planId === header.id);
   const done = all.filter((day) => day.done).length;
-  const current = index.days.find((day) => !day.done);
+  const current = index.days.find((day) => day.planId === header.id && !day.done);
+  const share = header.subjects.reduce((sum, item) => sum + (index.mix?.[`${header.id}:${item.id}`] ?? 0), 0);
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-md rounded-xl border border-border bg-surface p-xl">
       <div className="flex items-center gap-sm">
         <Badge tone="primary">{m.study_active_plan()}</Badge>
+        {!single && index.mix && (
+          <span className="text-caption text-muted-foreground tabular-nums">
+            {m.study_plan_share({ share: Math.round(share) })}
+          </span>
+        )}
         <span className="flex-1" />
+        {!single && <RegistryButton secondary label={m.study_pause_plan()} action={onPause} />}
         <Link
           to="/desk/studio"
           search={{ tab: 'piano' }}
@@ -182,11 +237,11 @@ function ActivePlan({ header, index }: { header: StudyHeader; index: StudyIndex 
           <CaretRightIcon aria-hidden="true" className="size-icon-sm" />
         </Link>
       </div>
-      <h2 id={titleId} className="text-display">
+      <h2 id={titleId} className={single ? 'text-display' : 'text-heading'}>
         {header.title}
       </h2>
       <p className="flex flex-wrap gap-lg text-caption text-muted-foreground tabular-nums">
-        <span>{m.study_g_total({ total: index.days.length })}</span>
+        <span>{m.study_g_total({ total: all.length })}</span>
         <span>{m.study_version({ version: header.version })}</span>
         {current?.g && <span>{m.study_current_g({ g: current.g })}</span>}
       </p>
@@ -196,7 +251,7 @@ function ActivePlan({ header, index }: { header: StudyHeader; index: StudyIndex 
           <span className="text-caption text-muted-foreground tabular-nums">
             {header.subjects
               .map((item) => {
-                const days = all.filter((day) => day.subject === item.id);
+                const days = all.filter((day) => day.subject === `${header.id}:${item.id}`);
                 return `${item.name} ${days.filter((day) => day.done).length}/${days.length}`;
               })
               .join(' · ')}

@@ -353,5 +353,9 @@
   "study_open_plan": "Apri il piano",
   "study_g_total": "{total} G",
   "study_current_g": "G corrente: G{g}",
-  "study_done_of": "{done} di {total} G completate"
+  "study_done_of": "{done} di {total} G completate",
+  "study_plan_count": "{count} piani",
+  "study_paused_plans": "Piani in pausa",
+  "study_pause_plan": "Metti in pausa il piano",
+  "study_plan_share": "{share}% del mix"
 }

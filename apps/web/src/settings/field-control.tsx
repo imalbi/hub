@@ -128,7 +128,8 @@ export function FieldControl({
         />
       );
     case 'words':
-      return (
+      // The tag input names itself only for screen readers: the shell gives it the visible title and caption.
+      return shell(
         <TagInput
           label={label}
           copy={tagCopy}
@@ -138,8 +139,7 @@ export function FieldControl({
             const words = tags.filter((tag) => !tag.error).map((tag) => tag.value);
             onChange(words.length > 0 ? words : undefined);
           }}
-          hint={error ?? caption}
-        />
+        />,
       );
     case 'number':
       return shell(

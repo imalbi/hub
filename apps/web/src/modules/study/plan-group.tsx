@@ -3,29 +3,41 @@ import { useQuery } from '@tanstack/react-query';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { Badge } from '../../components/ui/badge.tsx';
 import { m } from '../../paraglide/messages.js';
-import { subjectShade, useStudyTRPC, type StudyDay, type StudyDayBody as Body, type StudyHeader } from './use-study.ts';
+import {
+  subjectShade,
+  useStudyTRPC,
+  type StudyDay,
+  type StudyDayBody as Body,
+  type StudyHeader,
+  type StudySubject,
+} from './use-study.ts';
 
 /** A week of days: a disclosure that loads day bodies only while open (decision 11), rows open in place, read-only. */
 export function PlanGroup({
   title,
   days,
-  header,
+  headers,
+  subjects,
   titles,
   currentId,
+  first = false,
 }: {
   title: string;
   days: StudyDay[];
-  header: StudyHeader;
+  headers: StudyHeader[];
+  subjects: StudySubject[];
   titles: Map<string, StudyDay>;
   currentId?: string;
+  /** Opens this group when no visible group holds the current day (a filter on another plan or subject). */
+  first?: boolean;
 }) {
-  const hasCurrent = days.some((day) => day.id === currentId);
-  const [open, setOpen] = useState(hasCurrent);
+  const hasCurrent = days.some((day) => day.key === currentId);
+  const [open, setOpen] = useState(hasCurrent || first);
   const [openDays, setOpenDays] = useState(() => new Set(hasCurrent && currentId ? [currentId] : []));
   const panelId = useId();
   const trpc = useStudyTRPC();
-  const bodies = useQuery(trpc.daysById.queryOptions({ ids: days.map((day) => day.id) }, { enabled: open }));
-  const byId = new Map(bodies.data?.map((day) => [day.id, day]));
+  const bodies = useQuery(trpc.daysById.queryOptions({ keys: days.map((day) => day.key) }, { enabled: open }));
+  const byKey = new Map(bodies.data?.map((day) => [day.key, day]));
   function toggleDay(id: string) {
     const next = new Set(openDays);
     if (!next.delete(id)) next.add(id);
@@ -48,14 +60,15 @@ export function PlanGroup({
           {bodies.isError && <li className="text-body">{m.study_error()}</li>}
           {days.map((day) => (
             <DayRow
-              key={day.id}
+              key={day.key}
               day={day}
-              header={header}
+              header={headers.find((item) => item.id === day.planId)}
+              subjects={subjects}
               titles={titles}
-              body={byId.get(day.id)}
-              current={day.id === currentId}
-              open={openDays.has(day.id)}
-              onToggle={() => toggleDay(day.id)}
+              body={byKey.get(day.key)}
+              current={day.key === currentId}
+              open={openDays.has(day.key)}
+              onToggle={() => toggleDay(day.key)}
             />
           ))}
         </ul>
@@ -67,6 +80,7 @@ export function PlanGroup({
 function DayRow({
   day,
   header,
+  subjects,
   titles,
   body,
   current,
@@ -74,7 +88,8 @@ function DayRow({
   onToggle,
 }: {
   day: StudyDay;
-  header: StudyHeader;
+  header?: StudyHeader;
+  subjects: StudySubject[];
   titles: Map<string, StudyDay>;
   body?: Body;
   current: boolean;
@@ -82,7 +97,7 @@ function DayRow({
   onToggle: () => void;
 }) {
   const g = day.g === null ? m.study_paused() : `G${day.g}`;
-  const subject = header.subjects.find((item) => item.id === day.subject);
+  const subject = subjects.find((item) => item.key === day.subject);
   const bodyId = useId();
   return (
     <li
@@ -103,9 +118,9 @@ function DayRow({
         <span className={`w-2xl tabular-nums ${current ? 'text-label' : 'text-muted-foreground'}`}>{g}</span>
         <span
           aria-hidden="true"
-          className={`flex size-icon shrink-0 items-center justify-center rounded-sm text-caption ${subjectShade(header, day.subject)}`}
+          className={`flex size-icon shrink-0 items-center justify-center rounded-sm text-caption ${subjectShade(subjects, day.subject)}`}
         >
-          {subject?.name.charAt(0)}
+          {subject?.label.charAt(0)}
         </span>
         <span className={`min-w-0 flex-1 truncate ${current ? 'text-title' : 'text-body'}`}>{day.title}</span>
         {day.kind === 'mock' && (
@@ -137,7 +152,7 @@ function DayRow({
       </button>
       {open && (
         <div id={bodyId} className="border-t border-dashed border-border py-md">
-          {body ? <DayBody body={body} header={header} titles={titles} /> : <p>{m.tile_loading()}</p>}
+          {body && header ? <DayBody body={body} header={header} titles={titles} /> : <p>{m.tile_loading()}</p>}
         </div>
       )}
     </li>
@@ -156,7 +171,7 @@ function DayBody({ body, header, titles }: { body: Body; header: StudyHeader; ti
             </Badge>
           ))}
           {body.recall.map((id) => {
-            const recalled = titles.get(id);
+            const recalled = titles.get(`${header.id}/${id}`);
             return (
               <span key={id} className="text-caption text-muted-foreground">
                 {m.study_recall()}:{' '}
