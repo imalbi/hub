@@ -27,6 +27,7 @@ void test('a missing config file is an empty config', () => {
     news: {},
     airplay: {},
     sites: [],
+    study: { plansDir: '', materialDirs: [] },
   });
 });
 

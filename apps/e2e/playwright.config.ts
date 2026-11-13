@@ -78,6 +78,8 @@ export default defineConfig({
               'themes.spec.ts',
               'widgets.spec.ts',
               'sites.spec.ts',
+              'study.spec.ts',
+              'study.visual.spec.ts',
               'jobs.spec.ts',
               'system.spec.ts',
               'news.spec.ts',

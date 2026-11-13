@@ -46,6 +46,9 @@ copyFileSync(new URL('../modules/news/fixtures/latest.html', import.meta.url), n
 const newsUpdated = new Date(2026, 10, 4, 8, 30);
 utimesSync(newsPage, newsUpdated, newsUpdated);
 
+const studyDir = join(runDir, 'study');
+mkdirSync(join(studyDir, 'in-arrivo'), { recursive: true });
+
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
 // of the real server, so its origins (the run's Vite port) go on the allowlist or every WebSocket upgrade is refused.
 const config: Config = {
@@ -69,6 +72,7 @@ const config: Config = {
   },
   weather: { name: 'Località esempio', latitude: 1, longitude: 2 },
   airplay: { command: 'airplay' },
+  study: { plansDir: studyDir, materialDirs: [] },
 };
 
 // The e2e browser runs on this machine, so every request really is loopback. The suite needs one page to play the PC

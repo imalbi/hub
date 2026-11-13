@@ -16,6 +16,7 @@
   "weather": { "name": "Località esempio", "latitude": 1, "longitude": 2 },
   "airplay": { "command": "/path/to/airplay" },
   "sites": [{ "name": "Esempio", "url": "https://example.com" }],
+  "study": { "plansDir": "/path/to/study/plans", "materialDirs": ["/path/to/study/materials"] },
   "mail": {
     "accounts": [
       { "label": "Lavoro", "account": "work" },

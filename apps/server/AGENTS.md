@@ -227,3 +227,5 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - `core/mcp.ts` serves stateless Streamable HTTP at `/mcp` when `mcp.enabled` is true. An absent Origin is accepted; a present Origin must match the WebSocket allowlist. LAN requests need an agent bearer token. `core/agents-router.ts` issues it once and stores its SHA-256 hash.
 - Tool discovery uses `registry.list`; calls run through tRPC with client kind `agent`. `confirmDanger` never accepts an agent confirmation. `core/confirmations.ts` keeps pending dangerous calls for two minutes, refuses requests with no subscribed desk or deck, and executes only after a human hold. `confirmations.status` reports the outcome.
 - `core/agent-audit.ts` masks guard-detected values and retains the latest 500 calls in `agent_calls`; avoid logging raw tool input or output elsewhere.
+
+- Studio (`src/modules/study/`) retains ID-keyed progress when an imported revision replaces its day rows; `readIndex` computes G numbers and the effective mix, and full day bodies load separately. Its recursive inbox watcher closes before the module database.
