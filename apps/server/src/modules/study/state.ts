@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import type { FocusHistory } from '../../core/focus-history.ts';
 import type { Db } from '../../db/index.ts';
 import { planShape } from './plan.ts';
+import { readErrors } from './errors.ts';
 import { readIndex } from './read.ts';
 import { days, plans, progress } from './schema.ts';
 
@@ -52,6 +53,11 @@ export function createStateWriter(db: Db, root: string, onError: (error: unknown
       subjects: Object.fromEntries(
         header.subjects.map((subject) => [subject.id, get('subject', subject.id) ?? 'active']),
       ),
+      errors: readErrors(db, [planId]).map(({ id, planId: _plan, key, ...entry }) => ({
+        id,
+        day: key.slice(planId.length + 1),
+        ...entry,
+      })),
       removed: records.filter((record) => {
         const kind =
           record.kind === 'note' || record.kind === 'doneAt'

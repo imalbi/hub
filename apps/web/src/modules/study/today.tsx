@@ -7,6 +7,7 @@ import { Select } from '../../components/ui/select.tsx';
 import { PomodoroPanel } from '../pomodoro/desk-panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { DayBody } from './day-body.tsx';
+import { causeLabel, ErrorForm } from './error-form.tsx';
 import { TodayNote } from './today-note.tsx';
 import { studySubjects, useStudyTRPC, type StudyDayBody, type StudyHeader, type StudyIndex } from './use-study.ts';
 
@@ -90,6 +91,8 @@ function TodayDay({
   const [, refresh] = useState(0);
   // shortcut: polls while Oggi is open because a focus ends on the server; a study push would replace it.
   const minutes = useQuery(trpc.focusMinutes.queryOptions(undefined, { refetchInterval: 3000 }));
+  const errors = useQuery(trpc.errors.queryOptions());
+  const [errorDraft, setErrorDraft] = useState<{ reference: string } | null>(null);
   const step = useMutation(trpc.setStep.mutationOptions());
   const autonomy = useMutation(
     trpc.setAutonomy.mutationOptions({
@@ -173,7 +176,39 @@ function TodayDay({
           checked={checked}
           onStep={saveStep}
           notes={new Map(own.filter((row) => row.kind === 'note').map((row) => [row.id, row.value]))}
+          errors={errors.data}
+          onError={(item) =>
+            setErrorDraft({
+              reference: item.file ? `${item.file.path}${item.file.page ? `, p. ${item.file.page}` : ''}` : '',
+            })
+          }
         />
+        {errorDraft ? (
+          <ErrorForm
+            key={errorDraft.reference}
+            dayKey={day.key}
+            reference={errorDraft.reference}
+            retryDays={index.days.filter((item) => !item.done).slice(0, 60)}
+            onDone={() => setErrorDraft(null)}
+          />
+        ) : (
+          <div>
+            <button
+              type="button"
+              className="min-h-touch cursor-pointer rounded-full border border-border px-md text-label hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+              onClick={() => setErrorDraft({ reference: '' })}
+            >
+              {m.study_error_add()}
+            </button>
+          </div>
+        )}
+        {(errors.data ?? [])
+          .filter((entry) => entry.key === day.key)
+          .map((entry) => (
+            <p key={entry.id} className="text-caption text-muted-foreground">
+              {m.study_errors()}: {entry.reference} · {causeLabel(entry.cause)}
+            </p>
+          ))}
         {Object.entries(draft.failed).map(([id, done]) => (
           <div role="alert" key={id}>
             {m.study_save_failed()}{' '}

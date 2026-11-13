@@ -298,3 +298,111 @@ test('mix reorders next days while weekly hours update estimates and preserve to
   await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
   await expect(page.getByText('G3 · Stelle B02')).toBeVisible();
 });
+
+test('Ripasso lists threads, half days, open steps and errors, and ticking there updates Oggi', async ({
+  page,
+  pc,
+}) => {
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
+  await mkdir(inbox, { recursive: true });
+  const plan = JSON.parse(
+    await readFile(new URL('../../server/src/modules/study/fixtures/example.json', import.meta.url), 'utf8'),
+  );
+  plan.days[0].blocks[0].steps.push(
+    { id: 'A01.m.2', text: 'Disegna una foglia.', file: { path: 'dispensa.pdf', page: 4 } },
+    { id: 'A01.m.3', text: 'Nomina le parti.' },
+  );
+  await writeFile(join(inbox, 'review.json'), JSON.stringify(plan));
+  try {
+    db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
+    db.prepare("DELETE FROM preferences WHERE plan_id = '*'").run();
+    expect((await pc.post('/trpc/study.activate', { data: { name: 'review.json' } })).ok()).toBe(true);
+    await page.goto(`${PC_URL}/desk/studio?tab=ripasso`);
+    await expect(page.getByText('Niente da riprendere')).toBeVisible();
+    await pc.post('/trpc/study.setAutonomy', { data: { plan: 'example', id: 'plants', value: 'red' } });
+    await pc.post('/trpc/study.setAutonomy', { data: { plan: 'example', id: 'stars', value: 'yellow' } });
+    await pc.post('/trpc/study.setStep', { data: { key: 'example/A01', id: 'A01.m.1', done: true } });
+
+    // An error entry from a step: the reference starts from the step's file and page, only reference and cause are needed.
+    await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+    await page.getByRole('button', { name: 'Registra un errore su: Disegna una foglia.' }).click();
+    const form = page.getByRole('form', { name: 'Registra un errore' });
+    await expect(form.getByRole('textbox', { name: 'Riferimento' })).toHaveValue('dispensa.pdf, p. 4');
+    await form.getByRole('textbox', { name: 'Riferimento' }).fill('Foglio 1, es. 3');
+    await expect(form.getByRole('button', { name: 'Salva errore' })).toBeDisabled();
+    await form.getByRole('button', { name: /^Causa/ }).click();
+    await page.getByRole('option', { name: 'Calcolo' }).click();
+    await form.getByRole('button', { name: 'Salva errore' }).click();
+    await expect(page.getByText('Errori: Foglio 1, es. 3 · Calcolo')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Ripasso', exact: true }).click();
+    await expect(page.getByText('4 da riprendere')).toBeVisible();
+    const threads = page.getByRole('region', { name: 'Argomenti da riprendere' });
+    await expect(threads.getByText('Piante')).toBeVisible();
+    await expect(threads.getByText('Rosso')).toBeVisible();
+    await expect(threads.getByText('Stelle')).toBeVisible();
+    await expect(threads.getByText('Giallo')).toBeVisible();
+    const half = page.getByRole('region', { name: 'Giorni a metà' });
+    await expect(half.getByText('La foglia')).toBeVisible();
+    await expect(half.getByText('2 di 3 passi ancora da fare')).toBeVisible();
+    const errors = page.getByRole('region', { name: 'Errori da riprovare' });
+    await expect(errors.getByText('Foglio 1, es. 3')).toBeVisible();
+    await expect(page.getByText(/in ritardo|giorni trascorsi|scadut/i)).toHaveCount(0);
+
+    // Filters.
+    await page.getByRole('button', { name: 'Giallo', exact: true }).click();
+    await expect(threads.getByText('Piante')).not.toBeVisible();
+    await expect(threads.getByText('Stelle')).toBeVisible();
+    await expect(half).not.toBeVisible();
+    await page.getByRole('button', { name: 'Tutte', exact: true }).click();
+
+    // A failed tick says so and keeps the step in the list.
+    await page.route('**/trpc/study.setStep*', (route) => route.abort());
+    await page.getByRole('checkbox', { name: 'Disegna una foglia.' }).click();
+    await expect(page.getByRole('alert')).toContainText('Salvataggio non riuscito');
+    await expect(page.getByRole('checkbox', { name: 'Disegna una foglia.' })).toHaveCount(1);
+    await page.unroute('**/trpc/study.setStep*');
+
+    // Ticking a carried step updates Oggi.
+    // The row leaves the list once saved, so the checkbox cannot hold the new state: click, do not check.
+    await page.getByRole('checkbox', { name: 'Disegna una foglia.' }).click();
+    await expect(page.getByRole('checkbox', { name: 'Disegna una foglia.' })).toHaveCount(0);
+    await expect(half.getByText('1 di 3 passi ancora da fare')).toBeVisible();
+    await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: 'Disegna una foglia.' })).toBeChecked();
+
+    // Editing: solving an entry takes it out of the retry list.
+    await page.getByRole('tab', { name: 'Ripasso', exact: true }).click();
+    await errors.getByRole('button', { name: 'Modifica: Foglio 1, es. 3' }).click();
+    const edit = errors.getByRole('form', { name: 'Registra un errore' });
+    await edit.getByRole('textbox', { name: 'Cosa ho provato' }).fill('Ho diviso per due');
+    await edit.getByRole('button', { name: /^Giorno per riprovare/ }).click();
+    await page.getByRole('option', { name: 'G2 · Il cielo' }).click();
+    await edit.getByRole('button', { name: 'Salva errore' }).click();
+    await expect(edit).not.toBeVisible();
+    await expect(errors.getByText('Ho diviso per due')).toBeVisible();
+    await expect(errors.getByText(/Da riprovare in G2/)).toBeVisible();
+    await errors.getByRole('button', { name: 'Modifica: Foglio 1, es. 3' }).click();
+    await errors.getByRole('button', { name: /^Risultato/ }).click();
+    await page.getByRole('option', { name: 'Risolto senza aiuto' }).click();
+    await errors.getByRole('button', { name: 'Salva errore' }).click();
+    await expect(errors.getByText('Foglio 1, es. 3')).not.toBeVisible();
+    await expect(page.getByText('1 risolti senza aiuto')).toBeVisible();
+
+    // Recall in Oggi shows the errors of the recalled day, solved or not.
+    await pc.post('/trpc/study.setCurrent', { data: { key: 'example/A02' } });
+    await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'La radice' })).toBeVisible();
+    await expect(page.getByText('Errori: Foglio 1, es. 3 · Calcolo')).toBeVisible();
+
+    // Each thread links to its day.
+    await page.getByRole('tab', { name: 'Ripasso', exact: true }).click();
+    await threads.getByRole('button', { name: 'Apri G1' }).first().click();
+    await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  } finally {
+    db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
+    db.close();
+  }
+});

@@ -8,6 +8,8 @@ type StudyRouter = Extract<ReturnType<typeof studyModule.create>['router'], AnyR
 export type StudyIndex = NonNullable<inferRouterOutputs<StudyRouter>['index']>;
 export type StudyHeader = inferRouterOutputs<StudyRouter>['active'][number];
 export type StudyDayBody = inferRouterOutputs<StudyRouter>['daysById'][number];
+export type StudyError = inferRouterOutputs<StudyRouter>['errors'][number];
+export type StudyReview = inferRouterOutputs<StudyRouter>['review'];
 export type StudyDay = StudyIndex['days'][number] | StudyIndex['hiddenDays'][number];
 const client = createModuleClient<typeof studyModule>('study');
 

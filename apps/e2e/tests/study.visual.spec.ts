@@ -20,6 +20,39 @@ test.beforeAll(async ({ request }) => {
   expect((await request.post(`${PC_URL}/trpc/study.activate`, { data: { name: 'visual.json' } })).ok()).toBe(true);
 });
 
+/** Gives Ripasso something to list without touching the other Studio baselines: undone by the returned function. */
+function seedReview() {
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  const row = db.prepare("SELECT data FROM days WHERE plan_id = 'example' AND id = 'A01'").get();
+  if (typeof row?.data !== 'string') throw new Error('The example plan is not active');
+  const original = row.data;
+  const day = JSON.parse(original);
+  day.blocks[0].steps.push({ id: 'A01.m.2', text: 'Disegna una foglia.' });
+  db.prepare("UPDATE days SET data = ? WHERE plan_id = 'example' AND id = 'A01'").run(JSON.stringify(day));
+  const insert = db.prepare("INSERT INTO progress (plan_id, kind, id, value) VALUES ('example', ?, ?, ?)");
+  insert.run('step', 'A01.m.1', 'done');
+  insert.run('autonomy', 'plants', 'red');
+  insert.run('autonomy', 'stars', 'yellow');
+  insert.run(
+    'error',
+    'seed-error',
+    JSON.stringify({
+      day: 'A01',
+      reference: 'Foglio 1, es. 3',
+      tried: 'Ho diviso per due',
+      cause: 'calculation',
+      method: 'Converti prima le unita',
+      retry: 'example/B01',
+      result: null,
+    }),
+  );
+  return () => {
+    db.prepare("UPDATE days SET data = ? WHERE plan_id = 'example' AND id = 'A01'").run(original);
+    db.prepare("DELETE FROM progress WHERE plan_id = 'example'").run();
+    db.close();
+  };
+}
+
 for (const theme of [
   { name: 'Scuro', id: 'ink' },
   { name: 'Chiaro', id: 'paper' },
@@ -33,28 +66,35 @@ for (const theme of [
       { name: 'Piano', id: 'piano' },
       { name: 'Piani', id: 'piani' },
       { name: 'Libreria', id: 'libreria' },
+      { name: 'Ripasso', id: 'ripasso' },
     ]) {
       test(`${tab.name} ${size.width} ${theme.id}`, async ({ page }) => {
-        await page.setViewportSize(size);
-        await page.emulateMedia({ reducedMotion: 'reduce' });
-        await freezePomodoro(page);
-        await page.goto('/desk/settings/appearance');
-        await chooseTheme(page, theme.name);
-        await page.goto(`/desk/studio?tab=${tab.id}`);
-        if (tab.id === 'studio') {
-          await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
-          await expect(page.getByText('Sessioni completate oggi: 0')).toBeVisible();
-        } else if (tab.id === 'libreria') await expect(page.getByText('dispensa.pdf', { exact: false })).toBeVisible();
-        else await expect(page.getByText('Piano di esempio').first()).toBeVisible();
-        await page.evaluate(async () => {
-          await document.fonts.ready;
-        });
-        await page.mouse.move(0, 0);
-        await expect(page).toHaveScreenshot(`study-${tab.id}-${size.width}-${theme.id}.png`, {
-          animations: 'disabled',
-        });
-        await page.goto('/desk/settings/appearance');
-        await chooseTheme(page, 'Scuro');
+        const restore = tab.id === 'ripasso' ? seedReview() : undefined;
+        try {
+          await page.setViewportSize(size);
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          await freezePomodoro(page);
+          await page.goto('/desk/settings/appearance');
+          await chooseTheme(page, theme.name);
+          await page.goto(`/desk/studio?tab=${tab.id}`);
+          if (tab.id === 'studio') {
+            await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+            await expect(page.getByText('Sessioni completate oggi: 0')).toBeVisible();
+          } else if (tab.id === 'ripasso') await expect(page.getByText('Foglio 1, es. 3')).toBeVisible();
+          else if (tab.id === 'libreria') await expect(page.getByText('dispensa.pdf', { exact: false })).toBeVisible();
+          else await expect(page.getByText('Piano di esempio').first()).toBeVisible();
+          await page.evaluate(async () => {
+            await document.fonts.ready;
+          });
+          await page.mouse.move(0, 0);
+          await expect(page).toHaveScreenshot(`study-${tab.id}-${size.width}-${theme.id}.png`, {
+            animations: 'disabled',
+          });
+          await page.goto('/desk/settings/appearance');
+          await chooseTheme(page, 'Scuro');
+        } finally {
+          restore?.();
+        }
       });
     }
   }

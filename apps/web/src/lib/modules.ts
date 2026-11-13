@@ -5,6 +5,7 @@ import { m } from '../paraglide/messages.js';
 import { StudyLibrary } from '../modules/study/library.tsx';
 import { StudyPlan } from '../modules/study/plan.tsx';
 import { StudyPlans } from '../modules/study/plans.tsx';
+import { StudyReview } from '../modules/study/review.tsx';
 
 // The only web import point for private source; Vite resolves a disposable root during tests.
 const local = import.meta.glob<{ default: ModuleUI }>('@hub-private-modules/*/ui.tsx', { eager: true });
@@ -18,6 +19,7 @@ export const moduleUIs: ModuleUI[] = [
     copy: {},
     sections: [
       { zone: 'study', id: 'piano', label: m.study_plan, component: StudyPlan },
+      { zone: 'study', id: 'ripasso', label: m.study_review, component: StudyReview },
       { zone: 'study', id: 'libreria', label: m.study_library, component: StudyLibrary },
       { zone: 'study', id: 'piani', label: m.study_plans, component: StudyPlans },
     ],

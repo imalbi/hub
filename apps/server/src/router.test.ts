@@ -98,6 +98,7 @@ void test('every mutation carries an Italian label and an English description in
     'study.openToday',
     'study.setAutonomy',
     'study.setCurrent',
+    'study.setError',
     'study.setMix',
     'study.setNote',
     'study.setPlan',

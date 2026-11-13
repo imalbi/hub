@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { protectedProcedure, router } from '../../core/trpc.ts';
+import { errorInput, readErrors, readReview, serializeError } from './errors.ts';
 import { listInbox, readPlan } from './inbox.ts';
 import { listMaterials, readMaterial } from './library.ts';
 import { planShape } from './plan.ts';
@@ -171,6 +172,22 @@ export const studyModule = defineModule({
             if (!header?.threads.some((thread) => thread.id === input.id)) throw new TRPCError({ code: 'BAD_REQUEST' });
             save(input.plan, 'autonomy', input.id, input.value);
             state.schedule(input.plan);
+          }),
+        errors: protectedProcedure.query(() => readErrors(db)),
+        review: protectedProcedure.query(() => readReview(db)),
+        setError: protectedProcedure
+          .meta({ label: 'Errore di studio', description: 'Save or edit an entry of the study error log' })
+          .input(errorInput)
+          .mutation(({ input }) => {
+            const [body] = readDaysById(db, [input.key]);
+            if (!body || (input.retry !== null && !readDaysById(db, [input.retry]).length))
+              throw new TRPCError({ code: 'BAD_REQUEST' });
+            if (input.id && !readErrors(db, [body.planId]).some((entry) => entry.id === input.id))
+              throw new TRPCError({ code: 'BAD_REQUEST' });
+            const id = input.id ?? randomUUID();
+            save(body.planId, 'error', id, serializeError(input, body.id));
+            state.schedule(body.planId);
+            return { id };
           }),
         days: protectedProcedure
           .input(z.object({ offset: z.int().min(0), limit: z.int().min(1).max(100) }))

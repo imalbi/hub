@@ -1,8 +1,10 @@
+import { WarningCircleIcon } from '@phosphor-icons/react';
+import { causeLabel } from './error-form.tsx';
 import { MaterialAction } from './material.tsx';
 import { Badge } from '../../components/ui/badge.tsx';
 import { Checkbox } from '../../components/ui/checkbox.tsx';
 import { m } from '../../paraglide/messages.js';
-import type { StudyDay, StudyDayBody as Body, StudyHeader } from './use-study.ts';
+import type { StudyDay, StudyDayBody as Body, StudyError, StudyHeader } from './use-study.ts';
 
 export function DayBody({
   body,
@@ -11,6 +13,8 @@ export function DayBody({
   checked,
   onStep,
   notes,
+  errors,
+  onError,
 }: {
   body: Body;
   header: StudyHeader;
@@ -18,6 +22,10 @@ export function DayBody({
   checked?: Set<string>;
   onStep?: (id: string, done: boolean) => void;
   notes?: Map<string, string>;
+  /** Error log entries: the recalled days show theirs. */
+  errors?: StudyError[];
+  /** Starts an error entry on a step (Oggi only). */
+  onError?: (step: Body['blocks'][number]['steps'][number]) => void;
 }) {
   const threads = header.threads.filter((thread) => body.threads.includes(thread.id));
   return (
@@ -36,6 +44,14 @@ export function DayBody({
                 {m.study_recall()}:{' '}
                 {recalled ? `${recalled.g === null ? '' : `G${recalled.g} · `}${recalled.title}` : id}
                 {notes?.get(id) && <span className="block">{notes.get(id)}</span>}
+                {errors
+                  ?.filter((entry) => entry.key === `${header.id}/${id}`)
+                  .map((entry) => (
+                    <span key={entry.id} className="block">
+                      {m.study_errors()}: {entry.reference} · {causeLabel(entry.cause)}
+                      {entry.method && ` · ${entry.method}`}
+                    </span>
+                  ))}
               </span>
             );
           })}
@@ -70,6 +86,16 @@ export function DayBody({
                       </span>
                     )}
                   </span>
+                  {onError && (
+                    <button
+                      type="button"
+                      aria-label={m.study_error_step({ step: step.text })}
+                      onClick={() => onError(step)}
+                      className="ml-auto flex size-icon shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                    >
+                      <WarningCircleIcon aria-hidden="true" className="size-icon-sm" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

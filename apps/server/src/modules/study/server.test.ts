@@ -438,3 +438,112 @@ void test('tagged focus minutes reach Study and survive restart in the state fil
   t.after(() => restarted.close());
   assert.equal((await restarted.inject('/trpc/study.focusMinutes')).json().result.data['study/example/A01'], 0.001);
 });
+
+void test('error entries save with reference and cause, edit in place and reach the state file', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'in-arrivo'));
+  await writeFile(
+    join(dir, 'in-arrivo', 'example.json'),
+    await readFile(new URL('./fixtures/example.json', import.meta.url)),
+  );
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
+  });
+  const post = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/study.${name}`, payload });
+  const read = async (name: string) => (await app.inject(`/trpc/study.${name}`)).json().result.data;
+  assert.equal((await post('activate', { name: 'example.json' })).statusCode, 200);
+  // Only reference and cause.
+  const saved = await post('setError', { key: 'example/A01', reference: 'Foglio 1, es. 3', cause: 'unit' });
+  assert.equal(saved.statusCode, 200);
+  const id = saved.json().result.data.id;
+  assert.deepEqual(
+    (await read('errors')).map(({ id: _id, ...rest }: Record<string, unknown>) => rest),
+    [
+      {
+        planId: 'example',
+        key: 'example/A01',
+        reference: 'Foglio 1, es. 3',
+        tried: '',
+        cause: 'unit',
+        method: '',
+        retry: null,
+        result: null,
+      },
+    ],
+  );
+  // Refused: no reference, an unknown cause, an unknown day, an unknown retry day, an entry that is not there.
+  for (const bad of [
+    { key: 'example/A01', reference: ' ', cause: 'unit' },
+    { key: 'example/A01', reference: 'x', cause: 'luck' },
+    { key: 'example/NOPE', reference: 'x', cause: 'unit' },
+    { key: 'example/A01', reference: 'x', cause: 'unit', retry: 'example/NOPE' },
+    { key: 'example/A01', reference: 'x', cause: 'unit', id: 'missing' },
+  ])
+    assert.notEqual((await post('setError', bad)).statusCode, 200, JSON.stringify(bad));
+  const edited = await post('setError', {
+    id,
+    key: 'example/A01',
+    reference: 'Foglio 1, es. 3',
+    tried: 'Ho diviso per due',
+    cause: 'calculation',
+    method: 'Converti prima le unita',
+    retry: 'example/B01',
+    result: 'again',
+  });
+  assert.equal(edited.statusCode, 200);
+  const errors = await read('errors');
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].id, id);
+  assert.equal(errors[0].cause, 'calculation');
+  assert.equal(errors[0].retry, 'example/B01');
+  await post('setAutonomy', { plan: 'example', id: 'plants', value: 'red' });
+  await post('setAutonomy', { plan: 'example', id: 'stars', value: 'yellow' });
+  const review = await read('review');
+  assert.deepEqual(
+    review.threads.map((thread: { id: string; value: string }) => [thread.id, thread.value]),
+    [
+      ['plants', 'red'],
+      ['stars', 'yellow'],
+    ],
+  );
+  assert.deepEqual(
+    review.threads[0].days.map((day: { key: string }) => day.key),
+    ['example/A01', 'example/A02'],
+  );
+  assert.deepEqual(review.half, []);
+  await app.close();
+  const exported = JSON.parse(await readFile(join(dir, 'stato', 'example.json'), 'utf8'));
+  assert.equal(exported.errors.length, 1);
+  assert.equal(exported.errors[0].cause, 'calculation');
+  assert.equal(exported.errors[0].day, 'A01');
+  assert.equal(exported.errors[0].retry, 'example/B01');
+  assert.deepEqual(exported.removed, []);
+});
+
+void test('review lists a day with some steps ticked and its open steps', async (t) => {
+  const source = JSON.parse(await readFile(new URL('./fixtures/example.json', import.meta.url), 'utf8'));
+  source.days[0].blocks[0].steps.push({ id: 'A01.m.2', text: 'Disegna una foglia.' });
+  const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'in-arrivo'));
+  await writeFile(join(dir, 'in-arrivo', 'example.json'), JSON.stringify(source));
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
+  });
+  t.after(() => app.close());
+  const post = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/study.${name}`, payload });
+  assert.equal((await post('activate', { name: 'example.json' })).statusCode, 200);
+  assert.deepEqual((await app.inject('/trpc/study.review')).json().result.data.half, []);
+  await post('setStep', { key: 'example/A01', id: 'A01.m.1', done: true });
+  const [half] = (await app.inject('/trpc/study.review')).json().result.data.half;
+  assert.equal(half.key, 'example/A01');
+  assert.equal(half.total, 2);
+  assert.deepEqual(half.open, [{ id: 'A01.m.2', text: 'Disegna una foglia.' }]);
+  await post('setStep', { key: 'example/A01', id: 'A01.m.2', done: true });
+  assert.deepEqual((await app.inject('/trpc/study.review')).json().result.data.half, []);
+});
