@@ -88,7 +88,7 @@ export function WidgetBoard() {
   const [rowHeight = 0, gap = 0] = useSyncExternalStore(subscribeToResize, readGridMetrics).split(' ').map(Number);
 
   return (
-    <section aria-label={m.widget_board()} className="col-span-12 flex flex-col gap-md">
+    <section aria-label={m.widget_board()} className="col-span-12 flex flex-col gap-md pt-touch">
       <HeaderActions>
         <SplitPill
           open={editing}

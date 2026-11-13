@@ -62,6 +62,15 @@ test('widgets on the same row have the same height, two small ones fill a medium
   expect(audio.x + audio.width - server.x).toBeCloseTo(pomodoro.width, 0);
 });
 
+test('Modifica floats in the top right corner and clears the first widget row', async ({ page }) => {
+  const edit = page.getByRole('button', { name: 'Modifica', exact: true });
+  const viewport = page.viewportSize();
+  const button = await edit.boundingBox();
+  const first = await page.locator('[data-widget]').first().boundingBox();
+  expect(button && viewport && button.x > viewport.width / 2 && button.y < 100).toBe(true);
+  expect(button && first && button.y + button.height <= first.y).toBe(true);
+});
+
 test('a size chosen in edit mode resizes the widget and survives a reload', async ({ page }) => {
   const before = await box(page, 'pomodoro');
   await page.getByRole('button', { name: 'Modifica' }).click();

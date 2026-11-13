@@ -39,7 +39,7 @@ function actionZone(path: string) {
   return zone?.label() ?? m.zone_overview();
 }
 
-/** The desk's command palette: the pill in the title row that grows into Vai a plus every registry action. */
+/** The desk's command palette: the magnifier at the top of the rail, which grows into Vai a plus every registry action. */
 export function DeskCommandPalette() {
   const trpc = useTRPC();
   const client = useTRPCClient();
@@ -105,6 +105,7 @@ export function DeskCommandPalette() {
 
   return (
     <CommandPalette
+      trigger="rail"
       items={items}
       onOpenChange={setOpen}
       emptyText={(query) =>

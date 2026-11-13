@@ -26,6 +26,17 @@ test('the rail navigates every zone and marks exactly the active destination', a
   }
 });
 
+test('every desk page has exactly one h1 and it is visually hidden', async ({ page }) => {
+  for (const [name, path] of zones) {
+    await page.goto(path);
+    const title = page.getByRole('heading', { level: 1 });
+    await expect(title).toHaveCount(1);
+    await expect(title).toHaveText(name);
+    const box = await title.boundingBox();
+    expect(box && box.width <= 1 && box.height <= 1).toBe(true);
+  }
+});
+
 test('the rail keeps the active link style and aria-current when the URL has search parameters', async ({ page }) => {
   await page.goto('/desk/studio?segment=favorites');
   const rail = page.getByRole('navigation', { name: 'Zone' });

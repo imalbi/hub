@@ -93,6 +93,8 @@ export interface CommandPaletteProps {
   hotkey?: string;
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  /** Hub: `rail` is a round icon button (the caption under it is the caller's); the panel grows out of it but opens centred near the top of the screen. */
+  trigger?: 'pill' | 'rail';
 }
 
 type Phase = 'closed' | 'opening' | 'open' | 'closing';
@@ -357,7 +359,9 @@ export function CommandPalette({
   hotkey = 'k',
   onOpenChange,
   className = '',
+  trigger = 'pill',
 }: CommandPaletteProps) {
+  const rail = trigger === 'rail';
   const reduced = useReducedMotion();
   const id = React.useId();
   const [phase, setPhase] = React.useState<Phase>('closed');
@@ -648,11 +652,12 @@ export function CommandPalette({
   // The palette hangs from where the pill is, centered on it, and falls back to the middle of the screen.
   const vw = viewport.width;
   const width = Math.min(WIDTH * unit, vw - 24);
-  const centerX = from ? from.left + from.width / 2 : vw / 2;
+  const hang = from && !rail;
+  const centerX = hang ? from.left + from.width / 2 : vw / 2;
   const final: Rect | null = mounted
     ? {
         left: Math.min(Math.max(centerX - width / 2, 12), Math.max(12, vw - width - 12)),
-        top: from ? from.top - (HEADER * unit - from.height) / 2 : Math.max(48, Math.round(viewport.height * 0.16)),
+        top: hang ? from.top - (HEADER * unit - from.height) / 2 : Math.max(48, Math.round(viewport.height * 0.16)),
         width,
         height: 0,
         radius: RADIUS * unit,
@@ -705,14 +710,19 @@ export function CommandPalette({
           {from && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 left-0 flex items-center gap-xs pr-xs pl-sm text-label whitespace-nowrap text-muted-foreground"
+              className={`pointer-events-none absolute top-0 left-0 flex items-center text-label whitespace-nowrap text-muted-foreground ${rail ? 'justify-center' : 'gap-xs pr-xs pl-sm'}`}
               style={{
+                width: rail ? from.width : undefined,
                 height: from.height,
                 opacity: isOpen ? 0 : 1,
                 transition: reduced ? 'none' : isOpen ? 'opacity 120ms ease-out' : 'opacity 200ms ease-out 200ms',
               }}
             >
-              <PillFace label={copy.triggerLabel} />
+              {rail ? (
+                <MagnifyingGlassIcon aria-hidden="true" className="size-icon-lg" />
+              ) : (
+                <PillFace label={copy.triggerLabel} />
+              )}
             </span>
           )}
 
@@ -868,11 +878,15 @@ export function CommandPalette({
         aria-expanded={isOpen}
         aria-label={copy.triggerName}
         onClick={() => setOpen(true)}
-        className={`group inline-flex h-[2.25rem] cursor-pointer items-center gap-xs rounded-full bg-surface pr-xs pl-sm text-label text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,color] duration-300 hover:text-foreground hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--foreground)_22%,transparent)] ${FOCUS}`}
+        className={`group inline-flex cursor-pointer items-center rounded-full bg-surface text-label ${rail ? 'size-touch justify-center' : 'h-[2.25rem] gap-xs pr-xs pl-sm'} text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,color] duration-300 hover:text-foreground hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--foreground)_22%,transparent)] ${FOCUS}`}
         // When the palette folded back into the pill, it already looks exactly like it: take over without a fade.
         style={{ opacity: mounted ? 0 : 1, transition: mounted || reduced || from ? 'none' : 'opacity 160ms ease-out' }}
       >
-        <PillFace label={copy.triggerLabel} />
+        {rail ? (
+          <MagnifyingGlassIcon aria-hidden="true" className="size-icon-lg" />
+        ) : (
+          <PillFace label={copy.triggerLabel} />
+        )}
       </button>
       {panel}
     </div>

@@ -46,6 +46,21 @@ test('the visible countdown ticks without changing its live announcement', async
   await expect(announcement).toHaveAttribute('data-mutations', '0');
 });
 
+test('the floating activity pill exists only while Pomodoro runs and links to Studio', async ({ page }) => {
+  await page.goto('/desk/media');
+  await expect(page.getByRole('navigation', { name: 'Zone' })).toBeVisible();
+  await expect(page.locator('header').getByRole('button')).toHaveCount(0);
+  await freezePomodoro(page, { ...pausedPomodoro, pausedRemainingMs: null, endsAt: Date.now() + 750_000 });
+  await page.goto('/desk/media');
+  const pill = page.locator('header').getByRole('button', { name: /Studio/ });
+  await expect(pill).toBeVisible();
+  const box = await pill.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box && viewport && box.x + box.width > viewport.width / 2 && box.y < 120).toBe(true);
+  await pill.click();
+  await expect(page).toHaveURL(/\/desk\/studio\/?$/);
+});
+
 test('rail labels remain readable when the active link is hovered in either theme', async ({ page }) => {
   await page.goto('/desk/settings/appearance');
   for (const theme of ['Scuro', 'Chiaro']) {
@@ -120,7 +135,9 @@ test('rail selection moves, glass follows the theme and reduced motion stops tra
   ).toBe(0);
 });
 
-test('an action error stays on its button and socket loss dims the header badge', async ({ page }) => {
+test('an action error stays on its button and socket loss turns the rail status dot to the lost state', async ({
+  page,
+}) => {
   const sockets = await controlSockets(page);
   await page.goto('/desk/media');
   await page.route('**/trpc/media.next*', (route) =>
@@ -140,8 +157,10 @@ test('an action error stays on its button and socket loss dims the header badge'
   const next = page.getByRole('button', { name: 'Brano successivo' });
   await next.click();
   await expect(next).toHaveAttribute('data-status', 'error');
-  await expect(page.getByRole('status', { name: 'Connessione al server' })).toHaveCSS('opacity', '1');
+  const rail = page.getByRole('navigation', { name: 'Zone' });
+  await expect(rail.getByRole('status', { name: 'Connesso', exact: true })).toBeVisible();
   await sockets.cut();
-  await expect(page.getByRole('status', { name: 'Connessione al server' })).toHaveCSS('opacity', '0.6');
+  await expect(rail.getByRole('status', { name: 'Connessione persa', exact: true })).toBeVisible();
   await sockets.restore();
+  await expect(rail.getByRole('status', { name: 'Connesso', exact: true })).toBeVisible();
 });

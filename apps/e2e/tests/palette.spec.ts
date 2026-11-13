@@ -7,6 +7,22 @@ import { themeSettled } from './themes.ts';
 
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 
+test('the rail button opens the palette, says Ctrl K under it and Escape returns focus to it', async ({ page }) => {
+  await page.goto('/desk/media');
+  const rail = page.getByRole('navigation', { name: 'Zone' });
+  const trigger = rail.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
+  await expect(rail.getByText('Ctrl K', { exact: true })).toBeVisible();
+  const box = await trigger.boundingBox();
+  expect(box && box.y < 200).toBe(true);
+  await trigger.click();
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await expect(palette).toBeVisible();
+  await expect(palette.getByRole('combobox', { name: 'Cerca azioni' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(palette).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+});
+
 test('query tools stay out of the command palette', async ({ page, pc }) => {
   const registry = (await (await pc.get('/trpc/registry.list')).json()).result.data;
   expect(
@@ -168,21 +184,25 @@ test('a schema enum offers the registered workspace values and submits one valid
 
 const pill = (page: Page) => page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
 
-test('the pill sits at the top center of every desk zone, in the title row', async ({ page }) => {
+test('the trigger sits in the rail on every desk zone and the palette opens centred near the top', async ({ page }) => {
   const view = page.viewportSize();
   if (!view) throw new Error('no viewport');
   for (const path of ['/desk', '/desk/studio', '/desk/settings']) {
     await page.goto(path);
-    await expect(pill(page)).toBeVisible();
     const box = await pill(page).boundingBox();
-    const title = await page.getByRole('heading', { level: 1 }).boundingBox();
-    if (!box || !title) throw new Error('missing box');
-    expect(Math.abs(box.x + box.width / 2 - view.width / 2)).toBeLessThan(view.width * 0.1);
-    expect(box.y + box.height / 2).toBeGreaterThan(title.y);
-    expect(box.y + box.height / 2).toBeLessThan(title.y + title.height);
-    expect(box.x).toBeGreaterThanOrEqual(title.x + title.width - 1);
-    await expect(pill(page)).toContainText('Cerca');
-    await expect(pill(page)).toContainText('Ctrl');
+    const rail = await page.getByRole('navigation', { name: 'Zone' }).boundingBox();
+    if (!box || !rail) throw new Error('missing box');
+    expect(box.x).toBeGreaterThanOrEqual(rail.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(rail.x + rail.width);
+    await pill(page).click();
+    await expect(page.getByRole('option', { name: /Avvia Pomodoro/ })).toBeVisible();
+    await expect
+      .poll(async () => {
+        const field = await page.getByRole('dialog', { name: 'Comandi' }).locator('input').boundingBox();
+        return field ? Math.abs(field.x + field.width / 2 - view.width / 2) : Infinity;
+      })
+      .toBeLessThan(view.width * 0.1);
+    await page.keyboard.press('Escape');
   }
 });
 
@@ -191,7 +211,9 @@ for (const size of [
   { width: 3840, height: 2160 },
 ])
   for (const theme of ['ink', 'paper']) {
-    test(`pill text is readable and the open palette fits the screen: ${theme} at ${size.width}`, async ({ page }) => {
+    test(`the trigger icon is readable and the open palette fits the screen: ${theme} at ${size.width}`, async ({
+      page,
+    }) => {
       await page.setViewportSize(size);
       await page.addInitScript((id) => localStorage.setItem('hub.theme', id), theme);
       await page.goto('/desk');

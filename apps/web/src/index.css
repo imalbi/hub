@@ -618,3 +618,7 @@ html {
 .hold-tile-ring[data-on='true'] {
   opacity: 1;
 }
+/* Palette trigger on top, zones centred, status dot at the bottom. */
+.desk-rail {
+  grid-template-rows: 1fr auto 1fr;
+}

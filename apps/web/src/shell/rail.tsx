@@ -2,17 +2,26 @@ import { Link } from '@tanstack/react-router';
 import { EASE_THROW, useInteractionReducedMotion } from '../components/ui/ui-interaction-motion.ts';
 import { useZones, zoneAt } from './zones.ts';
 import { m } from '../paraglide/messages.js';
+import { useConnectionLost } from '../lib/trpc.ts';
+import { DeskCommandPalette } from './command-palette.tsx';
 
 export function DeskRail({ pathname }: { pathname: string }) {
   const reduced = useInteractionReducedMotion();
   const zones = useZones();
   const current = zoneAt(pathname, zones);
   const index = Math.max(0, current ? zones.indexOf(current) : 0);
+  const lost = useConnectionLost();
   return (
     <nav
       aria-label={m.desk_zones()}
-      className="desk-rail fixed inset-y-xl left-xl z-40 flex w-desk-rail flex-col justify-center"
+      className="desk-rail fixed inset-y-xl left-xl z-40 grid w-desk-rail justify-items-center"
     >
+      <div className="flex flex-col items-center gap-3xs self-start">
+        <DeskCommandPalette />
+        <span aria-hidden className="text-caption whitespace-nowrap text-muted-foreground">
+          Ctrl K
+        </span>
+      </div>
       <div className="desk-glass relative flex flex-col items-center gap-xs rounded-full border p-xs">
         <span
           data-rail-indicator
@@ -45,6 +54,18 @@ export function DeskRail({ pathname }: { pathname: string }) {
           </Link>
         ))}
       </div>
+      <output
+        aria-label={lost ? m.connection_lost() : m.connection_ready()}
+        title={lost ? m.connection_lost() : m.connection_ready()}
+        className="flex size-touch items-center justify-center self-end"
+      >
+        <span className="relative flex size-xs">
+          {!lost && (
+            <span className="absolute inset-0 [animation:ui-ping_1.6s_cubic-bezier(0,0,0.2,1)_infinite] rounded-full bg-success motion-reduce:hidden" />
+          )}
+          <span className={`relative size-xs rounded-full ${lost ? 'bg-danger' : 'bg-success'}`} />
+        </span>
+      </output>
     </nav>
   );
 }
