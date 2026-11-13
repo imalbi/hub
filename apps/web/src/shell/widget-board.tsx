@@ -98,7 +98,7 @@ export function WidgetBoard() {
           onExtra={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
         />
       </HeaderActions>
-      <div ref={containerRef} className={editing ? 'widget-board editing' : 'widget-board'}>
+      <div ref={containerRef} className={`mt-lg ${editing ? 'widget-board editing' : 'widget-board'}`}>
         {mounted && (
           <ReactGridLayout
             layout={layout}

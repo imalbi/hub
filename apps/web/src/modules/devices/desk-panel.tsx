@@ -36,7 +36,7 @@ function Step({ n, active = false, children }: { n: number; active?: boolean; ch
     <li className="flex items-start gap-md">
       <span
         aria-hidden
-        className={`flex size-xl shrink-0 items-center justify-center rounded-full text-label tabular-nums ${active ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+        className={`flex size-xl shrink-0 items-center justify-center rounded-full text-label tabular-nums ${active ? 'bg-primary text-primary-foreground' : 'bg-surface'}`}
       >
         {n}
       </span>
@@ -71,7 +71,7 @@ function ConnectPanel({ pairing: { createCode, remaining } }: { pairing: Pairing
             disabled={createCode.isPending}
           />
           {createCode.data && remaining > 0 && (
-            <div className="flex w-full flex-col gap-xs rounded-lg bg-muted p-md">
+            <div className="flex w-full flex-col gap-xs">
               <output aria-label={m.devices_code_label()} className="text-display tabular-nums">
                 {createCode.data.code}
               </output>
@@ -102,7 +102,7 @@ function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing })
       )}
       <ul className="flex flex-col">
         {devices.data?.map((device) => (
-          <li key={device.id} className="flex items-center gap-md border-t border-border py-md">
+          <li key={device.id} className="flex items-center gap-md border-t border-dashed border-border py-md">
             <DeviceMobileIcon className="size-icon-lg shrink-0 text-muted-foreground" aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="text-label">{device.name}</span>

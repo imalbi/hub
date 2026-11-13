@@ -68,7 +68,8 @@ export function StudyPlans() {
           <section
             key={item.name}
             aria-label={item.valid ? m.study_found() : m.study_invalid()}
-            className={`flex flex-col gap-md rounded-xl border border-dashed bg-surface p-xl ${item.valid ? 'border-accent' : 'border-danger'}`}
+            data-panel
+            className="flex flex-col gap-md rounded-lg bg-muted p-lg"
           >
             <div className="flex flex-wrap items-center gap-sm">
               <Badge tone={item.valid ? 'primary' : 'danger'}>{item.valid ? m.study_found() : m.study_invalid()}</Badge>
@@ -193,7 +194,7 @@ export function StudyPlans() {
             </ul>
           </Panel>
         )}
-        <section className="flex flex-col gap-sm rounded-xl border border-dashed border-border p-lg">
+        <section data-panel className="flex flex-col gap-sm rounded-lg bg-muted p-lg">
           <h3 className="flex items-center gap-xs text-caption text-muted-foreground uppercase">
             <FolderIcon aria-hidden="true" className="size-icon" />
             {m.study_folder()}
@@ -226,7 +227,7 @@ function ActivePlan({
   const current = index.days.find((day) => day.planId === header.id && day.key === index.current);
   const share = header.subjects.reduce((sum, item) => sum + (index.mix?.[`${header.id}:${item.id}`] ?? 0), 0);
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-md rounded-xl border border-border bg-surface p-xl">
+    <section aria-labelledby={titleId} data-panel className="flex flex-col gap-md rounded-lg bg-muted p-lg">
       <div className="flex items-center gap-sm">
         <Badge tone="primary">{m.study_active_plan()}</Badge>
         {!single && index.mix && (

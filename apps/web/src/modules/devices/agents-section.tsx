@@ -31,7 +31,7 @@ function AgentRow({
   const [open, setOpen] = useState(false);
   const now = useNow('clock');
   return (
-    <li className="flex flex-col gap-sm border-t border-border py-md">
+    <li className="flex flex-col gap-sm border-t border-dashed border-border py-md">
       <div className="flex items-center gap-md">
         {icon}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -170,7 +170,7 @@ export function AgentsSection({ enabled }: { enabled: boolean }) {
   return (
     <section className="flex flex-col gap-md" aria-label={m.agents_title()}>
       <h3 className="text-label text-muted-foreground">{m.agents_title()}</h3>
-      <div className="flex items-center gap-md rounded-lg bg-muted py-sm pr-sm pl-lg">
+      <div className="flex items-center gap-md">
         <code aria-label={m.agents_command_label()} className="min-w-0 flex-1 truncate font-mono text-label">
           {COMMAND}
         </code>
@@ -186,7 +186,7 @@ export function AgentsSection({ enabled }: { enabled: boolean }) {
           <TokenAgentRow key={agent.id} id={agent.id} name={agent.name} />
         ))}
       </ul>
-      <details className="group border-t border-border pt-sm">
+      <details className="group border-t border-dashed border-border pt-sm">
         <summary className="flex min-h-touch cursor-pointer items-center gap-xs text-body text-muted-foreground">
           <CaretRightIcon className="size-icon-sm transition-transform group-open:rotate-90" aria-hidden />
           {m.agents_remote()}

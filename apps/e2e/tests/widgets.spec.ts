@@ -68,7 +68,10 @@ test('Modifica floats in the top right corner and clears the first widget row', 
   const button = await edit.boundingBox();
   const first = await page.locator('[data-widget]').first().boundingBox();
   expect(button && viewport && button.x > viewport.width / 2 && button.y < 100).toBe(true);
-  expect(button && first && button.y + button.height <= first.y).toBe(true);
+  // A clear gap, not touching: at least one `lg` step (16px at the 150% root is 24).
+  expect(button && first && first.y - (button.y + button.height) >= 16).toBe(true);
+  // Panoramica stays a board: no page surface.
+  await expect(page.locator('[data-page-surface]')).toHaveCount(0);
 });
 
 test('a size chosen in edit mode resizes the widget and survives a reload', async ({ page }) => {
@@ -133,6 +136,8 @@ test('dragging a widget in edit mode rearranges the board and is saved', async (
 });
 
 test('outside edit mode nothing drags and the widgets work as usual', async ({ page }) => {
+  // The widget can start below the fold; a drag from off screen scrolled the board under the pointer.
+  await cell(page, 'audio').scrollIntoViewIfNeeded();
   const from = await box(page, 'audio');
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();

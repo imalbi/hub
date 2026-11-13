@@ -62,10 +62,7 @@ export function StudyPlan() {
         </div>
         {visible.length > 0 && <DayStrip days={visible} subjects={subjects} currentId={currentId} />}
       </Panel>
-      <section
-        aria-label={m.study_days()}
-        className="flex flex-col gap-lg rounded-xl border border-border bg-surface p-lg"
-      >
+      <section aria-label={m.study_days()} data-panel className="flex flex-col gap-lg rounded-lg bg-muted p-lg">
         {visible.length === 0 && <p>{m.study_empty()}</p>}
         {phases.map((phase) => {
           const phaseDays = single ? visible.filter((day) => (day.phase ?? '') === phase.id) : visible;

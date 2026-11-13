@@ -14,6 +14,68 @@ const pages = [
   { path: '/desk/settings', landmark: { role: 'navigation', name: 'Sezioni' } },
 ] as const;
 
+// The zone pages (not Impostazioni, not Panoramica): one surface each, step 47.
+const surfacePages = [
+  { path: '/desk/studio', landmark: { role: 'region', name: 'Pomodoro' } },
+  { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
+  { path: '/desk/system', landmark: { role: 'region', name: 'Comandi' } },
+  { path: '/desk/devices', landmark: { role: 'region', name: 'Chi ha accesso' } },
+  { path: '/desk/messaggi', landmark: { role: 'region', name: 'Posta in arrivo' } },
+] as const;
+
+for (const { path, landmark } of surfacePages) {
+  test(`${path} has one page surface with flat inner panels, clear of the floating pill`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page.getByRole('region', { name: landmark.name }).first()).toBeVisible();
+    const surface = page.locator('[data-page-surface]');
+    await expect(surface).toHaveCount(1);
+    const look = await surface.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const root = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      return {
+        radius: style.borderTopLeftRadius,
+        padding: style.paddingLeft,
+        bottomGap: window.innerHeight - el.getBoundingClientRect().bottom,
+        top: el.getBoundingClientRect().top,
+        root,
+      };
+    });
+    // Radius xl and padding lg, one xl gap to the window bottom (the same as the top padding of the desk).
+    const mainTop = await page.locator('main').evaluate((main) => parseFloat(getComputedStyle(main).paddingTop));
+    expect(look.bottomGap).toBe(mainTop);
+    expect(parseFloat(look.radius)).toBeGreaterThan(parseFloat(look.padding));
+    // Tabs, when there are any, sit above the surface; the first row is reserved either way, so the pill never covers it.
+    expect(look.top).toBeGreaterThanOrEqual(mainTop + 44);
+    const tabs = page.getByRole('tablist');
+    if (await tabs.count()) {
+      const box = await tabs.boundingBox();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(look.top);
+    }
+    // Inner panels: never inside another, never with a border.
+    const panels = await page.evaluate(() => ({
+      nested: document.querySelectorAll('[data-panel] [data-panel]').length,
+      bordered: [...document.querySelectorAll('[data-panel]')].filter(
+        (el) => getComputedStyle(el).borderTopWidth !== '0px',
+      ).length,
+      outside: [...document.querySelectorAll('[data-panel]')].filter((el) => !el.closest('[data-page-surface]')).length,
+      count: document.querySelectorAll('[data-panel]').length,
+    }));
+    expect(panels.nested).toBe(0);
+    expect(panels.bordered).toBe(0);
+    expect(panels.outside).toBe(0);
+    expect(panels.count).toBeGreaterThan(0);
+  });
+}
+
+test('the floating activity pill sits in the tab row, never over the surface', async ({ page }) => {
+  await page.goto('/desk/devices');
+  await expect(page.getByRole('region', { name: 'Chi ha accesso' }).first()).toBeVisible();
+  const surfaceTop = await page.locator('[data-page-surface]').evaluate((el) => el.getBoundingClientRect().top);
+  const header = await page.locator('main > header').evaluate((el) => el.getBoundingClientRect().top);
+  // The header is fixed at the desk padding; its 44px row ends above the surface.
+  expect(header + 44).toBeLessThanOrEqual(surfaceTop);
+});
+
 for (const { path, landmark } of pages) {
   test(`${path} is a page: no Modifica, no widget grid`, async ({ page }) => {
     await page.goto(path);
@@ -59,7 +121,9 @@ test('the tab bar of a long zone page stays in view while the content scrolls', 
   const tabsBox = await tabs.boundingBox();
   const panelBox = await panel.boundingBox();
   expect(panelBox!.y).toBeGreaterThanOrEqual(tabsBox!.y + tabsBox!.height);
-  expect(await panel.evaluate((el) => el.getBoundingClientRect().right)).toBe(1920);
+  // The surface leaves the desk's right gutter, like the rest of the desk content.
+  const gutter = await page.locator('main').evaluate((main) => parseFloat(getComputedStyle(main).paddingTop));
+  expect(await panel.evaluate((el) => window.innerWidth - el.getBoundingClientRect().right)).toBe(gutter);
 });
 
 test('the core settings actions stay in view while the form scrolls past it', async ({ page }) => {
@@ -107,9 +171,10 @@ test('the content scrolls to the last row while the title stays fixed', async ({
   const last = await outputs.boundingBox();
   if (!last) throw new Error('missing box');
   expect(last.y + last.height).toBeLessThanOrEqual(500);
-  // The page ends one gutter below its last row, like it starts one gutter above the title (the gutter is inside the scrolling panel).
-  const top = await page.locator('main').evaluate((main) => getComputedStyle(main).paddingTop);
-  expect(await content.evaluate((panel) => getComputedStyle(panel).paddingBottom)).toBe(top);
+  // The surface ends one gutter above the window bottom, like the tabs start one gutter below the top.
+  const top = await page.locator('main').evaluate((main) => parseFloat(getComputedStyle(main).paddingTop));
+  const surface = await content.boundingBox();
+  expect(500 - (surface!.y + surface!.height)).toBe(top);
 });
 
 if (examples) {

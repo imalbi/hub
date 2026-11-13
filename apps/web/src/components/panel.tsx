@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react';
+import { useInSurface } from '../shell/page-surface.tsx';
 
 export function Panel({
   title,
@@ -12,10 +13,13 @@ export function Panel({
   children: ReactNode;
 }) {
   const titleId = useId();
+  // On a page surface a panel is an inner one: lighter than the surface, one radius down, no border (step 47). On Panoramica and Impostazioni it stays the bordered card.
+  const inner = useInSurface();
   return (
     <section
       aria-labelledby={title ? titleId : undefined}
-      className={`flex min-w-0 flex-col gap-lg rounded-xl border border-border bg-surface p-lg ${className}`}
+      data-panel={inner ? '' : undefined}
+      className={`flex min-w-0 flex-col gap-lg p-lg ${inner ? 'rounded-lg bg-muted' : 'rounded-xl border border-border bg-surface'} ${className}`}
     >
       {title && (
         <div className="flex items-center justify-between gap-md">

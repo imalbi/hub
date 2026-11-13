@@ -18,10 +18,10 @@ function MediaTab() {
   const output = useMutation(trpc.audio.cycleOutput.mutationOptions());
   const outputButton = <RegistryButton secondary label={m.music_output()} action={() => output.mutateAsync()} />;
   return (
-    <div className="flex h-full min-h-0 flex-col gap-md">
+    <div className="flex flex-col gap-md">
       <MediaPanel className="mb-2xl" />
       {isOn('music') ? (
-        <Panel title={m.music_search()} className="min-h-0 flex-1" action={outputButton}>
+        <Panel title={m.music_search()} className="h-media-cover" action={outputButton}>
           <MusicSearch />
         </Panel>
       ) : (
@@ -31,7 +31,7 @@ function MediaTab() {
   );
 }
 
-const own = [{ id: 'media', label: m.zone_media, component: MediaTab, fill: true }];
+const own = [{ id: 'media', label: m.zone_media, component: MediaTab }];
 
 function Media() {
   return <ZonePage zone="media" own={own} />;

@@ -17,17 +17,13 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
     typeof tab === 'string' ? tab : undefined,
   );
   const always = zone === 'messages';
-  // With a tab bar the page fills the desk height, so the bar stays fixed and only the panel scrolls.
-  const fill = tabs.find(({ id }) => id === active)?.fill || tabs.length > 1 || always;
+  // Every zone page fills the desk height: the tabs stay fixed above the surface, which scrolls (or lays out its own lists).
   const ownScroll = tabs.find(({ id }) => id === active)?.fill;
   // A zone made only of module sections has no page without them.
   if (tabs.length === 0 && zone === 'work' && sites.isPending) return <p>{m.tile_loading()}</p>;
   if (tabs.length === 0) throw notFound();
   return (
-    <div
-      data-fill={fill || undefined}
-      className={fill ? 'col-span-12 flex h-full min-h-0 flex-col gap-lg' : 'col-span-12 flex flex-col gap-lg'}
-    >
+    <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
       <ZoneTabs
         always={always}
         fill={ownScroll}

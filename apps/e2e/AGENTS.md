@@ -22,7 +22,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 ## Screenshots
 
-- Baselines are committed in `__screenshots__/<project>/<name>.png` (CSS pixel size, no platform suffix: they are made on the owner's Linux machine). The default tolerance is zero, so any pixel change fails.
+- Baselines are committed in `__screenshots__/<project>/<name>.png` (CSS pixel size, no platform suffix: they are made on the owner's Linux machine). No pixel may differ beyond Playwright's default per-pixel colour `threshold` (0.2, not zero): a small colour change (a dark grey badge going a shade darker) passes, and `--update-snapshots=changed` then leaves the old PNG. After an intended subtle change, update the affected files with `--update-snapshots=all` and check the pixels.
 - The visual specs fulfil `/trpc/health` with a fixed uptime and wait for `document.fonts.ready`. The desk visual specs also pin `page.clock.setFixedTime`, `devices.list` and `pairing.createCode` (the code is random, the countdown and "last seen" depend on the clock): fix whatever moves, or mask it. Baselines: `deck/deck.png`, `deck/pairing.png`, `desk/desk.png`, `desk/desk-code.png`.
 - A failure writes `test-results/` (actual, expected, diff; gitignored). Look at the diff. Update with `pnpm test:e2e:update` only when the visual change is intended, review the new PNGs by eye, and say so in the plan's Progress notes.
 
@@ -137,3 +137,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 - `devices.spec.ts` finds the page by regions "Collega un telefono" and "Chi ha accesso" (the old "Dispositivi" panel is gone; `zone-pages.spec.ts` and `airplay.spec.ts` use "Chi ha accesso" as the landmark). Copia comando needs `context.grantPermissions(['clipboard-read', 'clipboard-write'])`. "Su questo PC" is fed by a loopback `/mcp` call from the `pc` fixture; the token form is inside a closed `<details>`, open it by its summary text. In edit mode of Panoramica a widget's controls do not answer: press Fine before clicking them (`hue.spec.ts` Luci widget test).
 - Baselines changed by the layout: `agent-section`, `desk-code`, `desk-devices`, `desk-devices-4k`, `desk-devices-tabs`, `desk-lights*` (the row is narrower in the 4-column cell).
+
+## Page surface (step 47 slice 2)
+
+- `zone-pages.spec.ts` (both passes) has a test per zone page (Studio, Media, Sistema, Dispositivi, Messaggi): one `[data-page-surface]`, its bottom one desk padding above the window bottom, its top at least one row (44px) below the desk top and under the tab bar, and no `[data-panel]` nested, bordered or outside a surface; plus a box check that the floating header ends above the surface. The old tab-panel checks now measure the surface (the tabpanel is the surface: right gutter and bottom gap equal the desk padding). `widgets.spec.ts` checks Panoramica has no surface and at least 16px between Modifica and the first widget; the drag test scrolls the audio widget into view first (it starts below the fold now).
+- Every desk baseline changed on purpose (surface, inner panels). Deck baselines unchanged.
