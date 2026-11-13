@@ -40,7 +40,7 @@ export function StudyPlans() {
   const subjects = studySubjects(headers);
   // A phase suggests a mix for its own plan's subjects: offered only while that plan is the one active (decision 15).
   const single = headers.length === 1 ? headers[0] : undefined;
-  const current = data?.days.find((day) => !day.done);
+  const current = data?.days.find((day) => day.key === data.current);
   const phaseMix = single?.phases.find((phase) => phase.id === current?.phase)?.mix;
   const suggested =
     single && phaseMix
@@ -130,7 +130,8 @@ export function StudyPlans() {
           <Panel title={m.study_subjects()}>
             <ul>
               {subjects.map((item) => {
-                const off = data.states[item.key] === 'paused';
+                const status = data.states[item.key] ?? 'active';
+                const off = status !== 'active';
                 return (
                   <li
                     key={item.key}
@@ -140,7 +141,7 @@ export function StudyPlans() {
                       <span className="flex items-center gap-sm text-body">
                         {item.label}
                         <Badge outline size="sm">
-                          {off ? m.study_paused() : m.study_active()}
+                          {status === 'passed' ? m.study_passed() : off ? m.study_paused() : m.study_active()}
                         </Badge>
                       </span>
                       <SubjectEstimate id={item.key} index={data} />
@@ -152,6 +153,13 @@ export function StudyPlans() {
                         subject.mutateAsync({ plan: item.planId, id: item.id, state: off ? 'active' : 'paused' })
                       }
                     />
+                    {status !== 'passed' && (
+                      <RegistryButton
+                        secondary
+                        label={m.study_pass()}
+                        action={() => subject.mutateAsync({ plan: item.planId, id: item.id, state: 'passed' })}
+                      />
+                    )}
                   </li>
                 );
               })}
@@ -215,7 +223,7 @@ function ActivePlan({
   const titleId = useId();
   const all = [...index.days, ...index.hiddenDays].filter((day) => day.planId === header.id);
   const done = all.filter((day) => day.done).length;
-  const current = index.days.find((day) => day.planId === header.id && !day.done);
+  const current = index.days.find((day) => day.planId === header.id && day.key === index.current);
   const share = header.subjects.reduce((sum, item) => sum + (index.mix?.[`${header.id}:${item.id}`] ?? 0), 0);
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-md rounded-xl border border-border bg-surface p-xl">

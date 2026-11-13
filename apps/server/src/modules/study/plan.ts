@@ -1,6 +1,6 @@
 import { z } from '../../core/module.ts';
 
-const id = z.string().min(1);
+const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
 const step = z.strictObject({
   id,
   text: z.string().min(1),

@@ -32,6 +32,40 @@ const plan: z.input<typeof planSchema> = {
   ],
 };
 
+void test('rejects unsafe ids at every level and accepts dotted ids', () => {
+  for (const invalidId of ['a/b', 'a:b', '..', '.x', '*', 'a'.repeat(65)]) {
+    const invalid = structuredClone(plan);
+    invalid.id = invalidId;
+    invalid.subjects[0].id = invalidId;
+    invalid.threads[0].id = invalidId;
+    invalid.phases[0].id = invalidId;
+    invalid.days[0].id = invalidId;
+    invalid.days[0].blocks[0].id = invalidId;
+    invalid.days[0].blocks[0].steps[0].id = invalidId;
+    const result = planSchema.safeParse(invalid);
+    assert.equal(result.success, false);
+    if (!result.success) {
+      for (const path of [
+        'id',
+        'subjects.0.id',
+        'threads.0.id',
+        'phases.0.id',
+        'days.0.id',
+        'days.0.blocks.0.id',
+        'days.0.blocks.0.steps.0.id',
+      ]) {
+        assert.ok(
+          result.error.issues.some((issue) => issue.path.join('.') === path),
+          path,
+        );
+      }
+    }
+  }
+  const dotted = structuredClone(plan);
+  dotted.days[0].blocks[0].id = 'C01.f.1';
+  assert.equal(planSchema.safeParse(dotted).success, true);
+});
+
 void test('validates references, stable ids and phase membership', () => {
   assert.equal(
     planSchema.safeParse(JSON.parse(readFileSync(new URL('./fixtures/example.json', import.meta.url), 'utf8'))).success,

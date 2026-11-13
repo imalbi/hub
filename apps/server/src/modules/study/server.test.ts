@@ -48,6 +48,7 @@ void test('inbox reports plans and activation archives a valid file', async (t) 
   await mkdir(join(dir, 'in-arrivo', 'broken-folder'));
   const source = JSON.parse(await readFile(new URL('./fixtures/example.json', import.meta.url), 'utf8'));
   const { days, ...header } = source;
+  await writeFile(join(dir, 'in-arrivo', 'unsafe.json'), JSON.stringify({ ...source, id: 'a/b' }));
   await writeFile(join(dir, 'in-arrivo', 'broken-folder', 'plan.json'), JSON.stringify(header));
   await writeFile(
     join(dir, 'in-arrivo', 'broken-folder', 'days-01.json'),
@@ -70,6 +71,13 @@ void test('inbox reports plans and activation archives a valid file', async (t) 
   });
   t.after(() => app.close());
   const inbox = (await app.inject('/trpc/study.inbox')).json().result.data;
+  const unsafe = inbox.find((entry: { name: string }) => entry.name === 'unsafe.json');
+  assert.equal(unsafe.valid, false);
+  assert.ok(unsafe.issues.some((issue: { path: string }) => issue.path === 'id'));
+  assert.notEqual(
+    (await app.inject({ method: 'POST', url: '/trpc/study.activate', payload: { name: 'unsafe.json' } })).statusCode,
+    200,
+  );
   const found = inbox.find((entry: { name: string }) => entry.name === 'example.json');
   assert.equal(found?.valid, true);
   // Piani previews a found plan without activating it: its size and first day titles.
@@ -308,4 +316,47 @@ void test('several active plans interleave by the global mix, and a paused plan 
   assert.equal(readIndex(db)?.mixSet, true);
   assert.ok(!order().includes('r'));
   assert.equal(readIndex(db)?.days.length, 20);
+});
+
+void test('progress and subject state survive reload and export valid state after rapid changes', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'in-arrivo'));
+  await writeFile(
+    join(dir, 'in-arrivo', 'example.json'),
+    await readFile(new URL('./fixtures/example.json', import.meta.url)),
+  );
+  const config = { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } };
+  const make = () => buildServer({ dbPath: join(dir, 'hub.db'), deps: { run: createFakeDesktop() }, config });
+  let app = make();
+  const post = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/study.${name}`, payload });
+  assert.equal((await post('activate', { name: 'example.json' })).statusCode, 200);
+  assert.equal((await post('setCurrent', { key: 'example/A02' })).statusCode, 200);
+  assert.equal((await post('setAutonomy', { plan: 'example', id: 'plants', value: 'green' })).statusCode, 200);
+  for (let n = 0; n < 10; n++)
+    assert.equal((await post('setStep', { key: 'example/A02', id: 'A02.m.1', done: n % 2 === 1 })).statusCode, 200);
+  assert.equal((await post('setNote', { key: 'example/A02', text: 'Nota' })).statusCode, 200);
+  let index = (await app.inject('/trpc/study.index')).json().result.data;
+  assert.equal(index.current, 'example/A02');
+  assert.equal(index.days.find((day: { id: string }) => day.id === 'A02').done, true);
+  assert.equal(index.days.find((day: { id: string }) => day.id === 'A01').done, false);
+  await app.close();
+  const exported = JSON.parse(await readFile(join(dir, 'stato', 'example.json'), 'utf8'));
+  assert.equal(exported.currentDay, 'A02');
+  assert.equal(exported.autonomy.plants, 'green');
+  assert.equal(exported.days.find((day: { id: string }) => day.id === 'A02').note, 'Nota');
+  assert.ok(Number.isFinite(Date.parse(exported.days.find((day: { id: string }) => day.id === 'A02').doneAt)));
+  assert.deepEqual(exported.days.find((day: { id: string }) => day.id === 'A02').openSteps, []);
+  app = make();
+  t.after(() => app.close());
+  index = (await app.inject('/trpc/study.index')).json().result.data;
+  assert.equal(index.current, 'example/A02');
+  assert.equal((await post('setSubject', { plan: 'example', id: 'a', state: 'passed' })).statusCode, 200);
+  index = (await app.inject('/trpc/study.index')).json().result.data;
+  assert.equal(index.current, 'example/B01');
+  assert.ok(index.hiddenDays.some((day: { id: string }) => day.id === 'A01'));
+  assert.equal((await post('setSubject', { plan: 'example', id: 'a', state: 'active' })).statusCode, 200);
+  index = (await app.inject('/trpc/study.index')).json().result.data;
+  assert.equal(index.current, 'example/B01');
+  assert.ok(index.days.some((day: { id: string }) => day.id === 'A01'));
 });

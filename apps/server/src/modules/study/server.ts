@@ -12,6 +12,7 @@ import { planShape } from './plan.ts';
 import { activeHeaders, GLOBAL, readDays, readDaysById, readIndex, subjectKey } from './read.ts';
 import { plans, preferences, progress } from './schema.ts';
 import { savePlan } from './store.ts';
+import { createStateWriter } from './state.ts';
 
 export const studyModule = defineModule({
   name: 'study',
@@ -52,6 +53,25 @@ export const studyModule = defineModule({
       }
     }
     const live = createLiveHub(inbox, null);
+    const state = createStateWriter(db, config.plansDir, (error) =>
+      log.warn({ err: error }, 'Study state export failed'),
+    );
+    function save(planId: string, kind: string, id: string, value: string) {
+      db.insert(progress)
+        .values({ planId, kind, id, value })
+        .onConflictDoUpdate({
+          target: [progress.planId, progress.kind, progress.id],
+          set: { value },
+        })
+        .run();
+    }
+    function rememberCurrent() {
+      const current = readIndex(db)?.current;
+      if (current) save(GLOBAL, 'current', 'current', current);
+    }
+    function exportAll() {
+      for (const header of activeHeaders(db)) state.schedule(header.id);
+    }
     return {
       router: router({
         inbox: protectedProcedure.query(inbox),
@@ -70,6 +90,71 @@ export const studyModule = defineModule({
             }),
         ),
         index: protectedProcedure.query(() => readIndex(db)),
+        progress: protectedProcedure.query(() =>
+          activeHeaders(db).flatMap((header) => db.select().from(progress).where(eq(progress.planId, header.id)).all()),
+        ),
+        setCurrent: protectedProcedure
+          .meta({ label: 'Giorno corrente', description: 'Choose the current study day' })
+          .input(z.object({ key: z.string() }))
+          .mutation(({ input }) => {
+            if (!readIndex(db)?.days.some((day) => day.key === input.key && !day.done))
+              throw new TRPCError({ code: 'BAD_REQUEST' });
+            save(GLOBAL, 'current', 'current', input.key);
+            exportAll();
+          }),
+        openToday: protectedProcedure
+          .meta({ label: 'Apri Oggi', description: 'Advance a completed current day' })
+          .mutation(() => {
+            const index = readIndex(db);
+            const current = index?.days.find((day) => day.key === index.current);
+            const next = current?.done ? index?.days.find((day) => !day.done) : current;
+            if (next) save(GLOBAL, 'current', 'current', next.key);
+            exportAll();
+          }),
+        setStep: protectedProcedure
+          .meta({ label: 'Passo di studio', description: 'Mark a study step complete or open' })
+          .input(z.object({ key: z.string(), id: z.string(), done: z.boolean() }))
+          .mutation(({ input }) => {
+            const body = readDaysById(db, [input.key])[0];
+            if (!body || !body.blocks.some((block) => block.steps.some((step) => step.id === input.id)))
+              throw new TRPCError({ code: 'BAD_REQUEST' });
+            db.transaction(() => {
+              rememberCurrent();
+              save(body.planId, 'step', input.id, input.done ? 'done' : 'open');
+              const records = db.select().from(progress).where(eq(progress.planId, body.planId)).all();
+              const steps = body.blocks.flatMap((block) => block.steps);
+              const done =
+                steps.length > 0 &&
+                steps.every((step) =>
+                  records.some((item) => item.kind === 'step' && item.id === step.id && item.value === 'done'),
+                );
+              const wasDone = records.some(
+                (item) => item.kind === 'day' && item.id === body.id && item.value === 'done',
+              );
+              if (done && !wasDone) save(body.planId, 'doneAt', body.id, new Date().toISOString());
+              if (!done && wasDone) save(body.planId, 'doneAt', body.id, '');
+              save(body.planId, 'day', body.id, done ? 'done' : 'open');
+            });
+            state.schedule(body.planId);
+          }),
+        setNote: protectedProcedure
+          .meta({ label: 'Nota di studio', description: 'Save notes for a study day' })
+          .input(z.object({ key: z.string(), text: z.string().max(20000) }))
+          .mutation(({ input }) => {
+            const body = readDaysById(db, [input.key])[0];
+            if (!body) throw new TRPCError({ code: 'BAD_REQUEST' });
+            save(body.planId, 'note', body.id, input.text);
+            state.schedule(body.planId);
+          }),
+        setAutonomy: protectedProcedure
+          .meta({ label: 'Autonomia', description: 'Set autonomy for a study thread' })
+          .input(z.object({ plan: z.string(), id: z.string(), value: z.enum(['unset', 'red', 'yellow', 'green']) }))
+          .mutation(({ input }) => {
+            const header = activeHeaders(db).find((item) => item.id === input.plan);
+            if (!header?.threads.some((thread) => thread.id === input.id)) throw new TRPCError({ code: 'BAD_REQUEST' });
+            save(input.plan, 'autonomy', input.id, input.value);
+            state.schedule(input.plan);
+          }),
         days: protectedProcedure
           .input(z.object({ offset: z.int().min(0), limit: z.int().min(1).max(100) }))
           .query(({ input }) => readDays(db, input.offset, input.limit)),
@@ -82,15 +167,20 @@ export const studyModule = defineModule({
           .mutation(({ input }) => {
             const row = db.select().from(plans).where(eq(plans.id, input.id)).get();
             if (!row) throw new TRPCError({ code: 'NOT_FOUND' });
+            rememberCurrent();
             db.update(plans).set({ active: input.active }).where(eq(plans.id, input.id)).run();
+            rememberCurrent();
+            state.schedule(input.id);
+            exportAll();
           }),
         setSubject: protectedProcedure
           .meta({ label: 'Stato materia', description: 'Pause or resume a study subject' })
-          .input(z.object({ plan: z.string(), id: z.string(), state: z.enum(['active', 'paused']) }))
+          .input(z.object({ plan: z.string(), id: z.string(), state: z.enum(['active', 'paused', 'passed']) }))
           .mutation(({ input }) => {
             const header = activeHeaders(db).find((item) => item.id === input.plan);
             if (!header?.subjects.some((subject) => subject.id === input.id))
               throw new TRPCError({ code: 'BAD_REQUEST' });
+            rememberCurrent();
             db.insert(progress)
               .values({ planId: header.id, kind: 'subject', id: input.id, value: input.state })
               .onConflictDoUpdate({
@@ -98,6 +188,8 @@ export const studyModule = defineModule({
                 set: { value: input.state },
               })
               .run();
+            rememberCurrent();
+            exportAll();
           }),
         setMix: protectedProcedure
           .meta({
@@ -123,10 +215,12 @@ export const studyModule = defineModule({
             )
               throw new TRPCError({ code: 'BAD_REQUEST' });
             const weeklyHours = Math.round(input.hours * 60);
+            rememberCurrent();
             db.insert(preferences)
               .values({ planId: GLOBAL, weeklyHours, mix: JSON.stringify(input.mix) })
               .onConflictDoUpdate({ target: preferences.planId, set: { weeklyHours, mix: JSON.stringify(input.mix) } })
               .run();
+            exportAll();
           }),
         activate: protectedProcedure
           .meta({ label: 'Attiva piano', description: 'Activate a valid study plan from the inbox' })
@@ -168,6 +262,7 @@ export const studyModule = defineModule({
                 throw error;
               }
               void live.notify();
+              exportAll();
             } finally {
               activating = false;
             }
@@ -177,6 +272,7 @@ export const studyModule = defineModule({
         closed = true;
         await ready;
         watcher?.close();
+        await state.close();
       },
     };
   },

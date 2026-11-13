@@ -69,11 +69,21 @@ export function readIndex(db: Db) {
   }));
   const ordered = orderDays(rows, states, mix);
   const shown = new Set(ordered.map((day) => day.key));
+  const selected = db
+    .select()
+    .from(progress)
+    .where(and(eq(progress.planId, GLOBAL), eq(progress.kind, 'current')))
+    .get();
+  const current =
+    ordered.find(
+      (day) => day.key === selected?.value && states[day.subject] !== 'paused' && states[day.subject] !== 'passed',
+    ) ?? ordered.find((day) => !day.done);
   return {
     planIds: ids,
     states,
     mix,
     mixSet: complete !== null,
+    current: current?.key ?? null,
     weeklyHours:
       settings?.weeklyHours === null || settings?.weeklyHours === undefined ? null : settings.weeklyHours / 60,
     days: ordered.map((day, index) => ({ ...day, g: index + 1 })),

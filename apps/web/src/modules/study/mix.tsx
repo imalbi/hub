@@ -36,7 +36,10 @@ export function StudyMix({
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const shares = Object.fromEntries(
-      subjects.map((subject) => [subject.id, states[subject.id] === 'paused' ? 0 : Number(data.get(subject.id))]),
+      subjects.map((subject) => [
+        subject.id,
+        states[subject.id] === 'paused' || states[subject.id] === 'passed' ? 0 : Number(data.get(subject.id)),
+      ]),
     );
     save.mutate({ hours: Number(data.get('hours')), mix: shares });
   }

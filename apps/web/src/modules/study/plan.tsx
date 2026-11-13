@@ -25,7 +25,7 @@ export function StudyPlan() {
   const source = showPaused ? all : index.data.days;
   const visible = source.filter((day) => (!subject || day.subject === subject) && (!unfinished || !day.done));
   const phases = single?.phases.length ? single.phases : [{ id: '', title: m.study_no_phase() }];
-  const currentId = index.data.days.find((day) => !day.done)?.key;
+  const currentId = index.data.current ?? undefined;
   const titles = new Map(all.map((day) => [day.key, day]));
   const currentShown = visible.some((day) => day.key === currentId);
   let week = 0;

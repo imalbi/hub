@@ -153,3 +153,148 @@ test('a second plan is active next to the first, filters by plan and pauses from
     db.close();
   }
 });
+
+test('Oggi tracks steps, notes, autonomy and a chosen day without completing earlier work', async ({ page, pc }) => {
+  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
+  await mkdir(inbox, { recursive: true });
+  await copyFile(
+    new URL('../../server/src/modules/study/fixtures/example.json', import.meta.url),
+    join(inbox, 'today.json'),
+  );
+  expect((await pc.post('/trpc/study.activate', { data: { name: 'today.json' } })).ok()).toBe(true);
+  await page.goto(`${PC_URL}/desk/studio?tab=piano`);
+  await page.getByRole('button', { name: 'G2 · Il cielo' }).click();
+  await page.getByRole('button', { name: 'Imposta come corrente' }).last().click();
+  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Il cielo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Stelle: Da valutare' }).click();
+  await page.getByRole('option', { name: 'Verde' }).click();
+  const tick = page.getByRole('checkbox', { name: 'Descrivi una stella.' });
+  await tick.check();
+  await expect(tick).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Stelle: Verde' })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Note' }).fill('Nota di esempio');
+  await page.getByRole('textbox', { name: 'Note' }).blur();
+  await expect(page.getByText('Salvato')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Piano', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'G1 · La foglia' })).toBeVisible();
+  await page.getByRole('button', { name: 'Da finire' }).click();
+  await expect(page.getByRole('button', { name: 'G2 · Il cielo' })).not.toBeVisible();
+});
+
+test('Oggi preserves a failed tick until retry and passed subjects can be resumed', async ({ page, pc }) => {
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
+  db.close();
+  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
+  await mkdir(inbox, { recursive: true });
+  await copyFile(
+    new URL('../../server/src/modules/study/fixtures/example.json', import.meta.url),
+    join(inbox, 'retry.json'),
+  );
+  expect((await pc.post('/trpc/study.activate', { data: { name: 'retry.json' } })).ok()).toBe(true);
+  await page.goto(`${PC_URL}/desk/studio`);
+  await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  await page.route('**/trpc/study.setStep*', async (route) => {
+    await route.abort();
+  });
+  const tick = page.getByRole('checkbox', { name: 'Descrivi una foglia.' });
+  await tick.check();
+  await expect(page.getByRole('alert')).toContainText('Salvataggio non riuscito');
+  await expect(tick).toBeChecked();
+  await page.unroute('**/trpc/study.setStep*');
+  await page.getByRole('button', { name: 'Riprova' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Stato materia: In corso' }).click();
+  await page.getByRole('option', { name: 'Superato' }).click();
+  await expect(page.getByRole('heading', { name: 'Il cielo' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+  await page.getByRole('button', { name: 'Riprendi' }).click();
+  await expect(page.getByRole('button', { name: 'Segna superato' }).first()).toBeVisible();
+  await page.getByRole('tab', { name: 'Piano', exact: true }).click();
+  await page.getByRole('button', { name: /^Settimana 2 ·/ }).click();
+  await expect(page.getByRole('button', { name: /La radice$/ })).toBeVisible();
+});
+
+test('Oggi keeps a failed note through navigation and saves it on retry', async ({ page }) => {
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
+  db.close();
+  await page.goto(`${PC_URL}/desk/studio`);
+  await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  await page.route('**/trpc/study.setNote*', (route) => route.abort());
+  await page.getByRole('textbox', { name: 'Note' }).fill('Nota conservata');
+  await page.getByRole('textbox', { name: 'Note' }).blur();
+  await expect(page.getByRole('alert')).toContainText('Salvataggio non riuscito');
+  await page.getByRole('tab', { name: 'Piano', exact: true }).click();
+  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Note' })).toHaveValue('Nota conservata');
+  await page.unroute('**/trpc/study.setNote*');
+  await page.getByRole('button', { name: 'Riprova' }).click();
+  await expect(page.getByText('Salvato')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Note' })).toHaveValue('Nota conservata');
+});
+
+test('pausing a subject renumbers Oggi and Piano and completing today offers the next day', async ({ page }) => {
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
+  db.prepare("DELETE FROM preferences WHERE plan_id = '*'").run();
+  db.close();
+  await page.goto(`${PC_URL}/desk/studio`);
+  await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+  const astronomy = page.getByRole('listitem').filter({ hasText: 'Astronomia' });
+  await astronomy.getByRole('button', { name: 'Metti in pausa' }).click();
+  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await expect(page.getByText('G2 · La radice')).toBeVisible();
+  await page.getByRole('tab', { name: 'Piano', exact: true }).click();
+  await page.getByRole('button', { name: /^Settimana 2 ·/ }).click();
+  await expect(page.getByRole('button', { name: 'G2 · La radice' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Descrivi una foglia.' }).check();
+  await page.getByRole('button', { name: 'Vai alla prossima G' }).click();
+  await expect(page.getByRole('heading', { name: 'La radice' })).toBeVisible();
+  await expect(page.getByText(/in ritardo|giorni trascorsi/i)).toHaveCount(0);
+});
+
+test('mix reorders next days while weekly hours update estimates and preserve today', async ({ page, pc }) => {
+  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
+  const plan = JSON.parse(
+    await readFile(new URL('../../server/src/modules/study/fixtures/example.json', import.meta.url), 'utf8'),
+  );
+  plan.days.push(
+    ...['B02', 'B03'].map((id) => ({
+      ...plan.days[1],
+      id,
+      title: `Stelle ${id}`,
+      blocks: [{ id: `${id}.m`, title: 'Studio', steps: [{ id: `${id}.s`, text: 'Studia le stelle' }] }],
+    })),
+  );
+  await writeFile(join(inbox, 'mix.json'), JSON.stringify(plan));
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
+  db.prepare("DELETE FROM preferences WHERE plan_id = '*'").run();
+  db.close();
+  expect((await pc.post('/trpc/study.activate', { data: { name: 'mix.json' } })).ok()).toBe(true);
+  await page.goto(`${PC_URL}/desk/studio`);
+  await expect(page.getByText('G3 · La radice')).toBeVisible();
+  await page.goto(`${PC_URL}/desk/studio?tab=piani`);
+  await page.getByRole('spinbutton', { name: 'Ore a settimana' }).fill('4');
+  await page.getByRole('spinbutton', { name: 'Botanica · Quota %' }).fill('20');
+  await page.getByRole('spinbutton', { name: 'Astronomia · Quota %' }).fill('80');
+  await page.getByRole('button', { name: 'Salva', exact: true }).click();
+  await expect(page.getByText('80% · 3,2 ore a settimana')).toBeVisible();
+  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  await expect(page.getByText('G3 · Stelle B02')).toBeVisible();
+  await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Ore a settimana' }).fill('8');
+  await page.getByRole('button', { name: 'Salva', exact: true }).click();
+  await expect(page.getByText('80% · 6,4 ore a settimana')).toBeVisible();
+  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
+  await expect(page.getByText('G3 · Stelle B02')).toBeVisible();
+});

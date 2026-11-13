@@ -1,7 +1,9 @@
 import { useId, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { Badge } from '../../components/ui/badge.tsx';
+import { DayBody } from './day-body.tsx';
 import { m } from '../../paraglide/messages.js';
 import {
   subjectShade,
@@ -99,6 +101,10 @@ function DayRow({
   const g = day.g === null ? m.study_paused() : `G${day.g}`;
   const subject = subjects.find((item) => item.key === day.subject);
   const bodyId = useId();
+  const trpc = useStudyTRPC();
+  const queries = useQueryClient();
+  const navigate = useNavigate();
+  const select = useMutation(trpc.setCurrent.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
   return (
     <li
       className={
@@ -153,60 +159,29 @@ function DayRow({
       {open && (
         <div id={bodyId} className="border-t border-dashed border-border py-md">
           {body && header ? <DayBody body={body} header={header} titles={titles} /> : <p>{m.tile_loading()}</p>}
+          {!day.done && day.g !== null && (
+            <div className="mt-md flex gap-sm">
+              <button
+                type="button"
+                className="min-h-touch rounded-full border border-border px-md text-label"
+                onClick={() => select.mutate({ key: day.key })}
+              >
+                {m.study_set_current()}
+              </button>
+              <button
+                type="button"
+                className="min-h-touch rounded-full border border-border px-md text-label"
+                onClick={() => {
+                  void select.mutateAsync({ key: day.key }).then(() => navigate({ to: '/desk/studio' }));
+                }}
+              >
+                {m.study_open_today()}
+              </button>
+              {select.isError && <span role="alert">{m.study_save_failed()}</span>}
+            </div>
+          )}
         </div>
       )}
     </li>
-  );
-}
-
-function DayBody({ body, header, titles }: { body: Body; header: StudyHeader; titles: Map<string, StudyDay> }) {
-  const threads = header.threads.filter((thread) => body.threads.includes(thread.id));
-  return (
-    <div className="flex flex-col gap-md">
-      {(threads.length > 0 || body.recall.length > 0) && (
-        <div className="flex flex-wrap items-center gap-sm">
-          {threads.map((thread) => (
-            <Badge key={thread.id} outline>
-              {thread.title}
-            </Badge>
-          ))}
-          {body.recall.map((id) => {
-            const recalled = titles.get(`${header.id}/${id}`);
-            return (
-              <span key={id} className="text-caption text-muted-foreground">
-                {m.study_recall()}:{' '}
-                {recalled ? `${recalled.g === null ? '' : `G${recalled.g} · `}${recalled.title}` : id}
-              </span>
-            );
-          })}
-        </div>
-      )}
-      <div className="flex flex-wrap gap-xl">
-        {body.blocks.map((block) => (
-          <section key={block.id} className="flex min-w-0 flex-1 basis-0 flex-col gap-xs">
-            <h4 className="text-caption text-muted-foreground uppercase">{block.title}</h4>
-            <ul className="flex flex-col gap-xs">
-              {block.steps.map((step) => (
-                <li key={step.id} className="flex items-start gap-sm text-body">
-                  <span aria-hidden="true" className="mt-2xs size-icon-sm shrink-0 rounded-full border border-border" />
-                  <span>
-                    {step.text}
-                    {step.file && (
-                      <span className="block text-caption text-muted-foreground">
-                        {step.file.path}
-                        {step.file.page && ` · ${m.study_page({ page: step.file.page })}`}
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-      <p className="text-body">
-        <span className="text-caption text-muted-foreground uppercase">{m.study_check()}</span> {body.check}
-      </p>
-    </div>
   );
 }
