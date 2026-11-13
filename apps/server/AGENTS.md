@@ -189,12 +189,11 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - Tests never touch the bus: `bluez.test.ts` runs the transport on `src/testing/fake-bluez.ts` (answers exactly the `busctl` calls the transport makes, in the JSON the tool prints, refuses everything else); `module*.test.ts` go through `buildServer` with the example module's fake light (`src/testing/fake-hue.ts`, `getFakeHue()` is the one made for the server under test; `fake.ts` adds `GET/POST /__fake/hue` for the e2e suite only).
 - `pnpm smoke` checks only that `busctl --version` runs; it never reads or writes the light.
 
-## AirPlay
+## AirPlay (optional receiver)
 
-- `modules/airplay/`: `config.ts` (optional `airplay.command`), `live.ts` (`readAirPlayState`), `router.ts` (`airplay.state/onState`, `start`, `stop`).
-- Without `airplay.command`, the module is off: `state` is null, `start` and `stop` throw `PRECONDITION_FAILED` (412).
-- The e2e fake config sets `airplay.command: 'airplay'`, which the fake desktop answers. The real helper starts uxplay with `setsid ... &`, so it lives in the `hub.service` cgroup: restarting the service stops AirPlay.
-- When configured: `status` exit code 0 means running (`running: true`), non-zero means stopped (`running: false`), polled every 2 s while subscribed. `start` runs `<command> start`, `stop` runs `<command> stop`, both push fresh state via live notify. Tests use fake desktop or injected runner and never invoke the real binary.
+- Public integration in `src/integrations/airplay/` (`config.ts` `airplayConfigSchema`, `live.ts` `readAirPlayState`, `router.ts` `airplay.state/onState/start/stop`, `module.ts` `createConfiguredAirPlay`), private wiring in `modules.local/airplay/server.ts`, the same pattern as Hue; the example wiring `modules.example/airplay/` fixes `command: 'airplay'`, which the fake desktop answers. Config is `modules.airplay.command` in the owner's config (it used to be top-level `airplay`). <!-- guard-private: allow Repository-local module directory -->
+- `command` is required. Without it the module fails to load (not in `modules.enabled`): no routes, no palette actions, no tile, no row. There is no 412 path any more.
+- `status` exit code 0 means running, non-zero stopped, polled every 2 s while subscribed. `start`/`stop` run `<command> start|stop` and push fresh state. Tests wire the integration through a temporary module root (`router.test.ts`) and never run the real binary. The real helper starts uxplay with `setsid ... &`, so it lives in the `hub.service` cgroup: restarting the service stops AirPlay.
 
 ## Mail (Posta)
 

@@ -58,6 +58,18 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     }
   });
 
+  test('the example module puts one row in the Dispositivi list of this PC', async ({ page, request }) => {
+    await page.goto('/desk/devices');
+    const row = page.getByRole('region', { name: 'Collegati a questo PC' }).getByRole('group', { name: 'Esempio' });
+    const count = row.getByRole('paragraph');
+    await expect(count).toHaveText(/^Saluti: \d+$/);
+    // The greeting count is the module's own state and other tests raise it, so read it from the server.
+    const before = (await (await request.get('/trpc/hello.state')).json()).result.data.count;
+    await expect(count).toHaveText(`Saluti: ${before}`);
+    await row.getByRole('button', { name: 'Saluta', exact: true }).click();
+    await expect(count).toHaveText(`Saluti: ${before + 1}`);
+  });
+
   test('the example widget is offered in Panoramica, where its size is chosen and saved', async ({ page }) => {
     await page.goto('/desk');
     await page.getByRole('button', { name: 'Modifica', exact: true }).click();
@@ -95,6 +107,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 } else {
   test('example UI and actions are absent without the flag', async ({ page, request }) => {
+    await page.goto('/desk/devices');
+    await expect(page.getByRole('region', { name: 'Collegati a questo PC' })).toHaveCount(0);
     await page.goto('/desk');
     await expect(rail(page).getByRole('link', { name: 'Esempio', exact: true })).toHaveCount(0);
     expect((await request.get('/trpc/hello.state')).status()).toBe(404);

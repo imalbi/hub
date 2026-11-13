@@ -49,8 +49,6 @@ void test('every mutation carries an Italian label and an English description in
   assert.deepEqual(mutations.map((m) => m.path).toSorted(), [
     'agents.create',
     'agents.revoke',
-    'airplay.start',
-    'airplay.stop',
     'audio.cycleOutput',
     'audio.setOutput',
     'audio.setVolume',

@@ -15,7 +15,7 @@ void test('registry lists all public mutations with labels, descriptions and the
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.config')?.kind, 'query');
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.save')?.kind, 'mutation');
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.restore')?.kind, 'mutation');
-  assert.equal(actions.length, 68);
+  assert.equal(actions.length, 66);
   assert.equal(actions.find((a: { path: string }) => a.path === 'study.openMaterial')?.kind, 'mutation');
   // The palette runs an input-less action at once: a tag field here would turn "Avvia Pomodoro" into a form.
   assert.equal(actions.find((a: { path: string }) => a.path === 'pomodoro.start')?.schema, null);

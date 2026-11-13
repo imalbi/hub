@@ -243,7 +243,7 @@ test('Posta shows only its unread count and hides the badge at zero', async ({ p
 test('Scrivania presents the requested controls in order', async ({ page }) => {
   const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
   await expect(desk.getByRole('button', { name: /^Hub:/ })).toBeVisible();
-  await expect(desk.getByRole('button')).toHaveCount(12);
+  await expect(desk.getByRole('button')).toHaveCount(11);
   const names = [
     /^Hub:/,
     /^Chat:/,
@@ -255,7 +255,6 @@ test('Scrivania presents the requested controls in order', async ({ page }) => {
     /^Musica:/,
     /^Brano successivo:/,
     /^Blocca:/,
-    /^AirPlay:/,
     /^Pomodoro:/,
   ];
   for (const [index, name] of names.entries())
@@ -291,7 +290,7 @@ test('all Scrivania controls and the player fit on the phone screen', async ({ p
   await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeInViewport({ ratio: 1 });
 });
 
-test('volume, microphone and AirPlay controls update the fake desktop', async ({ page, pc }) => {
+test('volume and microphone controls update the fake desktop', async ({ page, pc }) => {
   try {
     const down = page.getByRole('button', { name: /^Abbassa volume:/ });
     const up = page.getByRole('button', { name: /^Alza volume:/ });
@@ -305,16 +304,10 @@ test('volume, microphone and AirPlay controls update the fake desktop', async ({
     await expect(mic).toHaveAccessibleName('Microfono: Disattivato');
     await mic.click();
     await expect(mic).toHaveAccessibleName('Microfono: Attivo');
-    const airplay = page.getByRole('button', { name: /^AirPlay:/ });
-    await airplay.click();
-    await expect(airplay).toHaveAccessibleName('AirPlay: Attivo');
-    await airplay.click();
-    await expect(airplay).toHaveAccessibleName('AirPlay: Disattivato');
   } finally {
     const state = (await (await pc.get('/trpc/audio.state')).json()).result.data;
     if (state.micMuted) await pc.post('/trpc/audio.toggleMicMute', { data: {} });
     await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
-    await pc.post('/trpc/airplay.stop', { data: {} });
   }
 });
 

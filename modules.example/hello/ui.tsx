@@ -5,6 +5,7 @@ import type definition from './server.ts';
 import { createModuleClient } from '../../apps/web/src/lib/module-client.ts';
 import type { ModuleUI } from '../../apps/web/src/lib/module-ui.ts';
 import { useConnectionLost } from '../../apps/web/src/lib/trpc.ts';
+import { DeviceRow } from '../../apps/web/src/components/device-row.tsx';
 import { PageGrid } from '../../apps/web/src/components/page-grid.tsx';
 import { Panel } from '../../apps/web/src/components/panel.tsx';
 import { RegistryButton } from '../../apps/web/src/components/registry-button.tsx';
@@ -49,6 +50,14 @@ function HelloPage() {
     </PageGrid>
   );
 }
+function HelloRow() {
+  const { state, greet } = useHello();
+  return (
+    <DeviceRow label={copy.title} state={`${copy.count}: ${state.data?.count ?? 0}`}>
+      <RegistryButton secondary label={copy.action} action={() => greet.mutateAsync()} />
+    </DeviceRow>
+  );
+}
 function HelloToday() {
   return <a href="/desk/hello">{copy.greeting}</a>;
 }
@@ -71,9 +80,14 @@ export default {
   name: 'hello',
   copy,
   todayItems: HelloToday,
+  deviceRows: HelloRow,
   widgets: [{ id: 'hello', label: () => copy.title, sizes: ['medium', 'large'], component: HelloPanel }],
   zone: { id: 'hello', label: () => copy.title, icon: HandWavingIcon, page: HelloPage },
   // The Lavoro zone has no content of its own: it appears in the rail because this module adds a section to it.
-  sections: [{ zone: 'work', id: 'hello', label: () => copy.title, component: HelloPage }],
+  // The same page as a second tab of Dispositivi: a section can go to any zone page, built-in or not.
+  sections: [
+    { zone: 'work', id: 'hello', label: () => copy.title, component: HelloPage },
+    { zone: 'devices', id: 'hello', label: () => copy.title, component: HelloPage },
+  ],
   deck: { id: 'hello', label: () => copy.title, tiles: [HelloTile] },
 } satisfies ModuleUI;

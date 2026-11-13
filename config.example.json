@@ -14,7 +14,7 @@
   "system": { "powerstatDir": "/path/to/powerstat/state" },
   "pomodoro": { "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15, "longBreakEvery": 4 },
   "weather": { "name": "Località esempio", "latitude": 1, "longitude": 2 },
-  "airplay": { "command": "/path/to/airplay" },
+  "modules": { "airplay": { "command": "/path/to/airplay" } },
   "sites": [{ "name": "Esempio", "url": "https://example.com" }],
   "study": { "plansDir": "/path/to/study/plans", "materialDirs": ["/path/to/study/materials"] },
   "mail": {

@@ -30,6 +30,7 @@
   "devices_qr_show": "Mostra QR",
   "devices_qr_close": "Chiudi",
   "devices_qr_label": "QR code dell'indirizzo del deck",
+  "devices_services_title": "Collegati a questo PC",
   "agents_title": "Agent",
   "agents_name": "Nome agente",
   "agents_create": "Crea agente",

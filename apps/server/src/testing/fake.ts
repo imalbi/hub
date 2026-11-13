@@ -77,7 +77,6 @@ const config: Config = {
     ],
   },
   weather: { name: 'Località esempio', latitude: 1, longitude: 2 },
-  airplay: { command: 'airplay' },
   study: { plansDir: studyDir, materialDirs: [studyMaterials] },
 };
 

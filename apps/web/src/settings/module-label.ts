@@ -12,7 +12,6 @@ const publicNames: Record<string, () => string> = {
   pomodoro: m.module_pomodoro,
   system: m.module_system,
   theme: m.module_theme,
-  airplay: m.module_airplay,
   mail: m.module_mail,
   music: m.module_music,
   weather: m.weather_title,

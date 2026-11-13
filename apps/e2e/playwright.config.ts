@@ -56,6 +56,7 @@ export default defineConfig({
           ? [
               'modules.spec.ts',
               'hue.spec.ts',
+              'airplay.spec.ts',
               'palette.spec.ts',
               'zone-pages.spec.ts',
               'music.spec.ts',
@@ -68,6 +69,7 @@ export default defineConfig({
               'zone-pages.spec.ts',
               'modules.spec.ts',
               'hue.spec.ts',
+              'airplay.spec.ts',
               'desk.spec.ts',
               'devices.spec.ts',
               'mcp.spec.ts',

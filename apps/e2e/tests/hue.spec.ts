@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test';
 import { DECK_STATE, PHONE_URL, SERVER_URL } from './hosts.ts';
+import { answerQueries } from './desktop.ts';
 import { controlSockets } from './sockets.ts';
 import { freezePomodoro } from './pomodoro-visual.ts';
 
@@ -41,8 +42,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await page.setViewportSize({ width: 3840, height: 2160 });
     const { context, phone } = await openDeck(browser);
     try {
-      await page.goto('/desk/devices?tab=luci');
-      const panel = page.getByRole('region', { name: 'Luci', exact: true });
+      await page.goto('/desk/devices');
+      const panel = page.getByRole('group', { name: 'Luci', exact: true });
       await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
 
@@ -78,8 +79,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 
   test('the icon toggle keeps pending, success and error feedback and writes once', async ({ page, request }) => {
-    await page.goto('/desk/devices?tab=luci');
-    const panel = page.getByRole('region', { name: 'Luci', exact: true });
+    await page.goto('/desk/devices');
+    const panel = page.getByRole('group', { name: 'Luci', exact: true });
     const toggle = panel.getByRole('button', { name: /^Luce:/ });
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
     let release: (() => void) | undefined;
@@ -125,8 +126,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     page,
     request,
   }) => {
-    await page.goto('/desk/devices?tab=luci');
-    const panel = page.getByRole('region', { name: 'Luci', exact: true });
+    await page.goto('/desk/devices');
+    const panel = page.getByRole('group', { name: 'Luci', exact: true });
     const slider = panel.getByRole('slider', { name: 'Luminosità' });
     await slider.focus();
     await slider.press('End');
@@ -160,8 +161,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   }) => {
     const { context, phone } = await openDeck(browser);
     try {
-      await page.goto('/desk/devices?tab=luci');
-      const panel = page.getByRole('region', { name: 'Luci', exact: true });
+      await page.goto('/desk/devices');
+      const panel = page.getByRole('group', { name: 'Luci', exact: true });
       const tile = phone.getByRole('button', { name: /^Luci:/ });
       const toggle = panel.getByRole('button', { name: /^Luce:/ });
       await expect(tile).toBeVisible();
@@ -191,8 +192,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
 
   test('losing Hub disables the light toggle until the socket recovers', async ({ page, request }) => {
     const sockets = await controlSockets(page);
-    await page.goto('/desk/devices?tab=luci');
-    const toggle = page.getByRole('region', { name: 'Luci', exact: true }).getByRole('button', { name: /^Luce:/ });
+    await page.goto('/desk/devices');
+    const toggle = page.getByRole('group', { name: 'Luci', exact: true }).getByRole('button', { name: /^Luce:/ });
     await expect(toggle).toBeEnabled();
     await sockets.cut();
     await expect(toggle).toBeDisabled({ timeout: 15_000 });
@@ -201,7 +202,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await expect(toggle).toBeEnabled({ timeout: 15_000 });
   });
 
-  test('the Luci widget and the deck tile look right: ready, unavailable, without brightness, paper', async ({
+  test('the light row and the deck tile look right: ready, unavailable, without brightness, paper', async ({
     page,
     browser,
     request,
@@ -209,8 +210,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     const { context, phone } = await openDeck(browser);
     try {
       await freezePomodoro(page);
-      await page.goto('/desk/devices?tab=luci');
-      const panel = page.getByRole('region', { name: 'Luci', exact: true });
+      await page.goto('/desk/devices');
+      const panel = page.getByRole('group', { name: 'Luci', exact: true });
       const deckShot = { animations: 'disabled', scale: 'css' } as const;
       await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
@@ -241,7 +242,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     }
   });
 
-  test('the light is the Luci tab of Dispositivi at 4K and Panoramica does not get its widget by default', async ({
+  test('the light is a row of Dispositivi at 4K and Panoramica does not get its widget by default', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
@@ -249,12 +250,13 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await page.route('**/trpc/health*', (route) =>
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
-    await page.goto('/desk/devices?tab=luci');
+    // The paired devices come from the run's own database; the shot is about the rows.
+    await answerQueries(page, { 'devices.list': [] });
+    await page.goto('/desk/devices');
     await expect(
-      page.getByRole('region', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
+      page.getByRole('group', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
     ).toBeVisible();
     await settleFonts(page);
-    await expect(page.getByRole('tab', { name: 'Luci' })).toHaveAttribute('aria-selected', 'true');
     await expect(page).toHaveScreenshot('desk-lights-4k.png', { animations: 'disabled' });
     await page.goto('/desk');
     await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();

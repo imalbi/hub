@@ -3,7 +3,6 @@ import { useSubscription } from '@trpc/tanstack-react-query';
 import {
   GaugeIcon,
   SquaresFourIcon,
-  AirplayIcon,
   LockIcon,
   ChatCircleIcon,
   MoonIcon,
@@ -107,27 +106,6 @@ export function PowerOffTile() {
       label={m.system_power_off()}
       holdLabel={m.system_power_off_hold()}
       onConfirm={() => powerOff.mutateAsync({ confirmed: true })}
-    />
-  );
-}
-
-export function AirPlayTile() {
-  const trpc = useTRPC();
-  const airplay = useSubscription(trpc.airplay.onState.subscriptionOptions());
-  const start = useMutation(trpc.airplay.start.mutationOptions());
-  const stop = useMutation(trpc.airplay.stop.mutationOptions());
-  const stale = useConnectionLost();
-  if (!airplay.data) return null;
-  return (
-    <Tile
-      icon={AirplayIcon}
-      label={m.system_airplay()}
-      state={airplay.data.running ? m.system_on() : m.system_off()}
-      pending={start.isPending || stop.isPending}
-      error={start.isError || stop.isError}
-      stale={stale}
-      disabled={stale}
-      onPress={() => (airplay.data?.running ? stop.mutate() : start.mutate())}
     />
   );
 }

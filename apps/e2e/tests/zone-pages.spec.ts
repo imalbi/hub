@@ -119,38 +119,38 @@ if (examples) {
     await page.goto('/desk/devices');
     const tabs = page.getByRole('tablist', { name: 'Sezioni' });
     const devices = tabs.getByRole('tab', { name: 'Dispositivi' });
-    const lights = tabs.getByRole('tab', { name: 'Luci' });
-    await expect(tabs.getByRole('tab')).toHaveText(['Dispositivi', 'Luci']);
+    const hello = tabs.getByRole('tab', { name: 'Esempio' });
+    await expect(tabs.getByRole('tab')).toHaveText(['Dispositivi', 'Esempio']);
     await expect(devices).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tabpanel')).toContainText('Genera codice');
     await expect(page).toHaveURL(/\/desk\/devices$/);
     const entries = await page.evaluate(() => history.length);
 
-    await lights.click();
-    await expect(lights).toHaveAttribute('aria-selected', 'true');
-    await expect(page).toHaveURL(/\/desk\/devices\?tab=luci$/);
-    await expect(page.getByRole('tabpanel').getByRole('region', { name: 'Luci', exact: true })).toBeVisible();
+    await hello.click();
+    await expect(hello).toHaveAttribute('aria-selected', 'true');
+    await expect(page).toHaveURL(/\/desk\/devices\?tab=hello$/);
+    await expect(page.getByRole('tabpanel').getByRole('region', { name: 'Esempio', exact: true })).toBeVisible();
     await page.keyboard.press('ArrowLeft');
     await expect(devices).toHaveAttribute('aria-selected', 'true');
     await expect(devices).toBeFocused();
     await expect(page).toHaveURL(/\/desk\/devices$/);
     await page.keyboard.press('End');
-    await expect(lights).toHaveAttribute('aria-selected', 'true');
+    await expect(hello).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('Home');
     await expect(devices).toHaveAttribute('aria-selected', 'true');
     // A click replaces the history entry: no trail of tabs behind the back button.
     expect(await page.evaluate(() => history.length)).toBe(entries);
 
-    await lights.click();
+    await hello.click();
     await page.reload();
-    await expect(page.getByRole('tab', { name: 'Luci' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page).toHaveURL(/\/desk\/devices\?tab=luci$/);
+    await expect(page.getByRole('tab', { name: 'Esempio' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page).toHaveURL(/\/desk\/devices\?tab=hello$/);
   });
 
   test('a deep link opens its tab and an unknown tab falls back to the first', async ({ page }) => {
-    await page.goto('/desk/devices?tab=luci');
-    await expect(page.getByRole('tab', { name: 'Luci' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('tabpanel').getByRole('region', { name: 'Luci', exact: true })).toBeVisible();
+    await page.goto('/desk/devices?tab=hello');
+    await expect(page.getByRole('tab', { name: 'Esempio' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tabpanel').getByRole('region', { name: 'Esempio', exact: true })).toBeVisible();
     await page.goto('/desk/devices?tab=nope');
     await expect(page.getByRole('tab', { name: 'Dispositivi' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tabpanel')).toContainText('Genera codice');
@@ -170,11 +170,15 @@ if (examples) {
       await document.fonts.ready;
     });
     await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot('desk-devices-tabs.png', { animations: 'disabled' });
+    // The example row shows a greeting count that other example specs raise.
+    await expect(page).toHaveScreenshot('desk-devices-tabs.png', {
+      animations: 'disabled',
+      mask: [page.getByRole('group', { name: 'Esempio', exact: true })],
+    });
   });
 } else {
   test('without a section Dispositivi shows no tab bar and ?tab= changes nothing', async ({ page }) => {
-    await page.goto('/desk/devices?tab=luci');
+    await page.goto('/desk/devices?tab=hello');
     await expect(page.getByRole('region', { name: 'Dispositivi' }).first()).toBeVisible();
     await expect(page.getByRole('tablist')).toHaveCount(0);
   });

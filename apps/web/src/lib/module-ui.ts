@@ -21,8 +21,16 @@ export type ModuleUI = {
   todayItems?: ComponentType | ComponentType[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
   zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean };
-  /** `page` names an existing deck page to add the tiles to, instead of a page of their own. */
-  deck?: { id: string; label: () => string; tiles: ComponentType[]; page?: string };
+  /**
+   * One row in the Dispositivi list of this PC's external devices (AirPlay, a light, a monitor), rendered in module
+   * order while the module is on. Each component is one row (`DeviceRow`) and may return null until it has data.
+   */
+  deviceRows?: ComponentType | ComponentType[];
+  /**
+   * `page` names an existing deck page to add the tiles to, instead of a page of their own. Tiles are appended; `at`
+   * inserts them at that index instead, and then `page: 'desk'` means Scrivania itself, not its overflow page Scrivania 2.
+   */
+  deck?: { id: string; label: () => string; tiles: ComponentType[]; page?: string; at?: number };
   /**
    * Tabs this module adds to zone pages, built-in or declared by another module, after the page's own tabs. A zone that
    * does not exist skips the section (logged once at startup).

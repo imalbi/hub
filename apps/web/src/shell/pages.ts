@@ -7,7 +7,6 @@ import { NewsTile } from '../modules/news/deck-tile.tsx';
 import { MailTile } from '../modules/mail/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import {
-  AirPlayTile,
   HubTile,
   CommunicationTile,
   LockTile,
@@ -45,7 +44,6 @@ export const pages: Page[] = [
       MediaTile,
       NextTile,
       LockTile,
-      AirPlayTile,
       PomodoroTile,
     ],
   },
@@ -66,7 +64,6 @@ const tileOwner = new Map<ComponentType, string>([
   [NewsTile, 'news'],
   [MailTile, 'mail'],
   [PomodoroTile, 'pomodoro'],
-  [AirPlayTile, 'airplay'],
   ...[HubTile, CommunicationTile, LockTile, MusicAppTile, PowerOffTile, PowerTile, RebootTile, SuspendTile].map(
     (tile) => [tile, 'system'] as const,
   ),
@@ -76,8 +73,10 @@ for (const module of moduleUIs) {
   const { deck } = module;
   if (!deck) continue;
   for (const tile of deck.tiles) tileOwner.set(tile, module.name);
-  const target = pages.find((page) => page.id === (deck.page === 'desk' ? 'desk-more' : deck.page));
-  if (target) target.tiles.push(...deck.tiles);
+  const target = pages.find(
+    (page) => page.id === (deck.page === 'desk' && deck.at === undefined ? 'desk-more' : deck.page),
+  );
+  if (target) target.tiles.splice(deck.at ?? target.tiles.length, 0, ...deck.tiles);
   else pages.push(deck);
 }
 
