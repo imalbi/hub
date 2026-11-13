@@ -104,6 +104,32 @@ void test('validates references, stable ids and phase membership', () => {
     );
 });
 
+void test('day materials validate, with page and label, and refuse bad entries with their location', () => {
+  const withMaterials = (materials: unknown[]) => ({ ...plan, days: [{ ...plan.days[0], materials }] });
+  assert.equal(
+    planSchema.safeParse(
+      withMaterials([{ path: 'Folder/Sheet 1.pdf' }, { path: 'Book/Chapter.pdf', page: 12, label: 'Chapter' }]),
+    ).success,
+    true,
+  );
+  const cases: [string, unknown][] = [
+    ['days.0.materials.0.extra', { path: 'a.pdf', extra: 1 }],
+    ['days.0.materials.0.path', { path: '/etc/a.pdf' }],
+    ['days.0.materials.0.path', { path: 'C:\\a.pdf' }],
+    ['days.0.materials.0.page', { path: 'a.pdf', page: 0 }],
+    ['days.0.materials.0.label', { path: 'a.pdf', label: '' }],
+  ];
+  for (const [path, entry] of cases) {
+    const result = planSchema.safeParse(withMaterials([entry]));
+    assert.equal(result.success, false, path);
+    if (!result.success)
+      assert.ok(
+        result.error.issues.some((issue) => issue.path.join('.').startsWith(path.replace('.extra', ''))),
+        path,
+      );
+  }
+});
+
 void test('G numbers follow subject pause and restore when resumed', () => {
   const days = [
     { id: 'a1', subject: 'a', done: false },

@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { z } from '../../core/module.ts';
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
@@ -6,6 +7,15 @@ const step = z.strictObject({
   text: z.string().min(1),
   file: z.strictObject({ path: z.string().min(1), page: z.int().positive().optional() }).optional(),
   minutes: z.number().positive().optional(),
+});
+const material = z.strictObject({
+  // Relative to a material folder, like a step file.
+  path: z
+    .string()
+    .min(1)
+    .refine((value) => !isAbsolute(value) && !/^[A-Za-z]:[\\/]/.test(value), 'Absolute path'),
+  page: z.int().positive().optional(),
+  label: z.string().min(1).optional(),
 });
 const day = z.strictObject({
   id,
@@ -16,6 +26,7 @@ const day = z.strictObject({
   recall: z.array(id),
   kind: z.enum(['study', 'mock', 'review']),
   minutes: z.number().positive().optional(),
+  materials: z.array(material).optional(),
   blocks: z.array(z.strictObject({ id, title: z.string().min(1), steps: z.array(step) })),
   check: z.string(),
 });

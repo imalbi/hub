@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { expect, test } from './fixtures.ts';
 import { PC_URL, RUN_TMP } from './hosts.ts';
 import { freezePomodoro } from './pomodoro-visual.ts';
+import { legibleDay } from './study-fixtures.ts';
 import { chooseTheme } from './themes.ts';
 
 test.beforeAll(async ({ request }) => {
@@ -53,6 +54,23 @@ function seedReview() {
   };
 }
 
+/** Oggi with the shape of a real plan (no phases, long nested paths, day materials): undone by the returned function. */
+function seedLong() {
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  const dayRow = db.prepare("SELECT data FROM days WHERE plan_id = 'example' AND id = 'A01'").get();
+  const planRow = db.prepare("SELECT header FROM plans WHERE id = 'example'").get();
+  if (typeof dayRow?.data !== 'string' || typeof planRow?.header !== 'string')
+    throw new Error('The example plan is not active');
+  const header = JSON.parse(planRow.header);
+  db.prepare("UPDATE plans SET header = ? WHERE id = 'example'").run(JSON.stringify({ ...header, phases: [] }));
+  db.prepare("UPDATE days SET data = ? WHERE plan_id = 'example' AND id = 'A01'").run(JSON.stringify(legibleDay));
+  return () => {
+    db.prepare("UPDATE plans SET header = ? WHERE id = 'example'").run(planRow.header);
+    db.prepare("UPDATE days SET data = ? WHERE plan_id = 'example' AND id = 'A01'").run(dayRow.data);
+    db.close();
+  };
+}
+
 for (const theme of [
   { name: 'Scuro', id: 'ink' },
   { name: 'Chiaro', id: 'paper' },
@@ -67,9 +85,10 @@ for (const theme of [
       { name: 'Piani', id: 'piani' },
       { name: 'Libreria', id: 'libreria' },
       { name: 'Ripasso', id: 'ripasso' },
+      { name: 'Oggi lungo', id: 'studio', long: true },
     ]) {
       test(`${tab.name} ${size.width} ${theme.id}`, async ({ page }) => {
-        const restore = tab.id === 'ripasso' ? seedReview() : undefined;
+        const restore = tab.id === 'ripasso' ? seedReview() : tab.long ? seedLong() : undefined;
         try {
           await page.setViewportSize(size);
           await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -87,9 +106,12 @@ for (const theme of [
             await document.fonts.ready;
           });
           await page.mouse.move(0, 0);
-          await expect(page).toHaveScreenshot(`study-${tab.id}-${size.width}-${theme.id}.png`, {
-            animations: 'disabled',
-          });
+          await expect(page).toHaveScreenshot(
+            `study-${tab.long ? 'oggi-long' : tab.id}-${size.width}-${theme.id}.png`,
+            {
+              animations: 'disabled',
+            },
+          );
           await page.goto('/desk/settings/appearance');
           await chooseTheme(page, 'Scuro');
         } finally {

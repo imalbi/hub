@@ -547,3 +547,25 @@ void test('review lists a day with some steps ticked and its open steps', async 
   await post('setStep', { key: 'example/A01', id: 'A01.m.2', done: true });
   assert.deepEqual((await app.inject('/trpc/study.review')).json().result.data.half, []);
 });
+
+void test('day materials reach daysById unchanged and do not break the state file', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'in-arrivo'));
+  const source = JSON.parse(await readFile(new URL('./fixtures/example.json', import.meta.url), 'utf8'));
+  const materials = [{ path: 'Folder/Sheet 1.pdf', page: 3, label: 'Sheet' }, { path: 'Book/Chapter.pdf' }];
+  source.days[0].materials = materials;
+  await writeFile(join(dir, 'in-arrivo', 'example.json'), JSON.stringify(source));
+  const config = { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } };
+  const app = buildServer({ dbPath: join(dir, 'hub.db'), deps: { run: createFakeDesktop() }, config });
+  const post = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/study.${name}`, payload });
+  assert.equal((await post('activate', { name: 'example.json' })).statusCode, 200);
+  const keys = encodeURIComponent(JSON.stringify({ keys: ['example/A01', 'example/A02'] }));
+  const bodies = (await app.inject(`/trpc/study.daysById?input=${keys}`)).json().result.data;
+  assert.deepEqual(bodies.find((day: { id: string }) => day.id === 'A01').materials, materials);
+  assert.equal(bodies.find((day: { id: string }) => day.id === 'A02').materials, undefined);
+  assert.equal((await post('setStep', { key: 'example/A01', id: 'A01.m.1', done: true })).statusCode, 200);
+  await app.close();
+  const exported = JSON.parse(await readFile(join(dir, 'stato', 'example.json'), 'utf8'));
+  assert.deepEqual(exported.days.find((day: { id: string }) => day.id === 'A01').openSteps, []);
+});

@@ -142,7 +142,9 @@ function TodayDay({
       <Panel className="col-span-8">
         <div className="flex flex-wrap items-center justify-between gap-md">
           <span className="text-caption text-muted-foreground">
-            G{current?.g} · {subjectInfo?.label} · {header.phases.find((phase) => phase.id === day.phase)?.title}
+            {[`G${current?.g}`, subjectInfo?.label, header.phases.find((phase) => phase.id === day.phase)?.title]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
           {subjectInfo && (
             <div>
@@ -167,7 +169,7 @@ function TodayDay({
         </div>
         <h2 className="text-display">{day.title}</h2>
         <p className="text-caption">
-          <NumberRoll value={checked.size} /> / {allSteps.length}
+          <NumberRoll value={checked.size} /> {m.study_steps_of({ total: allSteps.length })}
         </p>
         <DayBody
           body={day}
@@ -272,17 +274,20 @@ function TodayDay({
               ))}
           </ul>
           <p>{m.study_done_of({ done: index.days.filter((item) => item.done).length, total: index.days.length })}</p>
-          <ul>
-            {subjects.map((item) => {
-              const days = [...index.days, ...index.hiddenDays].filter((entry) => entry.subject === item.key);
-              return (
-                <li className="text-caption text-muted-foreground" key={item.key}>
-                  {item.label} ·{' '}
-                  {m.study_done_of({ done: days.filter((entry) => entry.done).length, total: days.length })}
-                </li>
-              );
-            })}
-          </ul>
+          {/* One subject would repeat the line above. */}
+          {subjects.length > 1 && (
+            <ul>
+              {subjects.map((item) => {
+                const days = [...index.days, ...index.hiddenDays].filter((entry) => entry.subject === item.key);
+                return (
+                  <li className="text-caption text-muted-foreground" key={item.key}>
+                    {item.label} ·{' '}
+                    {m.study_done_of({ done: days.filter((entry) => entry.done).length, total: days.length })}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Panel>
       </div>
     </div>

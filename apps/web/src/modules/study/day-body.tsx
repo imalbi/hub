@@ -1,10 +1,26 @@
-import { WarningCircleIcon } from '@phosphor-icons/react';
+import { FilePdfIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { causeLabel } from './error-form.tsx';
 import { MaterialAction } from './material.tsx';
 import { Badge } from '../../components/ui/badge.tsx';
 import { Checkbox } from '../../components/ui/checkbox.tsx';
+import { Tooltip } from '../../components/ui/tooltip.tsx';
 import { m } from '../../paraglide/messages.js';
 import type { StudyDay, StudyDayBody as Body, StudyError, StudyHeader } from './use-study.ts';
+
+type StepFileData = NonNullable<Body['blocks'][number]['steps'][number]['file']>;
+
+const fileName = (path: string) => path.split('/').at(-1) ?? path;
+
+/** The day's materials first, then each step file once; the first page seen for a path wins. */
+function filesToOpen(body: Body) {
+  const seen = new Set<string>();
+  return [
+    ...(body.materials ?? []),
+    ...body.blocks.flatMap((block) =>
+      block.steps.flatMap((step) => (step.file ? [{ ...step.file, label: undefined }] : [])),
+    ),
+  ].filter((file) => !seen.has(file.path) && !!seen.add(file.path));
+}
 
 export function DayBody({
   body,
@@ -27,6 +43,7 @@ export function DayBody({
   /** Starts an error entry on a step (Oggi only). */
   onError?: (step: Body['blocks'][number]['steps'][number]) => void;
 }) {
+  const files = filesToOpen(body);
   const threads = header.threads.filter((thread) => body.threads.includes(thread.id));
   return (
     <div className="flex flex-col gap-md">
@@ -57,13 +74,32 @@ export function DayBody({
           })}
         </div>
       )}
-      <div className="flex flex-wrap gap-xl">
+      {files.length > 0 && (
+        <fieldset aria-label={m.study_to_open()} className="flex min-w-0 flex-wrap items-center gap-sm">
+          <span aria-hidden="true" className="text-caption text-muted-foreground uppercase">
+            {m.study_to_open()}
+          </span>
+          {files.map((file) => (
+            <MaterialAction
+              key={file.path}
+              path={file.path}
+              page={file.page}
+              label={file.label ?? fileName(file.path).replace(/\.pdf$/i, '')}
+              icon={<FilePdfIcon aria-hidden="true" className="size-icon-sm" />}
+            />
+          ))}
+        </fieldset>
+      )}
+      <div className="flex flex-col gap-md">
         {body.blocks.map((block) => (
-          <section key={block.id} className="flex min-w-0 flex-1 basis-0 flex-col gap-xs">
+          <section
+            key={block.id}
+            className="flex min-w-0 flex-col gap-xs border-t border-dashed border-border pt-md first:border-t-0 first:pt-0"
+          >
             <h4 className="text-caption text-muted-foreground uppercase">{block.title}</h4>
-            <ul className="flex flex-col gap-xs">
+            <ul className="flex flex-col gap-sm">
               {block.steps.map((step) => (
-                <li key={step.id} className="flex items-start gap-sm text-body">
+                <li key={step.id} className="flex items-center gap-sm text-body">
                   {onStep ? (
                     <Checkbox
                       aria-label={step.text}
@@ -76,25 +112,28 @@ export function DayBody({
                       className="mt-2xs size-icon-sm shrink-0 rounded-full border border-border"
                     />
                   )}
-                  <span>
-                    {step.text}
-                    {step.file && (
-                      <span className="block text-caption text-muted-foreground">
-                        {step.file.path}
-                        {step.file.page && ` · ${m.study_page({ page: step.file.page })}`}
-                        <MaterialAction path={step.file.path} page={step.file.page} />
-                      </span>
-                    )}
-                  </span>
-                  {onError && (
-                    <button
-                      type="button"
-                      aria-label={m.study_error_step({ step: step.text })}
-                      onClick={() => onError(step)}
-                      className="ml-auto flex size-icon shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    >
-                      <WarningCircleIcon aria-hidden="true" className="size-icon-sm" />
-                    </button>
+                  <span className="min-w-0 flex-1">{step.text}</span>
+                  {(step.minutes || step.file || onError) && (
+                    <div className="flex shrink-0 items-center gap-sm">
+                      {step.file && <StepFile file={step.file} />}
+                      {step.minutes && (
+                        <span className="text-caption text-muted-foreground tabular-nums">
+                          {m.study_minutes({ minutes: step.minutes })}
+                        </span>
+                      )}
+                      {onError && (
+                        <Tooltip content={m.study_error_add()}>
+                          <button
+                            type="button"
+                            aria-label={m.study_error_step({ step: step.text })}
+                            onClick={() => onError(step)}
+                            className="flex size-icon shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                          >
+                            <WarningCircleIcon aria-hidden="true" className="size-icon-sm" />
+                          </button>
+                        </Tooltip>
+                      )}
+                    </div>
                   )}
                 </li>
               ))}
@@ -106,5 +145,18 @@ export function DayBody({
         <span className="text-caption text-muted-foreground uppercase">{m.study_check()}</span> {body.check}
       </p>
     </div>
+  );
+}
+
+/** One compact link: "Apri p. 34", named after the file for assistive tech. */
+function StepFile({ file }: { file: StepFileData }) {
+  const label = file.page ? m.study_open_page({ page: file.page }) : m.study_open_material();
+  return (
+    <MaterialAction
+      path={file.path}
+      page={file.page}
+      label={label}
+      name={m.study_open_named({ label, name: fileName(file.path) })}
+    />
   );
 }

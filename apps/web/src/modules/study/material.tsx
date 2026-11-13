@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { getToken } from '../../lib/auth.ts';
@@ -9,11 +10,19 @@ export function MaterialAction({
   folder,
   page,
   download = false,
+  label,
+  name,
+  icon,
 }: {
   path: string;
   folder?: number;
   page?: number;
   download?: boolean;
+  /** Visible text; defaults to Apri or Scarica. */
+  label?: string;
+  /** Accessible name when it says more than the label. */
+  name?: string;
+  icon?: ReactNode;
 }) {
   const trpc = useStudyTRPC();
   const open = useMutation(trpc.openMaterial.mutationOptions());
@@ -41,5 +50,13 @@ export function MaterialAction({
       throw error;
     }
   }
-  return <RegistryButton secondary label={download ? m.study_download() : m.study_open_material()} action={act} />;
+  return (
+    <RegistryButton
+      secondary
+      label={label ?? (download ? m.study_download() : m.study_open_material())}
+      name={name}
+      icon={icon}
+      action={act}
+    />
+  );
 }

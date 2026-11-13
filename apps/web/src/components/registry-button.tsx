@@ -4,6 +4,7 @@ import { m } from '../paraglide/messages.js';
 
 export function RegistryButton({
   label,
+  name,
   action,
   disabled,
   icon,
@@ -13,6 +14,8 @@ export function RegistryButton({
   className = '',
 }: {
   label: string;
+  /** Accessible name when it must say more than the visible label (it should start with it). */
+  name?: string;
   action: () => Promise<unknown>;
   disabled?: boolean;
   icon?: ReactNode;
@@ -24,7 +27,7 @@ export function RegistryButton({
   return (
     <ActionButton
       action={action}
-      aria-label={label}
+      aria-label={name ?? label}
       aria-pressed={pressed}
       label={label}
       disabled={disabled}
