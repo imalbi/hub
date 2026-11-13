@@ -54,7 +54,9 @@
   --spacing-popover-sm: 17.5rem;
   --spacing-popover-md: 24rem;
   --spacing-popover-lg: 32rem;
-  --spacing-media-cover: clamp(14rem, 24vw, 24rem);
+  /* The Musica page: its library column, and the artist banner. */
+  --spacing-library-col: 21rem;
+  --spacing-artist-banner: 14rem;
   /* The notch and the home indicator of the iPhone, zero everywhere else. Only the deck shell uses them. */
   --spacing-safe-top: env(safe-area-inset-top);
   --spacing-safe-right: env(safe-area-inset-right);
@@ -306,11 +308,6 @@ html[data-layout='desk'] body {
   border-color: var(--glass-border);
   backdrop-filter: var(--glass-filter);
 }
-.media-cover {
-  width: var(--spacing-media-cover);
-  height: var(--spacing-media-cover);
-  flex-shrink: 0;
-}
 .media-transport {
   padding-inline: var(--spacing-sm);
 }
@@ -319,22 +316,6 @@ html[data-layout='desk'] body {
 }
 .media-transport > span:first-child {
   margin-right: 0 !important;
-}
-section:has(> .media-hero) {
-  min-height: calc(var(--spacing-media-cover) + 2 * var(--spacing-3xl));
-}
-section:has(> .media-hero) + section li + li {
-  border-top: var(--spacing-px) dashed var(--border);
-  padding-top: var(--spacing-sm);
-}
-section:has(> .media-hero) .player-pill .size-3xl {
-  width: var(--spacing-touch);
-  height: var(--spacing-touch);
-}
-section:not(:has(> .media-hero)) > div > .media-cover {
-  width: var(--spacing-4xl);
-  height: var(--spacing-4xl);
-  border-radius: var(--radius-lg);
 }
 html[data-layout='desk'] ::selection {
   background: var(--accent);

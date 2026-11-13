@@ -209,7 +209,7 @@ if (!example) {
 }
 
 if (!example) {
-  test('with Musica off, Media keeps the player and the output button but has no music search', async ({
+  test('with Musica off, Media keeps the player and the audio button but has no music search or volume', async ({
     page,
     pc,
   }) => {
@@ -217,7 +217,7 @@ if (!example) {
       await saveSwitch(page, 'music');
       await page.goto('/desk/media');
       await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible(RESTARTED);
-      await expect(page.getByRole('button', { name: 'Cambia uscita audio' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Audio: Cuffie', exact: true })).toBeVisible();
       await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toHaveCount(0);
     } finally {
       await ensureOn(pc, 'music');

@@ -122,6 +122,7 @@ function build() {
   const musicEvents = new EventEmitter();
   const playlist: string[] = [];
   let position = -1;
+  let musicVolume = 100;
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
   if (stored && typeof stored === 'object' && 'sites' in stored) {
     const fixtureDb = openDatabase(
@@ -228,6 +229,9 @@ function build() {
             musicEvents.emit('event', { event: 'end-file', reason: 'stop' });
             musicEvents.emit('event', { event: 'start-file' });
           }
+          if (command[0] === 'set_property' && command[1] === 'volume' && typeof command[2] === 'number')
+            musicVolume = command[2];
+          if (command[0] === 'get_property' && command[1] === 'volume') return musicVolume;
           if (command[0] === 'get_property' && command[1] === 'playlist-pos') return position;
           if (command[0] === 'get_property' && command[1] === 'path') return playlist[position];
           return null;

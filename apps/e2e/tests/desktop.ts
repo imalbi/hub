@@ -19,6 +19,8 @@ export async function restoreDesktop(pc: APIRequestContext) {
   await post(pc, 'media.seek', { seconds: 12 });
   if ((await (await pc.get('/trpc/audio.state')).text()).includes('"current":{"label":"Casse"}'))
     await post(pc, 'audio.cycleOutput');
+  // The music volume is mpv's own: a test that moved it leaves the next one a quiet player.
+  await post(pc, 'music.setVolume', { volume: 100 });
 }
 
 const result = async (response: Awaited<ReturnType<typeof post>>) => (await response.json()).result.data;
@@ -38,7 +40,7 @@ export async function revokeDevices(pc: APIRequestContext, name: string) {
 
 // tRPC batches queries made together into one URL (`/trpc/a,b`): ask the real server, then swap the mocked results.
 export async function answerQueries(page: Page, answers: Record<string, unknown>) {
-  await page.route('**/trpc/{devices,agents}.*', async (route, request) => {
+  await page.route('**/trpc/{devices,agents,music}.*', async (route, request) => {
     const names = decodeURIComponent(new URL(request.url()).pathname.replace('/trpc/', '')).split(',');
     if (!names.some((name) => name in answers)) return route.fallback();
     const real: unknown = await (await route.fetch()).json();

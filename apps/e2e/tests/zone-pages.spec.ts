@@ -63,7 +63,8 @@ for (const { path, landmark } of surfacePages) {
     expect(panels.nested).toBe(0);
     expect(panels.bordered).toBe(0);
     expect(panels.outside).toBe(0);
-    expect(panels.count).toBeGreaterThan(0);
+    // Musica is one surface split by a dashed line (library and content are one thing), so it has no inner panel.
+    if (path !== '/desk/media') expect(panels.count).toBeGreaterThan(0);
   });
 }
 

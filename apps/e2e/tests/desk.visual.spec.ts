@@ -125,7 +125,7 @@ for (const zone of [
     if (zone.name === 'Media') {
       await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
       await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Cambia uscita audio' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Audio: Cuffie, volume musica 100%' })).toBeVisible();
     }
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled' });
@@ -160,8 +160,10 @@ test('Media playlist at 4K matches the baseline', async ({ page, request }) => {
     });
     await page.setViewportSize({ width: 3840, height: 2160 });
     await page.goto('/desk/media');
-    await page.getByRole('button', { name: 'Playlist', exact: true }).click();
-    await page.getByRole('button', { name: 'Mix esempio', exact: true }).click();
+    await page
+      .getByRole('region', { name: 'Playlist', exact: true })
+      .getByRole('button', { name: 'Mix esempio', exact: true })
+      .click();
     await expect(page.getByText('Brano esempio')).toBeVisible();
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot('desk-music-playlist-4k.png', { animations: 'disabled' });

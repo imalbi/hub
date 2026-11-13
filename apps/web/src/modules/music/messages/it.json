@@ -5,7 +5,6 @@
   "music_search_error": "YouTube non raggiungibile",
   "music_player_error": "Lettore musicale non raggiungibile",
   "music_empty": "Nessun risultato",
-  "music_output": "Cambia uscita audio",
   "music_play": "Riproduci {title}",
   "music_next": "Prossimi",
   "music_skip": "Salta",
@@ -43,5 +42,12 @@
   "music_search_playlists": "Playlist pubbliche",
   "music_playlist_save": "Salva",
   "music_playlist_error": "Playlist non raggiungibile",
-  "music_playlist_no_songs": "Nessun brano nella playlist"
+  "music_playlist_no_songs": "Nessun brano nella playlist",
+  "music_library": "Libreria",
+  "music_listen": "Ascolta",
+  "music_recent": "Ascoltati di recente",
+  "music_volume": "Volume musica",
+  "music_volume_note": "Solo la musica di Hub, non il volume del sistema",
+  "music_playlist_new": "Nuova playlist",
+  "music_playlist_make": "Crea"
 }

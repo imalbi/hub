@@ -1,0 +1,138 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSubscription } from '@trpc/tanstack-react-query';
+import { SearchInput } from '@/components/ui/search-input.tsx';
+import { useTRPC } from '../../lib/trpc.ts';
+import { m } from '../../paraglide/messages.js';
+import { ArtistView } from './artist.tsx';
+import { Listen } from './listen.tsx';
+import { pillQuiet, type SongItem } from './parts.tsx';
+import { LocalPlaylist, PlaylistList } from './playlists.tsx';
+import { MusicPlayer } from './player.tsx';
+import { SearchResults, type SearchType } from './search.tsx';
+import { SongRow } from './songs.tsx';
+
+type Library = 'listen' | 'favorites' | 'history';
+
+/** Favourites and history are the same list of saved songs (Ricerca.dc, note n1): one title each, no search. */
+function SavedSongs({
+  kind,
+  onPlay,
+  onArtist,
+}: {
+  kind: 'favorites' | 'history';
+  onPlay: (id: string) => void;
+  onArtist: (id: string) => void;
+}) {
+  const trpc = useTRPC();
+  const favorites = useQuery(trpc.music.favorites.queryOptions());
+  const history = useQuery(trpc.music.history.queryOptions());
+  const rows = (kind === 'favorites' ? favorites : history).data;
+  const label = kind === 'favorites' ? m.music_favorites() : m.music_history();
+  const songs: SongItem[] = (rows ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    artists: row.artist ? [{ name: row.artist }] : [],
+  }));
+  return (
+    <section aria-label={label} className="flex min-h-0 flex-1 flex-col gap-md">
+      <h2 className="text-heading">{label}</h2>
+      {rows?.length === 0 && (
+        <output>{kind === 'favorites' ? m.music_favorites_empty() : m.music_history_empty()}</output>
+      )}
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {songs.map((song, index) => (
+          <SongRow key={`${song.id}-${index}`} song={song} onPlay={onPlay} onArtist={onArtist} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * The Musica page (alternative C, "libreria a lato"): the library column (search, Ascolta, Preferiti, Cronologia,
+ * playlists) beside one content view, and the player as the last row. The view is local state: the artist page opens
+ * over whatever was showing and "Torna indietro" returns to it.
+ */
+export function MusicPage() {
+  const trpc = useTRPC();
+  const client = useQueryClient();
+  const [text, setText] = useState('');
+  const [query, setQuery] = useState('');
+  const [searchType, setSearchType] = useState<SearchType>('songs');
+  const [library, setLibrary] = useState<Library>('listen');
+  const [playlistId, setPlaylistId] = useState<number | null>(null);
+  const [artistId, setArtistId] = useState<string | null>(null);
+  const queue = useSubscription(trpc.music.onQueue.subscriptionOptions()).data;
+  const play = useMutation(
+    trpc.music.play.mutationOptions({
+      // A play can start the player service afresh, at mpv's own default volume.
+      onSuccess: () => client.invalidateQueries({ queryKey: trpc.music.state.queryKey() }),
+    }),
+  );
+  const onPlay = (id: string) => play.mutate({ id });
+
+  // A library entry or a playlist leaves the search and the artist page.
+  const open = (next: Library, id: number | null = null) => {
+    setText('');
+    setQuery('');
+    setArtistId(null);
+    setLibrary(next);
+    setPlaylistId(id);
+  };
+  const current = playlistId === null && !query.trim() && !artistId ? library : null;
+  const entries: [Library, string][] = [
+    ['listen', m.music_listen()],
+    ['favorites', m.music_favorites()],
+    ['history', m.music_history()],
+  ];
+
+  let content;
+  if (artistId)
+    content = <ArtistView id={artistId} onBack={() => setArtistId(null)} onPlay={onPlay} onArtist={setArtistId} />;
+  else if (query.trim())
+    content = (
+      <SearchResults query={query} type={searchType} onType={setSearchType} onPlay={onPlay} onArtist={setArtistId} />
+    );
+  else if (playlistId !== null)
+    content = <LocalPlaylist id={playlistId} onBack={() => open('listen')} onPlaySong={onPlay} />;
+  else if (library === 'listen') content = <Listen queue={queue} onPlay={onPlay} onArtist={setArtistId} />;
+  else content = <SavedSongs kind={library} onPlay={onPlay} onArtist={setArtistId} />;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-lg">
+      <div className="flex min-h-0 flex-1 gap-xl">
+        <div className="flex w-library-col shrink-0 flex-col gap-lg border-r border-dashed border-border pr-lg">
+          <SearchInput
+            aria-label={m.music_search()}
+            placeholder={m.music_search()}
+            clearLabel={m.music_clear()}
+            shortcut={null}
+            value={text}
+            onValueChange={setText}
+            onSearch={setQuery}
+          />
+          <nav aria-label={m.music_library()} className="flex flex-col gap-2xs">
+            {entries.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={current === id ? 'page' : undefined}
+                className={`${pillQuiet} w-full justify-start text-body ${current === id ? 'bg-muted' : ''}`}
+                onClick={() => open(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <PlaylistList selected={playlistId} onSelect={(id) => open(library, id)} />
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-md">
+          {play.isError && <output>{m.music_player_error()}</output>}
+          {content}
+        </div>
+      </div>
+      <MusicPlayer queue={queue} onArtist={setArtistId} />
+    </div>
+  );
+}

@@ -485,31 +485,49 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                   : { id: input.id, title: input.id, artists: [] });
               return playSongs([song]);
             }),
+          setVolume: protectedProcedure
+            .meta({
+              label: 'Volume musica',
+              description: 'Set the music volume (0 to 100), not the system volume',
+            })
+            .input(z.object({ volume: z.number().int().min(0).max(100) }))
+            .mutation(async ({ input }) => {
+              await schedule(async () => {
+                try {
+                  await ipc.request(['set_property', 'volume', input.volume]);
+                } catch {
+                  throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+                }
+              });
+            }),
           state: protectedProcedure.query(async () => {
             try {
               const idle = await ipc.request(['get_property', 'idle-active']);
-              if (idle === true) return { available: true, playing: null };
+              const level = await ipc.request(['get_property', 'volume']).catch(() => null);
+              const volume = typeof level === 'number' ? Math.round(level) : null;
+              if (idle === true) return { available: true, volume, playing: null };
               const path = await ipc.request(['get_property', 'path']);
               let id: string | null = null;
               try {
                 const url = typeof path === 'string' ? new URL(path) : null;
                 if (url?.hostname === 'music.youtube.com') id = url.searchParams.get('v');
               } catch {
-                return { available: true, playing: null };
+                return { available: true, volume, playing: null };
               }
               const song = id ? songs.get(id) : undefined;
-              if (song) return { available: true, playing: await publicSong(song) };
-              if (!id || !/^[A-Za-z0-9_-]{11}$/.test(id)) return { available: true, playing: null };
+              if (song) return { available: true, volume, playing: await publicSong(song) };
+              if (!id || !/^[A-Za-z0-9_-]{11}$/.test(id)) return { available: true, volume, playing: null };
               const title = await ipc.request(['get_property', 'media-title']);
               const metadata = await ipc.request(['get_property', 'metadata']).catch(() => null);
-              if (typeof title !== 'string' || !title) return { available: true, playing: null };
+              if (typeof title !== 'string' || !title) return { available: true, volume, playing: null };
               const artist = metadata && typeof metadata === 'object' && 'artist' in metadata ? metadata.artist : null;
               return {
                 available: true,
+                volume,
                 playing: { id, title, artists: typeof artist === 'string' ? [{ name: artist }] : [], cover: null },
               };
             } catch {
-              return { available: false, playing: null };
+              return { available: false, volume: null, playing: null };
             }
           }),
         }),

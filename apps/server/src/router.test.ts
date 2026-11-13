@@ -75,6 +75,7 @@ void test('every mutation carries an Italian label and an English description in
     'music.removePlaylistSong',
     'music.renamePlaylist',
     'music.savePublicPlaylist',
+    'music.setVolume',
     'music.skip',
     'music.toggleFavorite',
     'news.open',

@@ -1,6 +1,5 @@
 import { HeartIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSubscription } from '@trpc/tanstack-react-query';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
 
@@ -30,10 +29,4 @@ export function Favorite({ song }: { song: Track }) {
       <HeartIcon aria-hidden="true" weight={selected ? 'fill' : 'regular'} />
     </button>
   );
-}
-
-export function CurrentFavorite() {
-  const trpc = useTRPC();
-  const queue = useSubscription(trpc.music.onQueue.subscriptionOptions()).data;
-  return queue?.current ? <Favorite song={queue.current} /> : null;
 }

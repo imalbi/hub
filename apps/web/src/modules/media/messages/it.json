@@ -13,5 +13,10 @@
   "media_player": "Player musicale",
   "media_cover": "Copertina di {title}",
   "media_duration": "Durata {duration}",
-  "media_position": "Posizione del brano"
+  "media_position": "Posizione del brano",
+  "media_audio": "Audio",
+  "media_audio_output": "Uscita",
+  "media_audio_label": "Audio: {output}",
+  "media_audio_label_volume": "Audio: {output}, volume musica {volume}%",
+  "media_audio_none": "Nessuna uscita"
 }

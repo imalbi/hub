@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { Song } from './youtube.ts';
 export const calls: { queries: string[]; commands: (string | number | boolean)[][] } = { queries: [], commands: [] };
+let volume = 100;
 export const wiring = {
   youtube: {
     async searchPlaylists() {
@@ -38,6 +39,9 @@ export const wiring = {
     events: new EventEmitter(),
     async request(command: (string | number | boolean)[]): Promise<unknown> {
       calls.commands.push(command);
+      if (command[0] === 'set_property' && command[1] === 'volume' && typeof command[2] === 'number')
+        volume = command[2];
+      if (command[1] === 'volume') return volume;
       if (command[1] === 'idle-active') return !calls.commands.some((item) => item[0] === 'loadfile');
       if (command[1] === 'path') return 'https://music.youtube.com/watch?v=abcdefghijk';
       if (command[1] === 'media-title') return 'Song';

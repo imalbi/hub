@@ -9,7 +9,7 @@ import { useMedia } from './media-provider.tsx';
 export function MediaWidget({ size }: { size: WidgetSize }) {
   if (size === 'small') return <SmallMedia />;
   if (size === 'large') return <LargeMedia />;
-  return <MediaPanel compact className="h-full" />;
+  return <MediaPanel className="h-full" />;
 }
 
 function useTitle() {
