@@ -1,33 +1,124 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { CaretRightIcon, CopyIcon, DesktopIcon, TerminalWindowIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { HoldButton } from '../../components/hold-button.tsx';
-import { m } from '../../paraglide/messages.js';
+import { RegistryButton } from '../../components/registry-button.tsx';
+import { ActionButton } from '../../components/ui/action-button.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
+import { useNow } from '../../lib/use-now.ts';
+import { m } from '../../paraglide/messages.js';
+import { lastSeen } from './last-seen.ts';
 
-function AgentCalls({ id }: { id: number }) {
-  const trpc = useTRPC();
-  const calls = useQuery(trpc.agents.calls.queryOptions({ id }));
+// What a local agent needs: Hub always listens on loopback, whatever origin the page was opened from.
+const COMMAND = 'claude mcp add --transport http hub http://127.0.0.1:4180/mcp';
+
+type Call = { id: number; action: string; createdAt: string };
+
+/** One agent: icon, name, a line about its last call and its calls on demand; token agents also get Revoca. */
+function AgentRow({
+  name,
+  icon,
+  summary,
+  calls,
+  children,
+}: {
+  name: string;
+  icon: ReactNode;
+  summary: (last: Call | undefined, now: number) => string;
+  calls: Call[] | undefined;
+  children?: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const now = useNow('clock');
   return (
-    <div className="text-caption text-muted-foreground">
-      <p>{m.agents_calls()}</p>
-      {calls.data?.length ? (
-        <ul>
-          {calls.data.map((call) => (
-            <li key={call.id}>{call.action}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>{m.agents_no_calls()}</p>
+    <li className="flex flex-col gap-sm border-t border-border py-md">
+      <div className="flex items-center gap-md">
+        {icon}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="text-label">{name}</span>
+          <span className="text-caption text-muted-foreground">{summary(calls?.[0], now)}</span>
+        </div>
+        <ActionButton
+          variant="outline"
+          className="min-h-touch"
+          aria-label={m.agents_calls_of({ name })}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {m.agents_calls_show()}
+        </ActionButton>
+        {children}
+      </div>
+      {open && (
+        <div className="text-caption text-muted-foreground">
+          <p>{m.agents_calls()}</p>
+          {calls?.length ? (
+            <ul>
+              {calls.map((call) => (
+                <li key={call.id}>{call.action}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>{m.agents_no_calls()}</p>
+          )}
+        </div>
       )}
-    </div>
+    </li>
   );
 }
 
-export function AgentsSection({ enabled }: { enabled: boolean }) {
+function LocalAgentRow() {
+  const trpc = useTRPC();
+  const calls = useQuery(trpc.agents.localCalls.queryOptions());
+  return (
+    <AgentRow
+      name={m.agents_local()}
+      icon={<DesktopIcon className="size-icon-lg shrink-0 text-muted-foreground" aria-hidden />}
+      calls={calls.data}
+      summary={(last, now) =>
+        last
+          ? m.agents_last_call({ action: last.action, when: lastSeen(Date.parse(last.createdAt), now) })
+          : m.agents_no_calls()
+      }
+    />
+  );
+}
+
+function TokenAgentRow({ id, name }: { id: number; name: string }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const calls = useQuery(trpc.agents.calls.queryOptions({ id }));
+  const revoke = useMutation(
+    trpc.agents.revoke.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.agents.list.queryKey() }),
+    }),
+  );
+  return (
+    <AgentRow
+      name={name}
+      icon={<TerminalWindowIcon className="size-icon-lg shrink-0 text-muted-foreground" aria-hidden />}
+      calls={calls.data}
+      summary={(last, now) =>
+        last
+          ? m.agents_token_last({ action: last.action, when: lastSeen(Date.parse(last.createdAt), now) })
+          : m.agents_token_idle()
+      }
+    >
+      <HoldButton
+        label={m.agents_revoke_hold({ name })}
+        idle={m.agents_revoke()}
+        done={m.agents_revoked()}
+        onConfirm={() => revoke.mutateAsync({ id, confirmed: true })}
+      />
+    </AgentRow>
+  );
+}
+
+/** The token form for an agent on another machine: a name, a token shown once. */
+function TokenForm() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
-  const agents = useQuery({ ...trpc.agents.list.queryOptions(), enabled });
   const create = useMutation(
     trpc.agents.create.mutationOptions({
       onSuccess: async () => {
@@ -36,18 +127,12 @@ export function AgentsSection({ enabled }: { enabled: boolean }) {
       },
     }),
   );
-  const revoke = useMutation(
-    trpc.agents.revoke.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.agents.list.queryKey() }),
-    }),
-  );
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (name.trim()) create.mutate({ name });
   }
   return (
-    <section className="flex flex-col gap-md" aria-label={m.agents_title()}>
-      <h2 className="text-title">{m.agents_title()}</h2>
+    <div className="flex flex-col gap-md pt-sm">
       <form onSubmit={submit} className="flex flex-wrap items-end gap-sm">
         <label className="flex flex-col gap-xs text-label">
           {m.agents_name()}
@@ -75,23 +160,39 @@ export function AgentsSection({ enabled }: { enabled: boolean }) {
           </output>
         </div>
       )}
-      {agents.data?.length === 0 && <p className="text-caption text-muted-foreground">{m.agents_empty()}</p>}
-      <ul className="flex flex-col gap-sm">
+    </div>
+  );
+}
+
+export function AgentsSection({ enabled }: { enabled: boolean }) {
+  const trpc = useTRPC();
+  const agents = useQuery({ ...trpc.agents.list.queryOptions(), enabled });
+  return (
+    <section className="flex flex-col gap-md" aria-label={m.agents_title()}>
+      <h3 className="text-label text-muted-foreground">{m.agents_title()}</h3>
+      <div className="flex items-center gap-md rounded-lg bg-muted py-sm pr-sm pl-lg">
+        <code aria-label={m.agents_command_label()} className="min-w-0 flex-1 truncate font-mono text-label">
+          {COMMAND}
+        </code>
+        <RegistryButton
+          label={m.agents_copy()}
+          icon={<CopyIcon className="size-icon" aria-hidden />}
+          action={() => navigator.clipboard.writeText(COMMAND)}
+        />
+      </div>
+      <ul className="flex flex-col">
+        <LocalAgentRow />
         {agents.data?.map((agent) => (
-          <li key={agent.id} className="flex items-start justify-between gap-lg">
-            <div className="flex flex-col gap-xs">
-              <span className="text-label">{agent.name}</span>
-              <AgentCalls id={agent.id} />
-            </div>
-            <HoldButton
-              label={m.agents_revoke_hold({ name: agent.name })}
-              idle={m.agents_revoke()}
-              done={m.agents_revoked()}
-              onConfirm={() => revoke.mutateAsync({ id: agent.id, confirmed: true })}
-            />
-          </li>
+          <TokenAgentRow key={agent.id} id={agent.id} name={agent.name} />
         ))}
       </ul>
+      <details className="group border-t border-border pt-sm">
+        <summary className="flex min-h-touch cursor-pointer items-center gap-xs text-body text-muted-foreground">
+          <CaretRightIcon className="size-icon-sm transition-transform group-open:rotate-90" aria-hidden />
+          {m.agents_remote()}
+        </summary>
+        <TokenForm />
+      </details>
     </section>
   );
 }

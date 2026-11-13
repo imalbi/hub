@@ -19,11 +19,13 @@ const publicNames: Record<string, () => string> = {
   study: m.zone_study,
 };
 
-/** What the list calls a module: Italian copy for the public ones, the zone's own label for a private one, else its name. */
+/** What the list calls a module: Italian copy for the public ones, the zone's label or its own copy title for a private one, else its name. */
 export function moduleLabel(name: string) {
   const known = publicNames[name];
   if (known) return known();
-  const zone = moduleUIs.find((ui) => ui.name === name)?.zone;
-  if (zone) return zone.label();
+  const ui = moduleUIs.find((candidate) => candidate.name === name);
+  if (ui?.zone) return ui.zone.label();
+  // A module outside the tracked messages names itself in its own copy (AirPlay, Luci).
+  if (ui?.copy['title']) return ui.copy['title'];
   return name.charAt(0).toUpperCase() + name.slice(1).replaceAll('-', ' ');
 }

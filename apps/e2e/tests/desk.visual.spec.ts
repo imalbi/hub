@@ -17,6 +17,8 @@ test.beforeEach(async ({ page }) => {
     'devices.list': [
       { id: 1, name: 'iPhone', createdAt: NOW.getTime() - 3_600_000, lastSeenAt: NOW.getTime() - 300_000 },
     ],
+    // Other specs make local MCP calls; "Su questo PC" would show the last one.
+    'agents.localCalls': [],
   });
   await page.goto('/desk');
   await expect(page.getByText('42 s', { exact: true })).toBeVisible();

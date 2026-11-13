@@ -1,24 +1,19 @@
+import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DeviceMobileIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useTRPC } from '../../lib/trpc.ts';
-import { DeviceMobileIcon } from '@phosphor-icons/react';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { HoldButton } from '../../components/hold-button.tsx';
 import { useNow } from '../../lib/use-now.ts';
 import { QrSection } from './qr-section.tsx';
 import { AgentsSection } from './agents-section.tsx';
+import { lastSeen } from './last-seen.ts';
+import { ServicesPanel } from './services-panel.tsx';
 
-function lastSeen(at: number, now: number) {
-  const minutes = Math.floor((now - at) / 60_000);
-  if (minutes < 1) return m.device_seen_now();
-  if (minutes < 60) return m.device_seen_minutes({ minutes });
-  const hours = Math.floor(minutes / 60);
-  return hours < 24 ? m.device_seen_hours({ hours }) : m.device_seen_days({ days: Math.floor(hours / 24) });
-}
-
-export function DevicesPanel({ className = '' }: { className?: string }) {
+function usePairing() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const createCode = useMutation(trpc.pairing.createCode.mutationOptions());
@@ -32,46 +27,84 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.devices.list.queryKey() }),
     }),
   );
+  return { createCode, now, remaining, devices, revoke };
+}
+type Pairing = ReturnType<typeof usePairing>;
 
+function Step({ n, active = false, children }: { n: number; active?: boolean; children: ReactNode }) {
   return (
-    <Panel title={m.devices_title()} className={className}>
-      <div className="flex flex-col items-start gap-md">
-        <div className="flex items-center gap-sm">
+    <li className="flex items-start gap-md">
+      <span
+        aria-hidden
+        className={`flex size-xl shrink-0 items-center justify-center rounded-full text-label tabular-nums ${active ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+      >
+        {n}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-sm">{children}</div>
+    </li>
+  );
+}
+
+/** Two steps to connect a phone: open the deck (the QR, only with a LAN address), then type the code in the app. */
+function ConnectPanel({ pairing: { createCode, remaining } }: { pairing: Pairing }) {
+  const trpc = useTRPC();
+  const deckUrl = useQuery(trpc.devices.deckUrl.queryOptions());
+  return (
+    <Panel title={m.devices_connect_title()}>
+      <ol className="flex flex-col gap-lg">
+        <Step n={1}>
+          {deckUrl.isSuccess && !deckUrl.data ? (
+            <span className="text-body text-muted-foreground">{m.devices_step_open_lan()}</span>
+          ) : (
+            <>
+              <span className="text-body">{m.devices_step_open()}</span>
+              <QrSection />
+            </>
+          )}
+        </Step>
+        <Step n={2} active>
+          <span className="text-body">{m.devices_step_code()}</span>
           <RegistryButton
             secondary
             label={m.devices_create_code()}
             action={() => createCode.mutateAsync()}
             disabled={createCode.isPending}
           />
-          <QrSection />
-        </div>
-        {createCode.data && remaining > 0 && (
-          <div className="flex flex-col gap-xs">
-            <output aria-label={m.devices_code_label()} className="text-display tabular-nums">
-              {createCode.data.code}
-            </output>
-            <p className="text-caption text-muted-foreground tabular-nums">
-              {m.devices_code_expires({ seconds: remaining })}
-            </p>
-          </div>
-        )}
-        {createCode.data && remaining === 0 && (
-          <p className="text-caption text-muted-foreground">{m.devices_code_expired()}</p>
-        )}
-      </div>
+          {createCode.data && remaining > 0 && (
+            <div className="flex w-full flex-col gap-xs rounded-lg bg-muted p-md">
+              <output aria-label={m.devices_code_label()} className="text-display tabular-nums">
+                {createCode.data.code}
+              </output>
+              <p className="text-caption text-muted-foreground tabular-nums">
+                {m.devices_code_expires({ seconds: remaining })}
+              </p>
+            </div>
+          )}
+          {createCode.data && remaining === 0 && (
+            <p className="text-caption text-muted-foreground">{m.devices_code_expired()}</p>
+          )}
+        </Step>
+      </ol>
+    </Panel>
+  );
+}
 
-      {/* A live code takes the empty state's place: its hint is "pair with a code", and both overflow the cell. */}
-      {devices.data?.length === 0 && !(createCode.data && remaining > 0) && (
+function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing }) {
+  return (
+    <section className="flex flex-col gap-md" aria-label={m.devices_phones_title()}>
+      <h3 className="text-label text-muted-foreground">{m.devices_phones_title()}</h3>
+      {devices.data?.length === 0 && (
         <EmptyState
           illustration={<DeviceMobileIcon className="size-3xl text-muted-foreground" aria-hidden />}
           title={m.devices_empty()}
           description={m.devices_empty_hint()}
         />
       )}
-      <ul className="flex flex-col gap-sm">
+      <ul className="flex flex-col">
         {devices.data?.map((device) => (
-          <li key={device.id} className="flex items-center justify-between gap-lg">
-            <div className="flex flex-col">
+          <li key={device.id} className="flex items-center gap-md border-t border-border py-md">
+            <DeviceMobileIcon className="size-icon-lg shrink-0 text-muted-foreground" aria-hidden />
+            <div className="flex min-w-0 flex-1 flex-col">
               <span className="text-label">{device.name}</span>
               <span className="text-caption text-muted-foreground">
                 {m.device_last_seen({ when: lastSeen(device.lastSeenAt, now) })}
@@ -86,7 +119,26 @@ export function DevicesPanel({ className = '' }: { className?: string }) {
           </li>
         ))}
       </ul>
-      <AgentsSection enabled={devices.isSuccess} />
-    </Panel>
+    </section>
+  );
+}
+
+/**
+ * The Dispositivi page as grid cells: connecting a phone and this PC's own devices on the left (4 columns), who has
+ * access on the right (8). Outside a grid (the Panoramica widget) the cells simply stack.
+ */
+export function DevicesBoard() {
+  const pairing = usePairing();
+  return (
+    <>
+      <div className="col-span-4 flex min-w-0 flex-col gap-lg">
+        <ConnectPanel pairing={pairing} />
+        <ServicesPanel />
+      </div>
+      <Panel title={m.devices_access_title()} className="col-span-8">
+        <PhonesList pairing={pairing} />
+        <AgentsSection enabled={pairing.devices.isSuccess} />
+      </Panel>
+    </>
   );
 }

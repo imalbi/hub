@@ -10,7 +10,7 @@ const pages = [
   { path: '/desk/studio', landmark: { role: 'region', name: 'Pomodoro' } },
   { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
   { path: '/desk/system', landmark: { role: 'region', name: 'Comandi' } },
-  { path: '/desk/devices', landmark: { role: 'region', name: 'Dispositivi' } },
+  { path: '/desk/devices', landmark: { role: 'region', name: 'Chi ha accesso' } },
   { path: '/desk/settings', landmark: { role: 'navigation', name: 'Sezioni' } },
 ] as const;
 
@@ -163,7 +163,7 @@ if (examples) {
     await page.route('**/trpc/health*', (route) =>
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
-    await answerQueries(page, { 'devices.list': [] });
+    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [] });
     await page.goto('/desk/devices');
     await expect(page.getByRole('tablist', { name: 'Sezioni' })).toBeVisible();
     await page.evaluate(async () => {
@@ -179,7 +179,7 @@ if (examples) {
 } else {
   test('without a section Dispositivi shows no tab bar and ?tab= changes nothing', async ({ page }) => {
     await page.goto('/desk/devices?tab=hello');
-    await expect(page.getByRole('region', { name: 'Dispositivi' }).first()).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Chi ha accesso' }).first()).toBeVisible();
     await expect(page.getByRole('tablist')).toHaveCount(0);
   });
 }

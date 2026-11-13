@@ -6,10 +6,22 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/desk/devices');
 });
 
-test('the Dispositivi panel lists the device paired in setup', async ({ page }) => {
+test('the page has the two steps to connect a phone, and who has access with the device paired in setup', async ({
+  page,
+}) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Dispositivi' })).toBeVisible();
-  await expect(page.getByText('iPhone', { exact: true })).toBeVisible();
-  await expect(page.getByText(/^Ultimo accesso: /).first()).toBeVisible();
+  const connect = page.getByRole('region', { name: 'Collega un telefono' });
+  await expect(connect.getByRole('listitem')).toHaveCount(2);
+  await expect(connect.getByText("Scrivi il codice nell'app")).toBeVisible();
+  await expect(connect.getByRole('button', { name: 'Genera codice' })).toBeVisible();
+  // No LAN origin in the fixture config: step 1 says what is missing instead of offering a QR.
+  await expect(connect.getByText(/serve la rete locale/)).toBeVisible();
+  const access = page.getByRole('region', { name: 'Chi ha accesso' });
+  await expect(
+    access.getByRole('region', { name: 'Telefoni e tablet' }).getByText('iPhone', { exact: true }),
+  ).toBeVisible();
+  await expect(access.getByText(/^Ultimo accesso: /).first()).toBeVisible();
+  await expect(access.getByRole('region', { name: 'Agent', exact: true })).toBeVisible();
 });
 
 test('a code shows six digits and a countdown, and a device that redeems it appears without a reload', async ({
@@ -65,30 +77,68 @@ test('revoking needs a hold, then the device is gone and its token stops working
   }
 });
 
-// With no device paired, the code and its countdown once stacked over the empty state: a live code takes its place.
+// The code and its countdown once stacked over the empty state of the same panel; they now live in step 2 on the left.
 for (const viewport of [
   { width: 1920, height: 1080 },
   { width: 3840, height: 2160 },
 ]) {
-  test(`a generated code replaces the empty state in the Dispositivi panel (${viewport.width}px)`, async ({ page }) => {
+  test(`a generated code sits in step 2 beside the empty list, nothing clipped (${viewport.width}px)`, async ({
+    page,
+  }) => {
     await page.setViewportSize(viewport);
     await answerQueries(page, { 'devices.list': [] });
     await page.goto('/desk/devices');
     await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
     await page.getByRole('button', { name: 'Genera codice' }).click();
-    await expect(page.getByRole('status', { name: 'Codice di abbinamento' })).toHaveText(/^\d{6}$/);
-    await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toHaveCount(0);
-    const panel = page.getByRole('region', { name: 'Dispositivi', exact: true });
-    expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+    const code = page.getByRole('status', { name: 'Codice di abbinamento' });
+    await expect(code).toHaveText(/^\d{6}$/);
+    await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
+    for (const name of ['Collega un telefono', 'Chi ha accesso']) {
+      const panel = page.getByRole('region', { name, exact: true });
+      expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+    }
   });
 }
 
-test('an agent token is shown once, its calls are listed and it can be revoked', async ({ page, pc }) => {
-  await page.getByLabel('Nome agente').fill('Agente di prova');
-  await page.getByRole('button', { name: 'Crea agente' }).click();
+test('Copia comando puts the local MCP command on the clipboard', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const command = 'claude mcp add --transport http hub http://127.0.0.1:4180/mcp';
+  await expect(page.getByText(command, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Copia comando' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(command);
+});
+
+test('Su questo PC lists the calls a local agent made over loopback', async ({ page, pc }) => {
+  const call = await pc.post(`http://localhost:${SERVER_PORT}/mcp`, {
+    headers: { accept: 'application/json, text/event-stream' },
+    data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'media.playPause', arguments: {} } },
+  });
+  expect(call.ok()).toBe(true);
+  await page.reload();
+  const agent = page.getByRole('region', { name: 'Agent', exact: true });
+  await expect(agent.getByText(/^Ultima chiamata: media\.playPause, /)).toBeVisible();
+  // Calls are shown on demand, like the ones of a token agent.
+  await expect(agent.getByText('media.playPause', { exact: true })).toHaveCount(0);
+  await agent.getByRole('button', { name: 'Chiamate di Su questo PC' }).click();
+  await expect(agent.getByText('media.playPause', { exact: true })).toBeVisible();
+});
+
+test('the token form is in a closed disclosure; a token is shown once, its calls are listed and it can be revoked', async ({
+  page,
+  pc,
+}) => {
+  // The local row is covered by its own test; the shot must not depend on the calls other specs made.
+  await answerQueries(page, { 'agents.localCalls': [] });
+  await page.goto('/desk/devices');
+  const name = page.getByLabel('Nome agente');
+  await expect(name).toBeHidden();
+  await page.getByText('Agent da un altro PC', { exact: true }).click();
+  await name.fill('Agente di prova');
+  await page.getByRole('button', { name: 'Crea token' }).click();
   await expect(page.getByRole('status', { name: 'Token agente' })).not.toBeEmpty();
   const token = await page.getByRole('status', { name: 'Token agente' }).innerText();
   await expect(page.getByText('Agente di prova', { exact: true })).toBeVisible();
+  await expect(page.getByText('Token, nessuna chiamata')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Agent', exact: true })).toHaveScreenshot('agent-section.png', {
     mask: [page.getByRole('status', { name: 'Token agente' })],
   });
@@ -99,7 +149,8 @@ test('an agent token is shown once, its calls are listed and it can be revoked',
   expect(call.ok()).toBe(true);
   await page.reload();
   await expect(page.getByRole('status', { name: 'Token agente' })).toHaveCount(0);
-  await expect(page.getByText('media.playPause', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Chiamate di Agente di prova' }).click();
+  await expect(page.getByText('media.playPause', { exact: true }).first()).toBeVisible();
   const revoke = page.getByRole('button', { name: 'Tieni premuto per revocare Agente di prova' });
   await revoke.hover();
   await page.mouse.down();

@@ -64,7 +64,7 @@ if (examples) {
 } else {
   test('without the module there is no row, no tile and no AirPlay action', async ({ page, browser, pc }) => {
     await page.goto('/desk/devices');
-    await expect(page.getByRole('region', { name: 'Dispositivi' }).first()).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Chi ha accesso' }).first()).toBeVisible();
     await expect(page.getByRole('region', { name: 'Collegati a questo PC' })).toHaveCount(0);
     await expect(page.getByRole('group', { name: 'AirPlay' })).toHaveCount(0);
 

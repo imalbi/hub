@@ -251,7 +251,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
     // The paired devices come from the run's own database; the shot is about the rows.
-    await answerQueries(page, { 'devices.list': [] });
+    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [] });
     await page.goto('/desk/devices');
     await expect(
       page.getByRole('group', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
@@ -261,6 +261,24 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await page.goto('/desk');
     await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();
     await expect(page.getByRole('region', { name: 'Luci', exact: true })).toHaveCount(0);
+  });
+
+  test('Panoramica offers the Luci widget and it drives the same light', async ({ page, request }) => {
+    await page.goto('/desk');
+    await page.getByRole('button', { name: 'Modifica' }).click();
+    await page.getByRole('button', { name: 'Aggiungi Luci' }).click();
+    await page.getByRole('button', { name: 'Fine' }).click();
+    try {
+      const widget = page.locator('[data-widget="lights"]');
+      await expect(widget.getByText('Accesa, 80%', { exact: true })).toBeVisible();
+      await widget.getByRole('button', { name: /^Luce:/ }).click();
+      await expect(widget.getByText('Spenta', { exact: true })).toBeVisible();
+      expect(await writes(request)).toEqual([{ type: 'setPower', on: false }]);
+    } finally {
+      await page.getByRole('button', { name: 'Modifica' }).click();
+      await page.getByRole('button', { name: 'Rimuovi Luci' }).click();
+      await page.getByRole('button', { name: 'Fine' }).click();
+    }
   });
 
   test('the light tile stays within the deck page without vertical scroll', async ({ browser }) => {

@@ -130,3 +130,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - `mcp.spec.ts`, the deck confirmation test and the Agent test in `devices.spec.ts` use the fake server and `/__fake/system`; never run a real desktop action. The intended new baselines are the desk dialog, deck banner and Agent section. The Dispositivi page baselines also include that new section.
 
 - Mocking a tRPC query with `page.route` breaks when the page batches it with others (`/trpc/a,b`): the single-result answer replaces the whole batch. Use `answerQueries` in `tests/devices.spec.ts` (fetches the real batch, swaps only the mocked results).
+
+## Dispositivi page (step 35 Part C slice 2)
+
+- `devices.spec.ts` finds the page by regions "Collega un telefono" and "Chi ha accesso" (the old "Dispositivi" panel is gone; `zone-pages.spec.ts` and `airplay.spec.ts` use "Chi ha accesso" as the landmark). Copia comando needs `context.grantPermissions(['clipboard-read', 'clipboard-write'])`. "Su questo PC" is fed by a loopback `/mcp` call from the `pc` fixture; the token form is inside a closed `<details>`, open it by its summary text. In edit mode of Panoramica a widget's controls do not answer: press Fine before clicking them (`hue.spec.ts` Luci widget test).
+- Baselines changed by the layout: `agent-section`, `desk-code`, `desk-devices`, `desk-devices-4k`, `desk-devices-tabs`, `desk-lights*` (the row is narrower in the 4-column cell).

@@ -1,11 +1,15 @@
 import { TRPCError } from '@trpc/server';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { agentCalls, agents } from '../db/schema.ts';
 import { hashToken, newToken } from './auth.ts';
 import { loopbackProcedure, router } from './trpc.ts';
 
 export const agentsRouter = router({
+  // Calls over loopback MCP are stored with no agent id (core/mcp.ts): this is the "Su questo PC" row.
+  localCalls: loopbackProcedure.query(({ ctx }) =>
+    ctx.db.select().from(agentCalls).where(isNull(agentCalls.agentId)).orderBy(desc(agentCalls.id)).limit(20),
+  ),
   calls: loopbackProcedure
     .input(z.object({ id: z.number().int() }))
     .query(({ ctx, input }) =>

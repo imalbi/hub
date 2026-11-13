@@ -103,6 +103,7 @@ void test('device administration and codes are for the PC only', async () => {
   for (const [method, path] of [
     ['GET', 'devices.list'],
     ['GET', 'devices.deckUrl'],
+    ['GET', 'agents.localCalls'],
     ['POST', 'pairing.createCode'],
   ] as const) {
     assert.equal((await call(method, path, { remoteAddress: LAN, token })).code, 'FORBIDDEN', `${path} as a device`);
@@ -164,4 +165,23 @@ void test('redeeming returns the token once and the database keeps only its hash
   assert.equal(stored.length, 1);
   assert.equal(stored[0]?.['token_hash'], createHash('sha256').update(token).digest('hex'));
   assert.ok(!JSON.stringify(stored).includes(token));
+});
+
+void test('local MCP calls are listed for the PC and only the PC', async () => {
+  const mcp = await app.inject({
+    method: 'POST',
+    url: '/mcp',
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+    payload: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'media.playPause', arguments: {} },
+    }),
+  });
+  assert.equal(mcp.statusCode, 200);
+  const calls = z
+    .array(z.object({ action: z.string(), agentId: z.null() }))
+    .parse((await call('GET', 'agents.localCalls')).data);
+  assert.equal(calls[0]?.action, 'media.playPause');
 });
