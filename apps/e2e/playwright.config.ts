@@ -115,7 +115,10 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: `pnpm --filter @hub/web exec vite --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
+      // `HUB_E2E_DIST` (set by `scripts/test-e2e.ts`) serves a build made once for this variant; without it, a dev server.
+      command: `pnpm --filter @hub/web exec vite ${
+        process.env.HUB_E2E_DIST ? `preview --outDir ${process.env.HUB_E2E_DIST}` : ''
+      } --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
       env: viteEnv,
       url: PHONE_URL,
       reuseExistingServer: false,

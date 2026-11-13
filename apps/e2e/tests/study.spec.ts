@@ -88,6 +88,9 @@ test('a large plan loads only the first open group', async ({ page, pc }) => {
   });
   await page.goto(`${PC_URL}/desk/studio?tab=piano`);
   await expect(page.getByRole('button', { name: 'G1 · La foglia' })).toBeVisible();
+  // The group button comes from the plan summary; the days of its first open group are fetched right after, so wait
+  // for that request (a build is fast enough to run the next line before it left) and then require it to be the only one.
+  await expect.poll(() => calls.length).toBeGreaterThan(0);
   expect(calls).toHaveLength(1);
   expect(decodeURIComponent(calls[0] ?? '')).toContain('day-6');
   expect(decodeURIComponent(calls[0] ?? '')).not.toContain('day-7');

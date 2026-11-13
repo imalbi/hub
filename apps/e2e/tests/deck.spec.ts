@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, WebSocket as PageSocket } from '@playwright/test';
 import { playPause, restoreDesktop } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { controlSockets } from './sockets.ts';
@@ -76,16 +76,19 @@ test('a change made elsewhere reaches the open page without a reload', async ({ 
 
 test('the connection-lost state shows when the socket drops and clears when it is back', async ({ page }) => {
   const sockets = await controlSockets(page);
-  const hotReload = page.waitForEvent('websocket', (socket) => new URL(socket.url()).pathname !== '/trpc');
+  // Only a dev server has a hot-reload socket (the e2e runner serves a build); when there is one it must stay open.
+  const otherSockets: PageSocket[] = [];
+  page.on('websocket', (socket) => {
+    if (new URL(socket.url()).pathname !== '/trpc') otherSockets.push(socket);
+  });
   await page.goto('/deck');
-  const developmentSocket = await hotReload;
   await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
   await expect(page.getByText('Connessione persa')).toBeHidden();
 
   await sockets.cut();
   // The retry backs off, so the page may need a few seconds: the default 5 s expect timeout is too tight.
   await expect(page.getByText('Connessione persa')).toBeVisible({ timeout: 15_000 });
-  expect(developmentSocket.isClosed()).toBe(false);
+  expect(otherSockets.every((socket) => !socket.isClosed())).toBe(true);
   // The last known state stays on the tile.
   await expect(audioTile(page)).toHaveAccessibleName(/Cuffie/);
 
