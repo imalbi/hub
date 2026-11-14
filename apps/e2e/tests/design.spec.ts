@@ -80,7 +80,10 @@ test('the rail is one pill: trigger, zones and status dot inside, indicator on t
   const rail = page.getByRole('navigation', { name: 'Zone' });
   const railBox = await rail.boundingBox();
   if (!railBox) throw new Error('no rail box');
-  expect(Math.abs(railBox.y + railBox.height / 2 - view.height / 2)).toBeLessThan(2);
+  // Centred in the room below the activity ball's default spot (owner 2026-11-14), not on the whole window.
+  const top = await rail.evaluate((nav) => Number.parseFloat(getComputedStyle(nav).top));
+  expect(top).toBeGreaterThan(0);
+  expect(Math.abs(railBox.y + railBox.height / 2 - (top + view.height) / 2)).toBeLessThan(2);
   const trigger = rail.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' });
   const dot = rail.getByRole('status', { name: 'Connesso', exact: true });
   const links = rail.getByRole('link');

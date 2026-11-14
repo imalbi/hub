@@ -101,7 +101,7 @@ for (const viewport of [
 
 test('Copia comando puts the local MCP command on the clipboard', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  const command = 'claude mcp add --transport http hub http://127.0.0.1:4180/mcp';
+  const command = 'claude mcp add --scope user --transport http hub http://127.0.0.1:4180/mcp';
   await expect(page.getByText(command, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copia comando' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(command);

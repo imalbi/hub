@@ -108,7 +108,10 @@ export function LocalPlaylist({
           if (name.trim()) rename.mutate({ id, name });
         }}
       >
-        <PlaylistCover className="size-4xl rounded-xl" />
+        <PlaylistMosaic
+          covers={songs.flatMap((song) => (song.cover ? [song.cover] : [])).slice(0, 4)}
+          className="size-4xl rounded-xl"
+        />
         <div className="min-w-0 flex-1">
           {editing ? (
             <Input
@@ -166,7 +169,7 @@ export function LocalPlaylist({
         {songs.map((song, index) => (
           <li key={index} className="relative flex items-center gap-md border-t border-dashed border-border py-xs">
             <span className="w-md text-label text-muted-foreground tabular-nums">{index + 1}</span>
-            <CoverTile />
+            <CoverTile src={song.cover} />
             <div className="min-w-0 flex-1">
               <button
                 type="button"

@@ -154,8 +154,17 @@ test('the settings popover switches the preset and the sound', async ({ page, pc
   const state = async () => (await pc.get('/trpc/pomodoro.state')).text();
   try {
     await page.goto('/desk/studio');
-    await page.getByRole('button', { name: 'Impostazioni Pomodoro' }).click();
-    const popover = page.getByLabel('Impostazioni Pomodoro', { exact: true }).last();
+    const gear = page.getByRole('button', { name: 'Impostazioni Pomodoro' });
+    await gear.click();
+    const popover = page.getByRole('dialog', { name: 'Impostazioni Pomodoro' });
+    // Owner 2026-11-14: the panel hangs from the gear, not from the middle of the screen.
+    await expect(popover).toBeVisible();
+    const button = (await gear.boundingBox())!;
+    // The panel slides in a few pixels: wait for it to land under the gear, then check it hangs from it.
+    await expect.poll(async () => (await popover.boundingBox())!.y).toBeGreaterThanOrEqual(button.y + button.height);
+    const panel = (await popover.boundingBox())!;
+    expect(panel.y - (button.y + button.height)).toBeLessThan(32);
+    expect(Math.abs(panel.x + panel.width - (button.x + button.width))).toBeLessThan(2);
     await popover.getByText('50/10', { exact: true }).click();
     await expect(popover.getByRole('radio', { name: /^50 minuti di studio/ })).toBeChecked();
     await expect

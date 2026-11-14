@@ -148,7 +148,7 @@ for (const view of [
   });
 }
 
-test('Modifica sits just left of the ball, on Panoramica only, whether the ball shows or not', async ({
+test('Modifica stays in the top right corner, on Panoramica only, whether the ball shows or not', async ({
   page,
   request,
 }) => {
@@ -163,9 +163,44 @@ test('Modifica sits just left of the ball, on Panoramica only, whether the ball 
   const busy = await edit.boundingBox();
   const ballBox = await ball.boundingBox();
   expect(busy).toEqual(idle);
-  expect(busy!.x + busy!.width).toBeLessThanOrEqual(ballBox!.x);
-  expect(busy!.y).toBeGreaterThanOrEqual(ballBox!.y);
-  expect(busy!.y + busy!.height).toBeLessThanOrEqual(ballBox!.y + ballBox!.height);
+  // Owner 2026-11-14: the ball starts top left, above the rail; Modifica keeps the right.
+  const rail = await page.getByRole('navigation', { name: 'Zone' }).boundingBox();
+  expect(ballBox!.x).toBeLessThan(rail!.x + rail!.width);
+  expect(ballBox!.y + ballBox!.height).toBeLessThanOrEqual(rail!.y);
+  expect(busy!.x).toBeGreaterThan(ballBox!.x + ballBox!.width);
   await page.goto('/desk/studio');
   await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toHaveCount(0);
+});
+
+test('the ball is dragged anywhere, stays there after a reload, a drag does not open it and a double click puts it back', async ({
+  page,
+  request,
+}) => {
+  // The fake player is playing, so the ball shows.
+  await player(request, false);
+  await page.goto('/desk/media');
+  const ball = ballOf(page);
+  await expect(ball).toBeVisible();
+  const start = (await ball.boundingBox())!;
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(900, 600, { steps: 8 });
+  await page.mouse.up();
+  const moved = (await ball.boundingBox())!;
+  expect(Math.abs(moved.x + moved.width / 2 - 900)).toBeLessThan(2);
+  expect(Math.abs(moved.y + moved.height / 2 - 600)).toBeLessThan(2);
+  await expect(ball).toHaveAttribute('aria-expanded', 'false');
+  // Motion ends the drag a frame after the release: the spot is saved then.
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('hub.ball'))).not.toBeNull();
+  await page.reload();
+  await expect(ball).toBeVisible();
+  expect((await ball.boundingBox())!.x).toBeCloseTo(moved.x, 0);
+  // A plain click still opens the panel.
+  await ball.click();
+  await expect(ball).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await ball.dblclick();
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await ball.boundingBox())!.x).toBeCloseTo(start.x, 0);
+  await page.evaluate(() => localStorage.removeItem('hub.ball'));
 });

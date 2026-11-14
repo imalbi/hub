@@ -15,10 +15,8 @@ function VolumeSlider({ volume, onVolume }: MusicVolume) {
   const shown = draft ?? volume ?? 0;
   return (
     <div className="flex flex-col gap-sm">
-      <span className="flex justify-between text-label text-muted-foreground">
-        {m.music_volume()}
-        <span className="text-foreground tabular-nums">{shown}%</span>
-      </span>
+      {/* The slider's own bubble says the value; the bar button says it too. */}
+      <span className="text-label text-muted-foreground">{m.music_volume()}</span>
       <Slider
         label={m.music_volume()}
         min={0}

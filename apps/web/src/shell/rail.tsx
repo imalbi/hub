@@ -18,7 +18,7 @@ export function DeskRail({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label={m.desk_zones()}
-      className="desk-glass fixed inset-y-0 left-xl z-40 my-auto flex h-fit w-desk-rail flex-col items-center gap-xs rounded-full border py-xs"
+      className="desk-glass fixed top-ball-clear bottom-0 left-xl z-40 my-auto flex h-fit w-desk-rail flex-col items-center gap-xs rounded-full border py-xs"
     >
       <DeskCommandPalette />
       <span aria-hidden className="-mt-xs text-caption whitespace-nowrap text-muted-foreground">

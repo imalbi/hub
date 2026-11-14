@@ -10,7 +10,8 @@ import { m } from '../../paraglide/messages.js';
 import { lastSeen } from './last-seen.ts';
 
 // What a local agent needs: Hub always listens on loopback, whatever origin the page was opened from.
-const COMMAND = 'claude mcp add --transport http hub http://127.0.0.1:4180/mcp';
+// User scope: the default local scope binds the server to the folder the command ran in (2026-11-14, it landed on ~).
+const COMMAND = 'claude mcp add --scope user --transport http hub http://127.0.0.1:4180/mcp';
 
 type Call = { id: number; action: string; createdAt: string };
 

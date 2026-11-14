@@ -5,7 +5,7 @@ Hub espone gli strumenti del registro e le risorse di stato su `http://127.0.0.1
 Per collegare Claude Code sul computer che esegue Hub:
 
 ```sh
-claude mcp add --transport http hub http://127.0.0.1:4180/mcp
+claude mcp add --scope user --transport http hub http://127.0.0.1:4180/mcp
 ```
 
 Per collegare Codex sullo stesso computer:

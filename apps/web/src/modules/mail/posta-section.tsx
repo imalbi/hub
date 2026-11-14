@@ -23,11 +23,15 @@ export function PostaSection() {
   const [selected, setSelected] = useState('');
   const [filter, setFilter] = useState<Filter | null>(null);
   const [page, setPage] = useState(1);
-  const accounts = mail.data?.accounts ?? [];
+  // The configured accounts come from the config at once; the live state reads every mailbox and comes later.
+  const accounts = mailAccounts.data ?? mail.data?.accounts ?? [];
   const account = accounts.find((item) => item.account === chosen)?.account ?? accounts[0]?.account ?? '';
-  const list = useQuery(trpc.list.queryOptions({ account, page }, { enabled: !!account && !filter, retry: false }));
+  // Reopening Posta shows the last list at once and reads the mailbox again only after a minute; new mail also
+  // arrives through the live state and the refresh button.
+  const cached = { retry: false, staleTime: 60_000, gcTime: 30 * 60_000 } as const;
+  const list = useQuery(trpc.list.queryOptions({ account, page }, { enabled: !!account && !filter, ...cached }));
   const search = useQuery(
-    trpc.search.queryOptions({ account, filter: filter ?? {}, page }, { enabled: !!account && !!filter, retry: false }),
+    trpc.search.queryOptions({ account, filter: filter ?? {}, page }, { enabled: !!account && !!filter, ...cached }),
   );
   const result = filter ? search : list;
   const selectedMessage = result.data?.find((message) => message.id === selected);
@@ -77,9 +81,7 @@ export function PostaSection() {
                 <RegistryButton secondary label={m.mail_retry()} action={() => result.refetch()} />
               </div>
             )}
-            {!result.data && result.isPending && (
-              <output className="block text-body text-muted-foreground">{m.mail_loading()}</output>
-            )}
+            {!result.data && result.isPending && <ListSkeleton />}
             {result.data?.length === 0 && <p className="text-body text-muted-foreground">{m.mail_empty()}</p>}
             <ul className="flex flex-col">
               {result.data?.map((message) => (
@@ -153,5 +155,26 @@ export function PostaSection() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Placeholder rows shaped like the messages, so the list does not jump when it arrives. */
+function ListSkeleton() {
+  return (
+    <output aria-label={m.mail_loading()} className="flex flex-col">
+      {[0, 1, 2, 3, 4, 5].map((row) => (
+        <span
+          key={row}
+          aria-hidden
+          className="flex flex-col gap-xs border-b border-dashed border-border p-sm last:border-b-0 motion-safe:animate-pulse"
+        >
+          <span className="flex justify-between gap-sm">
+            <span className="h-sm w-1/3 rounded-full bg-muted" />
+            <span className="h-sm w-xl rounded-full bg-muted" />
+          </span>
+          <span className="h-sm w-2/3 rounded-full bg-muted" />
+        </span>
+      ))}
+    </output>
   );
 }

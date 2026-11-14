@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { animate, motion, useMotionValue, useReducedMotion } from 'motion/react';
 import { useRouter } from '@tanstack/react-router';
 import { MusicNoteIcon, SkipForwardIcon, TerminalIcon, TimerIcon } from '@phosphor-icons/react';
 import { RegistryButton } from '../components/registry-button.tsx';
@@ -12,6 +13,72 @@ import { useMedia } from '../modules/media/media-provider.tsx';
 import { time } from '../modules/media/player-bar.tsx';
 import { usePomodoro } from '../modules/pomodoro/use-pomodoro.ts';
 import { m } from '../paraglide/messages.js';
+
+type Spot = { x: number; y: number };
+const spotKey = 'hub.ball';
+
+function readSpot(): Spot {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(spotKey) ?? 'null');
+    if (value && typeof value === 'object' && 'x' in value && 'y' in value) {
+      const { x, y } = value;
+      if (typeof x === 'number' && typeof y === 'number') return { x, y };
+    }
+  } catch {
+    /* No stored spot: the default corner. */
+  }
+  return { x: 0, y: 0 };
+}
+
+function saveSpot(spot: Spot) {
+  try {
+    if (spot.x === 0 && spot.y === 0) localStorage.removeItem(spotKey);
+    else localStorage.setItem(spotKey, JSON.stringify(spot));
+  } catch {
+    /* Not kept: it still moves for this visit. */
+  }
+}
+
+/**
+ * The ball goes where the owner drags it (owner 2026-11-14), with Motion's drag inside the window: top left by
+ * default, the offset kept per device, a double click glides it back. The click that ends a drag does not open the
+ * panel (Motion does not swallow it).
+ */
+function useDraggableBall() {
+  const [initial] = useState(readSpot);
+  const x = useMotionValue(initial.x);
+  const y = useMotionValue(initial.y);
+  const bounds = useRef<HTMLDivElement>(null);
+  const dragged = useRef(false);
+  const reduced = useReducedMotion();
+  return {
+    bounds,
+    props: {
+      drag: true,
+      dragMomentum: false,
+      dragElastic: 0,
+      style: { x, y },
+      onDragStart() {
+        dragged.current = true;
+      },
+      onDragEnd() {
+        saveSpot({ x: x.get(), y: y.get() });
+      },
+      onClickCapture(event: MouseEvent<HTMLDivElement>) {
+        if (!dragged.current) return;
+        dragged.current = false;
+        event.stopPropagation();
+        event.preventDefault();
+      },
+      onDoubleClick() {
+        const transition = reduced ? { duration: 0 } : { type: 'spring' as const, bounce: 0.2, duration: 0.4 };
+        void animate(x, 0, transition);
+        void animate(y, 0, transition);
+        saveSpot({ x: 0, y: 0 });
+      },
+    },
+  };
+}
 
 /** One thing in progress: what the ball counts and what the panel lists. */
 type Item = {
@@ -190,7 +257,7 @@ function ActivityRow({ item, onOpen }: { item: Item; onOpen: (href: string) => v
 }
 
 /**
- * The "Attività in corso" ball (step 47c), fixed at the top right over everything and present only while something is in
+ * The "Attività in corso" ball (step 47c), floating over everything where the owner dragged it (top left by default) and present only while something is in
  * progress: Pomodoro, running jobs, a playing or paused track, and what modules report through `ModuleUI.activities`.
  * The ring follows the first item with progress (Pomodoro first), a count badge shows when more than one runs, and a
  * click opens the panel of what is running. Each row is a link to its page; its own buttons act without navigating.
@@ -210,68 +277,78 @@ export function ActivityBall() {
   const items = useItems(reported);
   const first = items.find((item) => item.progress !== undefined) ?? items[0];
   const pomodoro = items.find((item) => item.id === 'pomodoro');
+  const { bounds, props: dragProps } = useDraggableBall();
   return (
     <>
       {hooks.map(({ hook, id }) => (
         <Probe key={id} id={id} useActivity={hook} report={report} />
       ))}
       {first && (
-        <div className="fixed top-md right-md z-30">
-          <Popover
-            align="end"
-            size="md"
-            className="desk-glass rounded-xl p-lg"
-            label={m.activity_running()}
-            trigger={
-              <button
-                type="button"
-                aria-label={m.activity_ball({
-                  items: items
-                    .map((item) => item.summary)
-                    .filter(Boolean)
-                    .join(', '),
-                })}
-                className="desk-glass relative grid size-ball place-items-center rounded-full border p-2xs"
-                style={{
-                  background:
-                    first.progress === undefined
-                      ? undefined
-                      : `conic-gradient(var(--foreground) ${Math.round(first.progress * 100)}%, var(--muted) 0)`,
-                }}
-              >
-                <span className="grid size-full place-items-center rounded-full bg-background text-label font-semibold tabular-nums">
-                  {pomodoro?.clock ?? first.icon}
-                </span>
-                {items.length > 1 && (
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-3xs -left-2xs grid h-lg min-w-lg place-items-center rounded-full bg-foreground px-xs text-caption font-semibold text-background"
-                  >
-                    {items.length}
-                  </span>
-                )}
-              </button>
-            }
+        <>
+          {/* The window is the drag area: the ball never leaves the screen. */}
+          <div ref={bounds} aria-hidden className="pointer-events-none fixed inset-0" />
+          <motion.div
+            data-activity-ball
+            className="fixed top-md left-md z-30 touch-none"
+            dragConstraints={bounds}
+            {...dragProps}
           >
-            {({ close }) => (
-              <>
-                <p className="pb-md text-label text-muted-foreground">{m.activity_heading()}</p>
-                <ul className="flex flex-col">
-                  {items.map((item) => (
-                    <ActivityRow
-                      key={item.id}
-                      item={item}
-                      onOpen={(href) => {
-                        close();
-                        router.history.push(href);
-                      }}
-                    />
-                  ))}
-                </ul>
-              </>
-            )}
-          </Popover>
-        </div>
+            <Popover
+              align="start"
+              size="md"
+              className="desk-glass rounded-xl p-lg"
+              label={m.activity_running()}
+              trigger={
+                <button
+                  type="button"
+                  aria-label={m.activity_ball({
+                    items: items
+                      .map((item) => item.summary)
+                      .filter(Boolean)
+                      .join(', '),
+                  })}
+                  className="desk-glass relative grid size-ball place-items-center rounded-full border p-2xs"
+                  style={{
+                    background:
+                      first.progress === undefined
+                        ? undefined
+                        : `conic-gradient(var(--foreground) ${Math.round(first.progress * 100)}%, var(--muted) 0)`,
+                  }}
+                >
+                  <span className="grid size-full place-items-center rounded-full bg-background text-label font-semibold tabular-nums">
+                    {pomodoro?.clock ?? first.icon}
+                  </span>
+                  {items.length > 1 && (
+                    <span
+                      aria-hidden
+                      className="absolute -bottom-3xs -left-2xs grid h-lg min-w-lg place-items-center rounded-full bg-foreground px-xs text-caption font-semibold text-background"
+                    >
+                      {items.length}
+                    </span>
+                  )}
+                </button>
+              }
+            >
+              {({ close }) => (
+                <>
+                  <p className="pb-md text-label text-muted-foreground">{m.activity_heading()}</p>
+                  <ul className="flex flex-col">
+                    {items.map((item) => (
+                      <ActivityRow
+                        key={item.id}
+                        item={item}
+                        onOpen={(href) => {
+                          close();
+                          router.history.push(href);
+                        }}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
+            </Popover>
+          </motion.div>
+        </>
       )}
     </>
   );

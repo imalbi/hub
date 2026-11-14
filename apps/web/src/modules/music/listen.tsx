@@ -43,8 +43,7 @@ export function Listen({
         </section>
       )}
       <section aria-label={m.music_next()} className="flex min-h-0 flex-1 flex-col gap-sm">
-        {/* First row of the page when nothing was played yet: stay clear of the activity ball over the corner. */}
-        <div className={`flex items-center gap-md ${recent.length ? '' : 'pr-xl'}`}>
+        <div className="flex items-center gap-md">
           <h2 className="flex-1 text-heading">{m.music_next()}</h2>
           {queue?.current && queue.seed && (
             <p className="truncate text-label text-muted-foreground">

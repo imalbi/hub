@@ -60,7 +60,7 @@ test('the inbox shows loading until its first list arrives', async ({ page }) =>
   });
   await page.goto('/desk/messaggi');
   const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
-  await expect(inbox.getByRole('status').filter({ hasText: 'Caricamento...' })).toBeVisible();
+  await expect(inbox.getByRole('status', { name: 'Caricamento...' })).toBeVisible();
   await expect(inbox.getByText('Nessun messaggio')).toHaveCount(0);
   release();
   await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
@@ -190,4 +190,21 @@ test('a failed inbox can be retried', async ({ page, request }) => {
   } finally {
     await request.post(`${SERVER_URL}/__fake/mail`, { data: { fail: false } });
   }
+});
+
+test('reopening Posta shows the cached inbox without reading the mailbox again', async ({ page }) => {
+  let reads = 0;
+  page.on('request', (request) => {
+    if (request.url().includes('mail.list')) reads++;
+  });
+  await page.goto('/desk/messaggi');
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  const zones = page.getByRole('navigation', { name: 'Zone' });
+  await zones.getByRole('link', { name: 'Panoramica' }).click();
+  await zones.getByRole('link', { name: 'Messaggi' }).click();
+  // The list is there at once, from the cache: no loading rows, no second read.
+  await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  await expect(inbox.getByRole('status', { name: 'Caricamento...' })).toHaveCount(0);
+  expect(reads).toBe(1);
 });

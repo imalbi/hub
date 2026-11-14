@@ -31,8 +31,9 @@
   --spacing-touch: 2.75rem;
   /* The deck QR: about 4 px per module so a phone camera reads it across a desk. */
   --spacing-qr: 10rem;
-  /* The "Attività in corso" ball (step 47c): 84 px on the 1920 board; its clear zone is the room Panoramica's Modifica leaves at the top right. */
+  /* The "Attività in corso" ball (step 47c): 84 px on the 1920 board. Since 2026-11-14 it starts top left and the owner drags it anywhere. */
   --spacing-ball: 3.5rem;
+  /* The rail centres itself below this line, so a tall rail (many modules) never runs under the ball. */
   --spacing-ball-clear: calc(var(--spacing-md) + var(--spacing-ball) + var(--spacing-sm));
   --spacing-icon-sm: 1rem;
   --spacing-icon: 1.25rem;

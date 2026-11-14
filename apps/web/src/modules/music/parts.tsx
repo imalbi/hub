@@ -74,12 +74,18 @@ export function PlaylistCover({ className = 'size-2xl rounded-md' }: { className
 }
 
 /** A playlist row's cover: the first songs' thumbnails as a 2x2 mosaic, one thumbnail when fewer than four, else the note tile. */
-export function PlaylistMosaic({ covers }: { covers: string[] }) {
+export function PlaylistMosaic({
+  covers,
+  className = 'size-2xl rounded-md',
+}: {
+  covers: string[];
+  className?: string;
+}) {
   const [first] = covers;
-  if (!first) return <PlaylistCover />;
-  if (covers.length < 4) return <CoverTile src={first} />;
+  if (!first) return <PlaylistCover className={className} />;
+  if (covers.length < 4) return <CoverTile src={first} className={className} />;
   return (
-    <span aria-hidden className="grid size-2xl shrink-0 grid-cols-2 overflow-hidden rounded-md bg-muted">
+    <span aria-hidden className={`grid shrink-0 grid-cols-2 overflow-hidden bg-muted ${className}`}>
       {covers.map((src, index) => (
         <img key={index} src={src} alt="" className="size-full object-cover" />
       ))}

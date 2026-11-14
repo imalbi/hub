@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { asc, count, desc, eq } from 'drizzle-orm';
-import { favorites, history, playlists, playlistSongs, settings } from './schema.ts';
+import { favorites, history, playlists, playlistSongs, queueState, settings } from './schema.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { emptyQueue, queueReducer } from './queue.ts';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
@@ -10,6 +10,23 @@ import { createMpvIpc } from './mpv-ipc.ts';
 import { createYouTube, type Song } from './youtube.ts';
 
 type YouTube = ReturnType<typeof createYouTube>;
+
+const storedSong = z.object({
+  id: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+  title: z.string(),
+  artists: z.array(z.object({ name: z.string(), id: z.string().optional() })),
+  album: z.string().optional(),
+  seconds: z.number().optional(),
+  cover: z.string().optional(),
+});
+// The queue as `setQueue` writes it; anything else on disk is ignored.
+const storedQueue = z.object({
+  current: storedSong.nullable(),
+  seed: storedSong.nullable(),
+  upcoming: z.array(storedSong),
+  played: z.array(z.string()),
+  errors: z.number(),
+});
 type Ipc = Pick<ReturnType<typeof createMpvIpc>, 'request' | 'close' | 'events'>;
 
 export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}) {
@@ -77,6 +94,46 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         return { ...song, cover: await cover(song.cover) };
       }
       let queue = emptyQueue;
+      function setQueue(next: typeof queue) {
+        queue = next;
+        // Kept on disk: mpv outlives a restart of Hub and holds only the next song, so without it the music stops.
+        const value = JSON.stringify(next);
+        db.insert(queueState)
+          .values({ id: 1, value })
+          .onConflictDoUpdate({ target: queueState.id, set: { value } })
+          .run();
+      }
+      /** After a restart of Hub: take back the stored queue when mpv is still playing its current or next song. */
+      async function restoreQueue() {
+        if (queue.current) return;
+        const row = db.select().from(queueState).where(eq(queueState.id, 1)).get();
+        if (!row) return;
+        const stored = storedQueue.safeParse(JSON.parse(row.value));
+        if (!stored.success || !stored.data.current) return;
+        const url = (id: string | undefined) => `https://music.youtube.com/watch?v=${id}`;
+        const [path, position, count] = await Promise.all([
+          ipc.request(['get_property', 'path']).catch(() => null),
+          ipc.request(['get_property', 'playlist-pos']).catch(() => null),
+          ipc.request(['get_property', 'playlist-count']).catch(() => null),
+        ]);
+        if (typeof position !== 'number' || position < 0) return;
+        let restored = stored.data;
+        if (path !== url(restored.current?.id)) {
+          if (path !== url(restored.upcoming[0]?.id)) return;
+          restored = queueReducer(restored, { type: 'advance', error: false });
+        }
+        queue = restored;
+        currentPos = position;
+        const next =
+          typeof count === 'number' && count > position + 1
+            ? await ipc.request(['get_property', `playlist/${position + 1}/filename`]).catch(() => null)
+            : null;
+        appended = next === url(queue.upcoming[0]?.id) ? (queue.upcoming[0]?.id ?? null) : null;
+        for (const song of [queue.current, ...queue.upcoming]) if (song) songs.set(song.id, song);
+        armHistory();
+        await live.notify();
+        await appendNext();
+      }
       let generation = 0;
       let operations = Promise.resolve();
       async function publicQueue() {
@@ -99,10 +156,12 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         try {
           const next = await youtube.upNext(seed);
           if (version !== generation) return;
-          queue = queueReducer(queue, {
-            type: 'refill',
-            songs: next.filter((song) => /^[A-Za-z0-9_-]{11}$/.test(song.id)),
-          });
+          setQueue(
+            queueReducer(queue, {
+              type: 'refill',
+              songs: next.filter((song) => /^[A-Za-z0-9_-]{11}$/.test(song.id)),
+            }),
+          );
           await live.notify();
         } catch {
           log.warn('Music radio unavailable');
@@ -173,7 +232,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         if (path !== `https://music.youtube.com/watch?v=${queue.upcoming[0]?.id}`)
           path = await ipc.request(['get_property', `playlist/${position}/filename`]);
         if (path === `https://music.youtube.com/watch?v=${queue.upcoming[0]?.id}`) {
-          queue = queueReducer(queue, { type: 'advance', error: pendingError });
+          setQueue(queueReducer(queue, { type: 'advance', error: pendingError }));
           currentPos = position;
           pendingError = false;
           appended = null;
@@ -184,7 +243,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
       }
       async function followEnd(reason: unknown) {
         if ((reason === 'eof' || reason === 'error') && queue.current && !appended && !queue.upcoming.length) {
-          queue = queueReducer(queue, { type: 'advance', error: reason === 'error' });
+          setQueue(queueReducer(queue, { type: 'advance', error: reason === 'error' }));
           pendingError = false;
           await live.notify();
           return;
@@ -192,7 +251,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         if (reason === 'error') {
           pendingError = true;
           if (queue.current && queue.errors >= 2) {
-            queue = queueReducer(queue, { type: 'advance', error: true });
+            setQueue(queueReducer(queue, { type: 'advance', error: true }));
             appended = null;
             currentPos = -1;
             await ipc.request(['stop']);
@@ -211,6 +270,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           const volume = savedVolume();
           if (volume !== undefined)
             void ipc.request(['set_property', 'volume', volume]).catch(() => log.warn('Music volume not restored'));
+          void schedule(restoreQueue).catch(() => log.warn('Music queue not restored'));
         } else if (event.event === 'start-file')
           void schedule(followStart).catch(() => log.warn('Music player unavailable while advancing'));
         else if (event.event === 'end-file' && 'reason' in event) {
@@ -288,7 +348,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
             generation++;
             appended = null;
             pendingError = false;
-            queue = queueReducer(queue, { type: 'load', songs: tracks });
+            setQueue(queueReducer(queue, { type: 'load', songs: tracks }));
             for (const song of tracks) songs.set(song.id, song);
             armHistory();
             await live.notify();
@@ -383,7 +443,21 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                 return created;
               });
             }),
-          playlist: protectedProcedure.input(z.object({ id: playlistId })).query(({ input }) => getPlaylist(input.id)),
+          playlist: protectedProcedure.input(z.object({ id: playlistId })).query(async ({ input }) => {
+            const playlist = getPlaylist(input.id);
+            // Saved songs keep no artwork: each row shows its video thumbnail through the proxy, four at a time.
+            const songs: ((typeof playlist.songs)[number] & { cover: string | null })[] = [];
+            for (let i = 0; i < playlist.songs.length; i += 4)
+              songs.push(
+                ...(await Promise.all(
+                  playlist.songs.slice(i, i + 4).map(async (song) => ({
+                    ...song,
+                    cover: await cover(`https://i.ytimg.com/vi/${song.id}/mqdefault.jpg`),
+                  })),
+                )),
+              );
+            return { ...playlist, songs };
+          }),
           playPlaylist: protectedProcedure
             .meta({ label: 'Riproduci playlist', description: 'Play a playlist' })
             .input(z.object({ id: playlistId }))

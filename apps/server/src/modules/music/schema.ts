@@ -38,3 +38,9 @@ export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: integer('value').notNull(),
 });
+
+/** The radio or playlist queue (one row, id 1), so a restart of Hub picks up the music mpv is still playing. */
+export const queueState = sqliteTable('queue_state', {
+  id: integer('id').primaryKey(),
+  value: text('value').notNull(),
+});

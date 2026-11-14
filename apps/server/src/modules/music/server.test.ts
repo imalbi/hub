@@ -296,6 +296,12 @@ void test('the playlist list reports each count and up to four covers from the f
   assert.equal(own(full)?.count, 6);
   assert.equal(own(full)?.covers.length, 4);
   assert.match(own(full)?.covers[0] ?? '', /^data:image\/webp;base64,/);
+  // The open playlist gives every row its own cover through the proxy, never the remote URL.
+  const opened = await app.inject('/trpc/music.playlist?input=' + encodeURIComponent(JSON.stringify({ id: full })));
+  const songs: { cover: string | null }[] = opened.json().result.data.songs;
+  assert.equal(songs.length, 6);
+  assert.ok(songs.every((song) => song.cover?.startsWith('data:image/webp;base64,')));
+  assert.equal(opened.body.includes('ytimg.com'), false);
 });
 
 void test('the queue names the song a radio started from, and no seed after a playlist', async (t) => {
