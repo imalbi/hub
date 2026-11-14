@@ -1,6 +1,10 @@
 import { EventEmitter } from 'node:events';
 import type { Song } from './youtube.ts';
-export const calls: { queries: string[]; commands: (string | number | boolean)[][] } = { queries: [], commands: [] };
+export const calls: { queries: string[]; commands: (string | number | boolean)[][]; covers: string[] } = {
+  queries: [],
+  commands: [],
+  covers: [],
+};
 let volume = 100;
 export const wiring = {
   youtube: {
@@ -17,6 +21,10 @@ export const wiring = {
         songs: [{ id: 'abcdefghijk', title: 'Artist song', artists: [{ name: 'Artist' }] }],
         albums: [{ title: 'Album', cover: 'https://i.ytimg.com/album' }],
       };
+    },
+    async cover(id: string): Promise<string | undefined> {
+      calls.covers.push(id);
+      return 'https://i.ytimg.com/art';
     },
     async upNext() {
       return [

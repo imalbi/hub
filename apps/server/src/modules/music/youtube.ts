@@ -109,6 +109,12 @@ export function createYouTube() {
       const result = await yt.music.search(query, { type: 'song' });
       return mapSongs(result.songs?.contents ?? []);
     },
+    /** The song's own artwork, largest first: square album art for a track, the video frame for a music video. */
+    async cover(id: string): Promise<string | undefined> {
+      const yt = await client();
+      const thumbnails = (await yt.music.getInfo(id)).basic_info.thumbnail ?? [];
+      return thumbnails.toSorted((a, b) => b.width - a.width)[0]?.url;
+    },
     async upNext(id: string) {
       const yt = await client();
       const result = await yt.music.getUpNext(id);

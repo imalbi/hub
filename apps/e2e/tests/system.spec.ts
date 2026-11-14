@@ -69,6 +69,8 @@ test('lock and the workspaces run with a tap, power actions only after a hold', 
 test('the rows keep the order of the board: this PC, then the audio rows, readings last', async ({ page }) => {
   const pcRows = thisPc(page).getByRole('group');
   await expect(pcRows.first()).toHaveAccessibleName('Blocca lo schermo');
+  // The monitor row arrives with its own query: read the order only once it is there.
+  await expect(thisPc(page).getByRole('group', { name: 'Monitor verticale', exact: true })).toBeVisible();
   const names = await pcRows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')));
   expect(names.slice(0, 5)).toEqual(['Blocca lo schermo', 'Chat', 'Lettore', 'Webcam', 'Monitor verticale']);
   const audio = page.getByRole('region', { name: 'Audio', exact: true });

@@ -223,6 +223,38 @@ void test('recent lists each song once, newest first, with its cover through the
   assert.ok(fetched.includes('https://i.ytimg.com/cover'));
 });
 
+void test('a recent song with no stored cover asks YouTube for its artwork once and keeps it', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  calls.covers.length = 0;
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return 30;
+      return wiring.ipc.request(command);
+    },
+  };
+  const youtube = {
+    ...wiring.youtube,
+    async search() {
+      return { songs: [{ id: 'abcdefghijk', title: 'Song', artists: [{ name: 'Artist' }] }], dropped: 0 };
+    },
+  };
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: { youtube, ipc },
+    deps: { run: createFakeDesktop(), fetch: async () => new Response(Buffer.from('524946460400000057454250', 'hex')) },
+  });
+  t.after(() => app.close());
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'song' })));
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const first = (await app.inject('/trpc/music.recent')).json().result.data;
+  assert.equal(first[0].cover, 'data:image/webp;base64,UklGRgQAAABXRUJQ');
+  await app.inject('/trpc/music.recent');
+  assert.deepEqual(calls.covers, ['abcdefghijk']);
+});
+
 void test('skipping before 30 seconds leaves the song out of history', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
   const ipc = {

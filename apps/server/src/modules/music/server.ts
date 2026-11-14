@@ -65,6 +65,14 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         covers.set(source, result);
         return result;
       }
+      async function artworkOf(id: string) {
+        try {
+          return await youtube.cover(id);
+        } catch {
+          /* No artwork is a tile with a note, not an error. */
+          return undefined;
+        }
+      }
       async function publicSong(song: Song) {
         return { ...song, cover: await cover(song.cover) };
       }
@@ -446,16 +454,21 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
               if (seen.size === 5) break;
             }
             return Promise.all(
-              [...seen.values()].map(async ({ id, title, artist, cover: source }) => ({
-                id,
-                title,
-                artist,
-                // The tile is large: ask Google's artwork at 544 px instead of the 60 px search size. Rows from
-                // before the cover column fall back to the video thumbnail, as playlists do.
-                cover: await cover(
-                  source?.replace(/=w\d+-h\d+/, '=w544-h544') ?? `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
-                ),
-              })),
+              [...seen.values()].map(async ({ id, title, artist, cover: stored }) => {
+                // Rows from before the cover column ask YouTube once for the song's artwork and keep it.
+                const source = stored ?? (await artworkOf(id));
+                if (!stored && source) db.update(history).set({ cover: source }).where(eq(history.id, id)).run();
+                return {
+                  id,
+                  title,
+                  artist,
+                  // The tile is large: ask Google's artwork at 544 px instead of the 60 px search size; the video
+                  // thumbnail is the last resort, as for playlists.
+                  cover: await cover(
+                    source?.replace(/=w\d+-h\d+/, '=w544-h544') ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+                  ),
+                };
+              }),
             );
           }),
           toggleFavorite: protectedProcedure

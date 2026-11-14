@@ -28,7 +28,11 @@ export function createLlmGate() {
     queue.shift()?.();
   }
 
-  function run<T>(cap: number, call: (signal: AbortSignal) => Promise<T>, { minIntervalMs = 0 } = {}): Promise<T> {
+  function run<T>(
+    cap: number,
+    call: (signal: AbortSignal) => Promise<T>,
+    { minIntervalMs = 0, counted = true } = {},
+  ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       function start() {
         active = true;
@@ -37,12 +41,14 @@ export function createLlmGate() {
           setTimeout(start, delay);
           return;
         }
-        if (used() >= cap) {
+        // An uncounted call (local mail reads) still queues and times out like the others, but it neither meets the cap
+        // nor eats the budget the Parere shares.
+        if (counted && used() >= cap) {
           reject(new LlmGateError('cap'));
           next();
           return;
         }
-        count++;
+        if (counted) count++;
         lastStart = Date.now();
         const controller = new AbortController();
         const timer = setTimeout(() => {

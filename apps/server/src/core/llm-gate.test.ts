@@ -88,3 +88,12 @@ void test('a timed-out call stays in flight until its provider settles', async (
   await second;
   assert.equal(started, true);
 });
+
+void test('an uncounted call queues behind the others but neither meets the cap nor uses it', async () => {
+  const gate = createLlmGate();
+  const call = () => Promise.resolve('ok');
+  assert.equal(await gate(1, call), 'ok');
+  await assert.rejects(gate(1, call), { reason: 'cap' });
+  assert.equal(await gate(1, call, { counted: false }), 'ok');
+  assert.equal(gate.used(), 1);
+});

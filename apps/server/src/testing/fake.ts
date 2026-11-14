@@ -189,6 +189,10 @@ function build() {
             albums: [{ title: 'Disco esempio', cover: 'https://i.ytimg.com/album' }],
           };
         },
+        // No network in e2e: a recent song with no stored cover falls back to its video thumbnail.
+        async cover(): Promise<string | undefined> {
+          return undefined;
+        },
         async upNext() {
           return [
             {

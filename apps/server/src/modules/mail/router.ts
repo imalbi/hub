@@ -53,11 +53,11 @@ const accountInput = z.string().min(1).max(60);
 const pageInput = z.number().int().min(1).max(500).default(1);
 
 /** Threads are built per account from both mailboxes; the window starts the day before `days` ago (`after` excludes its day). */
-function windowStart(days: number, now: Date): string {
+export function windowStart(days: number, now: Date): string {
   return new Date(now.getTime() - (days + 1) * 86_400_000).toISOString().slice(0, 10);
 }
 
-async function listThreadEntries(
+export async function listThreadEntries(
   run: Run,
   account: string,
   after: string,
