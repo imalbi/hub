@@ -1,10 +1,12 @@
 import { CalendarBlankIcon } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { Calendar } from '../../components/ui/calendar.tsx';
 import { MODAL_ROOT, SCRIM, useModal } from '../../components/ui/modal.ts';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
 import { addDays, laterDay, localDay } from './days.ts';
+import { parseDay } from './parse-day.ts';
 import { closeCapture, useNotesUi } from './store.ts';
 
 type When = 'today' | 'tomorrow' | 'other';
@@ -44,11 +46,25 @@ export function NoteCapture() {
 function CaptureForm() {
   const trpc = useTRPC();
   const add = useMutation(trpc.notes.add.mutationOptions());
-  const picker = useRef<HTMLInputElement>(null);
   const [today] = useState(() => localDay(new Date()));
   const [text, setText] = useState('');
   const [when, setWhen] = useState<When>(() => (new Date().getHours() >= EVENING_HOUR ? 'tomorrow' : 'today'));
   const [picked, setPicked] = useState(() => addDays(today, 2));
+  const [choosing, setChoosing] = useState(false);
+  const [typedDay, setTypedDay] = useState('');
+  const [unknownDay, setUnknownDay] = useState(false);
+  function pick(next: string) {
+    setPicked(next);
+    setWhen('other');
+    setChoosing(false);
+    setTypedDay('');
+    setUnknownDay(false);
+  }
+  function readTypedDay() {
+    const next = parseDay(typedDay, today);
+    if (next && next >= today) pick(next);
+    else setUnknownDay(true);
+  }
   const day = when === 'today' ? today : when === 'tomorrow' ? addDays(today, 1) : picked;
   const ready = text.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(day);
 
@@ -91,7 +107,10 @@ function CaptureForm() {
 
             aria-pressed={when === 'today'}
             className={segment(when === 'today')}
-            onClick={() => setWhen('today')}
+            onClick={() => {
+              setWhen('today');
+              setChoosing(false);
+            }}
           >
             {m.notes_today()}
           </button>
@@ -100,20 +119,20 @@ function CaptureForm() {
 
             aria-pressed={when === 'tomorrow'}
             className={segment(when === 'tomorrow')}
-            onClick={() => setWhen('tomorrow')}
+            onClick={() => {
+              setWhen('tomorrow');
+              setChoosing(false);
+            }}
           >
             {m.notes_tomorrow()}
           </button>
           <button
             type="button"
-
             aria-pressed={when === 'other'}
+            aria-expanded={choosing}
             aria-label={when === 'other' ? undefined : m.notes_pick_day()}
             className={segment(when === 'other')}
-            onClick={() => {
-              setWhen('other');
-              picker.current?.showPicker();
-            }}
+            onClick={() => setChoosing((open) => !open)}
           >
             {when === 'other' ? (
               laterDay(picked, today, true)
@@ -121,24 +140,40 @@ function CaptureForm() {
               <CalendarBlankIcon className="size-icon-sm" aria-hidden />
             )}
           </button>
-          {/* The browser's own calendar, opened by the button above; the input itself stays out of sight. */}
-          <input
-            ref={picker}
-            type="date"
-            tabIndex={-1}
-            aria-label={m.notes_day()}
-            className="sr-only"
-            value={picked}
-            min={today}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              setPicked(event.target.value);
-              setWhen('other');
-            }}
-          />
         </fieldset>
         <p className="text-caption text-muted-foreground">{m.notes_save_hint()}</p>
       </div>
+      {choosing && (
+        <div className="flex flex-col gap-sm rounded-md border border-border p-sm">
+          <label className="flex flex-col gap-2xs">
+            <span className="text-caption text-muted-foreground">{m.notes_type_day()}</span>
+            <input
+              value={typedDay}
+              placeholder={m.notes_type_day_placeholder()}
+              aria-invalid={unknownDay || undefined}
+              onChange={(event) => {
+                setTypedDay(event.target.value);
+                setUnknownDay(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  readTypedDay();
+                }
+              }}
+              className="min-h-touch rounded-md bg-muted px-md text-body outline-2 outline-transparent placeholder:text-muted-foreground focus:outline-accent"
+            />
+            {unknownDay && <span className="text-caption text-danger">{m.notes_day_unknown()}</span>}
+          </label>
+          <Calendar
+            value={when === 'other' ? picked : null}
+            onValueChange={pick}
+            min={today}
+            previousLabel={m.notes_month_previous()}
+            nextLabel={m.notes_month_next()}
+          />
+        </div>
+      )}
       {add.isError && (
         <p role="alert" className="text-caption text-danger">
           {m.notes_error()}

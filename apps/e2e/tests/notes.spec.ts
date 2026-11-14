@@ -119,10 +119,29 @@ test('the card files a post-it under Domani or a picked day, in the widget under
   await expect(later.getByText('Per domani')).toBeVisible();
   await expect(later.getByText('domani', { exact: true })).toBeVisible();
   await page.keyboard.press('n');
-  await expect(card.getByRole('button', { name: 'Scegli un giorno' })).toBeVisible();
-  await card.getByRole('textbox', { name: 'Giorno' }).fill('2026-11-19');
+  await card.getByRole('button', { name: 'Scegli un giorno' }).click();
+  // Yesterday is out of reach, the 19th is picked from the grid.
+  await expect(card.getByRole('button', { name: 'venerdì 13 novembre' })).toBeDisabled();
+  await card.getByRole('button', { name: 'giovedì 19 novembre' }).click();
+  await expect(card.getByRole('group', { name: 'novembre 2026' })).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'gio 19' })).toHaveAttribute('aria-pressed', 'true');
   await card.getByRole('textbox', { name: 'Testo del post-it' }).fill('Portare i documenti');
   await page.keyboard.press('Enter');
   await expect(later.getByText('giovedì 19')).toBeVisible();
+});
+
+test('a day can be written in Italian in the card, and an unknown one is refused', async ({ page, pc }) => {
+  await showBoard(page, pc);
+  await expect(page.getByRole('region', { name: 'Post-it', exact: true })).toBeVisible();
+  await page.keyboard.press('n');
+  const card = page.getByRole('dialog', { name: 'Nuovo post-it' });
+  await card.getByRole('button', { name: 'Scegli un giorno' }).click();
+  const day = card.getByRole('textbox', { name: 'Oppure scrivi un giorno' });
+  await day.fill('boh');
+  await day.press('Enter');
+  await expect(card.getByText('Non capisco il giorno')).toBeVisible();
+  await expect(day).toHaveAttribute('aria-invalid', 'true');
+  await day.fill('venerdì');
+  await day.press('Enter');
+  await expect(card.getByRole('button', { name: 'ven 20' })).toHaveAttribute('aria-pressed', 'true');
 });

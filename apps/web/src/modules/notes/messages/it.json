@@ -26,5 +26,10 @@
   "notes_edit_hint": "Invio salva, Esc annulla",
   "notes_pick_day": "Scegli un giorno",
   "notes_edit": "Modifica post-it: {text}",
-  "notes_undo_named": "Annulla: {text}"
+  "notes_undo_named": "Annulla: {text}",
+  "notes_type_day": "Oppure scrivi un giorno",
+  "notes_type_day_placeholder": "venerdì, tra 3 giorni, 4 dic",
+  "notes_day_unknown": "Non capisco il giorno. Prova con domani o 4 dic.",
+  "notes_month_previous": "Mese prima",
+  "notes_month_next": "Mese dopo"
 }

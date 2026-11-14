@@ -117,6 +117,20 @@ for (const size of sizes) {
   });
 }
 
+test('the capture card with the calendar open', async ({ page }) => {
+  await page.keyboard.press('n');
+  const card = page.getByRole('dialog', { name: 'Nuovo post-it' });
+  await card.getByRole('textbox', { name: 'Testo del post-it' }).fill('Portare i documenti');
+  await card.getByRole('button', { name: 'Scegli un giorno' }).click();
+  await card.getByRole('button', { name: 'giovedì 19 novembre' }).click();
+  await card.getByRole('button', { name: 'gio 19' }).click();
+  await expect(card.getByRole('group', { name: 'novembre 2026' })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(card.locator('[data-modal-panel]')).toHaveScreenshot('notes-capture-calendar.png', {
+    animations: 'disabled',
+  });
+});
+
 test('Oggi, the widget and the capture card in paper', async ({ page }) => {
   await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
