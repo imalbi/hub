@@ -11,6 +11,7 @@ export const playPause = (pc: APIRequestContext) => post(pc, 'media.playPause');
  * flipped, and without this every test after it would fail too, hiding which one is the cause.
  */
 export async function restoreDesktop(pc: APIRequestContext) {
+  await pc.post('/__fake/player', { data: { gone: false } });
   for (let attempt = 0; attempt < 3; attempt++) {
     if ((await (await pc.get('/trpc/media.state')).text()).includes('"title":"Title"')) break;
     await post(pc, 'media.next');

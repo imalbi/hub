@@ -7,12 +7,12 @@ import { useLayout } from './use-layout.ts';
 import { DeskRail } from './rail.tsx';
 import { MediaProvider } from '../modules/media/media-provider.tsx';
 import { DeskBackdrop } from './backdrop.tsx';
-import { HeaderActivity } from './header-activity.tsx';
+import { ActivityBall } from './activity.tsx';
 import { HeaderSlot } from './header-slot.tsx';
 import { RestartScreen } from '../settings/restart-screen.tsx';
 import { AgentConfirmation } from './agent-confirmation.tsx';
 
-/** The desk frame: theme, backdrop, rail (zones, palette, status), floating top-right tools, keys 1-9 and the zone grid the child routes render into. */
+/** The desk frame: theme, backdrop, rail (zones, palette, status), the activity ball, the top-right page actions, keys 1-9 and the zone grid the child routes render into. */
 export function DeskShell() {
   useLayout('desk');
   const zones = useZones();
@@ -46,12 +46,12 @@ export function DeskShell() {
         <AgentConfirmation />
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
+        <ActivityBall />
         <main className="flex h-dvh flex-col overflow-hidden pt-xl pl-desk-inset">
           <h1 className="sr-only">{active?.label() ?? m.desk_title()}</h1>
-          {/* Floating top right: the page's own actions (Panoramica's Modifica) and what is running. The box lets clicks through; only its children take them. */}
-          <header className="pointer-events-none fixed top-xl right-xl z-30 flex items-center gap-md [&>*]:pointer-events-auto">
+          {/* Floating top right: the page's own actions (Panoramica's Modifica), just left of where the activity ball sits, whether it shows or not. */}
+          <header className="pointer-events-none fixed top-md right-ball-clear z-30 flex h-ball items-center [&>*]:pointer-events-auto">
             <div ref={setSlot} className="flex items-center gap-xs" />
-            <HeaderActivity />
           </header>
           {/* `relative`: the containing block of absolutely placed sr-only nodes, or they stretch the document past the scroller. The right padding sits inside it so the scrollbar is flush with the window edge. */}
           <div className="relative min-h-0 flex-1 overflow-y-auto pr-xl [&:has([data-fill])]:overflow-hidden">

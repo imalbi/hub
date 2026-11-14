@@ -25,7 +25,6 @@ export function SettingsLayout() {
     custom?.find((entry) => `custom-${entry.id}` === theme)?.name;
   return (
     <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
-      <div aria-hidden className="h-touch shrink-0" />
       <PageSurface fill className="flex-row gap-lg">
         <nav
           aria-label={m.zone_tabs()}

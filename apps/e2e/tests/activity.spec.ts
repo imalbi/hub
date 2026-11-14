@@ -1,0 +1,193 @@
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
+import { restoreDesktop } from './desktop.ts';
+import { SERVER_URL } from './hosts.ts';
+
+// The fake player is always playing or paused, so each test removes it first to see the idle desk.
+const player = (request: APIRequestContext, gone: boolean) =>
+  request.post(`${SERVER_URL}/__fake/player`, { data: { gone } });
+const ballOf = (page: Page) => page.getByRole('button', { name: /^Attività in corso: / });
+
+let jobId: string | undefined;
+test.afterEach(async ({ pc, request }) => {
+  await pc.post('/trpc/pomodoro.stop', { data: {} });
+  if (jobId) await pc.post('/trpc/jobs.cancel', { data: { jobId, confirmed: true } });
+  jobId = undefined;
+  await player(request, false);
+  await restoreDesktop(pc);
+});
+
+async function startJob(request: APIRequestContext) {
+  jobId = (await (await request.post(`${SERVER_URL}/__fake/jobs`)).json()).jobId;
+}
+
+test('the ball exists only while something runs, and its name says what', async ({ page, pc, request }) => {
+  await player(request, true);
+  await page.goto('/desk/media');
+  await expect(page.getByRole('navigation', { name: 'Zone' })).toBeVisible();
+  await expect(ballOf(page)).toHaveCount(0);
+  await pc.post('/trpc/pomodoro.start', { data: {} });
+  await expect(ballOf(page)).toHaveAccessibleName(/^Attività in corso: concentrazione, \d\d:\d\d$/);
+  await pc.post('/trpc/pomodoro.stop', { data: {} });
+  await expect(ballOf(page)).toHaveCount(0);
+  await startJob(request);
+  await expect(ballOf(page)).toHaveAccessibleName('Attività in corso: 1 job');
+  await pc.post('/trpc/jobs.cancel', { data: { jobId, confirmed: true } });
+  await expect(ballOf(page)).toHaveCount(0);
+  // A playing track counts, and so does a paused one; with no player it goes away again.
+  await player(request, false);
+  await expect(ballOf(page)).toHaveAccessibleName('Attività in corso: Title');
+  await pc.post('/trpc/media.playPause');
+  await expect(ballOf(page)).toHaveAccessibleName('Attività in corso: Title');
+  await player(request, true);
+  await expect(ballOf(page)).toHaveCount(0);
+});
+
+test('two running jobs are counted once in the name, each is its own row', async ({ page, pc, request }) => {
+  await player(request, true);
+  await page.goto('/desk/media');
+  await startJob(request);
+  const first = jobId;
+  await startJob(request);
+  try {
+    const ball = ballOf(page);
+    await expect(ball).toHaveAccessibleName('Attività in corso: 2 job');
+    await ball.click();
+    const panel = page.getByRole('dialog', { name: 'Attività in corso' });
+    await expect(panel.getByText('In corso', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('listitem')).toHaveCount(2);
+  } finally {
+    await pc.post('/trpc/jobs.cancel', { data: { jobId: first, confirmed: true } });
+  }
+});
+
+test('the badge counts what runs, and the panel lists exactly those rows', async ({ page, pc, request }) => {
+  await page.goto('/desk/media');
+  await pc.post('/trpc/pomodoro.start', { data: {} });
+  await startJob(request);
+  const ball = ballOf(page);
+  await expect(ball).toHaveAccessibleName(/^Attività in corso: concentrazione, \d\d:\d\d, 1 job, Title$/);
+  await expect(ball).toHaveText(/3/);
+  await expect(ball).toHaveAttribute('aria-expanded', 'false');
+  await ball.click();
+  await expect(ball).toHaveAttribute('aria-expanded', 'true');
+  const panel = page.getByRole('dialog', { name: 'Attività in corso' });
+  await expect(panel.getByRole('listitem')).toHaveCount(3);
+  await expect(panel.getByRole('button', { name: 'Apri Pomodoro' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Apri fake.job' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Apri Title' })).toBeVisible();
+  // Escape closes it and returns focus to the ball.
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  await expect(ball).toBeFocused();
+  // So does a click outside.
+  await ball.click();
+  await expect(panel).toBeVisible();
+  await page.mouse.click(300, 600);
+  await expect(panel).toHaveCount(0);
+});
+
+test('controls in a row act without navigating; the row itself goes to its page and closes the panel', async ({
+  page,
+  pc,
+  request,
+}) => {
+  await page.goto('/desk/devices');
+  await pc.post('/trpc/pomodoro.start', { data: {} });
+  await startJob(request);
+  const ball = ballOf(page);
+  const panel = page.getByRole('dialog', { name: 'Attività in corso' });
+  await ball.click();
+  // Pomodoro: pause acts here, the page stays.
+  await panel.getByRole('button', { name: 'Metti in pausa', exact: true }).click();
+  await expect(ball).toHaveAccessibleName(/concentrazione in pausa/);
+  await expect(panel.getByRole('button', { name: 'Riprendi', exact: true })).toBeVisible();
+  // Music: next changes the track and does not navigate.
+  await panel.getByRole('button', { name: 'Brano successivo' }).click();
+  await expect(panel.getByRole('button', { name: 'Apri Second Title' })).toBeVisible();
+  await expect(page).toHaveURL(/\/desk\/devices$/);
+  const rows: Array<[string, RegExp]> = [
+    ['Apri Pomodoro', /\/desk\/studio$/],
+    ['Apri fake.job', /\/desk\/system\?tab=jobs$/],
+    ['Apri Second Title', /\/desk\/media$/],
+  ];
+  for (const [name, url] of rows) {
+    await page.goto('/desk/devices');
+    await ball.click();
+    await panel.getByRole('button', { name }).click();
+    await expect(page).toHaveURL(url);
+    await expect(panel).toHaveCount(0);
+  }
+});
+
+// Every focusable thing on a page, minus the ball itself, must stay clear of the ball's box.
+async function underBall(page: Page, ball: Locator) {
+  const box = await ball.boundingBox();
+  if (!box) throw new Error('no ball box');
+  return page.evaluate((rect) => {
+    const selector = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    return [...document.querySelectorAll(selector)]
+      .filter((el) => !el.getAttribute('aria-label')?.startsWith('Attività in corso'))
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return (
+          r.width > 0 &&
+          r.height > 0 &&
+          r.left < rect.x + rect.width &&
+          r.right > rect.x &&
+          r.top < rect.y + rect.height &&
+          r.bottom > rect.y
+        );
+      })
+      .map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30) ?? el.tagName);
+  }, box);
+}
+
+for (const view of [
+  { width: 1920, height: 1080 },
+  { width: 3840, height: 2160 },
+]) {
+  test(`the ball covers no control on any page at ${view.width}x${view.height}`, async ({ page, pc }) => {
+    test.slow();
+    await page.setViewportSize(view);
+    await pc.post('/trpc/pomodoro.start', { data: {} });
+    for (const path of [
+      '/desk',
+      '/desk/studio',
+      '/desk/media',
+      '/desk/system',
+      '/desk/system?tab=jobs',
+      '/desk/devices',
+      '/desk/messaggi',
+      '/desk/settings/appearance',
+    ]) {
+      await page.goto(path);
+      const ball = ballOf(page);
+      await expect(ball).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'Zone' })).toBeVisible();
+      expect(await underBall(page, ball), path).toEqual([]);
+    }
+  });
+}
+
+test('Modifica sits just left of the ball, on Panoramica only, whether the ball shows or not', async ({
+  page,
+  request,
+}) => {
+  await player(request, true);
+  await page.goto('/desk');
+  const edit = page.getByRole('button', { name: 'Modifica', exact: true });
+  await expect(edit).toBeVisible();
+  const idle = await edit.boundingBox();
+  await request.post(`${SERVER_URL}/__fake/jobs`).then(async (r) => (jobId = (await r.json()).jobId));
+  const ball = ballOf(page);
+  await expect(ball).toBeVisible();
+  const busy = await edit.boundingBox();
+  const ballBox = await ball.boundingBox();
+  expect(busy).toEqual(idle);
+  expect(busy!.x + busy!.width).toBeLessThanOrEqual(ballBox!.x);
+  expect(busy!.y).toBeGreaterThanOrEqual(ballBox!.y);
+  expect(busy!.y + busy!.height).toBeLessThanOrEqual(ballBox!.y + ballBox!.height);
+  await page.goto('/desk/studio');
+  await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toHaveCount(0);
+});

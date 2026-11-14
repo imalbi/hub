@@ -4,7 +4,7 @@ import { m } from '../../paraglide/messages.js';
 import { Cover, Transport } from './controls.tsx';
 import { useMedia } from './media-provider.tsx';
 
-function time(seconds: number) {
+export function time(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
 

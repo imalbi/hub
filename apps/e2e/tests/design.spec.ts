@@ -24,48 +24,18 @@ for (const initial of [null, { key: 'other-track', dataUrl: 'data:image/png;base
   });
 }
 
-test('the visible countdown ticks without changing its live announcement', async ({ page }) => {
+test('the ball shows a countdown that ticks while its name stays one short sentence', async ({ page }) => {
   const now = new Date('2026-11-04T12:00:00Z');
   await page.clock.install({ time: now });
   await freezePomodoro(page, { ...pausedPomodoro, pausedRemainingMs: null, endsAt: now.getTime() + 750_000 });
   await page.goto('/desk');
-  const header = page.locator('header');
-  const announcement = header.getByRole('status').filter({ hasText: 'Concentrazione' });
-  await expect(announcement).toHaveText('Concentrazione');
-  await expect(announcement).toHaveAttribute('aria-live', 'polite');
-  await announcement.evaluate((element) => {
-    element.setAttribute('data-mutations', '0');
-    new MutationObserver((records) =>
-      element.setAttribute('data-mutations', String(Number(element.getAttribute('data-mutations')) + records.length)),
-    ).observe(element, { childList: true, characterData: true, subtree: true });
-  });
-  const activity = header.getByRole('button', { name: /Studio/ });
-  const before = await activity.innerText();
+  const ball = page.getByRole('button', { name: /^Attività in corso: concentrazione, / });
+  await expect(ball).toBeVisible();
+  const before = await ball.innerText();
   await page.clock.fastForward(1000);
-  await expect.poll(() => activity.innerText()).not.toBe(before);
-  await expect(announcement).toHaveText('Concentrazione');
-  await expect(announcement).toHaveAttribute('data-mutations', '0');
-});
-
-test('the floating activity pill exists only while Pomodoro runs and links to Studio', async ({ page }) => {
-  await page.goto('/desk/media');
-  await expect(page.getByRole('navigation', { name: 'Zone' })).toBeVisible();
-  await expect(page.locator('header').getByRole('button')).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'Attività in corso' })).toHaveCount(0);
-  await freezePomodoro(page, { ...pausedPomodoro, pausedRemainingMs: null, endsAt: Date.now() + 750_000 });
-  await page.goto('/desk/media');
-  const pill = page.locator('header').getByRole('button', { name: /Studio/ });
-  await expect(pill).toBeVisible();
-  // One glass region wraps the activity: the pill has no surface of its own.
-  const region = page.getByRole('region', { name: 'Attività in corso' });
-  await expect(region).toHaveClass(/desk-glass/);
-  await expect(region).toHaveCSS('border-top-width', '1px');
-  await expect(region.getByRole('button', { name: /Studio/ })).toBeVisible();
-  const box = await pill.boundingBox();
-  const viewport = page.viewportSize();
-  expect(box && viewport && box.x + box.width > viewport.width / 2 && box.y < 120).toBe(true);
-  await pill.click();
-  await expect(page).toHaveURL(/\/desk\/studio\/?$/);
+  await expect.poll(() => ball.innerText()).not.toBe(before);
+  // No live region: a tick must not be announced.
+  await expect(page.locator('[aria-live]').filter({ has: ball })).toHaveCount(0);
 });
 
 test('rail labels remain readable when the active link is hovered in either theme', async ({ page }) => {
@@ -85,17 +55,6 @@ test('the empty devices list uses an accessible empty state', async ({ page }) =
   await page.goto('/desk/devices');
   await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
   await expect(page.getByText('Il deck si collega con un codice temporaneo.')).toBeVisible();
-});
-
-test('the header activity opens Studio while a focus phase runs', async ({ page, pc }) => {
-  await page.goto('/desk');
-  await page.getByRole('button', { name: 'Avvia', exact: true }).click();
-  try {
-    await page.locator('header').getByRole('button', { name: 'Apri Studio', exact: true }).click();
-    await expect(page).toHaveURL(/\/desk\/studio$/);
-  } finally {
-    await pc.post('/trpc/pomodoro.stop', { data: {} });
-  }
 });
 
 test('Media exposes the cover and floating player controls drive the fake track', async ({ page }) => {

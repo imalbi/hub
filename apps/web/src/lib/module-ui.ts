@@ -12,6 +12,10 @@ export type ModuleWidget = {
 export type PageTab = { id: string; label: () => string; component: ComponentType; fill?: boolean; float?: boolean };
 /** A tab a module adds to a zone page, after the page's own tabs. */
 export type ModuleSection = PageTab & { zone: string };
+/** One thing a module has running now, shown in the "Attività in corso" ball and panel. `href` is the page that shows it. */
+export type ModuleActivity = { id: string; label: string; detail: string; progress?: number; href: string };
+/** A hook: a shell component calls it, so the ball knows whether anything runs without rendering the module's page. */
+export type ModuleActivityHook = () => ModuleActivity | null;
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
@@ -21,6 +25,12 @@ export type ModuleUI = {
   todayItems?: ComponentType | ComponentType[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
   zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean; ownTabs?: boolean };
+  /**
+   * Hooks that return what the module has running (a collection, a backfill), or null when nothing runs. The shell calls
+   * them while the module is on; each non-null result is a row in the "Attività in corso" panel and counts in the ball.
+   * A hook is called from a component of its own, so its list may change when a module is switched on or off.
+   */
+  activities?: ModuleActivityHook | ModuleActivityHook[];
   /**
    * One row in the Dispositivi list of this PC's external devices (AirPlay, a light, a monitor), rendered in module
    * order while the module is on. Each component is one row (`DeviceRow`) and may return null until it has data.

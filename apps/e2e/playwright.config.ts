@@ -77,6 +77,7 @@ export default defineConfig({
               'pomodoro.spec.ts',
               'zones.spec.ts',
               'design.spec.ts',
+              'activity.spec.ts',
               'themes.spec.ts',
               'widgets.spec.ts',
               'sites.spec.ts',

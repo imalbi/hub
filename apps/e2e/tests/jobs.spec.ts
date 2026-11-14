@@ -8,10 +8,11 @@ test('a running job streams output and stops after a hold', async ({ page, reque
   await expect(page.getByText('fake.job').first()).toBeVisible();
   await expect(page.getByText('Riga 3')).toBeVisible();
   await expect(page.getByText(/Durata: \d+ s/).first()).toBeVisible();
-  const pill = page.getByRole('button', { name: /Job in esecuzione/ });
-  await expect(pill).toBeVisible();
+  // The activity ball counts the job (and the playing fake track).
+  const ball = page.getByRole('button', { name: /^Attività in corso: .*1 job/ });
+  await expect(ball).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(pill).toHaveScreenshot('jobs-header-pill.png', { animations: 'disabled' });
+  await expect(ball).toHaveScreenshot('jobs-activity-ball.png', { animations: 'disabled' });
   const cancel = page.getByRole('button', { name: 'Tieni premuto per annullare job' });
   await cancel.click();
   await expect(page.getByRole('button', { name: /fake\.job In esecuzione/ })).toBeVisible();

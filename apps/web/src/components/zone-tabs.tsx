@@ -29,47 +29,44 @@ export function ZoneTabs({
   const ids = tabs.map((entry) => entry.id);
   const active = tabs.find((entry) => entry.id === activeTab(ids, typeof tab === 'string' ? tab : undefined));
   if (!active) return null;
-  // No bar: an empty row keeps the surface where it is on every page and clear of the floating top-right pill.
+  // No bar: the surface starts at the top inset of the desk, with the content only.
   if (tabs.length === 1 && !always)
     return (
-      <>
-        <div aria-hidden className="h-touch shrink-0" />
-        <PageSurface fill={fill} float={float}>
-          {active.content}
-        </PageSurface>
-      </>
-    );
-  return (
-    <>
-      <LiquidTabs
-        id={id}
-        label={m.zone_tabs()}
-        size="md"
-        tabs={tabs.map(({ id: value, label, count }) => ({
-          value,
-          label,
-          count,
-          id: `${id}-tab-${value}`,
-          panelId: `${id}-panel`,
-        }))}
-        value={active.id}
-        onValueChange={(next) => {
-          void navigate({
-            to: '.',
-            search: (previous: Record<string, unknown>) => ({ ...previous, tab: tabParam(ids, next) }),
-            replace: true,
-          });
-        }}
-      />
-      <PageSurface
-        fill={fill}
-        float={float}
-        role="tabpanel"
-        id={`${id}-panel`}
-        aria-labelledby={`${id}-tab-${active.id}`}
-      >
+      <PageSurface fill={fill} float={float}>
         {active.content}
       </PageSurface>
-    </>
+    );
+  return (
+    <PageSurface
+      fill={fill}
+      float={float}
+      role="tabpanel"
+      id={`${id}-panel`}
+      aria-labelledby={`${id}-tab-${active.id}`}
+      bar={
+        <LiquidTabs
+          id={id}
+          label={m.zone_tabs()}
+          size="md"
+          tabs={tabs.map(({ id: value, label, count }) => ({
+            value,
+            label,
+            count,
+            id: `${id}-tab-${value}`,
+            panelId: `${id}-panel`,
+          }))}
+          value={active.id}
+          onValueChange={(next) => {
+            void navigate({
+              to: '.',
+              search: (previous: Record<string, unknown>) => ({ ...previous, tab: tabParam(ids, next) }),
+              replace: true,
+            });
+          }}
+        />
+      }
+    >
+      {active.content}
+    </PageSurface>
   );
 }

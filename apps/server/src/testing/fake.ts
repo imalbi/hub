@@ -98,6 +98,7 @@ let failMail = false;
 let jobs: ReturnType<typeof createJobRunner> | undefined;
 const mailCalls: string[][] = [];
 const systemCalls: string[][] = [];
+const player = { gone: false };
 
 /** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
@@ -146,7 +147,7 @@ function build() {
       fixtureDb.$client.close();
     }
   }
-  const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls });
+  const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls, player });
   const run: Run = (bin, args, options) => {
     if (failMail && bin === 'himalaya' && args.includes('envelope') && args.includes('25'))
       return Promise.resolve({ stdout: '', stderr: '', code: 1 });
@@ -275,6 +276,13 @@ const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HU
 function hooks(server: typeof app) {
   server.get('/__fake/system', () => ({ calls: systemCalls }));
   server.post('/__fake/jobs', () => ({ jobId: jobs?.start('fake.job', 'fake-job', []) }));
+  // No player at all (as when nothing was ever started), or back to the first track: the activity ball follows it.
+  server.post('/__fake/player', (request, reply) => {
+    const body = z.object({ gone: z.boolean() }).safeParse(request.body);
+    if (!body.success) return reply.code(400).send();
+    player.gone = body.data.gone;
+    return { gone: player.gone };
+  });
   server.post('/__fake/sites', (request, reply) => {
     const body = z.object({ enabled: z.boolean() }).safeParse(request.body);
     if (!body.success) return reply.code(400).send();

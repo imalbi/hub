@@ -35,11 +35,14 @@ export function createFakeDesktop({
   system = [],
   news = [],
   mail = [],
+  player = { gone: false },
 }: {
   notifications?: string[][];
   sounds?: string[];
   system?: string[][];
   news?: string[][];
+  /** Set `gone` to make every playerctl read answer "No players found" (the e2e hook `/__fake/player`). */
+  player?: { gone: boolean };
   /** Every `himalaya` argv the fake was asked, refused ones included. */
   mail?: string[][];
 } = {}): Run {
@@ -152,6 +155,8 @@ export function createFakeDesktop({
       return Promise.resolve(ok());
     }
     if (bin === 'playerctl' && command === '--player=mpv' && target === 'status')
+      return Promise.resolve({ stdout: '', stderr: 'No players found', code: 1 });
+    if (bin === 'playerctl' && player.gone && (command === 'metadata' || command === 'position'))
       return Promise.resolve({ stdout: '', stderr: 'No players found', code: 1 });
     if (bin === 'playerctl' && command === 'metadata')
       return Promise.resolve(ok(`${status}\tArtist\t${titles[track]}\t${artUrl}\t213000000\n`));
