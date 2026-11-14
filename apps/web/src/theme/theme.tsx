@@ -15,6 +15,35 @@ function readStored() {
   }
 }
 
+export const radii = ['soft', 'standard', 'sharp'] as const;
+export const backdrops = ['plain', 'glow', 'cover'] as const;
+export type Radius = (typeof radii)[number];
+export type Backdrop = (typeof backdrops)[number];
+
+/** One setting kept per device in localStorage, and mirrored on <html> as `data-<name>` for index.css. */
+function useDeviceSetting<T extends string>(name: string, allowed: readonly T[], fallback: T) {
+  const key = `hub.${name}`;
+  const [value, update] = useState<T>(() => {
+    try {
+      return allowed.find((option) => option === localStorage.getItem(key)) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  });
+  useLayoutEffect(() => {
+    document.documentElement.dataset[name] = value;
+  }, [name, value]);
+  function set(next: T) {
+    update(next);
+    try {
+      localStorage.setItem(key, next);
+    } catch {
+      /* The current view still changes when storage is unavailable. */
+    }
+  }
+  return [value, set] as const;
+}
+
 /** Why the Caelestia theme is not shown as itself: the desktop has no scheme, or its text would not read. */
 export type CaelestiaStatus = 'ok' | 'missing' | 'low-contrast';
 
@@ -26,6 +55,15 @@ type ThemeContextValue = {
   setPreview: (id: string | null) => void;
   /** A theme being edited, drawn as `draft` so the editor and its preview update live. */
   setDraft: (values: ThemeValues | null) => void;
+  /** Corner scale of surfaces and panels, per device. Pills stay pills. */
+  radius: Radius;
+  setRadius: (radius: Radius) => void;
+  /** Frosted glass on the rail, the player and the activity ball, or plain surfaces. */
+  glass: boolean;
+  setGlass: (glass: boolean) => void;
+  /** What sits behind every page: a flat color, the theme's glow, or the blurred cover of what plays. */
+  backdrop: Backdrop;
+  setBackdrop: (backdrop: Backdrop) => void;
   custom: CustomTheme[] | undefined;
   caelestia: ThemeValues | null | undefined;
   caelestiaStatus: CaelestiaStatus;
@@ -42,6 +80,9 @@ export function ThemeProvider({ remote, children }: { remote: boolean; children:
   const [theme, updateTheme] = useState(readStored);
   const [preview, setPreview] = useState<string | null>(null);
   const [draft, setDraft] = useState<ThemeValues | null>(null);
+  const [radius, setRadius] = useDeviceSetting('radius', radii, 'standard');
+  const [glassSetting, setGlassSetting] = useDeviceSetting('glass', ['on', 'off'], 'on');
+  const [backdrop, setBackdrop] = useDeviceSetting('backdrop', backdrops, 'glow');
   const custom = useSubscription(trpc.theme.onList.subscriptionOptions(undefined, { enabled: remote })).data;
   const caelestia = useSubscription(trpc.theme.onCaelestia.subscriptionOptions(undefined, { enabled: remote })).data;
   const caelestiaStatus: CaelestiaStatus = !caelestia
@@ -90,7 +131,23 @@ export function ThemeProvider({ remote, children }: { remote: boolean; children:
   ].join('\n');
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, setPreview, setDraft, custom, caelestia, caelestiaStatus }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        setTheme,
+        setPreview,
+        setDraft,
+        radius,
+        setRadius,
+        glass: glassSetting === 'on',
+        setGlass: (on) => setGlassSetting(on ? 'on' : 'off'),
+        backdrop,
+        setBackdrop,
+        custom,
+        caelestia,
+        caelestiaStatus,
+      }}
+    >
       {/* Only validated hex colors reach this text (see `themeCss`). */}
       <style>{css}</style>
       {children}

@@ -62,6 +62,38 @@ void test('custom themes are saved, listed, renamed, updated and deleted', async
   await app.close();
 });
 
+void test('a theme saved before seeds existed still lists and saves; a seed and its manual roles round-trip', async () => {
+  const app = server();
+  const legacy = await call(app, 'theme.save', { name: 'Vecchio', base: 'ink', values });
+  const id = legacy.body.result.data.id;
+  const [old] = (await call(app, 'theme.list')).body.result.data;
+  assert.equal(old.values.seed, undefined);
+  assert.equal(old.values.manual, undefined);
+
+  const seed = { baseHue: 330, baseChroma: 0.016, accentHue: 35, contrast: 70 };
+  const seeded = { ...values, seed, manual: ['accent'] };
+  assert.equal((await call(app, 'theme.save', { id, name: 'Vecchio', base: 'ink', values: seeded })).status, 200);
+  const [row] = (await call(app, 'theme.list')).body.result.data;
+  assert.deepEqual(row.values.seed, seed);
+  assert.deepEqual(row.values.manual, ['accent']);
+
+  for (const bad of [
+    { ...seed, contrast: 101 },
+    { ...seed, baseHue: -1 },
+    { ...seed, accentHue: 361 },
+    { ...seed, baseChroma: 0.5 },
+  ])
+    assert.equal(
+      (await call(app, 'theme.save', { name: 'x', base: 'ink', values: { ...values, seed: bad } })).status,
+      400,
+    );
+  assert.equal(
+    (await call(app, 'theme.save', { name: 'x', base: 'ink', values: { ...values, manual: ['nonsense'] } })).status,
+    400,
+  );
+  await app.close();
+});
+
 void test('only hex colors are accepted, so nothing else can reach the generated CSS', async () => {
   const app = server();
   for (const bad of ['red', '#fff', '#12345g', '#000000;}body{display:none', 'url(x)']) {

@@ -50,6 +50,7 @@ export function themeCss(id: string, { mode, colors }: ThemeValues) {
           '--glass-filter:blur(var(--blur-glass))',
           '--backdrop-glow:var(--muted)',
           '--backdrop-art-display:block',
+          '--backdrop-art-opacity:0.1',
           'color-scheme:dark',
         ]
       : [
@@ -58,47 +59,8 @@ export function themeCss(id: string, { mode, colors }: ThemeValues) {
           '--glass-filter:none',
           '--backdrop-glow:var(--background)',
           '--backdrop-art-display:none',
+          '--backdrop-art-opacity:0.04',
           'color-scheme:light',
         ];
   return `[data-theme='${id}']{${[...declarations, ...chrome].join(';')}}`;
 }
-
-const hex = (c: number) => c.toString(16).padStart(2, '0');
-
-/** A computed CSS color (any syntax the browser accepts, oklch included) as #rrggbb or #rrggbbaa, through a 1px canvas. */
-export function cssColorToHex(color: string) {
-  const context = document.createElement('canvas').getContext('2d');
-  if (!context) return '#000000';
-  context.clearRect(0, 0, 1, 1);
-  context.fillStyle = color;
-  context.fillRect(0, 0, 1, 1);
-  const [r = 0, g = 0, b = 0, a = 255] = context.getImageData(0, 0, 1, 1).data;
-  // Canvas pixels are premultiplied in practice; undo it so a translucent border keeps its own color.
-  const unpremultiply = (c: number) => (a === 0 ? 0 : Math.min(255, Math.round((c * 255) / a)));
-  const rgb = `#${hex(unpremultiply(r))}${hex(unpremultiply(g))}${hex(unpremultiply(b))}`;
-  return a === 255 ? rgb : `${rgb}${hex(a)}`;
-}
-
-/** The colors of any theme as rendered inside `element` (scoped with `data-theme`), for duplicating a built-in one. */
-export function readThemeValues(element: Element, mode: ThemeValues['mode']): ThemeValues {
-  const style = getComputedStyle(element);
-  const read = (name: string) => cssColorToHex(style.getPropertyValue(name).trim());
-  const colors = Object.fromEntries(Object.entries(cssNames).map(([key, name]) => [key, read(name)]));
-  return { mode, colors: { ...fallbackColors, ...colors } };
-}
-
-// Only used if a computed variable were missing; every built-in theme defines all of them.
-const fallbackColors: ThemeValues['colors'] = {
-  background: '#070707',
-  foreground: '#f2f2f2',
-  surface: '#121212',
-  surfaceRaised: '#1d1d1d',
-  muted: '#262626',
-  mutedForeground: '#989898',
-  border: '#ffffff1a',
-  primary: '#f2f2f2',
-  primaryForeground: '#070707',
-  accent: '#99c9c5',
-  success: '#6ac48c',
-  danger: '#ef6661',
-};

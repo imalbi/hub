@@ -219,11 +219,22 @@ test('the theme editor flags unreadable text and matches the baseline', async ({
   await page.goto('/desk/settings/appearance');
   await page.getByRole('button', { name: 'Duplica Pietra' }).click();
   const editor = page.getByRole('form', { name: 'Nuovo tema' });
-  const surface = await editor.getByLabel('Pannelli', { exact: true }).inputValue();
-  await editor.getByLabel('Testo secondario', { exact: true }).fill(surface);
-  await expect(editor.getByText(/^Testo secondario su Pannelli/)).toBeVisible();
+  await editor.getByRole('slider', { name: 'Contrasto', exact: true }).focus();
+  await page.keyboard.press('Home');
+  await expect(editor.getByText(/serve almeno 4,5:1$/).first()).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-theme-editor.png', { animations: 'disabled' });
+});
+
+test('the overview with Netti corners and Vetro off matches the baseline', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('hub.radius', 'sharp');
+    localStorage.setItem('hub.glass', 'off');
+  });
+  await page.goto('/desk');
+  await expect(page.locator('html')).toHaveAttribute('data-radius', 'sharp');
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-sharp-noglass.png', { animations: 'disabled' });
 });
 
 test('the widget board in edit mode matches the baseline', async ({ page }) => {

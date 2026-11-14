@@ -326,3 +326,15 @@ test('the jobs badge shows only while a fake job runs', async ({ page, pc, reque
     await pc.post('/trpc/jobs.cancel', { data: { jobId, confirmed: true } });
   }
 });
+
+test('the corner setting of the device reaches the deck tiles, and pills stay pills', async ({ page }) => {
+  const tile = audioTile(page);
+  await expect(tile).toBeVisible();
+  const radius = () => tile.evaluate((element) => Number.parseFloat(getComputedStyle(element).borderTopLeftRadius));
+  const standard = await radius();
+  await page.evaluate(() => localStorage.setItem('hub.radius', 'sharp'));
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-radius', 'sharp');
+  expect(await radius()).toBeLessThan(standard);
+  await page.evaluate(() => localStorage.removeItem('hub.radius'));
+});

@@ -1,35 +1,58 @@
 import { useMutation } from '@tanstack/react-query';
-import { CopyIcon, PencilSimpleIcon } from '@phosphor-icons/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
 import { HoldButton } from '../components/hold-button.tsx';
-import { Select } from '../components/ui/select.tsx';
+import { ButtonGroup } from '../components/ui/button-group.tsx';
+import { Switch } from '../components/ui/switch.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
-import { contrastFailures, type Colors } from './contrast.ts';
-import { useTheme } from './theme.tsx';
-import { builtInThemes, caelestiaId, customId, readThemeValues, type ThemeValues } from './themes.ts';
+import { builtInSeeds, deriveColors } from './derive.ts';
+import { ThemeEditor, type Draft } from './theme-editor.tsx';
+import { backdrops, radii, useTheme, type Backdrop, type Radius } from './theme.tsx';
+import { builtInThemes, caelestiaId, customId, type ThemeValues } from './themes.ts';
 
-// Long enough to tell resting on a card from passing over it, short enough to feel immediate.
+// Long enough to tell resting on a row from passing over it, short enough to feel immediate.
 const hoverIntentMs = 200;
 
-type Draft = { id?: number; name: string; base: string; values: ThemeValues };
-
-type Card = {
+type Row = {
   id: string;
   label: string;
-  mode: ThemeValues['mode'];
-  /** Present for themes held as data; built-in ones are read from their rendered preview when duplicated. */
+  note?: string;
+  /** Present for themes held as data (Caelestia, custom); built-in ones are derived from their seed when duplicated. */
   values?: ThemeValues;
   customId?: number;
-  note?: string;
+  /** A note that explains why the row cannot be chosen. */
   disabled?: boolean;
 };
+
+const radiusLabels: Record<Radius, () => string> = {
+  soft: m.theme_radius_soft,
+  standard: m.theme_radius_standard,
+  sharp: m.theme_radius_sharp,
+};
+const backdropLabels: Record<Backdrop, () => string> = {
+  plain: m.theme_backdrop_plain,
+  glow: m.theme_backdrop_glow,
+  cover: m.theme_backdrop_cover,
+};
+const builtInNotes: Record<string, () => string> = {
+  ink: m.theme_note_ink,
+  paper: m.theme_note_paper,
+  moss: m.theme_note_moss,
+  stone: m.theme_note_stone,
+};
+
+function duplicateOf(row: Row): ThemeValues | undefined {
+  const preset = builtInSeeds[row.id];
+  if (preset)
+    return { mode: preset.mode, colors: deriveColors(preset.mode, preset.seed), seed: preset.seed, manual: [] };
+  return row.values;
+}
 
 export function ThemePanel({ className = '' }: { className?: string }) {
   const { theme, setTheme, setPreview, setDraft, custom, caelestia, caelestiaStatus } = useTheme();
   const [editing, setEditing] = useState<Draft | null>(null);
-  // Try a theme only when the pointer rests on its card, so sweeping across the cards does not flash the page.
+  // Try a theme only when the pointer rests on its row, so sweeping across the rows does not flash the page.
   const intent = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Leaving the zone with the editor open or a preview pending must not leave the whole desk in that theme.
   useEffect(
@@ -60,12 +83,11 @@ export function ThemePanel({ className = '' }: { className?: string }) {
     setPreview(null);
   }
   const fallbackName = caelestia?.mode === 'light' ? m.theme_paper() : m.theme_ink();
-  const cards: Card[] = [
-    ...builtInThemes.map(({ id, label, mode }) => ({ id, label: label(), mode })),
+  const rows: Row[] = [
+    ...builtInThemes.map(({ id, label }) => ({ id, label: label(), note: builtInNotes[id]?.() })),
     {
       id: caelestiaId,
       label: m.theme_caelestia(),
-      mode: caelestia?.mode ?? 'dark',
       values: caelestia ?? undefined,
       disabled: caelestiaStatus === 'missing',
       note:
@@ -73,47 +95,55 @@ export function ThemePanel({ className = '' }: { className?: string }) {
           ? m.theme_caelestia_missing()
           : caelestiaStatus === 'low-contrast'
             ? m.theme_caelestia_low_contrast({ fallback: fallbackName })
-            : undefined,
+            : m.theme_note_caelestia(),
     },
     ...(custom ?? []).map((item) => ({
       id: customId(item.id),
       label: item.name,
-      mode: item.values.mode,
+      note: item.values.mode === 'dark' ? m.theme_note_custom_dark() : m.theme_note_custom_light(),
       values: item.values,
       customId: item.id,
     })),
   ];
 
   return (
-    <Panel title={m.theme_title()} className={className}>
+    <Panel
+      title={m.theme_title()}
+      className={className}
+      action={<span className="text-label text-muted-foreground">{m.theme_this_device()}</span>}
+    >
       <fieldset>
-        <legend className="sr-only">{m.theme_title()}</legend>
-        {/* Leaving the cards ends the try-on: back to the chosen theme, or to the draft while editing. */}
-        <div className="grid grid-cols-3 gap-md" onMouseLeave={endTry}>
-          {cards.map((card) => {
-            const { customId: editId, values } = card;
-            return (
-              <ThemeCard
-                key={card.id}
-                card={card}
-                checked={theme === card.id}
-                onChoose={() => setTheme(card.id)}
-                onTry={() => tryTheme(card.id)}
-                onDuplicate={(copied) =>
-                  openEditor({ name: m.theme_copy_name({ name: card.label }), base: card.id, values: copied })
-                }
-                onEdit={
-                  editId !== undefined && values
-                    ? () => openEditor({ id: editId, name: card.label, base: card.id, values })
-                    : undefined
-                }
-                onDeleted={() => theme === card.id && setTheme('ink')}
-              />
-            );
-          })}
+        <legend className="pb-xs text-label text-muted-foreground">{m.theme_section_theme()}</legend>
+        {/* Leaving the rows ends the try-on: back to the chosen theme, or to the draft while editing. */}
+        <div onMouseLeave={endTry}>
+          <ul>
+            {rows.map((row) => {
+              const { customId: editId, values } = row;
+              return (
+                <ThemeRow
+                  key={row.id}
+                  row={row}
+                  checked={theme === row.id}
+                  onChoose={() => setTheme(row.id)}
+                  onTry={() => tryTheme(row.id)}
+                  onDuplicate={() => {
+                    const copied = duplicateOf(row);
+                    if (copied)
+                      openEditor({ name: m.theme_copy_name({ name: row.label }), base: row.id, values: copied });
+                  }}
+                  onEdit={
+                    editId !== undefined && values
+                      ? () => openEditor({ id: editId, name: row.label, base: row.id, values })
+                      : undefined
+                  }
+                  onDeleted={() => theme === row.id && setTheme('ink')}
+                />
+              );
+            })}
+          </ul>
         </div>
       </fieldset>
-      <p className="text-caption text-muted-foreground">{m.theme_help()}</p>
+      <Shape />
       {editing && (
         // A modal side sheet: the editor never grows the widget's cell and the page stays visible as the live preview.
         <dialog
@@ -125,7 +155,7 @@ export function ThemePanel({ className = '' }: { className?: string }) {
             closeEditor();
           }}
           aria-label={editing.id === undefined ? m.theme_editor_new() : m.theme_editor_edit()}
-          className="theme-sheet m-0 ml-auto h-dvh max-h-dvh border-l border-border bg-surface p-lg text-foreground backdrop:bg-transparent"
+          className="theme-sheet m-0 ml-auto h-dvh max-h-dvh bg-transparent py-xl pr-xl text-foreground backdrop:bg-transparent"
         >
           <ThemeEditor
             key={`${editing.id ?? 'new'}-${editing.base}`}
@@ -142,8 +172,64 @@ export function ThemePanel({ className = '' }: { className?: string }) {
   );
 }
 
-function ThemeCard({
-  card,
+/** Angoli, Vetro and Sfondo: per device, like the theme. */
+function Shape() {
+  const { radius, setRadius, glass, setGlass, backdrop, setBackdrop } = useTheme();
+  const rowClass = 'flex flex-wrap items-center gap-x-lg gap-y-sm border-t border-dashed border-border pt-md';
+  return (
+    <section className="flex flex-col gap-md">
+      <h3 className="text-label text-muted-foreground">{m.theme_section_shape()}</h3>
+      <div className={rowClass}>
+        <span className="w-label-col text-body">{m.theme_radius()}</span>
+        <ButtonGroup
+          label={m.theme_radius()}
+          collapseLabels={false}
+          items={radii.map((id) => ({
+            id,
+            label: radiusLabels[id](),
+            active: radius === id,
+            onClick: () => setRadius(id),
+          }))}
+        />
+        <span className="text-body">{m.theme_glass()}</span>
+        <Switch checked={glass} onCheckedChange={setGlass} aria-label={m.theme_glass()} />
+        <span className="text-label text-muted-foreground">{m.theme_glass_note()}</span>
+      </div>
+      <div className={rowClass}>
+        <span className="w-label-col text-body">{m.theme_backdrop()}</span>
+        <ButtonGroup
+          label={m.theme_backdrop()}
+          collapseLabels={false}
+          items={backdrops.map((id) => ({
+            id,
+            label: backdropLabels[id](),
+            active: backdrop === id,
+            onClick: () => setBackdrop(id),
+          }))}
+        />
+        {backdrop === 'cover' && (
+          <span className="text-label text-muted-foreground">{m.theme_backdrop_cover_note()}</span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const swatches = ['bg-background', 'bg-surface', 'bg-muted', 'bg-foreground', 'bg-accent'];
+
+/** The five colors a row shows, drawn with the theme's own variables: ground, panel, inner panel, text, accent. */
+function Swatches({ id }: { id: string }) {
+  return (
+    <span data-theme={id} aria-hidden className="flex shrink-0 overflow-hidden rounded-md border border-border">
+      {swatches.map((color) => (
+        <span key={color} className={`size-lg ${color}`} />
+      ))}
+    </span>
+  );
+}
+
+function ThemeRow({
+  row,
   checked,
   onChoose,
   onTry,
@@ -151,254 +237,74 @@ function ThemeCard({
   onEdit,
   onDeleted,
 }: {
-  card: Card;
+  row: Row;
   checked: boolean;
   onChoose: () => void;
   onTry: () => void;
-  onDuplicate: (values: ThemeValues) => void;
+  onDuplicate: () => void;
   onEdit?: () => void;
   onDeleted: () => void;
 }) {
   const trpc = useTRPC();
   const remove = useMutation(trpc.theme.delete.mutationOptions());
-  const preview = useRef<HTMLDivElement>(null);
   const noteId = useId();
-  const radioId = useId();
+  const pill =
+    'min-h-touch shrink-0 rounded-full border border-border px-lg text-label hover:bg-surface focus-visible:outline focus-visible:outline-accent disabled:opacity-60';
   return (
-    <div
-      onMouseEnter={card.disabled ? undefined : onTry}
-      className="relative flex min-w-0 flex-col gap-xs rounded-lg border border-border p-xs has-checked:border-accent has-focus-visible:outline has-focus-visible:outline-accent has-disabled:opacity-60"
-    >
-      <label htmlFor={radioId} className="cursor-pointer has-disabled:cursor-not-allowed">
-        <input
-          id={radioId}
-          type="radio"
-          name="theme"
-          value={card.id}
-          checked={checked}
-          disabled={card.disabled}
-          onChange={onChoose}
-          aria-describedby={card.note ? noteId : undefined}
-          className="sr-only"
-        />
-        <ThemePreview id={card.disabled ? 'ink' : card.id} ref={preview} />
-      </label>
-      <div className="flex items-center justify-between gap-2xs">
-        <label htmlFor={radioId} className="min-w-0 flex-1 cursor-pointer truncate text-label">
-          {card.label}
+    <li className="border-t border-dashed border-border py-xs first:border-t-0">
+      <div onMouseEnter={row.disabled ? undefined : onTry} className="flex items-center gap-md">
+        <label className="flex min-h-touch min-w-0 flex-1 cursor-pointer items-center gap-md rounded-lg px-md hover:bg-surface has-checked:bg-surface has-focus-visible:outline has-focus-visible:outline-accent has-disabled:cursor-not-allowed has-disabled:opacity-60">
+          <input
+            type="radio"
+            name="theme"
+            value={row.id}
+            checked={checked}
+            disabled={row.disabled}
+            onChange={onChoose}
+            aria-label={row.label}
+            aria-describedby={row.note ? noteId : undefined}
+            className="sr-only"
+          />
+          <span
+            aria-hidden
+            className="flex size-icon shrink-0 items-center justify-center rounded-full border-2 border-foreground"
+          >
+            {checked && <span className="size-2xs rounded-full bg-foreground" />}
+          </span>
+          <span className="w-label-col shrink-0 truncate text-body font-medium">{row.label}</span>
+          <span id={noteId} className="min-w-0 flex-1 truncate text-label text-muted-foreground">
+            {row.note}
+          </span>
+          <Swatches id={row.disabled ? 'ink' : row.id} />
         </label>
-        <button
-          type="button"
-          disabled={card.disabled}
-          aria-label={m.theme_duplicate({ name: card.label })}
-          title={m.theme_duplicate({ name: card.label })}
-          onClick={() => {
-            const values = card.values ?? (preview.current && readThemeValues(preview.current, card.mode));
-            if (values) onDuplicate(values);
-          }}
-          className="flex size-touch shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-        >
-          <CopyIcon className="size-icon-sm" aria-hidden />
-        </button>
-        {onEdit && (
+        {onEdit ? (
+          <>
+            <button type="button" aria-label={m.theme_edit({ name: row.label })} onClick={onEdit} className={pill}>
+              {m.theme_edit_short()}
+            </button>
+            <HoldButton
+              label={m.theme_delete({ name: row.label })}
+              idle={m.theme_delete_idle()}
+              done={m.theme_deleted()}
+              onConfirm={async () => {
+                if (row.customId === undefined) return;
+                await remove.mutateAsync({ id: row.customId, confirmed: true });
+                onDeleted();
+              }}
+            />
+          </>
+        ) : (
           <button
             type="button"
-            aria-label={m.theme_edit({ name: card.label })}
-            title={m.theme_edit({ name: card.label })}
-            onClick={onEdit}
-            className="flex size-touch shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-accent"
+            disabled={row.disabled}
+            aria-label={m.theme_duplicate({ name: row.label })}
+            onClick={onDuplicate}
+            className={pill}
           >
-            <PencilSimpleIcon className="size-icon-sm" aria-hidden />
+            {m.theme_duplicate_short()}
           </button>
         )}
       </div>
-      {card.note && (
-        <span id={noteId} className="text-caption text-muted-foreground">
-          {card.note}
-        </span>
-      )}
-      {card.customId !== undefined && (
-        <HoldButton
-          label={m.theme_delete({ name: card.label })}
-          idle={m.theme_delete_idle()}
-          done={m.theme_deleted()}
-          className="self-start"
-          onConfirm={async () => {
-            if (card.customId === undefined) return;
-            await remove.mutateAsync({ id: card.customId, confirmed: true });
-            onDeleted();
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-/** A miniature desk drawn with the theme's own variables: rail pill, a panel with a big light number, a pill button. */
-function ThemePreview({ id, ref }: { id: string; ref: React.Ref<HTMLDivElement> }) {
-  return (
-    <div ref={ref} data-theme={id} aria-hidden className="flex gap-xs rounded-md bg-background p-xs text-foreground">
-      <div className="desk-glass flex flex-col items-center gap-3xs rounded-full border p-3xs">
-        <span className="size-xs rounded-full bg-primary" />
-        <span className="size-xs rounded-full bg-muted" />
-        <span className="size-xs rounded-full bg-muted" />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-3xs rounded-md border border-border bg-surface p-xs">
-        <span className="text-caption text-muted-foreground">{m.pomodoro_focus()}</span>
-        <span className="text-title tabular-nums">25:00</span>
-        <span className="flex items-center gap-2xs">
-          <span className="rounded-full bg-primary px-xs text-caption text-primary-foreground">
-            {m.pomodoro_start()}
-          </span>
-          <span className="size-2xs rounded-full bg-accent" />
-        </span>
-      </div>
-    </div>
-  );
-}
-
-const roles: Array<keyof Colors> = [
-  'background',
-  'surface',
-  'surfaceRaised',
-  'muted',
-  'foreground',
-  'mutedForeground',
-  'primary',
-  'primaryForeground',
-  'accent',
-  'success',
-  'danger',
-];
-
-const roleLabel: Record<keyof Colors, () => string> = {
-  background: m.theme_role_background,
-  foreground: m.theme_role_foreground,
-  surface: m.theme_role_surface,
-  surfaceRaised: m.theme_role_surfaceRaised,
-  muted: m.theme_role_muted,
-  mutedForeground: m.theme_role_mutedForeground,
-  border: m.theme_role_foreground,
-  primary: m.theme_role_primary,
-  primaryForeground: m.theme_role_primaryForeground,
-  accent: m.theme_role_accent,
-  success: m.theme_role_success,
-  danger: m.theme_role_danger,
-};
-
-function ThemeEditor({
-  draft,
-  onSaved,
-  onCancel,
-}: {
-  draft: Draft;
-  onSaved: (id: number) => void;
-  onCancel: () => void;
-}) {
-  const trpc = useTRPC();
-  const { setDraft } = useTheme();
-  const save = useMutation(trpc.theme.save.mutationOptions());
-  const [name, setName] = useState(draft.name);
-  const [values, setValues] = useState(draft.values);
-  const failures = contrastFailures(values.colors);
-  const formId = useId();
-
-  function change(next: ThemeValues) {
-    setValues(next);
-    setDraft(next);
-  }
-
-  function setColor(role: keyof Colors, hex: string) {
-    const colors = { ...values.colors, [role]: hex };
-    // The hairline follows the text color at low opacity, as in the built-in themes.
-    if (role === 'foreground') colors.border = `${hex}1a`;
-    change({ ...values, colors });
-  }
-
-  return (
-    <form
-      aria-labelledby={formId}
-      className="flex flex-col gap-md"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (failures.length > 0) return;
-        save.mutate({ id: draft.id, name, base: draft.base, values }, { onSuccess: ({ id }) => onSaved(id) });
-      }}
-    >
-      <h3 id={formId} className="text-label">
-        {draft.id === undefined ? m.theme_editor_new() : m.theme_editor_edit()}
-      </h3>
-      <div className="flex flex-col gap-md">
-        <label className="flex flex-col gap-2xs text-caption text-muted-foreground">
-          {m.theme_name()}
-          <input
-            value={name}
-            required
-            maxLength={40}
-            onChange={(event) => setName(event.target.value)}
-            className="min-h-touch rounded-md border border-border bg-background px-sm text-body text-foreground"
-          />
-        </label>
-        <Select
-          label={m.theme_mode()}
-          value={values.mode}
-          onValueChange={(mode) => change({ ...values, mode: mode === 'light' ? 'light' : 'dark' })}
-          options={[
-            { value: 'dark', label: m.theme_mode_dark() },
-            { value: 'light', label: m.theme_mode_light() },
-          ]}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-sm">
-        {roles.map((role) => (
-          <label key={role} className="flex items-center gap-xs text-caption">
-            <input
-              type="color"
-              value={values.colors[role].slice(0, 7)}
-              onChange={(event) => setColor(role, event.target.value)}
-              className="size-touch shrink-0 cursor-pointer rounded-md border border-border bg-transparent"
-            />
-            {roleLabel[role]()}
-          </label>
-        ))}
-      </div>
-      <div aria-live="polite" className="flex flex-col gap-2xs text-caption">
-        {failures.length === 0 ? (
-          <p className="text-muted-foreground">{m.theme_contrast_ok()}</p>
-        ) : (
-          failures.map(({ text, on, ratio, min }) => (
-            <p key={`${text}-${on}`} className="text-danger">
-              {m.theme_contrast_failure({
-                text: roleLabel[text](),
-                on: roleLabel[on](),
-                ratio: ratio.toLocaleString('it'),
-                min: min.toLocaleString('it'),
-              })}
-            </p>
-          ))
-        )}
-        {save.isError && (
-          <p role="alert" className="text-danger">
-            {m.theme_save_failed()}
-          </p>
-        )}
-      </div>
-      <div className="flex gap-xs">
-        <button
-          type="submit"
-          disabled={failures.length > 0 || save.isPending || !name.trim()}
-          className="min-h-touch rounded-full bg-primary px-lg text-label text-primary-foreground hover:opacity-80 focus-visible:outline focus-visible:outline-accent disabled:opacity-60"
-        >
-          {m.theme_save()}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="min-h-touch rounded-full border border-border px-lg text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent"
-        >
-          {m.theme_cancel()}
-        </button>
-      </div>
-    </form>
+    </li>
   );
 }

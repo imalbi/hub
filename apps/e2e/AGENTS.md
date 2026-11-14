@@ -157,3 +157,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - Fake hooks (`/__fake/*`) exist only on the fake server: post them to `SERVER_URL`, never through `pc` (the web port, which proxies only `/trpc`). `restoreDesktop` had that bug and left the player gone after any test that removed it.
 - `music.spec.ts` shares one music queue per process: radio skips songs earlier tests played, so assert the first upcoming row, not a fixed title. The thin seek bar keeps an `aria-hidden` value bubble with the same text as the elapsed time: take `.first()` for the inline time.
 - Music has no stop action, so a radio started in a spec runs on for every later file in the process (files run alphabetically in a shard). Radio cases live in `music.spec.ts`: the ball-over-Musica-with-radio check moved there from `activity.spec.ts` after it broke `design.spec.ts` artwork and the Media baselines in one shard. `ballOf` and `underBall` are shared in `tests/ball.ts`.
+
+## Themes (step 52)
+
+- `themes.spec.ts`: rows are `fieldset li`; rows, swatches and presets are labels around visually hidden radios, so click the label (`pick` in the spec, `chooseTheme` in `themes.ts`). The contrast and hue sliders are native ranges inside `Slider`: `focus()` plus `Home` or `End`. Baselines added: `desk-sharp-noglass.png` (Panoramica, Netti, Vetro off) and `desk-settings-appearance-4k.png`; `desk-theme-editor.png` now shows the seed editor at the weak-contrast end.

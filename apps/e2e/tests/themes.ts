@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import { RUN_TMP } from './hosts.ts';
 
-/** The Aspetto picker is a radio group of preview cards; the radio is visually hidden, so click its name as a user would. */
+/** The Aspetto picker is a radio group of rows; the radio is visually hidden, so click its row as a user would. */
 export async function chooseTheme(page: Page, name: string) {
-  await page.locator('fieldset label', { hasText: new RegExp(`^${name}$`) }).click();
+  await page.locator('fieldset label', { has: page.getByRole('radio', { name, exact: true }) }).click();
   await expect(page.getByRole('radio', { name, exact: true })).toBeChecked();
   await themeSettled(page);
 }

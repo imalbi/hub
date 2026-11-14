@@ -220,7 +220,7 @@ export function ActivityBall() {
           <Popover
             align="end"
             size="md"
-            className="rounded-xl p-lg"
+            className="desk-glass rounded-xl p-lg"
             label={m.activity_running()}
             trigger={
               <button
@@ -231,11 +231,11 @@ export function ActivityBall() {
                     .filter(Boolean)
                     .join(', '),
                 })}
-                className="relative grid size-ball place-items-center rounded-full border border-glass-border p-2xs"
+                className="desk-glass relative grid size-ball place-items-center rounded-full border p-2xs"
                 style={{
                   background:
                     first.progress === undefined
-                      ? 'var(--glass)'
+                      ? undefined
                       : `conic-gradient(var(--foreground) ${Math.round(first.progress * 100)}%, var(--muted) 0)`,
                 }}
               >

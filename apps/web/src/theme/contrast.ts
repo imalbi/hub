@@ -46,6 +46,7 @@ export function contrast(foreground: string, background: string) {
 const checks: Array<{ text: keyof Colors; on: keyof Colors; min: number }> = [
   { text: 'foreground', on: 'background', min: 4.5 },
   { text: 'foreground', on: 'surface', min: 4.5 },
+  { text: 'foreground', on: 'muted', min: 4.5 },
   { text: 'mutedForeground', on: 'surface', min: 4.5 },
   { text: 'primaryForeground', on: 'primary', min: 4.5 },
   { text: 'accent', on: 'surface', min: 3 },

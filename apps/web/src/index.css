@@ -224,6 +224,7 @@
   --glass-filter: blur(var(--blur-glass));
   --backdrop-glow: var(--muted);
   --backdrop-art-display: block;
+  --backdrop-art-opacity: 0.1;
   /* Native controls (the date picker icon, scrollbars) follow the theme instead of the browser default. */
   color-scheme: dark;
 }
@@ -247,6 +248,7 @@
   --glass-filter: none;
   --backdrop-glow: var(--background);
   --backdrop-art-display: none;
+  --backdrop-art-opacity: 0.04;
   color-scheme: light;
 }
 
@@ -269,6 +271,7 @@
   --glass-filter: blur(var(--blur-glass));
   --backdrop-glow: var(--muted);
   --backdrop-art-display: block;
+  --backdrop-art-opacity: 0.1;
   color-scheme: dark;
 }
 
@@ -291,11 +294,28 @@
   --glass-filter: none;
   --backdrop-glow: var(--background);
   --backdrop-art-display: none;
+  --backdrop-art-opacity: 0.04;
   color-scheme: light;
 }
 
 html[data-layout='desk'] body {
   isolation: isolate;
+}
+
+/* Angoli (step 52): one scale for the surface and the inner panels; pills (--radius-full) are not touched. */
+html[data-radius='soft'] {
+  --radius-lg: 1.75rem;
+  --radius-xl: 2.8rem;
+}
+html[data-radius='sharp'] {
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.25rem;
+}
+/* Vetro off: the floating chrome keeps its place and loses the frost, on every theme. */
+html[data-glass='off'] {
+  --glass: var(--surface);
+  --glass-border: var(--border);
+  --glass-filter: none;
 }
 .desk-backdrop {
   background: radial-gradient(ellipse at top right, var(--backdrop-glow), var(--background) 70%);
@@ -305,6 +325,17 @@ html[data-layout='desk'] body {
   filter: blur(var(--blur-art));
   opacity: 0.3;
   transform: scale(1.15);
+}
+/* Sfondo: plain is a flat color without cover art; cover shows the art behind every page, faint enough that the worst cover keeps secondary text at 4.5:1 (a light theme's secondary text leaves almost no room: 0.04). */
+html[data-backdrop='plain'] .desk-backdrop {
+  background: var(--background);
+}
+html[data-backdrop='plain'] .desk-backdrop img {
+  display: none;
+}
+html[data-backdrop='cover'] .desk-backdrop img {
+  display: block;
+  opacity: var(--backdrop-art-opacity);
 }
 .desk-glass {
   background: var(--glass);
@@ -486,7 +517,7 @@ html {
 }
 
 .theme-sheet {
-  width: var(--spacing-sheet);
+  width: calc(var(--spacing-sheet) + var(--spacing-xl));
   max-width: 100vw;
 }
 
