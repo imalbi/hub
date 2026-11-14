@@ -44,6 +44,10 @@ test('seek bar keeps keyboard focus after a click while the seek is slow', async
 });
 
 const search = (page: Page, text = 'canzone') => page.getByRole('searchbox', { name: 'Cerca musica' }).fill(text);
+// The player has the same "Aggiungi <title> a playlist" button for the song that plays; a radio left by an earlier test
+// can be playing Mix 1, and the search is debounced, so an unscoped click hit the player's and its popover went away
+// when the radio moved on.
+const results = (page: Page) => page.getByRole('region', { name: 'Risultati' });
 const library = (page: Page) => page.getByRole('region', { name: 'Playlist', exact: true });
 /** A playlist row's name also says its song count ("Mix 2 brani"). */
 const listRow = (page: Page, name: string) =>
@@ -231,7 +235,9 @@ test('playlist can be created, populated, reordered, played and deleted with a h
   await expect(listRow(page, 'Mix test')).toBeVisible();
   await search(page, 'playlist-test');
   for (const title of ['Mix 1', 'Mix 2']) {
-    await page.getByRole('button', { name: `Aggiungi ${title} a playlist` }).click();
+    await results(page)
+      .getByRole('button', { name: `Aggiungi ${title} a playlist` })
+      .click();
     await page.getByRole('dialog', { name: 'Aggiungi a playlist' }).getByRole('button', { name: 'Mix test' }).click();
     await expect(page.getByRole('dialog', { name: 'Aggiungi a playlist' })).toHaveCount(0);
   }
@@ -250,7 +256,7 @@ test('playlist can be created, populated, reordered, played and deleted with a h
 test('a playlist is created from the add popover with the song in it, renamed and deleted', async ({ page }) => {
   await page.goto('/desk/media');
   await search(page, 'playlist-test');
-  await page.getByRole('button', { name: 'Aggiungi Mix 1 a playlist' }).click();
+  await results(page).getByRole('button', { name: 'Aggiungi Mix 1 a playlist' }).click();
   const popover = page.getByRole('dialog', { name: 'Aggiungi a playlist' });
   await popover.getByRole('textbox', { name: 'Nome playlist' }).fill('Dal popover');
   await popover.getByRole('button', { name: 'Crea', exact: true }).click();
@@ -462,7 +468,7 @@ test('playlist rows show the count and the cover mosaic, the empty one a note ti
     await expect(row('Vuota').locator('img')).toHaveCount(0);
     // Adding from the page updates the row without a reload (the count once stayed stale).
     await search(page, 'playlist-test');
-    await page.getByRole('button', { name: 'Aggiungi Mix 1 a playlist' }).click();
+    await results(page).getByRole('button', { name: 'Aggiungi Mix 1 a playlist' }).click();
     await page.getByRole('dialog', { name: 'Aggiungi a playlist' }).getByRole('button', { name: 'Vuota' }).click();
     await expect(row('Vuota')).toContainText('1 brano');
   } finally {

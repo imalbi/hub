@@ -3,9 +3,9 @@ import { restoreDesktop } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { SERVER_URL } from './hosts.ts';
 import { ballOf } from './ball.ts';
-import { chooseTheme, restoreScheme, writeScheme } from './themes.ts';
+import { chooseTheme, restoreScheme, themeSettled, writeScheme } from './themes.ts';
 
-const builtIn = ['Scuro', 'Chiaro', 'Muschio', 'Pietra', 'Caelestia'];
+const builtIn = ['Scuro', 'Chiaro', 'Muschio', 'Pietra', 'Notte', 'Brace', 'Laguna', 'Caelestia'];
 const json = { 'content-type': 'application/json' };
 
 async function deleteCustomThemes(pc: APIRequestContext) {
@@ -58,6 +58,9 @@ test('native controls follow the theme, so the date picker icon is readable in t
     ['Chiaro', 'light'],
     ['Muschio', 'dark'],
     ['Pietra', 'light'],
+    ['Notte', 'dark'],
+    ['Brace', 'dark'],
+    ['Laguna', 'dark'],
   ] as const) {
     await chooseTheme(page, name);
     await expect.poll(scheme).toBe(expected);
@@ -84,6 +87,32 @@ test('the rows are a radio group: arrow keys choose, and the choice survives a r
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   await expect(page.getByRole('radio', { name: 'Chiaro', exact: true })).toBeChecked();
 });
+
+for (const theme of [
+  { name: 'Notte', id: 'night', accent: 'Ambra' },
+  { name: 'Brace', id: 'ember', accent: 'Corallo' },
+  { name: 'Laguna', id: 'lagoon', accent: 'Rosa' },
+]) {
+  test(`${theme.name} applies on click, survives a reload and Duplica opens the editor with its seed`, async ({
+    page,
+  }) => {
+    const html = page.locator('html');
+    await chooseTheme(page, theme.name);
+    await expect(html).toHaveAttribute('data-theme', theme.id);
+    await page.reload();
+    await expect(html).toHaveAttribute('data-theme', theme.id);
+    await expect(page.getByRole('radio', { name: theme.name, exact: true })).toBeChecked();
+    await expect(html).toHaveCSS('color-scheme', 'dark');
+
+    await page.getByRole('button', { name: `Duplica ${theme.name}` }).click();
+    const editor = editorOf(page);
+    await expect(editor.getByRole('radio', { name: theme.accent, exact: true })).toBeChecked();
+    await expect(editor.getByRole('slider', { name: 'Contrasto', exact: true })).toHaveValue('70');
+    await expect(editor.getByText('Contrasto sufficiente su tutte le coppie')).toBeVisible();
+    await editor.getByRole('button', { name: 'Annulla' }).click();
+    await chooseTheme(page, 'Scuro');
+  });
+}
 
 test('the editor recolors the desk live, refuses weak contrast with its reason, saves the seed and reopens it', async ({
   page,
@@ -276,6 +305,117 @@ test('Vetro off removes the blur from the rail, the player and the activity ball
   await expect(page.locator('html')).toHaveAttribute('data-glass', 'on');
 });
 
+const lightCustom = {
+  mode: 'light',
+  colors: {
+    background: '#ece9f2',
+    foreground: '#1b1a22',
+    surface: '#fbfafd',
+    surfaceRaised: '#1b1a22',
+    muted: '#dfdbe8',
+    mutedForeground: '#5a566a',
+    border: '#1b1a221a',
+    primary: '#1b1a22',
+    primaryForeground: '#fbfafd',
+    accent: '#7a3fa8',
+    success: '#2f7d4f',
+    danger: '#b3261e',
+  },
+};
+
+async function openMedia(page: Page, theme: string) {
+  await page.goto('/desk/settings/appearance');
+  await chooseTheme(page, theme);
+  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Media', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible();
+}
+
+test('Vetro frosts the rail, the player, the ball and its panel on dark and light themes alike, and off removes it', async ({
+  page,
+  pc,
+}) => {
+  const saved = await pc.post('/trpc/theme.save', {
+    data: { name: 'Lilla', base: 'paper', values: lightCustom },
+    headers: json,
+  });
+  expect(saved.ok()).toBe(true);
+  const rail = page.getByRole('navigation', { name: 'Zone' });
+  const player = page.getByRole('region', { name: 'Player musicale' });
+  const panel = page.getByRole('dialog', { name: 'Attività in corso' });
+  try {
+    for (const theme of ['Scuro', 'Chiaro', 'Pietra', 'Lilla']) {
+      await openMedia(page, theme);
+      await ballOf(page).click();
+      for (const surface of [rail, player, ballOf(page), panel])
+        expect(await blurOf(surface), `${theme} on`).toMatch(/^blur\(/);
+      await page.keyboard.press('Escape');
+    }
+    await page.goto('/desk/settings/appearance');
+    await page.getByRole('switch', { name: 'Vetro' }).click();
+    for (const theme of ['Chiaro', 'Pietra', 'Lilla']) {
+      await openMedia(page, theme);
+      await ballOf(page).click();
+      for (const surface of [rail, player, ballOf(page), panel])
+        expect(await blurOf(surface), `${theme} off`).toBe('none');
+      await page.keyboard.press('Escape');
+    }
+  } finally {
+    await page.goto('/desk/settings/appearance');
+    if ((await page.getByRole('switch', { name: 'Vetro' }).getAttribute('aria-checked')) === 'false')
+      await page.getByRole('switch', { name: 'Vetro' }).click();
+    await chooseTheme(page, 'Scuro');
+    await deleteCustomThemes(pc);
+  }
+});
+
+/** The color a CSS variable resolves to, as bytes (a canvas converts any color syntax, color-mix included). */
+function pixelOf(page: Page, name: string) {
+  return page.evaluate((property) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('No canvas');
+    context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(property);
+    context.fillRect(0, 0, 1, 1);
+    return Array.from(context.getImageData(0, 0, 1, 1).data);
+  }, name);
+}
+
+// Text on a glass surface over the darkest ground a light theme can put behind it: the glow, then a black cover at the
+// backdrop's own opacity, then the glass at its own alpha.
+async function glassRatios(page: Page) {
+  const alpha = await page.evaluate(() => {
+    const img = document.querySelector('.desk-backdrop img');
+    return img ? Number(getComputedStyle(img).opacity) : 0;
+  });
+  const [glow, foreground, muted, surface] = await Promise.all(
+    ['--backdrop-glow', '--foreground', '--muted-foreground', '--glass'].map((name) => pixelOf(page, name)),
+  );
+  return page.evaluate(
+    ({ glow, foreground, muted, surface, alpha }) => {
+      const mix = (top: number[], below: number[], a: number) => below.map((c, i) => (top[i] ?? 0) * a + c * (1 - a));
+      const light = glow.reduce((sum, channel) => sum + channel, 0) > 384;
+      const under = mix(light ? [0, 0, 0] : [255, 255, 255], glow, alpha);
+      const ground = mix(surface, under, (surface[3] ?? 255) / 255);
+      const luminance = (rgb: number[]) => {
+        const [r = 0, g = 0, b = 0] = rgb.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const ratio = (ink: number[]) => {
+        const a = luminance(ink);
+        const b = luminance(ground);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      };
+      return { foreground: ratio(foreground), muted: ratio(muted) };
+    },
+    { glow, foreground, muted, surface, alpha },
+  );
+}
+
 // The worst a cover can do under text: white under light ink, black under dark ink, at the backdrop's own opacity.
 async function worstCoverRatios(page: Page) {
   return page.evaluate(() => {
@@ -337,7 +477,7 @@ test('Sfondo: plain has no glow or cover, Alone is the glow, Copertina adds the 
 
     await group.getByRole('button', { name: 'Copertina' }).click();
     await expect(cover).toBeVisible();
-    for (const theme of ['Scuro', 'Chiaro', 'Muschio', 'Pietra']) {
+    for (const theme of ['Scuro', 'Chiaro', 'Muschio', 'Pietra', 'Notte', 'Brace', 'Laguna']) {
       await chooseTheme(page, theme);
       const { alpha, foreground, muted } = await worstCoverRatios(page);
       expect(alpha, theme).toBeGreaterThan(0);
@@ -354,6 +494,35 @@ test('Sfondo: plain has no glow or cover, Alone is the glow, Copertina adds the 
     await expect(group.getByRole('button', { name: 'Copertina' })).toHaveAttribute('aria-pressed', 'true');
   } finally {
     await restoreDesktop(page.request);
+  }
+});
+
+test('on a light theme Alone is a tinted glow, and text on the glass keeps 4.5:1 with Alone and with the worst cover', async ({
+  page,
+}) => {
+  const group = page.getByRole('toolbar', { name: 'Sfondo' });
+  try {
+    for (const theme of ['Chiaro', 'Pietra']) {
+      await page.goto('/desk/settings/appearance');
+      await chooseTheme(page, theme);
+      await group.getByRole('button', { name: 'Alone' }).click();
+      const backdrop = page.locator('.desk-backdrop');
+      expect(await backdrop.evaluate((element) => getComputedStyle(element).backgroundImage), theme).toContain(
+        'radial-gradient',
+      );
+      // The glow is not the page color: that is what the glass has to blur.
+      expect(await pixelOf(page, '--backdrop-glow'), `${theme} glow`).not.toEqual(await pixelOf(page, '--background'));
+      for (const mode of ['Alone', 'Copertina']) {
+        await group.getByRole('button', { name: mode }).click();
+        await themeSettled(page);
+        const { foreground, muted } = await glassRatios(page);
+        expect(foreground, `${theme} ${mode} text`).toBeGreaterThanOrEqual(4.5);
+        expect(muted, `${theme} ${mode} secondary text`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  } finally {
+    await restoreDesktop(page.request);
+    await chooseTheme(page, 'Scuro');
   }
 });
 

@@ -156,6 +156,10 @@ test('the Sistema page chooses the theme of this device', async ({ page }) => {
   try {
     await page.getByRole('combobox', { name: 'Aspetto' }).selectOption({ label: 'Chiaro' });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+    // A new built-in theme is the same CSS on the deck: the page really takes its ground color.
+    await page.getByRole('combobox', { name: 'Aspetto' }).selectOption({ label: 'Notte' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(5, 7, 14)');
   } finally {
     await page.evaluate(() => {
       localStorage.removeItem('hub.theme');

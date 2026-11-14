@@ -43,7 +43,9 @@ export async function revokeDevices(pc: APIRequestContext, name: string) {
 
 // tRPC batches queries made together into one URL (`/trpc/a,b`): ask the real server, then swap the mocked results.
 export async function answerQueries(page: Page, answers: Record<string, unknown>) {
-  await page.route('**/trpc/{devices,agents,music}.*', async (route, request) => {
+  // Every tRPC URL: a batch can start with any other procedure (`sites.configured,devices.list`), and a glob on the
+  // first name let the real answer through under load.
+  await page.route('**/trpc/*', async (route, request) => {
     const names = decodeURIComponent(new URL(request.url()).pathname.replace('/trpc/', '')).split(',');
     if (!names.some((name) => name in answers)) return route.fallback();
     const real: unknown = await (await route.fetch()).json();

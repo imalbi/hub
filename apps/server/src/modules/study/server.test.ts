@@ -38,7 +38,6 @@ void test('reads a folder plan in chunk name order', async () => {
 
 void test('inbox reports plans and activation archives a valid file', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'in-arrivo'));
   await writeFile(
     join(dir, 'in-arrivo', 'example.json'),
@@ -69,7 +68,12 @@ void test('inbox reports plans and activation archives a valid file', async (t) 
     deps: { run: createFakeDesktop() },
     config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
   });
-  t.after(() => app.close());
+  // Server first, then the folder: hooks run in registration order, and removing the folder while the state
+  // writer still wrote to it failed with ENOTEMPTY under load.
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
   const inbox = (await app.inject('/trpc/study.inbox')).json().result.data;
   const unsafe = inbox.find((entry: { name: string }) => entry.name === 'unsafe.json');
   assert.equal(unsafe.valid, false);
@@ -151,7 +155,6 @@ void test('revisions retain progress, including ids no longer present', async ()
 
 void test('activating a revision preserves kept and removed progress', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'in-arrivo'));
   const plan = planSchema.parse(
     JSON.parse(await readFile(new URL('./fixtures/example.json', import.meta.url), 'utf8')),
@@ -162,7 +165,12 @@ void test('activating a revision preserves kept and removed progress', async (t)
     deps: { run: createFakeDesktop() },
     config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
   });
-  t.after(() => app.close());
+  // Server first, then the folder: hooks run in registration order, and removing the folder while the state
+  // writer still wrote to it failed with ENOTEMPTY under load.
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
   const activate = (name: string) => app.inject({ method: 'POST', url: '/trpc/study.activate', payload: { name } });
   assert.equal((await activate('first.json')).statusCode, 200);
   const db = new DatabaseSync(join(dir, 'modules', 'study.db'));
@@ -224,7 +232,6 @@ void test('validates and stores 500 days with 5000 steps within two seconds', as
 
 void test('activates 500 days and 5000 steps within two seconds', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'in-arrivo'));
   const plan = planSchema.parse(
     JSON.parse(await readFile(new URL('./fixtures/example.json', import.meta.url), 'utf8')),
@@ -249,7 +256,12 @@ void test('activates 500 days and 5000 steps within two seconds', async (t) => {
     deps: { run: createFakeDesktop() },
     config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
   });
-  t.after(() => app.close());
+  // Server first, then the folder: hooks run in registration order, and removing the folder while the state
+  // writer still wrote to it failed with ENOTEMPTY under load.
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
   const start = performance.now();
   const response = await app.inject({ method: 'POST', url: '/trpc/study.activate', payload: { name: 'large.json' } });
   assert.equal(response.statusCode, 200);
@@ -320,7 +332,6 @@ void test('several active plans interleave by the global mix, and a paused plan 
 
 void test('progress and subject state survive reload and export valid state after rapid changes', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'in-arrivo'));
   await writeFile(
     join(dir, 'in-arrivo', 'example.json'),
@@ -348,7 +359,12 @@ void test('progress and subject state survive reload and export valid state afte
   assert.ok(Number.isFinite(Date.parse(exported.days.find((day: { id: string }) => day.id === 'A02').doneAt)));
   assert.deepEqual(exported.days.find((day: { id: string }) => day.id === 'A02').openSteps, []);
   app = make();
-  t.after(() => app.close());
+  // Server first, then the folder: hooks run in registration order, and removing the folder while the state
+  // writer still wrote to it failed with ENOTEMPTY under load.
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
   index = (await app.inject('/trpc/study.index')).json().result.data;
   assert.equal(index.current, 'example/A02');
   assert.equal((await post('setSubject', { plan: 'example', id: 'a', state: 'passed' })).statusCode, 200);
@@ -527,7 +543,6 @@ void test('review lists a day with some steps ticked and its open steps', async 
   const source = JSON.parse(await readFile(new URL('./fixtures/example.json', import.meta.url), 'utf8'));
   source.days[0].blocks[0].steps.push({ id: 'A01.m.2', text: 'Disegna una foglia.' });
   const dir = await mkdtemp(join(tmpdir(), 'study-test-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'in-arrivo'));
   await writeFile(join(dir, 'in-arrivo', 'example.json'), JSON.stringify(source));
   const app = buildServer({
@@ -535,7 +550,12 @@ void test('review lists a day with some steps ticked and its open steps', async 
     deps: { run: createFakeDesktop() },
     config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
   });
-  t.after(() => app.close());
+  // Server first, then the folder: hooks run in registration order, and removing the folder while the state
+  // writer still wrote to it failed with ENOTEMPTY under load.
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
   const post = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/study.${name}`, payload });
   assert.equal((await post('activate', { name: 'example.json' })).statusCode, 200);
   assert.deepEqual((await app.inject('/trpc/study.review')).json().result.data.half, []);

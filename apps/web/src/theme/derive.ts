@@ -117,4 +117,7 @@ export const builtInSeeds: Record<string, { mode: Mode; seed: Seed }> = {
   paper: { mode: 'light', seed: defaultSeed },
   moss: { mode: 'dark', seed: { baseHue: 150, baseChroma: 0.016, accentHue: 145, contrast: 70 } },
   stone: { mode: 'light', seed: { baseHue: 240, baseChroma: 0.012, accentHue: 35, contrast: 70 } },
+  night: { mode: 'dark', seed: { baseHue: 265, baseChroma: 0.022, accentHue: 75, contrast: 70 } },
+  ember: { mode: 'dark', seed: { baseHue: 45, baseChroma: 0.018, accentHue: 35, contrast: 70 } },
+  lagoon: { mode: 'dark', seed: { baseHue: 200, baseChroma: 0.016, accentHue: 350, contrast: 70 } },
 };

@@ -220,7 +220,7 @@
   /* Translucency belongs to floating chrome; content panels stay opaque. */
   --glass: oklch(0.18 0 0 / 0.72);
   --glass-border: oklch(1 0 0 / 0.16);
-  /* Dark themes frost the floating chrome and glow behind the grid; light ones (below) switch both off. */
+  /* Every theme frosts the floating chrome; dark ones also show the blurred cover, light ones barely (below). */
   --glass-filter: blur(var(--blur-glass));
   --backdrop-glow: var(--muted);
   --backdrop-art-display: block;
@@ -243,10 +243,10 @@
   --accent: oklch(0.55 0.08 190);
   --success: oklch(0.55 0.13 155);
   --danger: oklch(0.55 0.19 25);
-  --glass: var(--surface);
+  --glass: oklch(0.99 0 0 / 0.7);
   --glass-border: var(--border);
-  --glass-filter: none;
-  --backdrop-glow: var(--background);
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: color-mix(in oklab, var(--accent) 12%, var(--background));
   --backdrop-art-display: none;
   --backdrop-art-opacity: 0.04;
   color-scheme: light;
@@ -289,13 +289,78 @@
   --accent: oklch(0.47 0.13 22);
   --success: oklch(0.5 0.12 155);
   --danger: oklch(0.5 0.17 25);
-  --glass: var(--surface);
+  --glass: oklch(0.99 0.002 240 / 0.7);
   --glass-border: var(--border);
-  --glass-filter: none;
-  --backdrop-glow: var(--background);
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: color-mix(in oklab, var(--accent) 12%, var(--background));
   --backdrop-art-display: none;
   --backdrop-art-opacity: 0.04;
   color-scheme: light;
+}
+
+/* Notte, Brace and Laguna (step 53): dark themes frozen from deriveColors('dark', seed) at contrast 70, seeds in theme/derive.ts. */
+[data-theme='night'] {
+  --background: #05070e;
+  --foreground: #cfd3db;
+  --surface: #0d111b;
+  --surface-raised: #171d28;
+  --muted: #202634;
+  --muted-foreground: #949db1;
+  --border: #cfd3db1a;
+  --primary: #cfd3db;
+  --primary-foreground: #05070e;
+  --accent: #e8aa4e;
+  --success: #6ac48c;
+  --danger: #ef6661;
+  --glass: #0d111bb8;
+  --glass-border: #cfd3db29;
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: var(--muted);
+  --backdrop-art-display: block;
+  --backdrop-art-opacity: 0.1;
+  color-scheme: dark;
+}
+[data-theme='ember'] {
+  --background: #0c0604;
+  --foreground: #dad0cc;
+  --surface: #180f0b;
+  --surface-raised: #251a15;
+  --muted: #30231e;
+  --muted-foreground: #ab9991;
+  --border: #dad0cc1a;
+  --primary: #dad0cc;
+  --primary-foreground: #0c0604;
+  --accent: #ff987e;
+  --success: #6ac48c;
+  --danger: #ef6661;
+  --glass: #180f0bb8;
+  --glass-border: #dad0cc29;
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: var(--muted);
+  --backdrop-art-display: block;
+  --backdrop-art-opacity: 0.1;
+  color-scheme: dark;
+}
+[data-theme='lagoon'] {
+  --background: #030909;
+  --foreground: #cad5d6;
+  --surface: #091414;
+  --surface-raised: #131f20;
+  --muted: #1b292a;
+  --muted-foreground: #8ea2a3;
+  --border: #cad5d61a;
+  --primary: #cad5d6;
+  --primary-foreground: #030909;
+  --accent: #f594c3;
+  --success: #6ac48c;
+  --danger: #ef6661;
+  --glass: #091414b8;
+  --glass-border: #cad5d629;
+  --glass-filter: blur(var(--blur-glass));
+  --backdrop-glow: var(--muted);
+  --backdrop-art-display: block;
+  --backdrop-art-opacity: 0.1;
+  color-scheme: dark;
 }
 
 html[data-layout='desk'] body {

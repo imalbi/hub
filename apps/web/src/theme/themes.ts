@@ -12,6 +12,9 @@ export const builtInThemes = [
   { id: 'paper', label: m.theme_paper, mode: 'light' },
   { id: 'moss', label: m.theme_moss, mode: 'dark' },
   { id: 'stone', label: m.theme_stone, mode: 'light' },
+  { id: 'night', label: m.theme_night, mode: 'dark' },
+  { id: 'ember', label: m.theme_ember, mode: 'dark' },
+  { id: 'lagoon', label: m.theme_lagoon, mode: 'dark' },
 ] as const;
 
 export const caelestiaId = 'caelestia';
@@ -41,7 +44,7 @@ export function themeCss(id: string, { mode, colors }: ThemeValues) {
   const entries = Object.entries(colors);
   if (entries.some(([, value]) => !parseHex(value))) return '';
   const declarations = Object.entries(cssNames).map(([key, name]) => `${name}:${Object.fromEntries(entries)[key]}`);
-  // Same derivations as the built-in themes: frosted chrome in the dark, solid in the light.
+  // Same derivations as the built-in themes: frosted chrome on both, a lighter glass and a tinted glow in the light.
   const chrome =
     mode === 'dark'
       ? [
@@ -54,10 +57,10 @@ export function themeCss(id: string, { mode, colors }: ThemeValues) {
           'color-scheme:dark',
         ]
       : [
-          '--glass:var(--surface)',
+          `--glass:${colors.surface.slice(0, 7)}b3`,
           '--glass-border:var(--border)',
-          '--glass-filter:none',
-          '--backdrop-glow:var(--background)',
+          '--glass-filter:blur(var(--blur-glass))',
+          '--backdrop-glow:color-mix(in oklab, var(--accent) 12%, var(--background))',
           '--backdrop-art-display:none',
           '--backdrop-art-opacity:0.04',
           'color-scheme:light',

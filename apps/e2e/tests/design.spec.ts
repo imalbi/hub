@@ -110,7 +110,7 @@ test('the rail is one pill: trigger, zones and status dot inside, indicator on t
   }
 });
 
-test('rail selection moves, glass follows the theme and reduced motion stops transitions', async ({ page }) => {
+test('rail selection moves, glass stays on in a light theme and reduced motion stops transitions', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/desk/media');
   const rail = page.getByRole('navigation', { name: 'Zone' });
@@ -125,9 +125,9 @@ test('rail selection moves, glass follows the theme and reduced motion stops tra
   // Aspetto is a page under the settings list now, so the theme is chosen one step further in.
   await page.getByRole('link', { name: /^Aspetto/ }).click();
   await chooseTheme(page, 'Chiaro');
-  await expect(rail).toHaveCSS('backdrop-filter', 'none');
+  await expect(rail).toHaveCSS('backdrop-filter', /^blur\(/);
   await rail.getByRole('link', { name: 'Media', exact: true }).click();
-  await expect(player).toHaveCSS('backdrop-filter', 'none');
+  await expect(player).toHaveCSS('backdrop-filter', /^blur\(/);
   await expect(indicator).toHaveCSS('transition-duration', '0s');
   await player.getByRole('button', { name: 'Metti in pausa la musica' }).click();
   await expect(player.getByRole('button', { name: 'Riproduci musica' })).toBeVisible();

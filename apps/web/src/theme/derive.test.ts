@@ -1,7 +1,17 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { contrast, contrastFailures } from './contrast.ts';
-import { accentPresets, basePresets, deriveColors, oklchHex, rate, textRatio, type Mode } from './derive.ts';
+import { contrast, contrastFailures, type Colors } from './contrast.ts';
+import {
+  accentPresets,
+  basePresets,
+  builtInSeeds,
+  deriveColors,
+  oklchHex,
+  rate,
+  textRatio,
+  type Mode,
+} from './derive.ts';
 
 const modes: Mode[] = ['dark', 'light'];
 const seedOf = (base: (typeof basePresets)[number], accent: (typeof accentPresets)[number], level: number) => ({
@@ -86,4 +96,31 @@ void test('any hue the sliders reach passes at the default contrast', () => {
       const colors = deriveColors(mode, { baseHue: hue, baseChroma: 0.022, accentHue: hue, contrast: 70 });
       assert.deepEqual(contrastFailures(colors), [], `${mode} ${hue}`);
     }
+});
+
+void test('Notte, Brace and Laguna in index.css are exactly what their seeds derive, and pass every contrast check', () => {
+  const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  const names: Record<keyof Colors, string> = {
+    background: '--background',
+    foreground: '--foreground',
+    surface: '--surface',
+    surfaceRaised: '--surface-raised',
+    muted: '--muted',
+    mutedForeground: '--muted-foreground',
+    border: '--border',
+    primary: '--primary',
+    primaryForeground: '--primary-foreground',
+    accent: '--accent',
+    success: '--success',
+    danger: '--danger',
+  };
+  for (const id of ['night', 'ember', 'lagoon']) {
+    const entry = builtInSeeds[id];
+    assert.ok(entry, id);
+    const colors = deriveColors(entry.mode, entry.seed);
+    assert.deepEqual(contrastFailures(colors), [], id);
+    const block = css.match(new RegExp(String.raw`\[data-theme='${id}'\] \{([^}]*)\}`))?.[1] ?? '';
+    for (const [role, name] of Object.entries(names))
+      assert.ok(block.includes(`${name}: ${Object.fromEntries(Object.entries(colors))[role]};`), `${id} ${name}`);
+  }
 });

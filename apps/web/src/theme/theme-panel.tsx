@@ -40,6 +40,9 @@ const builtInNotes: Record<string, () => string> = {
   paper: m.theme_note_paper,
   moss: m.theme_note_moss,
   stone: m.theme_note_stone,
+  night: m.theme_note_night,
+  ember: m.theme_note_ember,
+  lagoon: m.theme_note_lagoon,
 };
 
 function duplicateOf(row: Row): ThemeValues | undefined {

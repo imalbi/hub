@@ -190,12 +190,12 @@ test('the overview in paper matches the baseline', async ({ page }) => {
   await expect(page).toHaveScreenshot('desk-paper.png', { animations: 'disabled' });
 });
 
-test('Media in paper uses solid floating controls and matches the baseline', async ({ page }) => {
+test('Media in paper frosts the floating controls and matches the baseline', async ({ page }) => {
   await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Media', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Player musicale' })).toHaveCSS('backdrop-filter', 'none');
+  await expect(page.getByRole('region', { name: 'Player musicale' })).toHaveCSS('backdrop-filter', /^blur\(/);
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-media-paper.png', { animations: 'disabled' });
 });
@@ -203,6 +203,9 @@ test('Media in paper uses solid floating controls and matches the baseline', asy
 for (const theme of [
   { name: 'Muschio', id: 'moss', file: 'desk-moss.png' },
   { name: 'Pietra', id: 'stone', file: 'desk-stone.png' },
+  { name: 'Notte', id: 'night', file: 'desk-night.png' },
+  { name: 'Brace', id: 'ember', file: 'desk-ember.png' },
+  { name: 'Laguna', id: 'lagoon', file: 'desk-lagoon.png' },
   { name: 'Caelestia', id: 'caelestia', file: 'desk-caelestia.png' },
 ]) {
   test(`the overview in ${theme.name} matches the baseline`, async ({ page }) => {
