@@ -15,6 +15,7 @@ export function TodayWidget() {
   const isOn = useIsOn();
   const weather = useQuery({ ...trpc.weather.state.queryOptions(), enabled: isOn('weather'), refetchInterval: 60_000 });
   const modules = useLiveModuleUIs();
+  const columns = modules.flatMap((module) => (module.todayColumn ? [module.todayColumn] : []));
   const current = weather.data;
   const Icon =
     !current || current.code <= 1
@@ -29,7 +30,7 @@ export function TodayWidget() {
   return (
     <Panel title={m.today_title()} className="h-full">
       <div className="flex min-h-0 flex-1 items-end justify-between gap-lg">
-        <div className="flex flex-col gap-xs">
+        <div className="flex flex-3 flex-col gap-xs">
           <p className="text-title">{date.format(now)}</p>
           <p className="text-display tabular-nums">{time.format(now)}</p>
           {modules.flatMap((module) => {
@@ -45,6 +46,9 @@ export function TodayWidget() {
             ));
           })}
         </div>
+        {columns.map((Column, index) => (
+          <Column key={index} />
+        ))}
         {current && (
           <div
             className={`flex items-center gap-sm ${current.stale ? 'opacity-60' : ''}`}

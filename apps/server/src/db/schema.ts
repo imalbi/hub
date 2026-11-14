@@ -75,3 +75,15 @@ export const deskLayouts = sqliteTable('desk_layouts', {
   items: text('items', { mode: 'json' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+// A post-it: short text for a local calendar day (`YYYY-MM-DD`). Removing sets `removedAt`, so Annulla can bring it back.
+export const notes = sqliteTable('notes', {
+  id: text('id').primaryKey(),
+  text: text('text').notNull(),
+  forDay: text('for_day').notNull(),
+  // `desk` for the owner, `agent:<name>` for a note an MCP agent added.
+  source: text('source').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  removedAt: integer('removed_at', { mode: 'timestamp_ms' }),
+});

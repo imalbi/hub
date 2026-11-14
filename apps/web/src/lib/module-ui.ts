@@ -23,6 +23,8 @@ export type ModuleUI = {
   widgets?: ModuleWidget[];
   /** Short lines in Oggi, rendered in module order. Components may return null or link to a zone. */
   todayItems?: ComponentType | ComponentType[];
+  /** The middle column of Oggi, bottom aligned between the date column and the weather: a stack of short cards. One per app (the post-its). */
+  todayColumn?: ComponentType;
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
   zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean; ownTabs?: boolean };
   /**

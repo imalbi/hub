@@ -15,7 +15,7 @@ process.env.NODE_ENV = 'test';
 
 const api = JSON.stringify(new URL('./core/module.ts', import.meta.url).href);
 const trpc = JSON.stringify(new URL('./core/trpc.ts', import.meta.url).href);
-const createNotes = `CREATE TABLE \`notes\` (\`id\` integer PRIMARY KEY AUTOINCREMENT, \`body\` text NOT NULL);`;
+const createMemo = `CREATE TABLE \`memo\` (\`id\` integer PRIMARY KEY AUTOINCREMENT, \`body\` text NOT NULL);`;
 
 /** A discovered module `name` in `<root>/<name>/`; `options` is the extra source of its definition. */
 async function writeModule(root: string, name: string, options: string, sql?: string) {
@@ -34,14 +34,14 @@ export default defineModule({
       hasDb: protectedProcedure.query(() => db !== undefined),
       hasCoreDeps: protectedProcedure.query(() => Object.keys(rest).toSorted()),
       tables: protectedProcedure.query(() => rows(db, "select name from sqlite_master where type = 'table'").map((r) => r.name)),
-      list: protectedProcedure.query(() => rows(db, 'select body from notes order by id').map((r) => r.body)),
+      list: protectedProcedure.query(() => rows(db, 'select body from memo order by id').map((r) => r.body)),
       add: protectedProcedure
         .meta({ label: 'Aggiungi', description: 'Add a note' })
         .input(z.object({ body: z.string() }))
-        .mutation(({ input }) => { db.$client.prepare('insert into notes (body) values (?)').run(input.body); }),
+        .mutation(({ input }) => { db.$client.prepare('insert into memo (body) values (?)').run(input.body); }),
     }),
     // Runs while the server closes: it can only write if the database is still open then.
-    close: () => { if (db) db.$client.exec("insert into notes (body) values ('closed')"); },
+    close: () => { if (db) db.$client.exec("insert into memo (body) values ('closed')"); },
   }),
 });`,
   );
@@ -57,7 +57,7 @@ const get = (app: ReturnType<typeof buildServer>, path: string) => app.inject(`/
 const add = (app: ReturnType<typeof buildServer>, body: string) =>
   app.inject({
     method: 'POST',
-    url: '/trpc/notes.add',
+    url: '/trpc/memo.add',
     headers: { 'content-type': 'application/json' },
     payload: { body },
   });
@@ -73,12 +73,12 @@ const data = (response: { json: () => unknown }) =>
 
 void test('a module that declares migrations gets its own database: its table exists and the core tables do not', async (t) => {
   const root = await scratch(t);
-  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
+  await writeModule(root, 'memo', 'migrations: $FOLDER,', createMemo);
   const app = buildServer({ dbPath: ':memory:', moduleRoots: [root], deps: { run: createFakeDesktop() } });
   t.after(() => app.close());
-  const tables = data(await get(app, 'notes.tables'));
+  const tables = data(await get(app, 'memo.tables'));
   assert.ok(Array.isArray(tables));
-  assert.ok(tables.includes('notes'));
+  assert.ok(tables.includes('memo'));
   assert.ok(!tables.includes('devices'));
   assert.equal(
     data(await get(app, 'devices.list')) !== undefined,
@@ -118,15 +118,15 @@ void test('the type of a module without migrations has no db, with migrations it
 
 void test('a module with a broken migration, a missing folder, a relative folder or a core db request is skipped; others keep working', async (t) => {
   const root = await scratch(t);
-  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
+  await writeModule(root, 'memo', 'migrations: $FOLDER,', createMemo);
   await writeModule(root, 'badsql', 'migrations: $FOLDER,', 'THIS IS NOT SQL;');
   await writeModule(root, 'nofolder', `migrations: ${JSON.stringify(join(root, 'nowhere'))},`);
-  await writeModule(root, 'relative', "migrations: 'drizzle',", createNotes);
+  await writeModule(root, 'relative', "migrations: 'drizzle',", createMemo);
   await writeModule(root, 'greedy', 'coreDb: true,');
   const app = buildServer({ dbPath: ':memory:', moduleRoots: [root], deps: { run: createFakeDesktop() } });
   t.after(() => app.close());
   assert.equal((await add(app, 'still works')).statusCode, 200);
-  assert.deepEqual(data(await get(app, 'notes.list')), ['still works']);
+  assert.deepEqual(data(await get(app, 'memo.list')), ['still works']);
   for (const name of ['badsql', 'nofolder', 'relative', 'greedy'])
     assert.equal((await get(app, `${name}.tables`)).statusCode, 404, name);
   assert.equal((await get(app, 'audio.state')).statusCode, 200);
@@ -135,8 +135,8 @@ void test('a module with a broken migration, a missing folder, a relative folder
 void test('a database file that cannot be opened skips only its module', async (t) => {
   const dir = await scratch(t);
   const root = join(dir, 'modules-src');
-  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
-  await writeModule(root, 'blocked', 'migrations: $FOLDER,', createNotes);
+  await writeModule(root, 'memo', 'migrations: $FOLDER,', createMemo);
+  await writeModule(root, 'blocked', 'migrations: $FOLDER,', createMemo);
   // A directory where the file should be.
   await mkdir(join(dir, 'state', 'modules', 'blocked.db'), { recursive: true });
   const app = buildServer({
@@ -146,15 +146,15 @@ void test('a database file that cannot be opened skips only its module', async (
   });
   t.after(() => app.close());
   assert.equal((await get(app, 'blocked.tables')).statusCode, 404);
-  assert.equal((await get(app, 'notes.tables')).statusCode, 200);
+  assert.equal((await get(app, 'memo.tables')).statusCode, 200);
 });
 
 void test('the file lives next to a file-backed core database; a second start keeps the data and applies migrations once', async (t) => {
   const dir = await scratch(t);
   const root = join(dir, 'modules-src');
-  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
+  await writeModule(root, 'memo', 'migrations: $FOLDER,', createMemo);
   const options = { dbPath: join(dir, 'state', 'hub.db'), moduleRoots: [root], deps: { run: createFakeDesktop() } };
-  const file = join(dir, 'state', 'modules', 'notes.db');
+  const file = join(dir, 'state', 'modules', 'memo.db');
 
   const first = buildServer(options);
   assert.equal((await add(first, 'kept')).statusCode, 200);
@@ -166,16 +166,16 @@ void test('the file lives next to a file-backed core database; a second start ke
   // The module's own close wrote a row after the last request: the database was still open for it.
   const second = buildServer(options);
   t.after(() => second.close());
-  assert.deepEqual(data(await get(second, 'notes.list')), ['kept', 'closed']);
+  assert.deepEqual(data(await get(second, 'memo.list')), ['kept', 'closed']);
 });
 
 void test('closing the server closes the module database: WAL flushed, file free to reopen', async (t) => {
   const dir = await scratch(t);
   const root = join(dir, 'modules-src');
-  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
+  await writeModule(root, 'memo', 'migrations: $FOLDER,', createMemo);
   const app = buildServer({ dbPath: join(dir, 'hub.db'), moduleRoots: [root], deps: { run: createFakeDesktop() } });
   await add(app, 'flushed');
-  const file = join(dir, 'modules', 'notes.db');
+  const file = join(dir, 'modules', 'memo.db');
   assert.ok(existsSync(`${file}-wal`));
   await app.close();
   assert.ok(!existsSync(`${file}-wal`), 'the last connection checkpoints and removes the WAL');
@@ -184,7 +184,7 @@ void test('closing the server closes the module database: WAL flushed, file free
   reopened.exec('BEGIN IMMEDIATE; COMMIT;');
   assert.deepEqual(
     reopened
-      .prepare('select body from notes order by id')
+      .prepare('select body from memo order by id')
       .all()
       .map((row) => row.body),
     ['flushed', 'closed'],
@@ -214,17 +214,17 @@ void test('a public module with migrations receives its own migrated database', 
   const { openDb } = await import('./db/index.ts');
   const fastify = (await import('fastify')).default;
   const root = await scratch(t);
-  await writeModule(root, 'notes', 'migrations: $FOLDER,', createNotes);
+  await writeModule(root, 'memo', 'migrations: $FOLDER,', createMemo);
   const db = openDb(':memory:');
   const closes: Array<() => void | Promise<void>> = [];
   let created = false;
   const module = defineModule({
-    name: 'public-notes',
-    migrations: join(root, 'notes', 'drizzle'),
+    name: 'public-memo',
+    migrations: join(root, 'memo', 'drizzle'),
     create: ({ db: own }) => {
       created = true;
       assert.notEqual(own, db);
-      assert.ok(own.$client.prepare("select name from sqlite_master where name = 'notes'").get());
+      assert.ok(own.$client.prepare("select name from sqlite_master where name = 'memo'").get());
       return { router: router({}) };
     },
   });

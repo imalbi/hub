@@ -17,6 +17,7 @@ const publicNames: Record<string, () => string> = {
   weather: m.weather_title,
   sites: m.sites_title,
   study: m.zone_study,
+  notes: m.notes_title,
 };
 
 /** What the list calls a module: Italian copy for the public ones, the zone's label or its own copy title for a private one, else its name. */

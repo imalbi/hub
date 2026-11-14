@@ -155,6 +155,7 @@ test('Panoramica offers every widget, the ones that also have a page included', 
     'Consumo',
     'Dispositivi',
     'Aspetto',
+    'Post-it',
   ]);
   await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Aspetto' }).click());
   await expect(cell(page, 'theme')).toBeVisible();

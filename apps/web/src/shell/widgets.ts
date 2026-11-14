@@ -24,7 +24,7 @@ export const widgets: Array<{
   sizes: readonly WidgetSize[];
   component: ComponentType<{ size: WidgetSize }>;
 }> = [
-  { id: 'today', label: m.today_title, sizes: ['wide'], component: TodayWidget },
+  { id: 'today', label: m.today_title, sizes: ['wide', 'full'], component: TodayWidget },
   { id: 'pomodoro', label: m.pomodoro_title, sizes: ['small', 'medium', 'large', 'wide'], component: PomodoroWidget },
   { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide'], component: MediaWidget },
   { id: 'server', label: m.server_panel_title, sizes: ['small', 'medium', 'wide'], component: ServerWidget },

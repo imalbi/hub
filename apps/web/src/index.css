@@ -35,6 +35,8 @@
   --spacing-ball: 3.5rem;
   /* The rail centres itself below this line, so a tall rail (many modules) never runs under the ball. */
   --spacing-ball-clear: calc(var(--spacing-md) + var(--spacing-ball) + var(--spacing-sm));
+  /* Minimum height of a post-it card in the Post-it widget (110 px on the 1280 board). */
+  --spacing-note: 6.875rem;
   --spacing-icon-sm: 1rem;
   --spacing-icon: 1.25rem;
   --spacing-icon-lg: 1.5rem;

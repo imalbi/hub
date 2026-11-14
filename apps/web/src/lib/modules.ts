@@ -2,6 +2,8 @@ import { SitesSection, SitesWidget } from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
 import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
+import { NotesColumn } from '../modules/notes/today.tsx';
+import { NotesWidget } from '../modules/notes/widget.tsx';
 import { StudyLibrary } from '../modules/study/library.tsx';
 import { StudyPlan } from '../modules/study/plan.tsx';
 import { StudyPlans } from '../modules/study/plans.tsx';
@@ -34,6 +36,14 @@ export const moduleUIs: ModuleUI[] = [
     name: 'mail',
     copy: {},
     sections: [{ zone: 'messages', id: 'mail', label: m.module_mail, component: PostaSection, fill: true }],
+  },
+  {
+    name: 'notes',
+    copy: {},
+    todayColumn: NotesColumn,
+    widgets: [
+      { id: 'notes', label: m.notes_title, sizes: ['medium', 'large', 'wide', 'full'], component: NotesWidget },
+    ],
   },
   ...[...Object.values(local), ...Object.values(examples)].map((module) => module.default),
 ];

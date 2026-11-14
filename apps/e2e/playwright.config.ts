@@ -80,6 +80,8 @@ export default defineConfig({
               'activity.spec.ts',
               'themes.spec.ts',
               'widgets.spec.ts',
+              'notes.spec.ts',
+              'notes.visual.spec.ts',
               'sites.spec.ts',
               'study.spec.ts',
               'study-today.spec.ts',

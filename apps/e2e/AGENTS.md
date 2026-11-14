@@ -173,3 +173,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - Sistema landmarks are the regions `Questo PC`, `Audio`, `Consumo`, `Server`; each row is a `group` (fieldset) named by its label with a button such as `Apri o chiudi Chat`. "No powerstat" is tested by rewriting the `system.onPower` subscription data to null on the socket (the fake always has a powerstat dir).
 - The desk project launches Chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; the webcam spec reads `srcObject` tracks through an element handle and checks `readyState` is `ended` after close and after a route change (poll: unmount is not synchronous with the heading). The denied and missing cases override `getUserMedia` in an init script.
 - Baselines: `desk-system` (rewritten), `desk-system-4k`, `desk-system-paper`, `deck-system` (monitor tile), `desk-system-example` (example row in Questo PC, state line masked).
+
+## Post-it (step 38)
+
+- `notes.spec.ts` uses `page.clock.install` at 10:00 so the card starts on Oggi, adds an agent note through `/mcp` on the fake server port, and removes every note in `afterEach` through the API. Wait for the board before pressing `n` (the shortcut binds after the first render). Regions: `Post-it` (use `exact: true`, Oggi's column is `Post-it per oggi`), `Oggi` (also `exact: true`). `notes.visual.spec.ts` freezes the subscription data; baselines `notes-oggi`, `notes-widget`, `notes-capture` at 1920 and `-4k`, plus `-paper`.

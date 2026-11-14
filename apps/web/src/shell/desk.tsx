@@ -11,8 +11,12 @@ import { ActivityBall } from './activity.tsx';
 import { HeaderSlot } from './header-slot.tsx';
 import { RestartScreen } from '../settings/restart-screen.tsx';
 import { AgentConfirmation } from './agent-confirmation.tsx';
+import { useIsOn } from '../lib/enabled-modules.ts';
+import { NoteCapture } from '../modules/notes/capture.tsx';
+import { openCapture } from '../modules/notes/store.ts';
+import { NoteUndoToast } from '../modules/notes/undo-toast.tsx';
 
-/** The desk frame: theme, backdrop, rail (zones, palette, status), the activity ball, the top-right page actions, keys 1-9 and the zone grid the child routes render into. */
+/** The desk frame: theme, backdrop, rail (zones, palette, status), the activity ball, the top-right page actions, keys 1-9, N for a post-it and the zone grid the child routes render into. */
 export function DeskShell() {
   useLayout('desk');
   const zones = useZones();
@@ -21,6 +25,7 @@ export function DeskShell() {
   // A callback ref into state, so zones can portal their actions into the header once it exists.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const active = zoneAt(location.pathname, zones);
+  const notesOn = useIsOn()('notes');
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
@@ -30,6 +35,12 @@ export function DeskShell() {
         event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
       )
         return;
+      // N opens the post-it card from any desk page, unless a dialog (the palette, a card already open) is on screen.
+      if (notesOn && event.key.toLowerCase() === 'n' && !document.querySelector('dialog[open]')) {
+        event.preventDefault();
+        openCapture();
+        return;
+      }
       const zone = /^[1-9]$/.test(event.key) ? zones[Number(event.key) - 1] : undefined;
       if (zone) {
         event.preventDefault();
@@ -38,12 +49,14 @@ export function DeskShell() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate, zones]);
+  }, [navigate, notesOn, zones]);
   return (
     <ThemeProvider remote>
       <MediaProvider>
         <RestartScreen />
         <AgentConfirmation />
+        {notesOn && <NoteCapture />}
+        {notesOn && <NoteUndoToast />}
         <DeskBackdrop media={location.pathname === '/desk/media'} />
         <DeskRail pathname={location.pathname} />
         <ActivityBall />
