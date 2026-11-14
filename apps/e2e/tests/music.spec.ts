@@ -213,12 +213,19 @@ test('favorites are available as a view and can seed the radio', async ({ page }
   await expect(page.getByText('Nessun brano ascoltato')).toBeVisible();
 });
 
-test('Ascolta shows the recent songs once each and a tile plays', async ({ page }) => {
-  const row = { id: 'recent00001', title: 'Vecchio brano', artist: 'Artista', playedAt: 1 };
-  await answerQueries(page, { 'music.history': [row, { ...row, playedAt: 2 }] });
+test('Ascolta shows the recent songs with their covers and a tile plays', async ({ page }) => {
+  const cover = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  await answerQueries(page, {
+    'music.recent': [
+      { id: 'recent00001', title: 'Vecchio brano', artist: 'Artista', cover },
+      { id: 'recent00002', title: 'Senza copertina', artist: 'Artista', cover: null },
+    ],
+  });
   await page.goto('/desk/media');
   const recent = page.getByRole('region', { name: 'Ascoltati di recente' });
-  await expect(recent.getByRole('listitem')).toHaveCount(1);
+  await expect(recent.getByRole('listitem')).toHaveCount(2);
+  await expect(recent.getByRole('listitem').first().locator('img')).toHaveAttribute('src', cover);
+  await expect(recent.getByRole('listitem').nth(1).locator('img')).toHaveCount(0);
   const request = page.waitForRequest((r) => r.url().includes('music.play') && r.method() === 'POST');
   await recent.getByRole('button', { name: 'Riproduci Vecchio brano' }).click();
   expect((await request).postData()).toContain('recent00001');
@@ -321,9 +328,9 @@ test('Ascolta lays the recent songs in five columns and Prossimi in two', async 
     id: `recent0000${n}`,
     title: `Vecchio ${n}`,
     artist: 'Artista',
-    playedAt: n,
+    cover: null,
   }));
-  await answerQueries(page, { 'music.history': rows });
+  await answerQueries(page, { 'music.recent': rows });
   await page.goto('/desk/media');
   const recent = page.getByRole('region', { name: 'Ascoltati di recente' });
   await expect(recent.getByRole('listitem')).toHaveCount(5);

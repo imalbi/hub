@@ -247,6 +247,22 @@ test('Posta shows only its unread count and hides the badge at zero', async ({ p
   }
 });
 
+test('the Sistema page has a tile per configured monitor that shows its state and toggles it', async ({ page, pc }) => {
+  await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+  try {
+    const system = page.getByRole('region', { name: 'Sistema' });
+    const vertical = system.getByRole('button', { name: /^Monitor verticale:/ });
+    await expect(vertical).toHaveAccessibleName('Monitor verticale: Spento');
+    await expect(vertical.locator('svg')).toHaveAttribute('data-weight', 'regular');
+    await vertical.click();
+    await expect(vertical).toHaveAccessibleName('Monitor verticale: Acceso');
+    await expect(vertical.locator('svg')).toHaveAttribute('data-weight', 'fill');
+  } finally {
+    await pc.post(`${SERVER_URL}/__fake/monitor`, { data: { output: 'DP-2', disabled: true } });
+    await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+  }
+});
+
 test('Scrivania presents the requested controls in order', async ({ page }) => {
   const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
   await expect(desk.getByRole('button', { name: /^Hub:/ })).toBeVisible();

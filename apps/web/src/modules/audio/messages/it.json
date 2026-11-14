@@ -10,5 +10,10 @@
   "audio_volume_up": "Alza volume",
   "audio_microphone": "Microfono",
   "audio_muted": "Disattivato",
-  "audio_unmuted": "Attivo"
+  "audio_unmuted": "Attivo",
+  "audio_output_label": "Uscita",
+  "audio_output_on": "Attiva",
+  "audio_output_off": "Disattivata",
+  "audio_mute_action": "Silenzia",
+  "audio_panel_title": "Audio"
 }

@@ -3,6 +3,7 @@ import { parsePwDump, parseVolume } from './modules/audio/pipewire.ts';
 import { loadConfig } from './core/config.ts';
 import { MEDIA_FORMAT, parseMediaState } from './modules/media/playerctl.ts';
 import { createNewsLive } from './modules/news/page.ts';
+import { parseMonitorList } from './modules/system/monitor.ts';
 import { createPowerLive } from './modules/system/power.ts';
 import { ENVELOPE_SCHEMA_ARGS, missingEnvelopeFields } from './modules/mail/himalaya.ts';
 
@@ -69,6 +70,15 @@ function judgeToggleHelp(result: RunResult): Verdict {
     : { status: 'unparseable', detail: result.code === 0 ? 'workspace argument not listed' : exitDetail(result) };
 }
 
+// Reads the monitor list, off ones included, the way the Monitor rows do. Never the toggle: that needs the owner's script.
+function judgeMonitors(result: RunResult): Verdict {
+  if (result.code !== 0) return { status: 'unparseable', detail: exitDetail(result) };
+  const listed = parseMonitorList(result.stdout);
+  return listed
+    ? { status: 'ok', detail: `${listed.length} monitors listed` }
+    : { status: 'unparseable', detail: 'unknown monitors format' };
+}
+
 function judgePwDump(result: RunResult): Verdict {
   if (result.code !== 0) return { status: 'unparseable', detail: exitDetail(result) };
   const { sinks, defaultName } = parsePwDump(result.stdout);
@@ -110,6 +120,7 @@ const checks = [
   { name: 'busctl --version', bin: 'busctl', args: ['--version'], judge: judgeVersion },
   // Lists the shell's IPC targets without calling one: the lock action needs `lock lock`.
   { name: 'caelestia shell -s', bin: 'caelestia', args: ['shell', '-s'], judge: judgeLockTarget },
+  { name: 'hyprctl monitors all -j', bin: 'hyprctl', args: ['monitors', 'all', '-j'], judge: judgeMonitors },
   { name: 'caelestia toggle --help', bin: 'caelestia', args: ['toggle', '--help'], judge: judgeToggleHelp },
   // Mail: the binary, and the listing fields Hub reads against himalaya's schema. Never an account command.
   { name: 'himalaya --version', bin: 'himalaya', args: ['--version'], judge: judgeVersion },

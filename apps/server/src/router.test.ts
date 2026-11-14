@@ -104,6 +104,7 @@ void test('every mutation carries an Italian label and an English description in
     'study.setStep',
     'study.setSubject',
     'system.lock',
+    'system.monitor.toggle',
     'system.powerOff',
     'system.reboot',
     'system.suspend',

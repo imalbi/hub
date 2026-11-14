@@ -23,7 +23,7 @@ void test('a missing config file is an empty config', () => {
     server: { host: '127.0.0.1', allowedOrigins: [] },
     pomodoro: { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },
     theme: {},
-    system: {},
+    system: { monitors: [] },
     news: {},
     sites: [],
     study: { plansDir: '', materialDirs: [] },

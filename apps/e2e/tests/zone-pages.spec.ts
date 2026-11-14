@@ -9,7 +9,7 @@ const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 const pages = [
   { path: '/desk/studio', landmark: { role: 'region', name: 'Pomodoro' } },
   { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
-  { path: '/desk/system', landmark: { role: 'region', name: 'Comandi' } },
+  { path: '/desk/system', landmark: { role: 'region', name: 'Questo PC' } },
   { path: '/desk/devices', landmark: { role: 'region', name: 'Chi ha accesso' } },
   { path: '/desk/settings', landmark: { role: 'navigation', name: 'Sezioni' } },
 ] as const;
@@ -18,7 +18,7 @@ const pages = [
 const surfacePages = [
   { path: '/desk/studio', landmark: { role: 'region', name: 'Pomodoro' } },
   { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
-  { path: '/desk/system', landmark: { role: 'region', name: 'Comandi' } },
+  { path: '/desk/system', landmark: { role: 'region', name: 'Questo PC' } },
   { path: '/desk/devices', landmark: { role: 'region', name: 'Chi ha accesso' } },
   { path: '/desk/messaggi', landmark: { role: 'region', name: 'Posta in arrivo' } },
 ] as const;
@@ -154,7 +154,8 @@ test('the core settings actions stay in view while the form scrolls past it', as
 test('the content scrolls to the last row while the title stays fixed', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 500 });
   await page.goto('/desk/system');
-  const outputs = page.getByRole('toolbar', { name: 'Uscite configurate' });
+  // The Server reading is the last thing on the page, at the foot of the Audio panel.
+  const outputs = page.getByRole('region', { name: 'Server' });
   await expect(outputs).toBeVisible();
   // Sistema has tabs (Sistema, Job), so its tab panel is the scroller under the fixed bar.
   const content = page.getByRole('tabpanel');

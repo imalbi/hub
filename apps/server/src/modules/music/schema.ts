@@ -4,6 +4,8 @@ export const history = sqliteTable('history', {
   id: text('id').notNull(),
   title: text('title').notNull(),
   artist: text('artist').notNull(),
+  /** The artwork URL the song had when it played; the cover itself is fetched through the proxy, never stored. */
+  cover: text('cover'),
   playedAt: integer('played_at').notNull(),
 });
 

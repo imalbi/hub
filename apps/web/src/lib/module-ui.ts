@@ -37,6 +37,12 @@ export type ModuleUI = {
    */
   deviceRows?: ComponentType | ComponentType[];
   /**
+   * One row in "Questo PC" of Sistema, after Webcam and the configured monitors and before Alimentazione, rendered in
+   * module order while the module is on. Same shape and rule as `deviceRows`: each component is one `DeviceRow` (or
+   * any element that fits a dashed list) and may return null until it has data, which leaves no gap.
+   */
+  systemRows?: ComponentType | ComponentType[];
+  /**
    * `page` names an existing deck page to add the tiles to, instead of a page of their own. Tiles are appended; `at`
    * inserts them at that index instead, and then `page: 'desk'` means Scrivania itself, not its overflow page Scrivania 2.
    */

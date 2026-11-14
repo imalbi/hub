@@ -1,10 +1,18 @@
 import { readFileSync } from 'node:fs';
+import { z } from 'zod';
 import type { Run, RunResult, StreamSpawn } from '../core/exec.ts';
 import { parsePwDump } from '../modules/audio/pipewire.ts';
 import { createFakeHimalaya } from './fake-himalaya.ts';
 
 const dump = readFileSync(new URL('../modules/audio/fixtures/pw-dump.json', import.meta.url), 'utf8');
 const { sinks, defaultName } = parsePwDump(dump);
+const monitorFixture = readFileSync(new URL('../modules/system/fixtures/monitors.json', import.meta.url), 'utf8');
+/** The fixture's monitors by output name, true when disabled: the default state of the fake's `monitors` option. */
+export const fakeMonitors = (): Record<string, boolean> =>
+  Object.fromEntries(parseMonitorFixture().map(({ name, disabled }) => [name, disabled]));
+function parseMonitorFixture(): { name: string; disabled: boolean }[] {
+  return z.array(z.object({ name: z.string(), disabled: z.boolean() }).loose()).parse(JSON.parse(monitorFixture));
+}
 
 const ok = (stdout = ''): RunResult => ({ stdout, stderr: '', code: 0 });
 const refused: RunResult = { stdout: '', stderr: 'fake desktop: command not supported', code: 127 };
@@ -36,6 +44,7 @@ export function createFakeDesktop({
   news = [],
   mail = [],
   player = { gone: false },
+  monitors = fakeMonitors(),
 }: {
   notifications?: string[][];
   sounds?: string[];
@@ -43,6 +52,8 @@ export function createFakeDesktop({
   news?: string[][];
   /** Set `gone` to make every playerctl read answer "No players found" (the e2e hook `/__fake/player`). */
   player?: { gone: boolean };
+  /** Disabled flag per output name, answered as `hyprctl monitors all -j` and flipped by `fake-monitor-<output>` (the e2e hook `/__fake/monitor` sets it too). */
+  monitors?: Record<string, boolean>;
   /** Every `himalaya` argv the fake was asked, refused ones included. */
   mail?: string[][];
 } = {}): Run {
@@ -86,6 +97,18 @@ export function createFakeDesktop({
       ].includes(systemCommand)
     ) {
       system.push([bin, ...args]);
+      return Promise.resolve(ok());
+    }
+    if (bin === 'hyprctl' && systemCommand === 'hyprctl monitors all -j') {
+      const listed = parseMonitorFixture().map((monitor) => ({ ...monitor, disabled: monitors[monitor.name] ?? true }));
+      return Promise.resolve(ok(JSON.stringify(listed)));
+    }
+    // The owner's toggle script, by name: it flips the monitor it is named after and is recorded like the other commands.
+    const toggled =
+      bin.startsWith('fake-monitor-') && args.length === 0 ? bin.slice('fake-monitor-'.length) : undefined;
+    if (toggled !== undefined && toggled in monitors) {
+      monitors[toggled] = !monitors[toggled];
+      system.push([bin]);
       return Promise.resolve(ok());
     }
     if (bin === 'airplay') {

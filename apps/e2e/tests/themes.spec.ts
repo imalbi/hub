@@ -3,7 +3,7 @@ import { restoreDesktop } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { SERVER_URL } from './hosts.ts';
 import { ballOf } from './ball.ts';
-import { chooseTheme, restoreScheme, themeSettled, writeScheme } from './themes.ts';
+import { chooseTheme, createFrom, restoreScheme, themeSettled, writeScheme } from './themes.ts';
 
 const builtIn = ['Scuro', 'Chiaro', 'Muschio', 'Pietra', 'Notte', 'Brace', 'Laguna', 'Caelestia'];
 const json = { 'content-type': 'application/json' };
@@ -38,7 +38,7 @@ test.beforeEach(async ({ page }) => {
 
 test('every theme is one row with its name, a note and five swatches drawn in its own colors', async ({ page }) => {
   const rows = page.locator('fieldset li');
-  await expect(rows).toHaveCount(builtIn.length);
+  await expect(rows).toHaveCount(builtIn.length + 1);
   const grounds = new Set<string>();
   for (const [index, name] of builtIn.entries()) {
     await expect(page.getByRole('radio', { name, exact: true })).toBeAttached();
@@ -48,7 +48,8 @@ test('every theme is one row with its name, a note and five swatches drawn in it
   }
   expect(grounds.size).toBe(builtIn.length);
   await expect(rows.first()).toContainText('neutro');
-  await expect(page.getByRole('button', { name: 'Duplica Muschio' })).toBeVisible();
+  await expect(rows.last().getByRole('button', { name: 'Crea un tema' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Duplica/ })).toHaveCount(0);
 });
 
 test('native controls follow the theme, so the date picker icon is readable in the dark ones', async ({ page }) => {
@@ -93,7 +94,7 @@ for (const theme of [
   { name: 'Brace', id: 'ember', accent: 'Corallo' },
   { name: 'Laguna', id: 'lagoon', accent: 'Rosa' },
 ]) {
-  test(`${theme.name} applies on click, survives a reload and Duplica opens the editor with its seed`, async ({
+  test(`${theme.name} applies on click, survives a reload and a theme created from it starts from its seed`, async ({
     page,
   }) => {
     const html = page.locator('html');
@@ -104,7 +105,7 @@ for (const theme of [
     await expect(page.getByRole('radio', { name: theme.name, exact: true })).toBeChecked();
     await expect(html).toHaveCSS('color-scheme', 'dark');
 
-    await page.getByRole('button', { name: `Duplica ${theme.name}` }).click();
+    await page.getByRole('button', { name: 'Crea un tema' }).click();
     const editor = editorOf(page);
     await expect(editor.getByRole('radio', { name: theme.accent, exact: true })).toBeChecked();
     await expect(editor.getByRole('slider', { name: 'Contrasto', exact: true })).toHaveValue('70');
@@ -119,7 +120,7 @@ test('the editor recolors the desk live, refuses weak contrast with its reason, 
   pc,
 }) => {
   try {
-    await page.getByRole('button', { name: 'Duplica Muschio' }).click();
+    await createFrom(page, 'Muschio');
     const editor = editorOf(page);
     await expect(editor).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'draft');
@@ -182,7 +183,7 @@ test('the editor recolors the desk live, refuses weak contrast with its reason, 
 test('a role set by hand is marked manual, can return to its computed color and counts in the contrast check', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: 'Duplica Scuro' }).click();
+  await createFrom(page, 'Scuro');
   const editor = editorOf(page);
   await expect(editor.getByText('manuale', { exact: true })).toHaveCount(0);
   const roles = editor.locator('details');

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
-import { chooseTheme } from './themes.ts';
+import { chooseTheme, createFrom } from './themes.ts';
 import { answerQueries } from './desktop.ts';
 import { PC_URL } from './hosts.ts';
 
@@ -122,6 +122,8 @@ for (const zone of [
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
+    if (zone.name === 'Sistema')
+      await expect(page.getByRole('group', { name: 'Monitor verticale' })).toContainText('Spento');
     if (zone.name === 'Dispositivi') await expect(page.getByText('Ultimo accesso: 5 min fa')).toBeVisible();
     if (zone.name === 'Media') {
       await expect(page.getByRole('img', { name: 'Copertina di Title' })).toBeVisible();
@@ -190,6 +192,31 @@ test('the overview in paper matches the baseline', async ({ page }) => {
   await expect(page).toHaveScreenshot('desk-paper.png', { animations: 'disabled' });
 });
 
+test('Sistema at 4K matches the baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/system');
+  await expect(page.getByRole('region', { name: 'Questo PC' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Monitor verticale' })).toContainText('Spento');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-system-4k.png', { animations: 'disabled' });
+});
+
+test('Sistema in paper matches the baseline', async ({ page }) => {
+  await page.goto('/desk/settings/appearance');
+  await chooseTheme(page, 'Chiaro');
+  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Sistema', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Questo PC' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Monitor verticale' })).toContainText('Spento');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('desk-system-paper.png', { animations: 'disabled' });
+});
+
 test('Media in paper frosts the floating controls and matches the baseline', async ({ page }) => {
   await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
@@ -220,7 +247,7 @@ for (const theme of [
 
 test('the theme editor flags unreadable text and matches the baseline', async ({ page }) => {
   await page.goto('/desk/settings/appearance');
-  await page.getByRole('button', { name: 'Duplica Pietra' }).click();
+  await createFrom(page, 'Pietra');
   const editor = page.getByRole('form', { name: 'Nuovo tema' });
   await editor.getByRole('slider', { name: 'Contrasto', exact: true }).focus();
   await page.keyboard.press('Home');

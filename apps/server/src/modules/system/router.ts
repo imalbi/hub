@@ -1,3 +1,5 @@
+import type { MonitorConfig } from './config.ts';
+import { readMonitors, type MonitorLive } from './monitor.ts';
 import type { PowerLive } from './power.ts';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
@@ -10,10 +12,38 @@ async function command(ctx: Context, bin: string, args: string[]) {
 
 const confirmed = z.object({ confirmed: z.literal(true) });
 
-export function createSystemRouter(power: PowerLive) {
+// A zod enum of the configured outputs refuses anything else (and shows the choices to agents); an empty list has no
+// enum to build, so the toggle takes any string and answers 412 itself.
+function monitorInput(entries: readonly MonitorConfig[]) {
+  const [first, ...rest] = entries.map(({ output }) => output);
+  return z.object({ output: first === undefined ? z.string() : z.enum([first, ...rest]) });
+}
+
+export function createSystemRouter(
+  power: PowerLive,
+  monitors: { entries: readonly MonitorConfig[]; live: MonitorLive },
+) {
   return router({
     power: protectedProcedure.query(() => power.read()),
     onPower: protectedProcedure.subscription(({ signal }) => power.subscribe(signal)),
+
+    monitors: protectedProcedure.query(({ ctx }) => readMonitors(ctx.run, monitors.entries)),
+    onMonitors: protectedProcedure.subscription(({ signal }) => monitors.live.subscribe(signal)),
+    monitor: router({
+      // The entry's own command flips the monitor: re-enabling needs its geometry, which stays in the owner's script.
+      toggle: protectedProcedure
+        .meta({
+          label: 'Accendi o spegni monitor',
+          description: 'Turn one of the configured extra monitors on or off, whichever it is not now',
+        })
+        .input(monitorInput(monitors.entries))
+        .mutation(async ({ ctx, input }) => {
+          const entry = monitors.entries.find(({ output }) => output === input.output);
+          if (!entry) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'No monitor is configured' });
+          await command(ctx, entry.command, []);
+          void monitors.live.notify();
+        }),
+    }),
 
     // Caelestia's own lock screen, the one Super+L opens. `loginctl lock-session` needs a login session, which a user
     // service does not have.

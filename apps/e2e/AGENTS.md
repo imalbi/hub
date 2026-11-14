@@ -166,3 +166,10 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 - The light glass differs from the solid surface by a few percent of luminance, so `desk-paper`, `desk-media-paper` and `desk-stone` passed under the 0.2 threshold with the old baselines; they were rewritten with `--update-snapshots all -g "in paper|in Pietra"` and the pixels checked. `--update-snapshots changed` alone would have left them stale.
 - `themes.spec.ts` `glassRatios` computes text on the glass over the worst ground (the glow, a black cover at the backdrop opacity, the glass alpha), reading colors through a canvas so `color-mix` values work. New built-ins have per-theme rows (apply, reload, Duplica seed) and the new baselines `desk-night`, `desk-ember`, `desk-lagoon`.
+
+## Sistema rows, monitors and webcam (step 34)
+
+- The fake config has one monitor, `Monitor verticale` (output `DP-2`, starts off; `fake-monitor-DP-2` flips it, recorded in `/__fake/system`). Two monitors are covered by the server integration test only: with two rows the 1080p page overflows its surface. `POST ${SERVER_URL}/__fake/monitor` plays the owner's shortcut; the row catches up at the next 5 s poll, so that wait has a long timeout. Put the monitor back in `finally`.
+- Sistema landmarks are the regions `Questo PC`, `Audio`, `Consumo`, `Server`; each row is a `group` (fieldset) named by its label with a button such as `Apri o chiudi Chat`. "No powerstat" is tested by rewriting the `system.onPower` subscription data to null on the socket (the fake always has a powerstat dir).
+- The desk project launches Chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; the webcam spec reads `srcObject` tracks through an element handle and checks `readyState` is `ended` after close and after a route change (poll: unmount is not synchronous with the heading). The denied and missing cases override `getUserMedia` in an init script.
+- Baselines: `desk-system` (rewritten), `desk-system-4k`, `desk-system-paper`, `deck-system` (monitor tile), `desk-system-example` (example row in Questo PC, state line masked).

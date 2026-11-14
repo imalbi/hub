@@ -10,7 +10,7 @@ import type { IsLoopback } from '../core/auth.ts';
 import { z } from 'zod';
 import { configSchema, emptyConfig, type Config } from '../core/config.ts';
 import { hueStateSchema } from '../integrations/hue/contracts.ts';
-import { createFakeDesktop, fakeStreamSpawn } from './fake-desktop.ts';
+import { createFakeDesktop, fakeMonitors, fakeStreamSpawn } from './fake-desktop.ts';
 import type { createJobRunner } from '../core/jobs.ts';
 import { getFakeHue } from './fake-hue.ts';
 import { buildServer } from '../server.ts';
@@ -68,7 +68,11 @@ const config: Config = {
   },
   server: { host: '127.0.0.1', allowedOrigins: [`http://localhost:${webPort}`, `http://127.0.0.1:${webPort}`] },
   theme: { caelestiaScheme },
-  system: { powerstatDir },
+  system: {
+    powerstatDir,
+    // The fake desktop answers `fake-monitor-<output>` by flipping that output; DP-2 starts off, as in its fixture.
+    monitors: [{ output: 'DP-2', label: 'Monitor verticale', command: 'fake-monitor-DP-2' }],
+  },
   news: { page: newsPage, command: 'webdigest' },
   mail: {
     accounts: [
@@ -99,6 +103,7 @@ let jobs: ReturnType<typeof createJobRunner> | undefined;
 const mailCalls: string[][] = [];
 const systemCalls: string[][] = [];
 const player = { gone: false };
+const monitors = fakeMonitors();
 
 /** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
@@ -147,7 +152,7 @@ function build() {
       fixtureDb.$client.close();
     }
   }
-  const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls, player });
+  const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls, player, monitors });
   const run: Run = (bin, args, options) => {
     if (failMail && bin === 'himalaya' && args.includes('envelope') && args.includes('25'))
       return Promise.resolve({ stdout: '', stderr: '', code: 1 });
@@ -282,6 +287,13 @@ function hooks(server: typeof app) {
     if (!body.success) return reply.code(400).send();
     player.gone = body.data.gone;
     return { gone: player.gone };
+  });
+  // The owner's keyboard shortcut: the monitor changes without Hub being asked, and the poll has to notice.
+  server.post('/__fake/monitor', (request, reply) => {
+    const body = z.object({ output: z.string(), disabled: z.boolean() }).safeParse(request.body);
+    if (!body.success || !(body.data.output in monitors)) return reply.code(400).send();
+    monitors[body.data.output] = body.data.disabled;
+    return { monitors };
   });
   server.post('/__fake/sites', (request, reply) => {
     const body = z.object({ enabled: z.boolean() }).safeParse(request.body);

@@ -87,6 +87,7 @@
   "duration_seconds": "{value} s",
   "duration_minutes": "{value} min",
   "duration_hours": "{value} h",
+  "duration_hours_minutes": "{hours} h {minutes} min",
   "widget_size_full": "Esteso",
   "hold_holding": "Continua a tenere",
   "hold_pending": "In corso",

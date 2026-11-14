@@ -15,10 +15,8 @@ export function Listen({
   onArtist: (id: string) => void;
 }) {
   const trpc = useTRPC();
-  const history = useQuery(trpc.music.history.queryOptions());
+  const recent = useQuery(trpc.music.recent.queryOptions()).data ?? [];
   const skip = useMutation(trpc.music.skip.mutationOptions());
-  // The history keeps one row per listen: a song heard twice is one tile.
-  const recent = [...new Map((history.data ?? []).map((row) => [row.id, row])).values()].slice(0, 5);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-lg">
       {recent.length > 0 && (
@@ -35,7 +33,7 @@ export function Listen({
                   className="flex w-full flex-col gap-xs text-left focus-visible:outline-2 focus-visible:outline-ring"
                   onClick={() => onPlay(song.id)}
                 >
-                  <CoverTile className="aspect-square w-full rounded-lg" />
+                  <CoverTile src={song.cover} className="aspect-square w-full rounded-lg" />
                   <span className="truncate text-label">{song.title}</span>
                   <span className="-mt-xs truncate text-caption text-muted-foreground">{song.artist}</span>
                 </button>

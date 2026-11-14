@@ -58,6 +58,33 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     }
   });
 
+  test('an example row in Sistema sits in Questo PC after Webcam and before Alimentazione', async ({ page }) => {
+    // The uptime figure moves with the run; the baseline pins it like the other visual specs.
+    await page.route('**/trpc/health*', (route) =>
+      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
+    );
+    await page.goto('/desk/system');
+    const pc = page.getByRole('region', { name: 'Questo PC' });
+    const rows = pc.getByRole('group');
+    await expect(rows.last()).toHaveAccessibleName('Alimentazione');
+    const names = await rows.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('aria-label') ?? node.tagName),
+    );
+    const example = names.indexOf('Esempio');
+    expect(example).toBeGreaterThan(names.indexOf('Webcam'));
+    // The holds' fieldset is named by its legend, so it has no aria-label and is the last group.
+    expect(example).toBeLessThan(names.length - 1);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    await page.mouse.move(0, 0);
+    // The example row counts greetings other specs change, so its state line is masked.
+    await expect(page).toHaveScreenshot('desk-system-example.png', {
+      animations: 'disabled',
+      mask: [pc.getByRole('group', { name: 'Esempio' }).locator('p')],
+    });
+  });
+
   test('the example module puts one row in the Dispositivi list of this PC', async ({ page, request }) => {
     await page.goto('/desk/devices');
     const row = page.getByRole('region', { name: 'Collegati a questo PC' }).getByRole('group', { name: 'Esempio' });

@@ -56,6 +56,7 @@ void test('every check is ok on a healthy desktop', async () => {
     ['systemctl --version', 'ok'],
     ['busctl --version', 'ok'],
     ['caelestia shell -s', 'ok'],
+    ['hyprctl monitors all -j', 'ok'],
     ['caelestia toggle --help', 'ok'],
     ['himalaya --version', 'ok'],
     ['himalaya envelope schema', 'ok'],
@@ -76,6 +77,7 @@ void test('only read-only commands are run', async () => {
     'caelestia toggle',
     'himalaya --version',
     'himalaya json-schema',
+    'hyprctl monitors',
     'notify-send --help',
     'pdftotext -v',
     'playerctl --player=mpv',
@@ -106,6 +108,7 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['systemctl --version', 'ok'],
     ['busctl --version', 'ok'],
     ['caelestia shell -s', 'ok'],
+    ['hyprctl monitors all -j', 'ok'],
     ['caelestia toggle --help', 'ok'],
     ['himalaya --version', 'ok'],
     ['himalaya envelope schema', 'ok'],
@@ -196,4 +199,20 @@ void test('mpv status accepts known states and rejects unknown output', async ()
     );
     assert.equal(results.find((r) => r.name === 'playerctl --player=mpv status')?.status, expected);
   }
+});
+
+const monitorCheck = (results: Awaited<ReturnType<typeof runSmoke>>) =>
+  results.find((result) => result.name === 'hyprctl monitors all -j')?.status;
+
+void test('the monitor list check fails on a reshaped answer and a failing hyprctl', async () => {
+  assert.equal(
+    monitorCheck(await runSmoke(healthy((bin) => (bin === 'hyprctl' ? ok('{"monitors":[]}') : undefined)))),
+    'unparseable',
+  );
+  assert.equal(
+    monitorCheck(
+      await runSmoke(healthy((bin) => (bin === 'hyprctl' ? { stdout: '', stderr: 'no', code: 1 } : undefined))),
+    ),
+    'unparseable',
+  );
 });

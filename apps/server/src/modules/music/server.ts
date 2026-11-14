@@ -124,6 +124,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                       id: track.id,
                       title: track.title,
                       artist: track.artists.map((artist) => artist.name).join(', '),
+                      cover: track.cover ?? null,
                       playedAt: Date.now(),
                     })
                     .run();
@@ -437,6 +438,26 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
             }),
           favorites: protectedProcedure.query(() => db.select().from(favorites).orderBy(desc(favorites.addedAt)).all()),
           history: protectedProcedure.query(() => db.select().from(history).orderBy(desc(history.playedAt)).all()),
+          /** The last five distinct songs with their covers, for the Ascolta tiles. */
+          recent: protectedProcedure.query(async () => {
+            const seen = new Map<string, typeof history.$inferSelect>();
+            for (const row of db.select().from(history).orderBy(desc(history.playedAt)).limit(200).all()) {
+              if (!seen.has(row.id)) seen.set(row.id, row);
+              if (seen.size === 5) break;
+            }
+            return Promise.all(
+              [...seen.values()].map(async ({ id, title, artist, cover: source }) => ({
+                id,
+                title,
+                artist,
+                // The tile is large: ask Google's artwork at 544 px instead of the 60 px search size. Rows from
+                // before the cover column fall back to the video thumbnail, as playlists do.
+                cover: await cover(
+                  source?.replace(/=w\d+-h\d+/, '=w544-h544') ?? `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
+                ),
+              })),
+            );
+          }),
           toggleFavorite: protectedProcedure
             .meta({ label: 'Preferito', description: 'Toggle a favorite track' })
             .input(

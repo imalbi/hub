@@ -93,7 +93,12 @@ export default defineConfig({
               'settings.spec.ts',
               'settings.visual.spec.ts',
             ],
-      use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
+      use: {
+        baseURL: PC_URL,
+        viewport: { width: 1920, height: 1080 },
+        // Chromium's own fake camera and microphone, with the permission prompt answered: the webcam preview runs for real.
+        launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
+      },
     },
     ...(privateFolder
       ? [

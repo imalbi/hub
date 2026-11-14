@@ -10,6 +10,12 @@ export async function chooseTheme(page: Page, name: string) {
   await themeSettled(page);
 }
 
+/** The editor opens on "Crea un tema", starting from the chosen theme. */
+export async function createFrom(page: Page, name: string) {
+  await chooseTheme(page, name);
+  await page.getByRole('button', { name: 'Crea un tema' }).click();
+}
+
 /** Theme colors glide over --motion-standard; measuring contrast mid-glide would read blended colors. */
 export async function themeSettled(page: Page) {
   await page.waitForFunction(() => document.documentElement.getAnimations().length === 0);

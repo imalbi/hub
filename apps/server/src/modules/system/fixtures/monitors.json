@@ -1,0 +1,26 @@
+[
+  {
+    "id": 0,
+    "name": "DP-1",
+    "description": "Example Display A",
+    "width": 3840,
+    "height": 2160,
+    "refreshRate": 60.0,
+    "x": 0,
+    "y": 0,
+    "focused": true,
+    "disabled": false
+  },
+  {
+    "id": 1,
+    "name": "DP-2",
+    "description": "Example Display B",
+    "width": 1080,
+    "height": 1920,
+    "refreshRate": 60.0,
+    "x": 3840,
+    "y": 0,
+    "focused": false,
+    "disabled": true
+  }
+]

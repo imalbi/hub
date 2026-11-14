@@ -1,3 +1,4 @@
+import { PlusIcon } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
@@ -18,7 +19,7 @@ type Row = {
   id: string;
   label: string;
   note?: string;
-  /** Present for themes held as data (Caelestia, custom); built-in ones are derived from their seed when duplicated. */
+  /** Present for themes held as data (Caelestia, custom); built-in ones are derived from their seed when a new theme starts from them. */
   values?: ThemeValues;
   customId?: number;
   /** A note that explains why the row cannot be chosen. */
@@ -45,7 +46,7 @@ const builtInNotes: Record<string, () => string> = {
   lagoon: m.theme_note_lagoon,
 };
 
-function duplicateOf(row: Row): ThemeValues | undefined {
+function startingValues(row: Row): ThemeValues | undefined {
   const preset = builtInSeeds[row.id];
   if (preset)
     return { mode: preset.mode, colors: deriveColors(preset.mode, preset.seed), seed: preset.seed, manual: [] };
@@ -109,6 +110,13 @@ export function ThemePanel({ className = '' }: { className?: string }) {
     })),
   ];
 
+  // A new theme starts from the chosen one; a chosen Caelestia that is missing falls back to Scuro.
+  function createTheme() {
+    const chosen = rows.find((row) => row.id === theme && !row.disabled) ?? rows[0];
+    const values = chosen && startingValues(chosen);
+    if (chosen && values) openEditor({ name: m.theme_copy_name({ name: chosen.label }), base: chosen.id, values });
+  }
+
   return (
     <Panel
       title={m.theme_title()}
@@ -129,11 +137,6 @@ export function ThemePanel({ className = '' }: { className?: string }) {
                   checked={theme === row.id}
                   onChoose={() => setTheme(row.id)}
                   onTry={() => tryTheme(row.id)}
-                  onDuplicate={() => {
-                    const copied = duplicateOf(row);
-                    if (copied)
-                      openEditor({ name: m.theme_copy_name({ name: row.label }), base: row.id, values: copied });
-                  }}
                   onEdit={
                     editId !== undefined && values
                       ? () => openEditor({ id: editId, name: row.label, base: row.id, values })
@@ -143,6 +146,19 @@ export function ThemePanel({ className = '' }: { className?: string }) {
                 />
               );
             })}
+            <li className="border-t border-dashed border-border py-xs">
+              <button
+                type="button"
+                onClick={createTheme}
+                className="flex min-h-touch w-full cursor-pointer items-center gap-md rounded-lg px-md text-left hover:bg-surface focus-visible:outline focus-visible:outline-accent"
+              >
+                <PlusIcon aria-hidden className="size-icon shrink-0" />
+                <span className="shrink-0 text-body font-medium">{m.theme_create()}</span>
+                <span className="min-w-0 flex-1 truncate text-label text-muted-foreground">
+                  {m.theme_create_note()}
+                </span>
+              </button>
+            </li>
           </ul>
         </div>
       </fieldset>
@@ -236,7 +252,6 @@ function ThemeRow({
   checked,
   onChoose,
   onTry,
-  onDuplicate,
   onEdit,
   onDeleted,
 }: {
@@ -244,7 +259,6 @@ function ThemeRow({
   checked: boolean;
   onChoose: () => void;
   onTry: () => void;
-  onDuplicate: () => void;
   onEdit?: () => void;
   onDeleted: () => void;
 }) {
@@ -280,7 +294,7 @@ function ThemeRow({
           </span>
           <Swatches id={row.disabled ? 'ink' : row.id} />
         </label>
-        {onEdit ? (
+        {onEdit && (
           <>
             <button type="button" aria-label={m.theme_edit({ name: row.label })} onClick={onEdit} className={pill}>
               {m.theme_edit_short()}
@@ -296,16 +310,6 @@ function ThemeRow({
               }}
             />
           </>
-        ) : (
-          <button
-            type="button"
-            disabled={row.disabled}
-            aria-label={m.theme_duplicate({ name: row.label })}
-            onClick={onDuplicate}
-            className={pill}
-          >
-            {m.theme_duplicate_short()}
-          </button>
         )}
       </div>
     </li>

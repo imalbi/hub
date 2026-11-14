@@ -16,6 +16,7 @@ import {
   RebootTile,
   SuspendTile,
 } from '../modules/system/deck-tile.tsx';
+import { MonitorTiles } from '../modules/system/monitor-rows.tsx';
 import { DeckThemeList } from '../theme/deck-theme-list.tsx';
 import { m } from '../paraglide/messages.js';
 
@@ -52,7 +53,8 @@ export const pages: Page[] = [
   {
     id: 'system',
     label: m.zone_system,
-    tiles: [LockTile, CommunicationTile, MusicAppTile, PowerTile, SuspendTile, RebootTile, PowerOffTile],
+    // Scrivania is full at 12 tiles with AirPlay, so the monitor tiles live here (plan 34, deviation from decision 3).
+    tiles: [LockTile, CommunicationTile, MusicAppTile, MonitorTiles, PowerTile, SuspendTile, RebootTile, PowerOffTile],
     extra: DeckThemeList,
   },
 ];
@@ -64,9 +66,17 @@ const tileOwner = new Map<ComponentType, string>([
   [NewsTile, 'news'],
   [MailTile, 'mail'],
   [PomodoroTile, 'pomodoro'],
-  ...[HubTile, CommunicationTile, LockTile, MusicAppTile, PowerOffTile, PowerTile, RebootTile, SuspendTile].map(
-    (tile) => [tile, 'system'] as const,
-  ),
+  ...[
+    HubTile,
+    CommunicationTile,
+    LockTile,
+    MonitorTiles,
+    MusicAppTile,
+    PowerOffTile,
+    PowerTile,
+    RebootTile,
+    SuspendTile,
+  ].map((tile) => [tile, 'system'] as const),
 ]);
 
 for (const module of moduleUIs) {

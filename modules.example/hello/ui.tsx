@@ -81,6 +81,8 @@ export default {
   copy,
   todayItems: HelloToday,
   deviceRows: HelloRow,
+  // The same row again in Sistema, after Webcam and the monitors, so the slot has an example.
+  systemRows: HelloRow,
   widgets: [{ id: 'hello', label: () => copy.title, sizes: ['medium', 'large'], component: HelloPanel }],
   zone: { id: 'hello', label: () => copy.title, icon: HandWavingIcon, page: HelloPage },
   // The Lavoro zone has no content of its own: it appears in the rail because this module adds a section to it.

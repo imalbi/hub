@@ -10,7 +10,8 @@
   "theme_caelestia": "Caelestia",
   "theme_caelestia_missing": "Nessuno schema di Caelestia trovato",
   "theme_caelestia_low_contrast": "Testo poco leggibile: uso {fallback}",
-  "theme_duplicate": "Duplica {name}",
+  "theme_create": "Crea un tema",
+  "theme_create_note": "parte dal tema scelto",
   "theme_edit": "Modifica {name}",
   "theme_delete": "Tieni premuto per eliminare {name}",
   "theme_deleted": "Eliminato",
@@ -98,6 +99,5 @@
   "theme_reset_role": "Ripristina",
   "theme_reset_role_named": "Ripristina {role}",
   "theme_role_border": "Bordo",
-  "theme_edit_short": "Modifica",
-  "theme_duplicate_short": "Duplica"
+  "theme_edit_short": "Modifica"
 }
