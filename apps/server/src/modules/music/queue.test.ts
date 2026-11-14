@@ -43,3 +43,16 @@ void test('loading a playlist preserves its order and lets radio follow its last
   state = queueReducer(state, { type: 'advance', error: false });
   assert.equal(state.current?.id, 'c');
 });
+
+void test('a single played song seeds the radio; a playlist, the end and errors clear the seed', () => {
+  let state = queueReducer(emptyQueue, { type: 'play', song: song('a') });
+  assert.equal(state.seed?.id, 'a');
+  state = queueReducer(state, { type: 'refill', songs: [song('b'), song('c')] });
+  state = queueReducer(state, { type: 'advance', error: false });
+  assert.equal(state.seed?.id, 'a');
+  state = queueReducer(state, { type: 'advance', error: false });
+  state = queueReducer(state, { type: 'advance', error: false });
+  assert.equal(state.current, null);
+  assert.equal(state.seed, null);
+  assert.equal(queueReducer(emptyQueue, { type: 'load', songs: ['a', 'b'].map(song) }).seed, null);
+});

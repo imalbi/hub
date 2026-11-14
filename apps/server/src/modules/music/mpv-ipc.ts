@@ -26,6 +26,8 @@ export function createMpvIpc(path: string, timeout = 3000) {
       let buffer = '';
       client.once('connect', () => {
         socket = client;
+        // Synchronous, so a listener's own request is written before the one that waited for this connection.
+        events.emit('event', { event: 'hub-connected' });
         resolve(client);
       });
       client.once('error', reject);

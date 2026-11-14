@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input.tsx';
 import { HoldButton } from '@/components/hold-button.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
-import { CoverTile, iconButton, PlaylistCover, pillOutline, pillPrimary } from './parts.tsx';
+import { CoverTile, iconButton, PlaylistCover, PlaylistMosaic, pillOutline, pillPrimary } from './parts.tsx';
 import { NewPlaylist } from './add-to-playlist.tsx';
 import { SongRow } from './songs.tsx';
 
@@ -40,8 +40,13 @@ export function PlaylistList({ selected, onSelect }: { selected: number | null; 
               className={`flex w-full items-center gap-sm rounded-full p-2xs pr-md text-left text-body focus-visible:outline-2 focus-visible:outline-ring ${selected === list.id ? 'bg-muted' : 'hover:bg-muted'}`}
               onClick={() => onSelect(list.id)}
             >
-              <PlaylistCover />
-              <span className="min-w-0 flex-1 truncate">{list.name}</span>
+              <PlaylistMosaic covers={list.covers} />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate">{list.name}</span>
+                <span className="truncate text-caption text-muted-foreground">
+                  {m.music_playlist_count({ count: list.count })}
+                </span>
+              </span>
             </button>
           </li>
         ))}
@@ -64,7 +69,12 @@ export function LocalPlaylist({
   const trpc = useTRPC();
   const client = useQueryClient();
   const list = useQuery(trpc.music.playlist.queryOptions({ id }));
-  const refresh = () => client.invalidateQueries({ queryKey: trpc.music.playlist.queryKey({ id }) });
+  // The list rows show the count and the first covers, so they follow every change too.
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: trpc.music.playlist.queryKey({ id }) }),
+      client.invalidateQueries({ queryKey: trpc.music.playlists.queryKey() }),
+    ]);
   const move = useMutation(trpc.music.movePlaylistSong.mutationOptions({ onSuccess: refresh }));
   const remove = useMutation(trpc.music.removePlaylistSong.mutationOptions({ onSuccess: refresh }));
   const rename = useMutation(

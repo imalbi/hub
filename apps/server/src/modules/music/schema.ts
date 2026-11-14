@@ -30,3 +30,9 @@ export const playlistSongs = sqliteTable('playlist_songs', {
   artist: text('artist').notNull(),
   addedAt: integer('added_at').notNull(),
 });
+
+/** Key-value settings of the module; today only the remembered music volume. */
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: integer('value').notNull(),
+});

@@ -205,3 +205,40 @@ void test('skipping before 30 seconds leaves the song out of history', async (t)
   await new Promise<void>((resolve) => setImmediate(resolve));
   assert.deepEqual((await app.inject('/trpc/music.history')).json().result.data, []);
 });
+
+void test('the playlist list reports each count and up to four covers from the first songs', async (t) => {
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: wiring,
+    deps: {
+      run: createFakeDesktop(),
+      fetch: async () => new Response(Buffer.from('524946460400000057454250', 'hex')),
+    },
+  });
+  t.after(() => app.close());
+  const mutate = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/music.${name}`, payload });
+  const empty = (await mutate('createPlaylist', { name: 'Vuota' })).json().result.data.id;
+  const full = (await mutate('createPlaylist', { name: 'Piena' })).json().result.data.id;
+  for (let i = 0; i < 6; i++)
+    await mutate('addToPlaylist', { playlistId: full, id: String(i).padStart(11, '0'), title: `S${i}`, artist: '' });
+  const rows: { id: number; count: number; covers: string[] }[] = (await app.inject('/trpc/music.playlists')).json()
+    .result.data;
+  const own = (id: number) => rows.find((row) => row.id === id);
+  assert.deepEqual([own(empty)?.count, own(empty)?.covers], [0, []]);
+  assert.equal(own(full)?.count, 6);
+  assert.equal(own(full)?.covers.length, 4);
+  assert.match(own(full)?.covers[0] ?? '', /^data:image\/webp;base64,/);
+});
+
+void test('the queue names the song a radio started from, and no seed after a playlist', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  const mutate = (name: string, payload: object) => app.inject({ method: 'POST', url: `/trpc/music.${name}`, payload });
+  const seed = async () => (await app.inject('/trpc/music.queue')).json().result.data.seed;
+  assert.equal(await seed(), null);
+  await mutate('play', { id: 'abcdefghijk' });
+  assert.equal((await seed()).id, 'abcdefghijk');
+  await mutate('playPublicPlaylist', { id: 'PLexample' });
+  // The fake list has one song, so radio follows it: the seed is that song.
+  assert.equal((await seed()).id, 'abcdefghijk');
+});

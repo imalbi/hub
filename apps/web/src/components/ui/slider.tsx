@@ -36,6 +36,8 @@ export interface SliderProps {
   label: string;
   disabled?: boolean;
   className?: string;
+  /** A thin seek bar with no headroom: the thumb shows only while it is used (the compact player). */
+  thin?: boolean;
 }
 
 const toArray = (v: number | number[] | undefined, fallback: number[]) =>
@@ -53,6 +55,7 @@ export function Slider({
   label,
   disabled,
   className = '',
+  thin = false,
 }: SliderProps) {
   const reduced = useInteractionReducedMotion();
   const trackRef = React.useRef<HTMLDivElement>(null);
@@ -158,7 +161,9 @@ export function Slider({
   const hi = pct(values[values.length - 1]);
 
   return (
-    <div className={`relative w-full pt-xl pb-xs select-none ${disabled ? 'opacity-50' : ''} ${className}`}>
+    <div
+      className={`relative w-full ${thin ? '' : 'pt-xl pb-xs'} select-none ${disabled ? 'opacity-50' : ''} ${className}`}
+    >
       <div className="relative">
         <div
           ref={trackRef}
@@ -169,7 +174,9 @@ export function Slider({
           onLostPointerCapture={isSingle ? undefined : end}
           className={`relative h-icon [touch-action:pan-y] ${disabled ? '' : 'cursor-pointer'}`}
         >
-          <div className="absolute inset-x-0 top-1/2 h-[0.375rem] -translate-y-1/2 overflow-hidden rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]">
+          <div
+            className={`absolute inset-x-0 top-1/2 ${thin ? 'h-2xs' : 'h-[0.375rem]'} -translate-y-1/2 overflow-hidden rounded-full bg-muted shadow-[inset_0_0_0_1px_var(--border)]`}
+          >
             <div
               className="absolute inset-y-0 rounded-full bg-primary"
               style={{ left: `${lo}%`, right: `${100 - hi}%`, transition: motion }}
@@ -238,7 +245,11 @@ export function Slider({
                 })}
             onBlur={() => setBubble((b) => (b === i ? null : b))}
             className="group/thumb pointer-events-none absolute top-1/2 size-icon-sm -translate-x-1/2 -translate-y-1/2 rounded-full outline-none"
-            style={{ left: `${pct(v)}%`, transition: motion }}
+            style={{
+              left: `${pct(v)}%`,
+              transition: motion,
+              ...(thin && active !== i ? { opacity: 0 } : {}),
+            }}
           >
             <span
               className={`absolute inset-0 rounded-full bg-background shadow-[0_0_0_1px_color-mix(in_oklab,var(--foreground)_18%,var(--border))] transition-[scale,box-shadow] duration-200 ${

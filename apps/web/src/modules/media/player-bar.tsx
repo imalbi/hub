@@ -21,6 +21,7 @@ function Position({ position, length }: { position: number; length: number }) {
         max={length}
         value={value}
         format={time}
+        thin
         disabled={media.disabled}
         onValueChange={([next]) => setDraft(next)}
         onValueCommit={([seconds]) => media.seek.mutate({ seconds }, { onSettled: () => setDraft(null) })}
@@ -51,13 +52,13 @@ export function PlayerBar({
   return (
     <section
       aria-label={m.media_player()}
-      className={`desk-glass flex shrink-0 items-center gap-lg rounded-full border px-lg py-xs ${className}`}
+      className={`desk-glass flex shrink-0 items-center gap-lg rounded-full border px-lg py-sm ${className}`}
     >
-      <Transport />
+      <Transport compact />
       <Cover named className="size-2xl rounded-full" />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-baseline gap-sm">
-          <p className="truncate text-label">{media.state?.title || m.media_nothing_playing()}</p>
+          <p className="truncate text-label font-semibold">{media.state?.title || m.media_nothing_playing()}</p>
           <p className="truncate text-caption text-muted-foreground">{artist ?? media.state?.artist}</p>
         </div>
         {seconds !== null && seconds > 0 && position !== null && position !== undefined && (

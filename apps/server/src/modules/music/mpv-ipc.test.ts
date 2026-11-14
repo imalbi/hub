@@ -35,13 +35,17 @@ void test('matches replies, ignores events, times out and reconnects', async (t)
     await rm(dir, { recursive: true, force: true });
   });
   let eventCount = 0;
-  ipc.events.on('event', () => {
-    eventCount++;
+  let connects = 0;
+  ipc.events.on('event', (message: { event: string }) => {
+    if (message.event === 'hub-connected') connects++;
+    else eventCount++;
   });
   assert.deepEqual(await Promise.all([ipc.request(['one']), ipc.request(['two'])]), ['one', 'two']);
   assert.equal(eventCount, 2);
+  assert.equal(connects, 1);
   await assert.rejects(ipc.request(['timeout']));
   assert.equal(await ipc.request(['close']), 'close');
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(await ipc.request(['again']), 'again');
+  assert.equal(connects, 2);
 });

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { SearchInput } from '@/components/ui/search-input.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
+import { useMedia } from '../media/media-provider.tsx';
 import { ArtistView } from './artist.tsx';
 import { Listen } from './listen.tsx';
 import { pillQuiet, type SongItem } from './parts.tsx';
@@ -46,6 +47,40 @@ function SavedSongs({
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Space plays or pauses, except where it already means something: a field, a button, a slider, a link or a dialog.
+ * A component of its own so the media ticks re-render only it, not the whole page.
+ */
+function SpaceToggle() {
+  const media = useMedia();
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.code !== 'Space' || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest('input, textarea, select, button, a, [role=slider], [role=dialog], [contenteditable]')
+      )
+        return;
+      event.preventDefault();
+      media.playPause.mutate();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [media.playPause]);
+  return null;
+}
+
+/** The current cover, blurred and dimmed, behind the page; it clips itself because the surface does not (`float`). */
+function CoverBackdrop() {
+  const { art } = useMedia();
+  if (!art) return null;
+  return (
+    <div aria-hidden data-music-backdrop className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+      <img src={art.dataUrl} alt="" className="size-full scale-125 object-cover opacity-10 blur-art" />
+    </div>
   );
 }
 
@@ -102,8 +137,10 @@ export function MusicPage() {
 
   return (
     <>
+      <SpaceToggle />
+      <CoverBackdrop />
       {/* The bottom room keeps the lists clear of the part of the floating player that overlaps the surface. */}
-      <div className="flex min-h-0 flex-1 gap-xl pb-2xl">
+      <div className="relative flex min-h-0 flex-1 gap-xl pb-2xl">
         <div className="flex w-library-col shrink-0 flex-col gap-lg border-r border-dashed border-border pr-lg">
           <SearchInput
             aria-label={m.music_search()}

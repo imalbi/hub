@@ -1,12 +1,12 @@
-import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { restoreDesktop } from './desktop.ts';
 import { SERVER_URL } from './hosts.ts';
+import { ballOf, underBall } from './ball.ts';
 
 // The fake player is always playing or paused, so each test removes it first to see the idle desk.
 const player = (request: APIRequestContext, gone: boolean) =>
   request.post(`${SERVER_URL}/__fake/player`, { data: { gone } });
-const ballOf = (page: Page) => page.getByRole('button', { name: /^Attività in corso: / });
 
 let jobId: string | undefined;
 test.afterEach(async ({ pc, request }) => {
@@ -121,28 +121,6 @@ test('controls in a row act without navigating; the row itself goes to its page 
 });
 
 // Every focusable thing on a page, minus the ball itself, must stay clear of the ball's box.
-async function underBall(page: Page, ball: Locator) {
-  const box = await ball.boundingBox();
-  if (!box) throw new Error('no ball box');
-  return page.evaluate((rect) => {
-    const selector = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    return [...document.querySelectorAll(selector)]
-      .filter((el) => !el.getAttribute('aria-label')?.startsWith('Attività in corso'))
-      .filter((el) => {
-        const r = el.getBoundingClientRect();
-        return (
-          r.width > 0 &&
-          r.height > 0 &&
-          r.left < rect.x + rect.width &&
-          r.right > rect.x &&
-          r.top < rect.y + rect.height &&
-          r.bottom > rect.y
-        );
-      })
-      .map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30) ?? el.tagName);
-  }, box);
-}
-
 for (const view of [
   { width: 1920, height: 1080 },
   { width: 3840, height: 2160 },

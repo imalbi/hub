@@ -151,3 +151,9 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - Stubs that answer `agents.localCalls` must also answer `agents.localCallsToday` (0), or the Su questo PC line depends on calls other specs made.
 - The core settings sticky check scrolls the surface's section (`[data-page-surface] section.overflow-y-auto`, inside the surface body since 47c), no longer the desk scroller.
 - Private Lavoro specs: the tab bar is inside the surface since 47c (it was above it in 47b, `ownTabs`).
+
+## Step 48b
+
+- Fake hooks (`/__fake/*`) exist only on the fake server: post them to `SERVER_URL`, never through `pc` (the web port, which proxies only `/trpc`). `restoreDesktop` had that bug and left the player gone after any test that removed it.
+- `music.spec.ts` shares one music queue per process: radio skips songs earlier tests played, so assert the first upcoming row, not a fixed title. The thin seek bar keeps an `aria-hidden` value bubble with the same text as the elapsed time: take `.first()` for the inline time.
+- Music has no stop action, so a radio started in a spec runs on for every later file in the process (files run alphabetically in a shard). Radio cases live in `music.spec.ts`: the ball-over-Musica-with-radio check moved there from `activity.spec.ts` after it broke `design.spec.ts` artwork and the Media baselines in one shard. `ballOf` and `underBall` are shared in `tests/ball.ts`.

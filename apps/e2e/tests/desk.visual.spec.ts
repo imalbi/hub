@@ -163,7 +163,7 @@ test('Media playlist at 4K matches the baseline', async ({ page, request }) => {
     await page.goto('/desk/media');
     await page
       .getByRole('region', { name: 'Playlist', exact: true })
-      .getByRole('button', { name: 'Mix esempio', exact: true })
+      .getByRole('button', { name: /^Mix esempio/ })
       .click();
     await expect(page.getByText('Brano esempio')).toBeVisible();
     await page.mouse.move(0, 0);

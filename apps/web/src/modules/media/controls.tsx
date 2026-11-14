@@ -48,13 +48,15 @@ export function Cover({
     </div>
   );
 }
-export function Transport() {
+/** `compact`: ghost previous and next around the play button (the Musica player, AltC). */
+export function Transport({ compact = false }: { compact?: boolean }) {
   const media = useMedia();
   return (
     <div className="flex items-center gap-xs">
       <RegistryButton
         iconOnly
         secondary
+        ghost={compact}
         label={m.media_previous()}
         action={() => media.previous.mutateAsync()}
         disabled={media.disabled}
@@ -62,6 +64,7 @@ export function Transport() {
       />
       <RegistryButton
         iconOnly
+        className={compact ? 'size-ball' : ''}
         label={media.playing ? m.media_action_pause() : m.media_action_play()}
         action={() => media.playPause.mutateAsync()}
         disabled={media.disabled}
@@ -70,6 +73,7 @@ export function Transport() {
       <RegistryButton
         iconOnly
         secondary
+        ghost={compact}
         label={m.media_next()}
         action={() => media.next.mutateAsync()}
         disabled={media.disabled}

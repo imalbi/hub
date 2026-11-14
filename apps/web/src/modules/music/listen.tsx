@@ -10,7 +10,7 @@ export function Listen({
   onPlay,
   onArtist,
 }: {
-  queue: { current: SongItem | null; upcoming: SongItem[]; errors: number } | undefined;
+  queue: { current: SongItem | null; seed: { title: string } | null; upcoming: SongItem[]; errors: number } | undefined;
   onPlay: (id: string) => void;
   onArtist: (id: string) => void;
 }) {
@@ -45,8 +45,14 @@ export function Listen({
         </section>
       )}
       <section aria-label={m.music_next()} className="flex min-h-0 flex-1 flex-col gap-sm">
-        <div className="flex items-center gap-md">
+        {/* First row of the page when nothing was played yet: stay clear of the activity ball over the corner. */}
+        <div className={`flex items-center gap-md ${recent.length ? '' : 'pr-xl'}`}>
           <h2 className="flex-1 text-heading">{m.music_next()}</h2>
+          {queue?.current && queue.seed && (
+            <p className="truncate text-label text-muted-foreground">
+              {m.music_radio_from({ title: queue.seed.title })}
+            </p>
+          )}
           {queue?.current && (
             <button type="button" className={pillOutline} onClick={() => skip.mutate()} disabled={skip.isPending}>
               {m.music_skip()}

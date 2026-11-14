@@ -51,7 +51,12 @@ export function AddToPlaylist({ song }: { song: Track }) {
   const lists = useQuery(trpc.music.playlists.queryOptions());
   const add = useMutation(
     trpc.music.addToPlaylist.mutationOptions({
-      onSuccess: () => client.invalidateQueries({ queryKey: trpc.music.playlist.queryKey() }),
+      // `playlists` too: its rows show the count and the first covers.
+      onSuccess: () =>
+        Promise.all([
+          client.invalidateQueries({ queryKey: trpc.music.playlist.queryKey() }),
+          client.invalidateQueries({ queryKey: trpc.music.playlists.queryKey() }),
+        ]),
     }),
   );
   const addTo = (playlistId: number) =>

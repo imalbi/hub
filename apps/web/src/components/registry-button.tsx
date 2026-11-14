@@ -9,6 +9,7 @@ export function RegistryButton({
   disabled,
   icon,
   secondary = false,
+  ghost = false,
   iconOnly = false,
   pressed,
   className = '',
@@ -20,6 +21,8 @@ export function RegistryButton({
   disabled?: boolean;
   icon?: ReactNode;
   secondary?: boolean;
+  /** No outline: the quiet icon button of a compact bar. Wins over `secondary`. */
+  ghost?: boolean;
   iconOnly?: boolean;
   pressed?: boolean;
   className?: string;
@@ -33,7 +36,7 @@ export function RegistryButton({
       disabled={disabled}
       icon={icon}
       labels={{ idle: label, pending: m.action_pending(), success: m.action_done(), error: m.tile_error() }}
-      variant={secondary ? 'outline' : 'primary'}
+      variant={ghost ? 'ghost' : secondary ? 'outline' : 'primary'}
       className={`min-h-touch ${iconOnly ? 'media-transport min-w-touch' : ''} ${className}`}
     />
   );

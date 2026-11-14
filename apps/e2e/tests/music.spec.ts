@@ -1,6 +1,10 @@
+import { chooseTheme } from './themes.ts';
 import type { Page } from '@playwright/test';
+import { contrastRatio } from './contrast.ts';
 import { expect, test } from './fixtures.ts';
 import { answerQueries, restoreDesktop } from './desktop.ts';
+import { SERVER_URL } from './hosts.ts';
+import { ballOf, underBall } from './ball.ts';
 
 test.afterEach(async ({ pc }) => restoreDesktop(pc));
 
@@ -41,6 +45,9 @@ test('seek bar keeps keyboard focus after a click while the seek is slow', async
 
 const search = (page: Page, text = 'canzone') => page.getByRole('searchbox', { name: 'Cerca musica' }).fill(text);
 const library = (page: Page) => page.getByRole('region', { name: 'Playlist', exact: true });
+/** A playlist row's name also says its song count ("Mix 2 brani"). */
+const listRow = (page: Page, name: string) =>
+  library(page).getByRole('button', { name: new RegExp(`^${name} \\d+ bran[io]$`) });
 const played = (page: Page) =>
   page.waitForResponse((response) => response.url().includes('music.play') && response.request().method() === 'POST');
 
@@ -221,23 +228,23 @@ test('playlist can be created, populated, reordered, played and deleted with a h
     .getByRole('textbox', { name: 'Nome playlist' })
     .fill('Mix test');
   await page.getByRole('dialog', { name: 'Nuova playlist' }).getByRole('button', { name: 'Crea', exact: true }).click();
-  await expect(library(page).getByRole('button', { name: 'Mix test', exact: true })).toBeVisible();
+  await expect(listRow(page, 'Mix test')).toBeVisible();
   await search(page, 'playlist-test');
   for (const title of ['Mix 1', 'Mix 2']) {
     await page.getByRole('button', { name: `Aggiungi ${title} a playlist` }).click();
     await page.getByRole('dialog', { name: 'Aggiungi a playlist' }).getByRole('button', { name: 'Mix test' }).click();
     await expect(page.getByRole('dialog', { name: 'Aggiungi a playlist' })).toHaveCount(0);
   }
-  await library(page).getByRole('button', { name: 'Mix test', exact: true }).click();
+  await listRow(page, 'Mix test').click();
   await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toHaveValue('');
   await page.getByRole('button', { name: 'Sposta su Mix 2' }).click();
   await expect(page.getByRole('region', { name: 'Mix test' }).getByRole('listitem').first()).toContainText('Mix 2');
   await page.getByRole('button', { name: 'Riproduci playlist' }).click();
   await page.getByRole('button', { name: 'Ascolta', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Prossimi' }).getByRole('listitem').first()).toContainText('Mix 1');
-  await library(page).getByRole('button', { name: 'Mix test', exact: true }).click();
+  await listRow(page, 'Mix test').click();
   await holdDelete(page);
-  await expect(library(page).getByRole('button', { name: 'Mix test', exact: true })).toHaveCount(0);
+  await expect(listRow(page, 'Mix test')).toHaveCount(0);
 });
 
 test('a playlist is created from the add popover with the song in it, renamed and deleted', async ({ page }) => {
@@ -248,15 +255,15 @@ test('a playlist is created from the add popover with the song in it, renamed an
   await popover.getByRole('textbox', { name: 'Nome playlist' }).fill('Dal popover');
   await popover.getByRole('button', { name: 'Crea', exact: true }).click();
   await expect(popover).toHaveCount(0);
-  await library(page).getByRole('button', { name: 'Dal popover', exact: true }).click();
+  await listRow(page, 'Dal popover').click();
   await expect(page.getByRole('region', { name: 'Dal popover' })).toContainText('Mix 1');
   await page.getByRole('button', { name: 'Rinomina', exact: true }).click();
   await page.getByRole('textbox', { name: 'Nome playlist' }).fill('Rinominata');
   await page.getByRole('button', { name: 'Rinomina', exact: true }).click();
-  await expect(library(page).getByRole('button', { name: 'Rinominata', exact: true })).toBeVisible();
-  await expect(library(page).getByRole('button', { name: 'Dal popover', exact: true })).toHaveCount(0);
+  await expect(listRow(page, 'Rinominata')).toBeVisible();
+  await expect(listRow(page, 'Dal popover')).toHaveCount(0);
   await holdDelete(page);
-  await expect(library(page).getByRole('button', { name: 'Rinominata', exact: true })).toHaveCount(0);
+  await expect(listRow(page, 'Rinominata')).toHaveCount(0);
 });
 
 test('public playlist can be found, played and saved locally', async ({ page }) => {
@@ -271,9 +278,9 @@ test('public playlist can be found, played and saved locally', async ({ page }) 
   const save = page.waitForResponse((response) => response.url().includes('music.savePublicPlaylist'));
   await page.getByRole('button', { name: 'Salva', exact: true }).click();
   expect((await save).ok()).toBeTruthy();
-  await library(page).getByRole('button', { name: 'Playlist pubblica', exact: true }).click();
+  await listRow(page, 'Playlist pubblica').click();
   await holdDelete(page);
-  await expect(library(page).getByRole('button', { name: 'Playlist pubblica', exact: true })).toHaveCount(0);
+  await expect(listRow(page, 'Playlist pubblica')).toHaveCount(0);
 });
 
 test('the player floats centred over the bottom edge of the surface, narrower than it, unclipped and clickable', async ({
@@ -323,4 +330,187 @@ test('Ascolta lays the recent songs in five columns and Prossimi in two', async 
   await expect(next).toContainText('Brano 3');
   const columns = await next.locator('ul').evaluate((ul) => getComputedStyle(ul).gridTemplateColumns.split(' ').length);
   expect(columns).toBe(2);
+});
+
+/** Paints the worst a cover can do under its text (a white one for light ink, a black one for dark ink) in the surface itself. */
+async function paintWorstCover(page: Page) {
+  await page.evaluate(() => {
+    const img = document.querySelector<HTMLElement>('[data-music-backdrop] img');
+    const surface = document.querySelector<HTMLElement>('[data-page-surface]');
+    if (!img || !surface) throw new Error('no backdrop');
+    const alpha = Number(getComputedStyle(img).opacity);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('No canvas');
+    context.fillStyle = getComputedStyle(surface).backgroundColor;
+    context.fillRect(0, 0, 1, 1);
+    const [red = 0, green = 0, blue = 0] = context.getImageData(0, 0, 1, 1).data;
+    const worst = red + green + blue < 384 ? 255 : 0;
+    context.fillStyle = `rgba(${worst}, ${worst}, ${worst}, ${alpha})`;
+    context.fillRect(0, 0, 1, 1);
+    const [r = 0, g = 0, b = 0] = context.getImageData(0, 0, 1, 1).data;
+    surface.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+    img.style.display = 'none';
+  });
+}
+
+async function playRadio(page: Page) {
+  await page.goto('/desk/media');
+  await search(page);
+  const done = played(page);
+  await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
+  await done;
+  await page.getByRole('button', { name: 'Ascolta', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Prossimi' })).toContainText('Brano 3');
+}
+
+for (const theme of ['Scuro', 'Chiaro']) {
+  test(`the cover backdrop keeps text at 4.5:1 even under the worst cover, ${theme}`, async ({ page }) => {
+    if (theme === 'Chiaro') {
+      await page.goto('/desk/settings/appearance');
+      await chooseTheme(page, theme);
+    }
+    await playRadio(page);
+    await expect(page.locator('[data-music-backdrop] img')).toBeVisible();
+    await page.mouse.move(0, 0);
+    const next = page.getByRole('region', { name: 'Prossimi' });
+    const texts = [
+      next.getByRole('heading', { name: 'Prossimi' }),
+      next.getByText('Radio da Brano 1'),
+      // Radio skips what earlier tests played, so the first row's title varies.
+      next.getByRole('listitem').first().getByRole('button').first(),
+      next.getByText('Artista').first(),
+      page.getByRole('button', { name: 'Ascolta', exact: true }),
+      page.getByText('Nessuna playlist'),
+    ];
+    await paintWorstCover(page);
+    for (const text of texts) expect(await contrastRatio(text), await text.innerText()).toBeGreaterThanOrEqual(4.5);
+  });
+}
+
+test('the backdrop shows while a song plays, never animates under reduced motion and is gone when idle', async ({
+  page,
+  request,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/desk/media');
+  const backdrop = page.locator('[data-music-backdrop]');
+  await expect(backdrop).toBeVisible();
+  await expect(backdrop.locator('img')).toHaveCSS('transition-duration', '0s');
+  await expect(backdrop.locator('img')).toHaveCSS('animation-name', 'none');
+  await request.post(`${SERVER_URL}/__fake/player`, { data: { gone: true } });
+  await expect(backdrop).toHaveCount(0);
+});
+
+test('Space plays or pauses on the page, but not in a field or on a button', async ({ page }) => {
+  await page.goto('/desk/media');
+  await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible();
+  const toggles: string[] = [];
+  await page.getByRole('slider', { name: 'Posizione del brano' }).focus();
+  page.on('request', (r) => r.url().includes('media.playPause') && toggles.push(r.url()));
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(300);
+  expect(toggles).toHaveLength(0);
+  const first = page.waitForRequest((r) => r.url().includes('media.playPause'));
+  await page.evaluate(() =>
+    document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined,
+  );
+  await page.keyboard.press('Space');
+  await first;
+  const player = page.getByRole('region', { name: 'Player musicale' });
+  await expect(player.getByRole('button', { name: 'Riproduci musica' })).toBeVisible();
+  const box = page.getByRole('searchbox', { name: 'Cerca musica' });
+  await box.focus();
+  await page.keyboard.type('a b');
+  await expect(box).toHaveValue('a b');
+  await page.getByRole('button', { name: 'Preferiti', exact: true }).focus();
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(300);
+  expect(toggles).toHaveLength(1);
+});
+
+test('Radio da names the seed song while a radio runs, and not after a playlist', async ({ page, pc }) => {
+  await pc.post('/trpc/music.playPublicPlaylist', { data: { id: 'PLexample' } });
+  await page.goto('/desk/media');
+  const next = page.getByRole('region', { name: 'Prossimi' });
+  await expect(next.getByRole('button', { name: 'Salta' })).toBeVisible();
+  await expect(next.getByText(/^Radio da /)).toHaveCount(0);
+  await playRadio(page);
+  await expect(next.getByText('Radio da Brano 1')).toBeVisible();
+});
+
+test('playlist rows show the count and the cover mosaic, the empty one a note tile', async ({ page, pc }) => {
+  const create = async (name: string, songs: number) => {
+    const id = (await (await pc.post('/trpc/music.createPlaylist', { data: { name } })).json()).result.data.id;
+    for (let i = 0; i < songs; i++)
+      await pc.post('/trpc/music.addToPlaylist', {
+        data: { playlistId: id, id: `mosaic0000${i}`, title: `Brano ${i}`, artist: 'Artista' },
+      });
+    return id;
+  };
+  const ids = [await create('Vuota', 0), await create('Sola', 1), await create('Mosaico', 5)];
+  try {
+    await page.goto('/desk/media');
+    const row = (name: string) => library(page).getByRole('button', { name: new RegExp(`^${name}`) });
+    await expect(row('Vuota')).toContainText('0 brani');
+    await expect(row('Sola')).toContainText('1 brano');
+    await expect(row('Mosaico')).toContainText('5 brani');
+    await expect(row('Mosaico').locator('img')).toHaveCount(4);
+    await expect(row('Sola').locator('img')).toHaveCount(1);
+    await expect(row('Vuota').locator('img')).toHaveCount(0);
+    // Adding from the page updates the row without a reload (the count once stayed stale).
+    await search(page, 'playlist-test');
+    await page.getByRole('button', { name: 'Aggiungi Mix 1 a playlist' }).click();
+    await page.getByRole('dialog', { name: 'Aggiungi a playlist' }).getByRole('button', { name: 'Vuota' }).click();
+    await expect(row('Vuota')).toContainText('1 brano');
+  } finally {
+    for (const id of ids) await pc.post('/trpc/music.deletePlaylist', { data: { id, confirmed: true } });
+  }
+});
+
+test('the compact player is about 117px tall at 1920, with thin seek bar, inline times and ghost skip buttons', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/desk/media');
+  const player = page.getByRole('region', { name: 'Player musicale' });
+  // The slider's hidden value bubble says 0:12 too; the inline time comes first.
+  const elapsed = player.getByText('0:12', { exact: true }).first();
+  await expect(elapsed).toBeVisible();
+  const box = await player.boundingBox();
+  expect(Math.abs((box?.height ?? 0) - 117)).toBeLessThanOrEqual(8);
+  // Both times and the seek bar share one row.
+  const row = await Promise.all(
+    [
+      elapsed,
+      player.getByRole('slider', { name: 'Posizione del brano' }),
+      player.getByText('3:33', { exact: true }),
+    ].map(async (item) => {
+      const b = await item.boundingBox();
+      return b ? b.y + b.height / 2 : -1;
+    }),
+  );
+  expect(Math.max(...row) - Math.min(...row)).toBeLessThan(4);
+  const track = await player.locator('div.rounded-full.bg-muted').first().boundingBox();
+  expect(track?.height).toBeLessThanOrEqual(7);
+  for (const name of ['Brano precedente', 'Brano successivo'])
+    await expect(player.getByRole('button', { name })).toHaveCSS('border-top-width', '0px');
+});
+
+// Here, not in activity.spec.ts: the radio it starts cannot be stopped and would leak into the specs after it.
+test('the ball covers no control on Musica with a radio running', async ({ page, pc }) => {
+  for (const view of [
+    { width: 1920, height: 1080 },
+    { width: 3840, height: 2160 },
+  ]) {
+    await page.setViewportSize(view);
+    await pc.post('/trpc/music.play', { data: { id: '00000000000' } });
+    await page.goto('/desk/media');
+    await expect(page.getByRole('region', { name: 'Prossimi' }).getByRole('button', { name: 'Salta' })).toBeVisible();
+    const ball = ballOf(page);
+    await expect(ball).toBeVisible();
+    expect(await underBall(page, ball), `${view.width}`).toEqual([]);
+  }
 });

@@ -1,4 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test';
+import { SERVER_URL } from './hosts.ts';
 
 const post = (request: APIRequestContext, path: string, data: unknown = {}) =>
   request.post(`/trpc/${path}`, { data, headers: { 'content-type': 'application/json' } });
@@ -11,7 +12,8 @@ export const playPause = (pc: APIRequestContext) => post(pc, 'media.playPause');
  * flipped, and without this every test after it would fail too, hiding which one is the cause.
  */
 export async function restoreDesktop(pc: APIRequestContext) {
-  await pc.post('/__fake/player', { data: { gone: false } });
+  // `pc` goes through the web server, which does not proxy the fake hooks: they live on the fake server only.
+  await pc.post(`${SERVER_URL}/__fake/player`, { data: { gone: false } });
   for (let attempt = 0; attempt < 3; attempt++) {
     if ((await (await pc.get('/trpc/media.state')).text()).includes('"title":"Title"')) break;
     await post(pc, 'media.next');

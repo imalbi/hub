@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { desc, eq } from 'drizzle-orm';
-import { favorites, history, playlists, playlistSongs } from './schema.ts';
+import { asc, count, desc, eq } from 'drizzle-orm';
+import { favorites, history, playlists, playlistSongs, settings } from './schema.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { emptyQueue, queueReducer } from './queue.ts';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
@@ -78,6 +78,7 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           upcoming.push(...(await Promise.all(snapshot.upcoming.slice(i, i + 4).map(publicSong))));
         return {
           current: snapshot.current ? await publicSong(snapshot.current) : null,
+          seed: snapshot.seed ? { id: snapshot.seed.id, title: snapshot.seed.title } : null,
           upcoming,
           errors: snapshot.errors,
         };
@@ -191,9 +192,17 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
           }
         } else if (reason === 'eof' || reason === 'stop') pendingError = false;
       }
+      function savedVolume() {
+        return db.select().from(settings).where(eq(settings.key, 'volume')).get()?.value;
+      }
       function onEvent(event: unknown) {
         if (!event || typeof event !== 'object' || !('event' in event)) return;
-        if (event.event === 'start-file')
+        if (event.event === 'hub-connected') {
+          // A fresh or restarted mpv comes up at its own 100: put the remembered volume back.
+          const volume = savedVolume();
+          if (volume !== undefined)
+            void ipc.request(['set_property', 'volume', volume]).catch(() => log.warn('Music volume not restored'));
+        } else if (event.event === 'start-file')
           void schedule(followStart).catch(() => log.warn('Music player unavailable while advancing'));
         else if (event.event === 'end-file' && 'reason' in event) {
           cancelHistory();
@@ -282,9 +291,30 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
       }
       return {
         router: router({
-          playlists: protectedProcedure.query(() =>
-            db.select().from(playlists).orderBy(desc(playlists.createdAt)).all(),
-          ),
+          playlists: protectedProcedure.query(async () => {
+            const rows = db.select().from(playlists).orderBy(desc(playlists.createdAt)).all();
+            return Promise.all(
+              rows.map(async (row) => {
+                const total = db
+                  .select({ n: count() })
+                  .from(playlistSongs)
+                  .where(eq(playlistSongs.playlistId, row.id))
+                  .get()?.n;
+                const first = db
+                  .select({ id: playlistSongs.id })
+                  .from(playlistSongs)
+                  .where(eq(playlistSongs.playlistId, row.id))
+                  .orderBy(asc(playlistSongs.position))
+                  .limit(4)
+                  .all();
+                // Saved songs keep no artwork: the cover is the video's own thumbnail, through the same proxy.
+                const covers = await Promise.all(
+                  first.map((song) => cover(`https://i.ytimg.com/vi/${song.id}/mqdefault.jpg`)),
+                );
+                return { ...row, count: total ?? 0, covers: covers.filter((item) => item !== null) };
+              }),
+            );
+          }),
           searchPlaylists: protectedProcedure
             .input(z.object({ query: z.string().min(1).max(200) }))
             .query(async ({ input }) => {
@@ -495,6 +525,10 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
               await schedule(async () => {
                 try {
                   await ipc.request(['set_property', 'volume', input.volume]);
+                  db.insert(settings)
+                    .values({ key: 'volume', value: input.volume })
+                    .onConflictDoUpdate({ target: settings.key, set: { value: input.volume } })
+                    .run();
                 } catch {
                   throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
                 }

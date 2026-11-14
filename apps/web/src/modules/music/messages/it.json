@@ -49,5 +49,16 @@
   "music_volume": "Volume musica",
   "music_volume_note": "Solo la musica di Hub, non il volume del sistema",
   "music_playlist_new": "Nuova playlist",
-  "music_playlist_make": "Crea"
+  "music_playlist_make": "Crea",
+  "music_radio_from": "Radio da {title}",
+  "music_playlist_count": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} brano",
+        "countPlural=*": "{count} brani"
+      }
+    }
+  ]
 }
