@@ -3,11 +3,14 @@ import { useInSurface } from '../shell/page-surface.tsx';
 
 export function Panel({
   title,
+  subtitle,
   action,
   className = '',
   children,
 }: {
   title?: string;
+  /** A line under the title, in the header block. */
+  subtitle?: ReactNode;
   action?: ReactNode;
   className?: string;
   children: ReactNode;
@@ -22,10 +25,13 @@ export function Panel({
       className={`flex min-w-0 flex-col gap-lg p-lg ${inner ? 'rounded-lg bg-muted' : 'rounded-xl border border-border bg-surface'} ${className}`}
     >
       {title && (
-        <div className="flex items-center justify-between gap-md">
-          <h2 id={titleId} className="text-title">
-            {title}
-          </h2>
+        <div className={`flex justify-between gap-md ${subtitle ? 'items-start' : 'items-center'}`}>
+          <div className="flex min-w-0 flex-col gap-3xs">
+            <h2 id={titleId} className="text-title">
+              {title}
+            </h2>
+            {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
+          </div>
           {action}
         </div>
       )}

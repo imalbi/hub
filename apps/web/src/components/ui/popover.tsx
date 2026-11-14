@@ -31,13 +31,13 @@ export interface PopoverProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Width of the panel: a named step (`--spacing-popover-*`), 17.5, 24 or 32rem. */
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Accessible name of the panel. */
   label?: string;
   className?: string;
 }
 
-const WIDTH = { sm: 'w-popover-sm', md: 'w-popover-md', lg: 'w-popover-lg' };
+const WIDTH = { sm: 'w-popover-sm', md: 'w-popover-md', lg: 'w-popover-lg', xl: 'w-popover-xl' };
 
 const FOCUSABLE = 'input, textarea, select, button, [href], [tabindex]:not([tabindex="-1"])';
 

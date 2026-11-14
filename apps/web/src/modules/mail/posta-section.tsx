@@ -1,180 +1,188 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { inferRouterInputs } from '@trpc/server';
-import type { MailRouter } from './use-mail.ts';
-import { useState } from 'react';
-import { StarIcon } from '@phosphor-icons/react';
-import { Panel } from '../../components/panel.tsx';
-import { Select } from '../../components/ui/select.tsx';
-import { RegistryButton } from '../../components/registry-button.tsx';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { ButtonGroup } from '../../components/ui/button-group.tsx';
 import { m } from '../../paraglide/messages.js';
-import { useMail, useMailAccounts, useMailTRPC } from './use-mail.ts';
-import { SearchForm } from './search-form.tsx';
+import { TabBarActions } from '../../shell/header-slot.tsx';
+import { ComposeForm } from './compose.tsx';
+import { InboxList, rowKey } from './inbox-list.tsx';
 import { MailReader } from './reader.tsx';
-import { mailDate } from './mail-date.ts';
+import { useMail, useMailAccounts, useMailTRPC, type InboxRow, type MailFilter } from './use-mail.ts';
 
-type Filter = inferRouterInputs<MailRouter>['search']['filter'];
+const ALL = 'all';
+const UNDO_MS = 8000;
+type Archived = { account: string; messageId: string; subject: string };
 
 export function PostaSection() {
   const trpc = useMailTRPC();
   const mail = useMail();
   const mailAccounts = useMailAccounts();
   const queryClient = useQueryClient();
-  const [chosen, setChosen] = useState('');
+  const [chosen, setChosen] = useState(ALL);
   const [selected, setSelected] = useState('');
-  const [filter, setFilter] = useState<Filter | null>(null);
-  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<MailFilter>({});
+  const [composing, setComposing] = useState(false);
+  const [archived, setArchived] = useState<Archived | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // The configured accounts come from the config at once; the live state reads every mailbox and comes later.
   const accounts = mailAccounts.data ?? mail.data?.accounts ?? [];
-  const account = accounts.find((item) => item.account === chosen)?.account ?? accounts[0]?.account ?? '';
+  const labels = new Map(accounts.map((item) => [item.account, item.label]));
+  const merged = accounts.length > 1;
+  const account =
+    merged && chosen === ALL ? undefined : (accounts.find((item) => item.account === chosen) ?? accounts[0])?.account;
   // Reopening Posta shows the last list at once and reads the mailbox again only after a minute; new mail also
   // arrives through the live state and the refresh button.
-  const cached = { retry: false, staleTime: 60_000, gcTime: 30 * 60_000 } as const;
-  const list = useQuery(trpc.list.queryOptions({ account, page }, { enabled: !!account && !filter, ...cached }));
-  const search = useQuery(
-    trpc.search.queryOptions({ account, filter: filter ?? {}, page }, { enabled: !!account && !!filter, ...cached }),
+  const inbox = useInfiniteQuery(
+    trpc.inbox.infiniteQueryOptions(
+      { account, filter },
+      {
+        enabled: accounts.length > 0,
+        getNextPageParam: (last) => last.cursor ?? undefined,
+        retry: false,
+        staleTime: 60_000,
+        gcTime: 30 * 60_000,
+      },
+    ),
   );
-  const result = filter ? search : list;
-  const selectedMessage = result.data?.find((message) => message.id === selected);
+  const rows = inbox.data?.pages.flatMap((page) => page.rows) ?? [];
+  const selectedRow = rows.find((row) => rowKey(row) === selected);
+  const seen = useMutation(trpc.setSeen.mutationOptions());
+  const archive = useMutation(trpc.archive.mutationOptions());
+  const unarchive = useMutation(trpc.unarchive.mutationOptions());
+  const reload = () => queryClient.invalidateQueries({ queryKey: trpc.inbox.pathKey() });
+
+  async function archiveRow(row: InboxRow) {
+    await archive.mutateAsync({ account: row.account, id: row.id });
+    if (rowKey(row) === selected) setSelected('');
+    clearTimeout(undoTimer.current);
+    setArchived(row.messageId ? { account: row.account, messageId: row.messageId, subject: row.subject } : null);
+    undoTimer.current = setTimeout(() => setArchived(null), UNDO_MS);
+    await reload();
+  }
+  async function undoArchive(last: Archived) {
+    setArchived(null);
+    await unarchive.mutateAsync(last);
+    await reload();
+  }
+  // Aggiorna starts over from the first page, like a new search, instead of rereading every page loaded.
+  async function refresh() {
+    queryClient.setQueryData(trpc.inbox.infiniteQueryKey({ account, filter }), (data) =>
+      data ? { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) } : data,
+    );
+    await Promise.all([inbox.refetch(), queryClient.fetchQuery(trpc.refresh.queryOptions({}))]);
+  }
+  const pick = (next: string) => {
+    setChosen(next);
+    setSelected('');
+  };
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-lg">
-      <SearchForm
-        leading={
-          <Select
+    <>
+      <TabBarActions>
+        {merged && (
+          <ButtonGroup
             label={m.mail_account()}
-            options={accounts.map((item) => ({ value: item.account, label: item.label }))}
-            value={account}
-            onValueChange={(value) => {
-              setChosen(value);
-              setSelected('');
-              setPage(1);
-            }}
+            size="md"
+            items={[
+              { id: ALL, label: m.mail_all(), active: !account, onClick: () => pick(ALL) },
+              ...accounts.map((item) => ({
+                id: item.account,
+                label: item.label,
+                active: account === item.account,
+                onClick: () => pick(item.account),
+              })),
+            ]}
           />
-        }
-        onSearch={(value) => {
-          setFilter(value);
-          setSelected('');
-          setPage(1);
-        }}
-      />
-      <div className="grid min-h-0 flex-1 grid-cols-12 gap-lg pb-xl">
-        <Panel
-          title={m.mail_inbox()}
-          className="col-span-5 min-h-0"
-          action={
-            <RegistryButton
-              secondary
-              label={m.mail_refresh()}
-              action={async () => {
-                await Promise.all([
-                  result.refetch(),
-                  mailAccounts.refetch(),
-                  queryClient.fetchQuery(trpc.refresh.queryOptions({})),
-                ]);
-              }}
-            />
-          }
+        )}
+        <button
+          type="button"
+          onClick={() => setComposing(true)}
+          className="ml-auto min-h-touch cursor-pointer rounded-full bg-primary px-lg text-label font-medium text-primary-foreground focus-visible:outline focus-visible:outline-accent"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {result.isError && (
-              <div className="flex items-center justify-between gap-md">
-                <p className="text-body text-muted-foreground">{m.mail_error()}</p>
-                <RegistryButton secondary label={m.mail_retry()} action={() => result.refetch()} />
-              </div>
-            )}
-            {!result.data && result.isPending && <ListSkeleton />}
-            {result.data?.length === 0 && <p className="text-body text-muted-foreground">{m.mail_empty()}</p>}
-            <ul className="flex flex-col">
-              {result.data?.map((message) => (
-                <li key={message.id} className="border-b border-dashed border-border last:border-b-0">
-                  <button
-                    type="button"
-                    aria-pressed={selected === message.id}
-                    onClick={() => setSelected(message.id)}
-                    className={`my-3xs flex w-full items-start gap-sm rounded-lg p-sm text-left ${selected === message.id ? 'bg-muted' : 'hover:bg-muted/50'}`}
-                  >
-                    <span
-                      aria-hidden
-                      className={`mt-xs size-xs shrink-0 rounded-full ${message.seen ? '' : 'bg-primary'}`}
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col gap-3xs">
-                      <span className="flex items-baseline justify-between gap-sm">
-                        <span className={`truncate text-label ${message.seen ? 'text-muted-foreground' : ''}`}>
-                          {message.from?.name || message.from?.email}
-                        </span>
-                        <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
-                          {mailDate(message.date)}
-                        </span>
-                      </span>
-                      <span
-                        className={`flex items-center gap-xs text-body ${message.seen ? 'text-muted-foreground' : ''}`}
-                      >
-                        <span className="truncate">{message.subject}</span>
-                        {message.flagged && (
-                          <>
-                            <StarIcon aria-hidden weight="fill" className="size-icon-sm shrink-0" />
-                            <span className="sr-only"> {m.mail_starred()}</span>
-                          </>
-                        )}
-                      </span>
-                    </span>
-                    {!message.seen && <span className="sr-only"> {m.mail_unread()}</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex gap-xs">
-            <RegistryButton
-              secondary
-              label={m.mail_previous()}
-              disabled={page === 1}
-              action={async () => {
-                setPage(page - 1);
-                setSelected('');
+          {m.mail_write()}
+        </button>
+      </TabBarActions>
+      <div className="grid min-h-0 flex-1 grid-cols-12 gap-lg">
+        <div className="col-span-4 flex min-h-0 flex-col">
+          <InboxList
+            status={{
+              rows,
+              pending: inbox.isPending && !inbox.isError,
+              error: inbox.isError,
+              hasMore: inbox.hasNextPage,
+              loadingMore: inbox.isFetchingNextPage,
+              loadMore: () => void inbox.fetchNextPage(),
+              retry: () => inbox.refetch(),
+              refresh,
+            }}
+            filter={filter}
+            scope={`${account}|${JSON.stringify(filter)}`}
+            onFilter={(next) => {
+              setFilter(next);
+              setSelected('');
+            }}
+            labels={labels}
+            showAccount={!account}
+            selected={selected}
+            onSelect={(row) => {
+              setSelected(rowKey(row));
+              setComposing(false);
+            }}
+            onToggleSeen={(row) =>
+              seen.mutate({ account: row.account, ids: [row.id], seen: !row.seen }, { onSuccess: () => void reload() })
+            }
+            onArchive={(row) => void archiveRow(row).catch(() => undefined)}
+          />
+        </div>
+        <div className="col-span-8 flex min-h-0 flex-col">
+          {composing ? (
+            <ComposePanel
+              accounts={accounts}
+              defaultAccount={account ?? accounts[0]?.account ?? ''}
+              onClose={() => setComposing(false)}
+              onSent={() => {
+                setComposing(false);
+                void reload();
               }}
             />
-            <RegistryButton
-              secondary
-              label={m.mail_next()}
-              disabled={(result.data?.length ?? 0) < 25}
-              action={async () => {
-                setPage(page + 1);
-                setSelected('');
-              }}
+          ) : selectedRow ? (
+            <MailReader
+              key={rowKey(selectedRow)}
+              message={selectedRow}
+              accountLabel={labels.get(selectedRow.account) ?? ''}
+              onArchive={() => archiveRow(selectedRow)}
+              onSent={() => void reload()}
             />
-          </div>
-        </Panel>
-        <div className="col-span-7 min-h-0 overflow-y-auto overscroll-contain">
-          {selectedMessage ? (
-            <MailReader account={account} message={selectedMessage} />
           ) : (
-            <Panel className="col-span-7">
+            <div data-panel="" className="flex min-h-0 flex-1 items-center justify-center rounded-lg bg-muted p-lg">
               <p className="text-body text-muted-foreground">{m.mail_pick()}</p>
-            </Panel>
+            </div>
           )}
         </div>
       </div>
-    </div>
+      {archived && (
+        <output className="fixed bottom-xl left-1/2 z-50 flex h-touch -translate-x-1/2 items-center gap-md rounded-full border border-border bg-surface-raised pr-xs pl-lg text-label">
+          {m.mail_archived()}
+          <button
+            type="button"
+            onClick={() => void undoArchive(archived).catch(() => undefined)}
+            className="min-h-xl cursor-pointer rounded-full bg-foreground px-md text-caption font-medium text-background"
+          >
+            {m.mail_undo()}
+          </button>
+        </output>
+      )}
+      {(archive.isError || unarchive.isError) && (
+        <p role="alert" className="text-body text-danger">
+          {archive.isError ? m.mail_archive_error() : m.mail_unarchive_error()}
+        </p>
+      )}
+    </>
   );
 }
 
-/** Placeholder rows shaped like the messages, so the list does not jump when it arrives. */
-function ListSkeleton() {
+function ComposePanel(props: React.ComponentProps<typeof ComposeForm>) {
   return (
-    <output aria-label={m.mail_loading()} className="flex flex-col">
-      {[0, 1, 2, 3, 4, 5].map((row) => (
-        <span
-          key={row}
-          aria-hidden
-          className="flex flex-col gap-xs border-b border-dashed border-border p-sm last:border-b-0 motion-safe:animate-pulse"
-        >
-          <span className="flex justify-between gap-sm">
-            <span className="h-sm w-1/3 rounded-full bg-muted" />
-            <span className="h-sm w-xl rounded-full bg-muted" />
-          </span>
-          <span className="h-sm w-2/3 rounded-full bg-muted" />
-        </span>
-      ))}
-    </output>
+    <div data-panel="" className="flex min-h-0 flex-1 flex-col rounded-lg bg-muted p-lg">
+      <ComposeForm {...props} />
+    </div>
   );
 }

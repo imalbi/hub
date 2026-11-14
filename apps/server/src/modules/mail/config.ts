@@ -27,6 +27,20 @@ export const configSchema = z
         title: 'Account di posta',
         description: 'Gli account da leggere; senza questa sezione la posta resta spenta.',
       }),
+    archiveMailbox: z
+      .string()
+      .min(1)
+      .max(100)
+      .regex(/^[^\s-][^\0\r\n]*$/)
+      .default('archive')
+      .meta({
+        title: 'Cartella archivio',
+        description: 'Nome o alias in himalaya della cartella dove va "Archivia" (uguale per ogni account).',
+      }),
+    notify: z.boolean().default(true).meta({
+      title: 'Notifica nuove mail',
+      description: 'Una notifica sul desktop per ogni nuova mail non letta, anche con la pagina chiusa.',
+    }),
   })
   .optional();
 

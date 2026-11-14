@@ -60,6 +60,9 @@
   --spacing-popover-sm: 17.5rem;
   --spacing-popover-md: 24rem;
   --spacing-popover-lg: 32rem;
+  --spacing-popover-xl: 38rem;
+  /* The month grid of a date field inside a popover (Posta's Dopo il): seven touch-size days. */
+  --spacing-calendar: 18rem;
   /* The Musica page: its library column, and the artist banner. */
   --spacing-library-col: 21rem;
   --spacing-artist-banner: 14rem;

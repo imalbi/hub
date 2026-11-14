@@ -3,7 +3,8 @@ import { Panel } from '../../components/panel.tsx';
 import { useNow } from '../../lib/use-now.ts';
 import { m } from '../../paraglide/messages.js';
 import { NoteCard } from './card.tsx';
-import { localDay, splitNotes } from './days.ts';
+import { localDay } from '../../lib/day.ts';
+import { splitNotes } from './days.ts';
 import { openCapture } from './store.ts';
 import { useNotes } from './use-notes.ts';
 

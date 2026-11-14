@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { useNow } from '../../lib/use-now.ts';
 import { m } from '../../paraglide/messages.js';
-import { agentName, dayDate, localDay, splitNotes, writtenOn } from './days.ts';
+import { dayDate, localDay } from '../../lib/day.ts';
+import { agentName, splitNotes, writtenOn } from './days.ts';
 import { useNoteActions, useNotes } from './use-notes.ts';
 
 const MAX_SHOWN = 5;

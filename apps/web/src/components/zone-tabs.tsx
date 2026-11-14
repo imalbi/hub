@@ -1,7 +1,8 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { activeTab, tabParam } from '../lib/zone-search.ts';
 import { m } from '../paraglide/messages.js';
+import { TabBarSlot } from '../shell/header-slot.tsx';
 import { PageSurface } from '../shell/page-surface.tsx';
 import { LiquidTabs } from './ui/liquid-tabs.tsx';
 
@@ -24,6 +25,7 @@ export function ZoneTabs({
   float?: boolean;
 }) {
   const id = useId();
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
   const { tab } = useSearch({ strict: false });
   const ids = tabs.map((entry) => entry.id);
@@ -44,29 +46,32 @@ export function ZoneTabs({
       id={`${id}-panel`}
       aria-labelledby={`${id}-tab-${active.id}`}
       bar={
-        <LiquidTabs
-          id={id}
-          label={m.zone_tabs()}
-          size="md"
-          tabs={tabs.map(({ id: value, label, count }) => ({
-            value,
-            label,
-            count,
-            id: `${id}-tab-${value}`,
-            panelId: `${id}-panel`,
-          }))}
-          value={active.id}
-          onValueChange={(next) => {
-            void navigate({
-              to: '.',
-              search: (previous: Record<string, unknown>) => ({ ...previous, tab: tabParam(ids, next) }),
-              replace: true,
-            });
-          }}
-        />
+        <div className="flex items-center gap-md">
+          <LiquidTabs
+            id={id}
+            label={m.zone_tabs()}
+            size="md"
+            tabs={tabs.map(({ id: value, label, count }) => ({
+              value,
+              label,
+              count,
+              id: `${id}-tab-${value}`,
+              panelId: `${id}-panel`,
+            }))}
+            value={active.id}
+            onValueChange={(next) => {
+              void navigate({
+                to: '.',
+                search: (previous: Record<string, unknown>) => ({ ...previous, tab: tabParam(ids, next) }),
+                replace: true,
+              });
+            }}
+          />
+          <div ref={setSlot} className="flex flex-1 items-center gap-md" />
+        </div>
       }
     >
-      {active.content}
+      <TabBarSlot value={slot}>{active.content}</TabBarSlot>
     </PageSurface>
   );
 }

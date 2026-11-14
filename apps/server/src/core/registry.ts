@@ -7,6 +7,7 @@ const metadata = z.object({
   label: z.string().trim().min(1),
   description: z.string().min(1),
   danger: z.boolean().default(false),
+  pageOnly: z.boolean().default(false),
   job: z.boolean().default(false),
   timeoutMs: z.number().int().positive().optional(),
 });
@@ -49,5 +50,5 @@ export function listActions(app: AnyRouter) {
 }
 
 export function createRegistryRouter(app: () => AnyRouter) {
-  return router({ list: protectedProcedure.query(() => listActions(app())) });
+  return router({ list: protectedProcedure.query(() => listActions(app()).filter((action) => !action.pageOnly)) });
 }

@@ -63,7 +63,8 @@
         "size": 600,
         "has-attachment": false
       }
-    ]
+    ],
+    "archive": []
   },
   "personal": {
     "INBOX": [
@@ -79,6 +80,7 @@
         "size": 500,
         "has-attachment": true
       }
-    ]
+    ],
+    "archive": []
   }
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { addDays, agentName, splitNotes, writtenOn, type Note } from './days.ts';
+import { addDays } from '../../lib/day.ts';
+import { agentName, splitNotes, writtenOn, type Note } from './days.ts';
 
 const note = (id: string, forDay: string, createdAt = new Date(2026, 10, 10, 9).getTime(), source = 'desk'): Note => ({
   id,

@@ -28,7 +28,7 @@ export function PageSurface({
         data-page-surface
         className={`relative ${float ? 'mb-3xl' : 'mb-xl overflow-hidden'} flex min-h-0 flex-1 flex-col gap-lg rounded-xl border border-border bg-surface p-lg`}
       >
-        {bar && <div className="shrink-0 self-start">{bar}</div>}
+        {bar && <div className="shrink-0">{bar}</div>}
         <div
           className={`${scrolls ? '-mr-lg -mb-lg overflow-y-auto overscroll-contain pr-lg pb-lg' : ''} flex min-h-0 flex-1 flex-col ${className}`}
           {...rest}

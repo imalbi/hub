@@ -3,18 +3,26 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { Run, RunResult } from '../../core/exec.ts';
 import {
+  bodySchema,
+  composeArgs,
   envelopesSchema,
   filterSchema,
   filterTokens,
   htmlToText,
   himalaya,
+  himalayaDone,
   idSchema,
   MAIL_TIMEOUT_MS,
   messageViewSchema,
   missingEnvelopeFields,
+  moveArgs,
   plainTextOf,
   quoteValue,
+  recipientsSchema,
+  replyArgs,
+  replyDraftArgs,
   searchArgs,
+  subjectSchema,
   toMessage,
 } from './himalaya.ts';
 import { z } from 'zod';
@@ -187,4 +195,93 @@ void test('envelope recipients are parsed and checked against the installed sche
   const schema = JSON.parse(schemaText);
   delete schema.$defs.Envelope.properties.to;
   assert.deepEqual(missingEnvelopeFields(JSON.stringify(schema)), ['to']);
+});
+
+void test('compose is one argv: each value its own element, a body starting with a dash stays one --body= element', () => {
+  assert.deepEqual(
+    composeArgs('work', {
+      to: ['a@example.org', 'b@example.org'],
+      cc: ['c@example.org'],
+      subject: 'Ciao',
+      body: '-rf x',
+    }),
+    [
+      '--json',
+      '-a',
+      'work',
+      'message',
+      'compose',
+      '--to=a@example.org',
+      '--to=b@example.org',
+      '--cc=c@example.org',
+      '--subject=Ciao',
+      '--body=-rf x',
+      '--send',
+      '--save',
+      'sent',
+    ],
+  );
+});
+
+void test('reply sends with the id last and never builds the threading headers itself; the draft has no --send', () => {
+  assert.deepEqual(replyArgs('work', 'INBOX', '310', { to: ['a@example.org'], body: 'Grazie' }), [
+    '--json',
+    '-a',
+    'work',
+    'message',
+    'reply',
+    '-m',
+    'INBOX',
+    '--to=a@example.org',
+    '--body=Grazie',
+    '--send',
+    '--save',
+    'sent',
+    '310',
+  ]);
+  const draft = replyDraftArgs('work', 'INBOX', '310');
+  assert.deepEqual(draft, ['--json', '-a', 'work', 'message', 'reply', '-m', 'INBOX', '--body=', '310']);
+  assert.equal(draft.includes('--send'), false);
+});
+
+void test('moving names the source mailbox and the destination', () => {
+  assert.deepEqual(moveArgs('work', 'INBOX', 'archive', ['310']), [
+    '--json',
+    '-a',
+    'work',
+    'message',
+    'move',
+    '-f',
+    'INBOX',
+    '-t',
+    'archive',
+    '310',
+  ]);
+});
+
+void test('outgoing values are bounded before they reach argv', () => {
+  assert.equal(recipientsSchema.safeParse(['a@example.org']).success, true);
+  assert.equal(recipientsSchema.safeParse(['not an address']).success, false);
+  assert.equal(recipientsSchema.safeParse(Array.from({ length: 21 }, (_, i) => `u${i}@example.org`)).success, false);
+  assert.equal(subjectSchema.safeParse('una\nriga').success, false);
+  assert.equal(subjectSchema.safeParse('x'.repeat(301)).success, false);
+  assert.equal(bodySchema.safeParse('x'.repeat(20_001)).success, false);
+  assert.equal(bodySchema.safeParse('  \n ').success, false);
+  assert.equal(bodySchema.safeParse('a\0b').success, false, 'a NUL cannot be an argv element');
+});
+
+void test('himalayaDone ignores the answer and fails on the exit code or an error payload', async () => {
+  const answer =
+    (result: RunResult): Run =>
+    () =>
+      Promise.resolve(result);
+  assert.deepEqual(await himalayaDone(answer({ stdout: 'Sent', stderr: '', code: 0 }), []), { ok: true, value: true });
+  assert.deepEqual(await himalayaDone(answer({ stdout: '{"error":"x"}', stderr: '', code: 0 }), []), {
+    ok: false,
+    failure: 'failed',
+  });
+  assert.deepEqual(await himalayaDone(answer({ stdout: '', stderr: '', code: -1 }), []), {
+    ok: false,
+    failure: 'timeout',
+  });
 });

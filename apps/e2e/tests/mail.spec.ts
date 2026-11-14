@@ -1,25 +1,37 @@
+import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { SERVER_URL } from './hosts.ts';
 
+// The list button of a message: the hover actions of its row carry the subject too, so a name alone is ambiguous.
+const messageRow = (page: Page, text: string | RegExp) =>
+  page
+    .getByRole('region', { name: 'Posta in arrivo' })
+    .locator('li')
+    .filter({ hasText: text })
+    .locator('button[aria-pressed]');
+
 test('inbox and reader scroll independently beneath the fixed toolbar', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 750 });
-  const messages = Array.from({ length: 25 }, (_, index) => ({
+  const rows = Array.from({ length: 25 }, (_, index) => ({
     id: String(index),
+    account: 'work',
     subject: `Messaggio ${index}`,
     from: { name: 'Mittente', email: 'sender@example.org' },
     date: '2026-11-07T09:00:00Z',
     seen: true,
     flagged: false,
   }));
-  await page.route('**/trpc/mail.list*', (route) => route.fulfill({ json: [{ result: { data: messages } }] }));
+  await page.route('**/trpc/mail.inbox*', (route) =>
+    route.fulfill({ json: [{ result: { data: { rows, cursor: null } } }] }),
+  );
   await page.route('**/trpc/mail.read*', (route) =>
     route.fulfill({ json: [{ result: { data: { text: 'Testo lungo\n'.repeat(200), truncated: false } } }] }),
   );
   await page.goto('/desk/messaggi');
   const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
-  await expect(inbox.getByRole('button', { name: /Messaggio 0/ })).toBeVisible();
-  await inbox.getByRole('button', { name: /Messaggio 0/ }).click();
-  const toolbar = page.getByRole('textbox', { name: 'Mittente' });
+  await expect(messageRow(page, 'Messaggio 0')).toBeVisible();
+  await messageRow(page, 'Messaggio 0').click();
+  const toolbar = page.getByRole('textbox', { name: 'Cerca nella posta' });
   await toolbar.focus();
   await expect(toolbar).toBeFocused();
   const before = await toolbar.boundingBox();
@@ -41,8 +53,7 @@ test('inbox and reader scroll independently beneath the fixed toolbar', async ({
   await page.keyboard.press('PageDown');
   await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   expect((await toolbar.boundingBox())?.y).toBe(before?.y);
-  await expect(inbox.getByRole('button', { name: 'Successiva' })).toBeVisible();
-  const reader = page.getByRole('region', { name: 'Messaggio 0' }).locator('..');
+  const reader = page.getByRole('region', { name: 'Messaggio 0' });
   await reader.hover();
   await page.mouse.wheel(0, 1500);
   await expect.poll(() => reader.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
@@ -54,7 +65,7 @@ test('the inbox shows loading until its first list arrives', async ({ page }) =>
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/trpc/mail.list*', async (route) => {
+  await page.route('**/trpc/mail.inbox*', async (route) => {
     await held;
     await route.continue();
   });
@@ -63,12 +74,12 @@ test('the inbox shows loading until its first list arrives', async ({ page }) =>
   await expect(inbox.getByRole('status', { name: 'Caricamento...' })).toBeVisible();
   await expect(inbox.getByText('Nessun messaggio')).toHaveCount(0);
   release();
-  await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
 });
 
-test('refresh reloads the inbox and accounts', async ({ page }) => {
+test('refresh starts the list over without asking the accounts again', async ({ page }) => {
   let addMessage = false;
-  await page.route('**/trpc/mail.list*', async (route) => {
+  await page.route('**/trpc/mail.inbox*', async (route) => {
     const response = await route.fetch();
     const payload: unknown = await response.json();
     if (addMessage && Array.isArray(payload)) {
@@ -80,11 +91,15 @@ test('refresh reloads the inbox and accounts', async ({ page }) => {
         typeof first.result !== 'object' ||
         !first.result ||
         !('data' in first.result) ||
-        !Array.isArray(first.result.data)
+        typeof first.result.data !== 'object' ||
+        !first.result.data ||
+        !('rows' in first.result.data) ||
+        !Array.isArray(first.result.data.rows)
       )
         throw new Error('unexpected mail response');
-      first.result.data.push({
+      first.result.data.rows.push({
         id: 'new',
+        account: 'work',
         subject: 'Nuovo messaggio',
         from: { name: 'Mittente', email: 'sender@example.org' },
         date: null,
@@ -95,19 +110,19 @@ test('refresh reloads the inbox and accounts', async ({ page }) => {
     await route.fulfill({ response, json: payload });
   });
   await page.goto('/desk/messaggi');
-  await expect(page.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
   addMessage = true;
-  const list = page.waitForResponse((response) => response.url().includes('/trpc/mail.list'));
-  const accounts = page.waitForResponse((response) => response.url().includes('mail.accounts'));
+  let accountsAsked = false;
+  page.on('request', (request) => {
+    if (request.url().includes('mail.accounts')) accountsAsked = true;
+  });
+  const list = page.waitForResponse((response) => response.url().includes('/trpc/mail.inbox'));
   const state = page.waitForResponse((response) => response.url().includes('mail.refresh'));
   await page.getByRole('button', { name: 'Aggiorna', exact: true }).click();
   expect((await list).ok()).toBe(true);
-  expect((await accounts).ok()).toBe(true);
   expect((await state).ok()).toBe(true);
-  await expect(page.getByRole('button', { name: /Nuovo messaggio/ })).toBeVisible();
-  await expect(
-    page.getByRole('region', { name: 'Posta in arrivo' }).getByRole('status').filter({ hasText: 'Fatto' }),
-  ).toHaveText('Fatto');
+  await expect(messageRow(page, 'Nuovo messaggio')).toBeVisible();
+  expect(accountsAsked).toBe(false);
 });
 
 test('Messaggi shows the Posta inbox', async ({ page }) => {
@@ -115,60 +130,96 @@ test('Messaggi shows the Posta inbox', async ({ page }) => {
   await page.getByRole('link', { name: 'Messaggi', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Messaggi' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Posta' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
 });
 
 test('read and star actions change the message state', async ({ page, pc }) => {
   try {
     await page.goto('/desk/messaggi');
-    await page.getByRole('button', { name: /Offerta di colloquio/ }).click();
+    await messageRow(page, 'Offerta di colloquio').click();
     await page.getByRole('button', { name: 'Segna come letto' }).click();
     await expect(page.getByRole('button', { name: 'Segna come non letto' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Segna come non letto' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('button', { name: /Offerta di colloquio.*Non letto/ })).toHaveCount(0);
+    await expect(messageRow(page, 'Offerta di colloquio').filter({ hasText: 'Non letto' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Contrassegna', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Contrassegna', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     await expect(
-      page.getByRole('button', { name: /Offerta di colloquio.*Contrassegnato/ }).locator('svg'),
+      messageRow(page, 'Offerta di colloquio').filter({ hasText: 'Contrassegnato' }).locator('svg'),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Segna come non letto' }).click();
     await expect(page.getByRole('button', { name: 'Segna come letto' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Segna come letto' })).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.getByRole('button', { name: /Offerta di colloquio.*Non letto/ })).toBeVisible();
+    await expect(messageRow(page, 'Offerta di colloquio').filter({ hasText: 'Non letto' })).toBeVisible();
     await page.getByRole('button', { name: 'Contrassegna', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Contrassegna', exact: true })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
-    await expect(page.getByRole('button', { name: /Offerta di colloquio.*Contrassegnato/ })).toHaveCount(0);
+    await expect(messageRow(page, 'Offerta di colloquio').filter({ hasText: 'Contrassegnato' })).toHaveCount(0);
   } finally {
     await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310'], seen: false } });
     await pc.post('/trpc/mail.setFlagged', { data: { account: 'work', ids: ['310'], flagged: false } });
   }
 });
 
-test('accounts, search and reading preserve unread state', async ({ page, request }) => {
+test('Tutte merges the accounts with their labels, each account shows only its own, search narrows, reading keeps unread', async ({
+  page,
+  request,
+}) => {
   await page.goto('/desk/messaggi');
-  await page.getByRole('button', { name: 'Account: Lavoro' }).click();
-  await page.getByRole('option', { name: 'Personale' }).click();
-  await expect(page.getByRole('button', { name: /Iscrizione al club/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Account: Personale' }).click();
-  await page.getByRole('option', { name: 'Lavoro' }).click();
-  await page.getByRole('textbox', { name: 'Mittente' }).fill('Recruiter');
-  await page.getByRole('button', { name: 'Cerca', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Posta in arrivo' }).getByRole('listitem')).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Newsletter di prova/ })).toHaveCount(0);
-  await page.getByRole('button', { name: /Offerta di colloquio/ }).click();
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  const accounts = page.getByRole('toolbar', { name: 'Account' });
+  await expect(accounts.getByRole('button', { name: 'Tutte' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(messageRow(page, 'Offerta di colloquio')).toContainText('Lavoro');
+  await expect(messageRow(page, 'Iscrizione al club')).toContainText('Personale');
+  await accounts.getByRole('button', { name: 'Personale' }).click();
+  await expect(messageRow(page, 'Iscrizione al club')).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio')).toHaveCount(0);
+  await accounts.getByRole('button', { name: 'Lavoro' }).click();
+  const search = page.getByRole('textbox', { name: 'Cerca nella posta' });
+  await search.fill('vorremmo');
+  await search.press('Enter');
+  await expect(inbox.getByRole('listitem')).toHaveCount(1);
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
+  await expect(messageRow(page, 'Newsletter di prova')).toHaveCount(0);
+  await messageRow(page, 'Offerta di colloquio').click();
   await expect(page.getByText('vorremmo proporle un colloquio.', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Segna come letto' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Offerta di colloquio.*Non letto/ })).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio').filter({ hasText: 'Non letto' })).toBeVisible();
   const trace = JSON.stringify(await (await request.get(`${SERVER_URL}/__fake/mail`)).json());
   expect(trace).toContain('"message","read"');
   expect(trace).not.toContain('--seen');
+});
+
+test('Filtri applies a sender and an unread filter as chips, and a typed day sets Dopo il', async ({ page }) => {
+  await page.goto('/desk/messaggi');
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  await page.getByRole('button', { name: 'Filtri', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Filtri' });
+  await dialog.getByRole('textbox', { name: 'Mittente' }).fill('carla');
+  await dialog.getByRole('switch', { name: 'Solo non lette' }).click();
+  await dialog.getByRole('textbox', { name: 'Dopo il' }).fill('ieri');
+  await dialog.getByRole('textbox', { name: 'Dopo il' }).press('Enter');
+  const yesterday = new Date(Date.now() - 86_400_000);
+  const written = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(
+    yesterday,
+  );
+  await expect(dialog.getByText(written)).toBeVisible();
+  await expect(dialog.getByRole('button', { pressed: true, name: new RegExp(`^${written}`, 'i') })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Applica' }).click();
+  await expect(page.getByRole('button', { name: 'Filtri, 3 attivi' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Rimuovi Mittente: carla' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Rimuovi Solo non lette' })).toBeVisible();
+  // Nothing from the fixture is both unread, from carla and after yesterday.
+  await expect(inbox.getByText('Nessun messaggio')).toBeVisible();
+  await page.getByRole('button', { name: 'Rimuovi Mittente: carla' }).click();
+  await page.getByRole('button', { name: 'Rimuovi Solo non lette' }).click();
+  await page.getByRole('button', { name: /^Rimuovi Dopo il/ }).click();
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Filtri', exact: true })).toBeVisible();
 });
 
 test('the mail UI is absent when its procedures are not configured', async ({ page }) => {
@@ -186,7 +237,7 @@ test('a failed inbox can be retried', async ({ page, request }) => {
     await expect(page.getByText('Impossibile caricare la posta')).toBeVisible();
     await request.post(`${SERVER_URL}/__fake/mail`, { data: { fail: false } });
     await page.getByRole('button', { name: 'Riprova' }).click();
-    await expect(page.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+    await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
   } finally {
     await request.post(`${SERVER_URL}/__fake/mail`, { data: { fail: false } });
   }
@@ -195,16 +246,173 @@ test('a failed inbox can be retried', async ({ page, request }) => {
 test('reopening Posta shows the cached inbox without reading the mailbox again', async ({ page }) => {
   let reads = 0;
   page.on('request', (request) => {
-    if (request.url().includes('mail.list')) reads++;
+    if (request.url().includes('mail.inbox')) reads++;
   });
   await page.goto('/desk/messaggi');
   const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
-  await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
   const zones = page.getByRole('navigation', { name: 'Zone' });
   await zones.getByRole('link', { name: 'Panoramica' }).click();
   await zones.getByRole('link', { name: 'Messaggi' }).click();
   // The list is there at once, from the cache: no loading rows, no second read.
-  await expect(inbox.getByRole('button', { name: /Offerta di colloquio/ })).toBeVisible();
+  await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
   await expect(inbox.getByRole('status', { name: 'Caricamento...' })).toHaveCount(0);
   expect(reads).toBe(1);
+});
+
+/** The `work` offset of the merged cursor in a batched `mail.inbox` call (no transformer: `{"0":{...,"cursor":{...}}}`). */
+function workOffset(input: string | null): number {
+  const batch: unknown = JSON.parse(input ?? '{}');
+  const call = typeof batch === 'object' && batch && '0' in batch ? batch[0] : null;
+  const cursor = typeof call === 'object' && call && 'cursor' in call ? call.cursor : null;
+  return typeof cursor === 'object' && cursor && 'work' in cursor ? Number(cursor.work) : 0;
+}
+
+/** Every himalaya argv the fake was asked (`GET /__fake/mail`). */
+async function fakeCalls(request: APIRequestContext): Promise<string[][]> {
+  const body: unknown = await (await request.get(`${SERVER_URL}/__fake/mail`)).json();
+  const calls = typeof body === 'object' && body && 'calls' in body ? body.calls : [];
+  return Array.isArray(calls) ? calls.filter((call): call is string[] => Array.isArray(call)) : [];
+}
+
+async function hold(page: Page, name: string) {
+  await page.getByRole('button', { name }).focus();
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('Space');
+}
+
+const rowFor = (id: number, account = 'work') => ({
+  id: `p${id}`,
+  account,
+  subject: `Messaggio ${id}`,
+  from: { name: 'Mittente', email: 'sender@example.org' },
+  date: '2026-11-07T09:00:00Z',
+  seen: true,
+  flagged: false,
+});
+
+test('the list reads the next page when its end shows, then says there is no more, and Aggiorna starts over', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 750 });
+  const pages = [0, 1, 2].map((index) =>
+    Array.from({ length: index === 2 ? 10 : 25 }, (_, row) => rowFor(index * 25 + row)),
+  );
+  const cursors: (string | null)[] = [];
+  await page.route('**/trpc/mail.inbox*', (route) => {
+    const next = workOffset(new URL(route.request().url()).searchParams.get('input'));
+    cursors.push(next === 0 ? null : String(next));
+    const index = next / 25;
+    return route.fulfill({
+      json: [{ result: { data: { rows: pages[index] ?? [], cursor: index < 2 ? { work: next + 25 } : null } } }],
+    });
+  });
+  await page.goto('/desk/messaggi');
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  await expect(messageRow(page, 'Messaggio 0')).toBeVisible();
+  const list = inbox.locator('.overflow-y-auto');
+  await expect(inbox.getByText('Carico altre mail')).toBeVisible();
+  await list.evaluate((element) => element.scrollTo(0, element.scrollHeight));
+  await expect(messageRow(page, 'Messaggio 25')).toBeAttached();
+  await list.evaluate((element) => element.scrollTo(0, element.scrollHeight));
+  await expect(messageRow(page, 'Messaggio 59')).toBeAttached();
+  await list.evaluate((element) => element.scrollTo(0, element.scrollHeight));
+  await expect(inbox.getByText('Non ci sono altre mail')).toBeVisible();
+  expect(cursors).toEqual([null, '25', '50']);
+  await page.getByRole('button', { name: 'Aggiorna', exact: true }).click();
+  await expect.poll(() => cursors.length).toBeGreaterThan(3);
+  await expect(messageRow(page, 'Messaggio 59')).toHaveCount(0);
+});
+
+test('Archivia moves the message out of the list and Annulla brings it back', async ({ page }) => {
+  await page.goto('/desk/messaggi');
+  const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
+  await messageRow(page, 'Newsletter di prova').click();
+  await page.getByRole('region', { name: 'Newsletter di prova' }).getByRole('button', { name: 'Archivia' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Mail archiviata' })).toBeVisible();
+  await expect(messageRow(page, 'Newsletter di prova')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Annulla', exact: true }).click();
+  await expect(messageRow(page, 'Newsletter di prova')).toBeVisible();
+  await expect(inbox.getByRole('listitem')).toHaveCount(4);
+});
+
+test('a row archives from its own hover button', async ({ page }) => {
+  await page.goto('/desk/messaggi');
+  await messageRow(page, 'Iscrizione al club').hover();
+  await page.getByRole('button', { name: 'Archivia: Iscrizione al club' }).click();
+  await expect(messageRow(page, 'Iscrizione al club')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Annulla', exact: true }).click();
+  await expect(messageRow(page, 'Iscrizione al club')).toBeVisible();
+});
+
+test('Rispondi shows the recipient and the quote, a hold sends one reply and the form closes', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/desk/messaggi');
+  await messageRow(page, 'Offerta di colloquio').click();
+  const reader = page.getByRole('region', { name: 'Offerta di colloquio' });
+  await reader.getByRole('button', { name: 'Rispondi' }).click();
+  const form = page.getByRole('form', { name: 'Rispondi' });
+  await expect(form).toContainText('recruiter@example.org');
+  await expect(form.getByText('Re: Offerta di colloquio')).toBeVisible();
+  await form.getByText(/Testo citato \(\d+ righe\)/).click();
+  await expect(form.getByText('> vorremmo proporle un colloquio.')).toBeVisible();
+  await form.getByRole('textbox', { name: 'Testo della risposta' }).fill('Volentieri, confermo.');
+  await hold(page, 'Invia la risposta, tieni premuto');
+  await expect(form).toHaveCount(0);
+  await expect(reader.getByRole('status').filter({ hasText: 'Mail inviata' })).toBeVisible();
+  const trace = await fakeCalls(request);
+  const sends = trace.filter((call) => call.includes('--send') && call.includes('reply'));
+  expect(sends).toHaveLength(1);
+  expect(sends[0]).toContain('--body=Volentieri, confermo.');
+});
+
+const composeSends = async (request: APIRequestContext) =>
+  (await fakeCalls(request)).filter((call) => call.includes('compose') && call.includes('--send'));
+
+async function fillCompose(page: Page, address: string) {
+  await page.goto('/desk/messaggi');
+  await page.getByRole('button', { name: 'Scrivi', exact: true }).click();
+  const form = page.getByRole('form', { name: 'Nuova mail' });
+  const to = form.getByRole('combobox', { name: 'A' });
+  await to.fill(address);
+  await to.press('Enter');
+  await form.getByRole('textbox', { name: 'Oggetto' }).fill('Appunti');
+  await form.getByRole('textbox', { name: 'Testo' }).fill('Ciao Marta');
+  return form;
+}
+
+test('Scrivi with an invalid address shows the line and sends nothing', async ({ page, request }) => {
+  const before = (await composeSends(request)).length;
+  const form = await fillCompose(page, 'non-un-indirizzo');
+  await hold(page, 'Invia la mail, tieni premuto');
+  await expect(form.getByRole('alert')).toHaveText('Indirizzo non valido');
+  expect((await composeSends(request)).length).toBe(before);
+});
+
+test('Scrivi sends a new mail with a hold and closes', async ({ page, request }) => {
+  const before = (await composeSends(request)).length;
+  const form = await fillCompose(page, 'marta@example.org');
+  await hold(page, 'Invia la mail, tieni premuto');
+  await expect(form).toHaveCount(0);
+  const sends = await composeSends(request);
+  expect(sends).toHaveLength(before + 1);
+  expect(sends.at(-1)).toEqual(
+    expect.arrayContaining(['--to=marta@example.org', '--subject=Appunti', '--body=Ciao Marta', '--save', 'sent']),
+  );
+});
+
+test('a failed send keeps the form and its text and shows one error line', async ({ page, request }) => {
+  try {
+    const form = await fillCompose(page, 'marta@example.org');
+    await request.post(`${SERVER_URL}/__fake/mail`, { data: { fail: true } });
+    await hold(page, 'Invia la mail, tieni premuto');
+    await expect(form.getByRole('alert')).toHaveText('Non riesco a inviare la mail');
+    await expect(form.getByRole('textbox', { name: 'Testo' })).toHaveValue('Ciao Marta');
+    await expect(form.getByRole('textbox', { name: 'Oggetto' })).toHaveValue('Appunti');
+  } finally {
+    await request.post(`${SERVER_URL}/__fake/mail`, { data: { fail: false } });
+  }
 });

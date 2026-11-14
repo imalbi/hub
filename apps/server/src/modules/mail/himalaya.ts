@@ -88,6 +88,72 @@ export function flagArgs(account: string, mailbox: string, add: boolean, flag: s
   return [...common(account), 'flag', add ? 'add' : 'remove', '-m', mailbox, '-f', flag, ...ids];
 }
 
+/** Where himalaya copies what Hub sends: explicit, so it does not depend on the owner's `save-copy` setting. */
+export const SENT_MAILBOX = 'sent';
+
+// Values that reach argv as `--flag=<text>`: one element each, so a value starting with `-` is never read as a flag.
+// A NUL cannot be part of an argv element.
+export const recipientsSchema = z.array(z.email().max(254)).max(20);
+export const subjectSchema = z
+  .string()
+  .max(300)
+  .regex(/^[^\0\r\n]*$/);
+export const bodySchema = z
+  .string()
+  .max(20_000)
+  .regex(/^[^\0]*$/)
+  .refine((text) => text.trim().length > 0);
+
+export type Outgoing = { to: readonly string[]; cc?: readonly string[]; subject: string; body: string };
+
+const addressOptions = (to: readonly string[], cc: readonly string[] = []) => [
+  ...to.map((address) => `--to=${address}`),
+  ...cc.map((address) => `--cc=${address}`),
+];
+const sendOptions = ['--send', '--save', SENT_MAILBOX];
+
+export function composeArgs(account: string, mail: Outgoing): string[] {
+  return [
+    ...common(account),
+    'message',
+    'compose',
+    ...addressOptions(mail.to, mail.cc),
+    `--subject=${mail.subject}`,
+    `--body=${mail.body}`,
+    ...sendOptions,
+  ];
+}
+
+/** himalaya fills In-Reply-To, References, `Re:` and the quote itself; `to` and `cc` only override its recipients. */
+export function replyArgs(
+  account: string,
+  mailbox: string,
+  id: string,
+  mail: { to?: readonly string[]; cc?: readonly string[]; body: string },
+): string[] {
+  return [
+    ...common(account),
+    'message',
+    'reply',
+    '-m',
+    mailbox,
+    ...addressOptions(mail.to ?? [], mail.cc),
+    `--body=${mail.body}`,
+    ...sendOptions,
+    id,
+  ];
+}
+
+/** The decoded fields without sending. An explicit empty body: with none given himalaya would wait on stdin. */
+export function replyDraftArgs(account: string, mailbox: string, id: string): string[] {
+  return [...common(account), 'message', 'reply', '-m', mailbox, '--body=', id];
+}
+
+/** `--from` is the mailbox the message is in: himalaya assumes the inbox when it is omitted. */
+export function moveArgs(account: string, from: string, to: string, ids: readonly string[]): string[] {
+  return [...common(account), 'message', 'move', '-f', from, '-t', to, ...ids];
+}
+
 export const VERSION_ARGS = ['--version'];
 export const ENVELOPE_SCHEMA_ARGS = ['json-schema', 'himalaya-envelope-list'];
 
@@ -134,6 +200,14 @@ export function missingEnvelopeFields(schemaText: string): string[] | null {
   const fields = parsed.data.$defs.Envelope.properties;
   return ENVELOPE_FIELDS.filter((field) => !(field in fields));
 }
+
+/** What `message reply --json` prints without `--send`: the template himalaya would send (`body` is the quoted text). */
+export const replyDraftSchema = z.object({
+  to: z.array(z.string()).default([]),
+  cc: z.array(z.string()).default([]),
+  subject: z.string().nullish(),
+  body: z.string().default(''),
+});
 
 export const flagResultSchema = z.object({ flags: z.array(z.string()) });
 
@@ -201,6 +275,20 @@ export async function himalaya<S extends z.ZodType>(
   if (isErrorPayload(json)) return { ok: false, failure: 'failed' };
   const parsed = schema.safeParse(json);
   return parsed.success ? { ok: true, value: parsed.data } : { ok: false, failure: 'unreadable' };
+}
+
+/**
+ * For commands whose `--json` answer Hub does not read (send, move): only the exit code and an error payload count.
+ */
+export async function himalayaDone(
+  run: Run,
+  args: readonly string[],
+  timeoutMs = MAIL_TIMEOUT_MS,
+): Promise<MailResult<true>> {
+  const result = await run(BIN, [...args], { timeoutMs });
+  if (result.code === -1) return { ok: false, failure: 'timeout' };
+  if (result.code !== 0 || isErrorPayload(parseJson(result.stdout))) return { ok: false, failure: 'failed' };
+  return { ok: true, value: true };
 }
 
 const textBody = z.object({ Text: z.string() });

@@ -11,7 +11,10 @@ process.env.NODE_ENV = 'test';
 const app = buildServer({
   dbPath: ':memory:',
   deps: { run: createFakeDesktop() },
-  config: { ...emptyConfig, mail: { accounts: [{ label: 'Lavoro', account: 'work' }] } },
+  config: {
+    ...emptyConfig,
+    mail: { accounts: [{ label: 'Lavoro', account: 'work' }], archiveMailbox: 'archive', notify: false },
+  },
   isLoopback: ({ headers }) => headers['x-test-pc'] === '1',
 });
 let port = 0;

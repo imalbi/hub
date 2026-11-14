@@ -5,8 +5,9 @@ import { Calendar } from '../../components/ui/calendar.tsx';
 import { MODAL_ROOT, SCRIM, useModal } from '../../components/ui/modal.ts';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
-import { addDays, laterDay, localDay } from './days.ts';
-import { parseDay } from './parse-day.ts';
+import { addDays, localDay } from '../../lib/day.ts';
+import { parseDay } from '../../lib/parse-day.ts';
+import { laterDay } from './days.ts';
 import { closeCapture, useNotesUi } from './store.ts';
 
 type When = 'today' | 'tomorrow' | 'other';

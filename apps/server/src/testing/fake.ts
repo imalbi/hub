@@ -79,6 +79,8 @@ const config: Config = {
       { account: 'work', label: 'Lavoro' },
       { account: 'personal', label: 'Personale' },
     ],
+    archiveMailbox: 'archive',
+    notify: true,
   },
   weather: { name: 'Località esempio', latitude: 1, longitude: 2 },
   study: { plansDir: studyDir, materialDirs: [studyMaterials] },
@@ -154,7 +156,12 @@ function build() {
   }
   const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls, player, monitors });
   const run: Run = (bin, args, options) => {
-    if (failMail && bin === 'himalaya' && args.includes('envelope') && args.includes('25'))
+    // The inbox listing and a send both fail, so one hook covers a failed list and a failed send.
+    if (
+      failMail &&
+      bin === 'himalaya' &&
+      ((args.includes('envelope') && args.includes('25')) || args.includes('--send'))
+    )
       return Promise.resolve({ stdout: '', stderr: '', code: 1 });
     return desktop(bin, args, options);
   };

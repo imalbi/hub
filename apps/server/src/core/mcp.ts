@@ -77,17 +77,21 @@ export function registerMcp(
       };
     });
     server.setRequestHandler(ListToolsRequestSchema, () => ({
-      tools: listActions(router).map((action) =>
-        ToolSchema.parse({
-          name: action.path,
-          description: action.description,
-          inputSchema: action.schema ?? { type: 'object' },
-        }),
-      ),
+      tools: listActions(router)
+        .filter((action) => !action.pageOnly)
+        .map((action) =>
+          ToolSchema.parse({
+            name: action.path,
+            description: action.description,
+            inputSchema: action.schema ?? { type: 'object' },
+          }),
+        ),
     }));
     server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
       const started = Date.now();
-      const action = listActions(router).find(({ path }) => path === params.name);
+      const action = listActions(router)
+        .filter((action) => !action.pageOnly)
+        .find(({ path }) => path === params.name);
       let result: unknown;
       let isError = false;
       try {

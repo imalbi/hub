@@ -15,6 +15,9 @@ const withMail: Config = {
       { label: 'Lavoro', account: 'work' },
       { label: 'Personale', account: 'personal' },
     ],
+    archiveMailbox: 'archive',
+    // The notifier's own poll would add a call to every list the tests read; notify.test.ts covers it.
+    notify: false,
   },
 };
 

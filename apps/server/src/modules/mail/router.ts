@@ -4,24 +4,36 @@ import type { Run } from '../../core/exec.ts';
 import { loopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
 import type { MailAccount } from './config.ts';
 import { readMailState, type MailLive, type MailState } from './live.ts';
+import { nextFeed } from './feed.ts';
 import {
+  bodySchema,
   capText,
+  composeArgs,
   filterSchema,
+  filterTokens,
   envelopesSchema,
   flagArgs,
   flagResultSchema,
   himalaya,
+  himalayaDone,
   idSchema,
   listArgs,
   mailboxSchema,
   messageViewSchema,
+  moveArgs,
   PAGE_SIZE,
   plainTextOf,
   readArgs,
+  recipientsSchema,
+  replyArgs,
+  replyDraftArgs,
+  replyDraftSchema,
   searchArgs,
+  subjectSchema,
   THREAD_WINDOW,
   toMessage,
   type MailFailure,
+  type MailMessage,
   type MailResult,
 } from './himalaya.ts';
 import { threadOf, type ThreadEntry, type ThreadView } from './thread.ts';
@@ -91,13 +103,19 @@ function forClient(state: MailState, kind: string): MailState {
 
 export type ThreadAnswer = { account: string; messageId: string; thread: ThreadView | null };
 
+// Offsets in the merged inbox cursor: far past any real mailbox, only a bound on the input.
+const MAX_OFFSET = PAGE_SIZE * 500;
+
 export function createMailRouter({
   run,
   accounts,
+  archiveMailbox,
   live,
 }: {
   run: Run;
   accounts: readonly MailAccount[];
+  /** Name or alias in himalaya of the folder "Archivia" moves to. */
+  archiveMailbox: string;
   live: MailLive;
 }) {
   const setFlag = (account: string, flag: 'seen' | 'flagged', ids: readonly string[], add: boolean) =>
@@ -143,6 +161,32 @@ export function createMailRouter({
         return envelopes.map(toMessage);
       }),
 
+    // The inbox of one account or of all of them merged (no `account`), a page at a time: the cursor is what the last
+    // answer returned. Reading, replying and archiving then use each row's own `account`.
+    inbox: loopbackProcedure
+      .input(
+        z.object({
+          account: accountInput.optional(),
+          filter: filterSchema.default({}),
+          cursor: z.record(accountInput, z.number().int().min(0).max(MAX_OFFSET)).optional(),
+        }),
+      )
+      .query(async ({ input }) => {
+        const names =
+          input.account === undefined
+            ? accounts.map((item) => item.account)
+            : [findAccount(accounts, input.account).account];
+        const filtered = filterTokens(input.filter).length > 0;
+        const result = await nextFeed(names, input.cursor ?? {}, PAGE_SIZE, async (account, page) => {
+          const args = filtered
+            ? searchArgs(account, INBOX, page, PAGE_SIZE, input.filter)
+            : listArgs(account, INBOX, page, PAGE_SIZE);
+          const listed = await himalaya(run, args, envelopesSchema);
+          return listed.ok ? { ok: true, value: listed.value.envelopes.map(toMessage) } : listed;
+        });
+        return unwrap(result);
+      }),
+
     // Never `--seen`: opening a message leaves it unread until the owner marks it.
     read: loopbackProcedure
       .input(z.object({ account: accountInput, id: idSchema, mailbox: mailboxSchema.default(INBOX) }))
@@ -179,6 +223,101 @@ export function createMailRouter({
         }));
         const truncated = sides.some(([, side]) => side.truncated);
         return { threads: answers, truncated, after };
+      }),
+
+    // himalaya builds the reply (recipients, `Re:`, the quote) and this only shows it; nothing is sent.
+    replyDraft: loopbackProcedure
+      .input(z.object({ account: accountInput, id: idSchema, mailbox: mailboxSchema.default(INBOX) }))
+      .query(async ({ input }) => {
+        const { account } = findAccount(accounts, input.account);
+        const draft = unwrap(await himalaya(run, replyDraftArgs(account, input.mailbox, input.id), replyDraftSchema));
+        return { to: draft.to, cc: draft.cc, subject: draft.subject ?? null, quoted: draft.body };
+      }),
+
+    // Sending needs the hold (`danger`) and the PC: an agent or a paired phone never gets here.
+    reply: loopbackProcedure
+      .meta({
+        label: 'Rispondi a una mail',
+        description: 'Send a reply to one message of a configured mail account',
+        danger: true,
+        pageOnly: true,
+      })
+      .input(
+        z.object({
+          account: accountInput,
+          id: idSchema,
+          mailbox: mailboxSchema.default(INBOX),
+          body: bodySchema,
+          to: recipientsSchema.min(1).optional(),
+          cc: recipientsSchema.min(1).optional(),
+          confirmed: z.literal(true),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const { account } = findAccount(accounts, input.account);
+        unwrap(await himalayaDone(run, replyArgs(account, input.mailbox, input.id, input)));
+        void live.notify();
+      }),
+
+    compose: loopbackProcedure
+      .meta({
+        label: 'Scrivi una mail',
+        description: 'Send a new mail from one configured mail account to one or more recipients',
+        danger: true,
+        pageOnly: true,
+      })
+      .input(
+        z.object({
+          account: accountInput,
+          to: recipientsSchema.min(1),
+          cc: recipientsSchema.min(1).optional(),
+          subject: subjectSchema.min(1),
+          body: bodySchema,
+          confirmed: z.literal(true),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const { account } = findAccount(accounts, input.account);
+        unwrap(await himalayaDone(run, composeArgs(account, input)));
+        void live.notify();
+      }),
+
+    archive: loopbackProcedure
+      .meta({
+        label: 'Archivia mail',
+        pageOnly: true,
+        description: 'Move one inbox message of a configured mail account to its archive folder (undoable)',
+      })
+      .input(z.object({ account: accountInput, id: idSchema }))
+      .mutation(async ({ input }) => {
+        const { account } = findAccount(accounts, input.account);
+        unwrap(await himalayaDone(run, moveArgs(account, INBOX, archiveMailbox, [input.id])));
+        void live.notify();
+      }),
+
+    // The archived message has a new id there, so it is found again by its Message-ID among the archive's listing for
+    // its subject (shortcut: with no subject it is looked for in the newest page only).
+    unarchive: loopbackProcedure
+      .meta({
+        label: 'Annulla archiviazione',
+        pageOnly: true,
+        description: 'Move a message back from the archive folder to the inbox, found by its Message-ID',
+      })
+      .input(z.object({ account: accountInput, messageId: z.string().min(1).max(320), subject: z.string().max(200) }))
+      .mutation(async ({ input }) => {
+        const { account } = findAccount(accounts, input.account);
+        const filter = input.subject && /^[^\0\r\n]+$/.test(input.subject) ? { subject: input.subject } : {};
+        const args =
+          Object.keys(filter).length > 0
+            ? searchArgs(account, archiveMailbox, 1, PAGE_SIZE, filter)
+            : listArgs(account, archiveMailbox, 1, PAGE_SIZE);
+        const listed = unwrap(await himalaya(run, args, envelopesSchema));
+        const found: MailMessage | undefined = listed.envelopes
+          .map(toMessage)
+          .find((m) => m.messageId === input.messageId);
+        if (!found) throw new TRPCError({ code: 'NOT_FOUND', message: 'The archived message was not found' });
+        unwrap(await himalayaDone(run, moveArgs(account, archiveMailbox, INBOX, [found.id])));
+        void live.notify();
       }),
 
     setSeen: protectedProcedure

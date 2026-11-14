@@ -29,6 +29,10 @@ export interface CalendarProps {
   /** Names of the month buttons, in the page's language. */
   previousLabel: string;
   nextLabel: string;
+  /** The month shown when nothing is chosen, instead of `min`'s (a "since" date has no useful minimum). */
+  initial?: string;
+  /** Day cells of 2rem instead of the touch size, for a calendar inside a popover. */
+  compact?: boolean;
   /** Moves focus to the chosen day when it mounts. */
   autoFocus?: boolean;
 }
@@ -76,10 +80,13 @@ export function Calendar({
   locale = 'it-IT',
   previousLabel,
   nextLabel,
+  initial,
+  compact,
   autoFocus,
 }: CalendarProps) {
+  const cell = compact ? 'size-xl' : 'size-touch';
   const reduced = useInteractionReducedMotion();
-  const start = value ?? min;
+  const start = value ?? initial ?? min;
   const [view, setView] = React.useState(() => monthOf(start));
   const [focusDay, setFocusDay] = React.useState(start);
   const [dir, setDir] = React.useState(0);
@@ -219,7 +226,7 @@ export function Calendar({
       >
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute top-0 left-0 size-touch rounded-full bg-foreground"
+          className={`pointer-events-none absolute top-0 left-0 ${cell} rounded-full bg-foreground`}
           style={{
             transform: `translate3d(${mark?.x ?? 0}px, ${mark?.y ?? 0}px, 0)`,
             opacity: mark ? 1 : 0,
@@ -244,7 +251,7 @@ export function Calendar({
                 setFocusDay(day);
                 onValueChange(day);
               }}
-              className={`relative z-10 mx-auto flex size-touch cursor-pointer items-center justify-center rounded-full text-label font-normal tabular-nums transition-colors duration-200 disabled:cursor-default disabled:opacity-30 ${INTERACTION_FOCUS} ${
+              className={`relative z-10 mx-auto flex ${cell} cursor-pointer items-center justify-center rounded-full text-label font-normal tabular-nums transition-colors duration-200 disabled:cursor-default disabled:opacity-30 ${INTERACTION_FOCUS} ${
                 chosen
                   ? 'text-background'
                   : inMonth

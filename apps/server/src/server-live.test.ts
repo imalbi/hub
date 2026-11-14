@@ -16,7 +16,7 @@ const config: Config = {
     ],
   },
   server: { host: '127.0.0.1', allowedOrigins: [] },
-  mail: { accounts: [{ label: 'Lavoro', account: 'work' }] },
+  mail: { accounts: [{ label: 'Lavoro', account: 'work' }], archiveMailbox: 'archive', notify: false },
 };
 
 const run = createFakeDesktop();

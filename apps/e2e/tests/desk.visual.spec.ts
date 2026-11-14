@@ -263,6 +263,12 @@ test('the overview with Netti corners and Vetro off matches the baseline', async
   });
   await page.goto('/desk');
   await expect(page.locator('html')).toHaveAttribute('data-radius', 'sharp');
+  // Under load the cover arrived after the shot and the placeholder note was captured (step 39 verify).
+  const cover = page.getByRole('img', { name: 'Copertina di Title', exact: true });
+  await expect(cover).toBeVisible({ timeout: 10_000 });
+  await expect
+    .poll(() => cover.evaluate((img) => img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0))
+    .toBe(true);
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-sharp-noglass.png', { animations: 'disabled' });
 });

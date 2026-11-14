@@ -13,6 +13,8 @@ export type ActionMeta = {
   description: string;
   /** Refused unless the input carries `confirmed: true`, set only by a hold-to-confirm (see `confirmDanger`). */
   danger?: boolean;
+  /** Only its own page runs it: left out of the palette and of MCP, so no agent can call it even with the owner's confirmation (sending mail). */
+  pageOnly?: boolean;
   job?: boolean;
   timeoutMs?: number;
 };

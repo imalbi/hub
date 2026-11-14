@@ -1,0 +1,125 @@
+import assert from 'node:assert/strict';
+import { afterEach, mock, test } from 'node:test';
+import { setImmediate as flush } from 'node:timers/promises';
+import type { Run } from '../../core/exec.ts';
+import { emptyConfig } from '../../core/config.ts';
+import { buildServer } from '../../server.ts';
+import { createFakeDesktop } from '../../testing/fake-desktop.ts';
+import type { MailAccountState, MailState } from './live.ts';
+import { MAIL_POLL_MS } from './live.ts';
+import type { MailMessage } from './himalaya.ts';
+import { createNewMailNotifier } from './notify.ts';
+
+process.env.NODE_ENV = 'test';
+afterEach(() => mock.timers.reset());
+
+const row = (id: string, subject: string, seen = false): MailMessage => ({
+  id,
+  messageId: null,
+  subject,
+  from: { name: `Mittente ${id}`, email: `${id}@example.org` },
+  date: null,
+  seen,
+  flagged: false,
+  hasAttachment: null,
+});
+const account = (
+  name: string,
+  latest: MailMessage[],
+  failure: MailAccountState['failure'] = null,
+): MailAccountState => ({
+  account: name,
+  label: name,
+  unread: failure ? null : latest.filter((message) => !message.seen).length,
+  capped: false,
+  failure,
+  latest,
+});
+const state = (...accounts: MailAccountState[]): MailState => ({ accounts });
+
+function notifier() {
+  const sent: string[][] = [];
+  const run: Run = (bin, args) => {
+    sent.push([bin, ...args]);
+    return Promise.resolve({ stdout: '', stderr: '', code: 0 });
+  };
+  return { sent, observe: createNewMailNotifier(run) };
+}
+
+void test('the first read only records; a new unread id sends one notification with sender and subject, once', () => {
+  const { sent, observe } = notifier();
+  observe(state(account('work', [row('1', 'Vecchia')])));
+  assert.deepEqual(sent, [], 'no burst at boot');
+  observe(state(account('work', [row('2', 'Offerta di colloquio'), row('1', 'Vecchia')])));
+  assert.deepEqual(sent, [['notify-send', '--app-name', 'Hub', 'Nuova mail', 'Mittente 2: Offerta di colloquio']]);
+  observe(state(account('work', [row('2', 'Offerta di colloquio'), row('1', 'Vecchia')])));
+  assert.equal(sent.length, 1, 'the same id again sends nothing');
+});
+
+void test('a new message that is already read, or a read that failed, sends nothing and keeps what was known', () => {
+  const { sent, observe } = notifier();
+  observe(state(account('work', [row('1', 'A')])));
+  observe(state(account('work', [row('2', 'Letta', true), row('1', 'A')])));
+  observe(state(account('work', [], 'failed')));
+  observe(state(account('work', [row('1', 'A'), row('2', 'Letta', true)])));
+  assert.deepEqual(sent, []);
+});
+
+void test('a long subject is cut at 80 characters', () => {
+  const { sent, observe } = notifier();
+  observe(state(account('work', [])));
+  observe(state(account('work', [row('1', 'x'.repeat(200))])));
+  const body = sent[0]?.[4] ?? '';
+  assert.equal(body.length, 'Mittente 1: '.length + 80);
+  assert.ok(body.endsWith('...'));
+});
+
+void test('four new at once are one notification', () => {
+  const { sent, observe } = notifier();
+  observe(state(account('work', []), account('personal', [])));
+  observe(state(account('work', [row('1', 'A'), row('2', 'B'), row('3', 'C')]), account('personal', [row('4', 'D')])));
+  assert.deepEqual(sent, [['notify-send', '--app-name', 'Hub', 'Nuova mail', '4 nuove mail']]);
+});
+
+const config = (notify: boolean) => ({
+  ...emptyConfig,
+  mail: { accounts: [{ label: 'Lavoro', account: 'work' }], archiveMailbox: 'archive', notify },
+});
+
+void test('with notify off the module polls nothing without a client', async (t) => {
+  mock.timers.enable({ apis: ['setInterval'] });
+  const calls: string[][] = [];
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop({ mail: calls }) },
+    config: config(false),
+  });
+  t.after(() => app.close());
+  await app.ready();
+  await flush();
+  mock.timers.tick(MAIL_POLL_MS * 3);
+  await flush();
+  assert.deepEqual(calls, []);
+});
+
+void test('with notify on the module polls every minute with no client, and closing it ends the poll', async () => {
+  mock.timers.enable({ apis: ['setInterval'] });
+  const calls: string[][] = [];
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop({ mail: calls }) },
+    config: config(true),
+  });
+  await app.ready();
+  await flush();
+  await flush();
+  assert.equal(calls.length, 1, 'the first read starts with the module');
+  mock.timers.tick(MAIL_POLL_MS);
+  await flush();
+  await flush();
+  assert.equal(calls.length, 2);
+  await app.close();
+  mock.timers.tick(MAIL_POLL_MS * 3);
+  await flush();
+  assert.equal(calls.length, 2, 'no timer left after close');
+});

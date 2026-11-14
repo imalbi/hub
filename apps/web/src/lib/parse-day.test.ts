@@ -39,3 +39,25 @@ void test('refuses what it cannot read or what does not exist', () => {
   assert.equal(parseDay('31 feb', today), null);
   assert.equal(parseDay('4 xyz', today), null);
 });
+
+void test('the words for the past read the same in both directions', () => {
+  assert.equal(parseDay('ieri', today), '2026-11-13');
+  assert.equal(parseDay("l'altro ieri", today), '2026-11-12');
+  assert.equal(parseDay('l’altro ieri', today, 'past'), '2026-11-12');
+  assert.equal(parseDay('3 giorni fa', today, 'past'), '2026-11-11');
+  assert.equal(parseDay('una settimana fa', today, 'past'), '2026-11-07');
+  assert.equal(parseDay('2 settimane fa', today, 'past'), '2026-10-31');
+  assert.equal(parseDay('un mese fa', today, 'past'), '2026-10-14');
+  assert.equal(parseDay('lunedì scorso', today, 'past'), '2026-11-09');
+  assert.equal(parseDay('sabato scorso', today), '2026-11-07');
+});
+
+void test('past: a weekday or a date without a year is the last time it came round', () => {
+  assert.equal(parseDay('lun', today, 'past'), '2026-11-09');
+  assert.equal(parseDay('sabato', today, 'past'), '2026-11-07', 'never today');
+  assert.equal(parseDay('10 nov', today, 'past'), '2026-11-10');
+  assert.equal(parseDay('14 nov', today, 'past'), '2026-11-14');
+  assert.equal(parseDay('20 nov', today, 'past'), '2025-11-20');
+  assert.equal(parseDay('20/11', today, 'past'), '2025-11-20');
+  assert.equal(parseDay('4 nov 2024', today, 'past'), '2024-11-04');
+});
