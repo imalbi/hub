@@ -93,10 +93,9 @@ for (const viewport of [
     const code = page.getByRole('status', { name: 'Codice di abbinamento' });
     await expect(code).toHaveText(/^\d{6}$/);
     await expect(page.getByRole('heading', { name: 'Nessun dispositivo abbinato' })).toBeVisible();
-    for (const name of ['Collega un telefono', 'Chi ha accesso']) {
-      const panel = page.getByRole('region', { name, exact: true });
-      expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
-    }
+    // The left panel never overflows; the right one is as tall as the surface and scrolls (step 47b), so it may.
+    const connect = page.getByRole('region', { name: 'Collega un telefono', exact: true });
+    expect(await connect.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
   });
 }
 
@@ -116,7 +115,7 @@ test('Su questo PC lists the calls a local agent made over loopback', async ({ p
   expect(call.ok()).toBe(true);
   await page.reload();
   const agent = page.getByRole('region', { name: 'Agent', exact: true });
-  await expect(agent.getByText(/^Ultima chiamata: media\.playPause, /)).toBeVisible();
+  await expect(agent.getByText(/^\d+ chiamat[ae] oggi, ultima media\.playPause /)).toBeVisible();
   // Calls are shown on demand, like the ones of a token agent.
   await expect(agent.getByText('media.playPause', { exact: true })).toHaveCount(0);
   await agent.getByRole('button', { name: 'Chiamate di Su questo PC' }).click();
@@ -128,7 +127,7 @@ test('the token form is in a closed disclosure; a token is shown once, its calls
   pc,
 }) => {
   // The local row is covered by its own test; the shot must not depend on the calls other specs made.
-  await answerQueries(page, { 'agents.localCalls': [] });
+  await answerQueries(page, { 'agents.localCalls': [], 'agents.localCallsToday': 0 });
   await page.goto('/desk/devices');
   const name = page.getByLabel('Nome agente');
   await expect(name).toBeHidden();
@@ -185,4 +184,38 @@ test('with a LAN origin Mostra QR opens a dialog with the QR and the address, Es
   expect((await qr.boundingBox())?.width).toBeGreaterThanOrEqual(150);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+});
+
+test('the page is a 5/7 split at the surface height with a dashed step separator, the count and the day count; the right panel scrolls', async ({
+  page,
+}) => {
+  const now = Date.now();
+  const devices = Array.from({ length: 10 }, (_, i) => ({
+    id: i + 1,
+    name: `Telefono ${i + 1}`,
+    createdAt: now,
+    lastSeenAt: now - 60_000,
+  }));
+  await answerQueries(page, {
+    'devices.list': devices,
+    'agents.list': [{ id: 1, name: 'Portatile', createdAt: now }],
+    'agents.localCalls': [{ id: 1, action: 'study.setStep', createdAt: new Date(now - 120_000).toISOString() }],
+    'agents.localCallsToday': 18,
+  });
+  await page.reload();
+  const access = page.getByRole('region', { name: 'Chi ha accesso' });
+  await expect(access.getByText('10 dispositivi, 1 agent remoto')).toBeVisible();
+  await expect(access.getByText('18 chiamate oggi, ultima study.setStep 2 min fa')).toBeVisible();
+  const connect = await page.getByRole('region', { name: 'Collega un telefono' }).boundingBox();
+  const right = await access.boundingBox();
+  const surface = await page.locator('[data-page-surface]').boundingBox();
+  expect(connect && right && surface).toBeTruthy();
+  if (!connect || !right || !surface) return;
+  // 5 and 7 of 12 columns: the right panel is 7/5 as wide as the left column (the gap is shared).
+  expect(Math.abs(right.width / connect.width - 7 / 5)).toBeLessThan(0.05);
+  // Both columns reach the bottom of the surface padding.
+  expect(Math.abs(right.y + right.height - (surface.y + surface.height - 36))).toBeLessThan(40);
+  expect(await access.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  const second = page.getByRole('region', { name: 'Collega un telefono' }).getByRole('listitem').nth(1);
+  await expect(second).toHaveCSS('border-top-style', 'dashed');
 });

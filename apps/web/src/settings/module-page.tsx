@@ -102,7 +102,7 @@ export function ModulePage({ name }: { name: string }) {
 
   return (
     <div className="flex flex-col gap-lg">
-      <header className="sticky top-0 z-10 -mb-sm flex flex-col gap-xs bg-background pb-sm">
+      <header className="sticky top-0 z-10 -mb-sm flex flex-col gap-xs bg-surface pb-sm">
         <Link to="/desk/settings" className="inline-flex w-fit items-center gap-2xs text-label text-muted-foreground">
           <CaretLeftIcon aria-hidden className="size-icon-sm" />
           {m.settings_back()}

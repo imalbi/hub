@@ -35,7 +35,15 @@ function Position({ position, length }: { position: number; length: number }) {
  * whatever the page adds on the right (favourite, add to playlist, the audio button). `artist` replaces the plain artist
  * text when the page can link it.
  */
-export function PlayerBar({ artist, actions }: { artist?: ReactNode; actions?: ReactNode }) {
+export function PlayerBar({
+  artist,
+  actions,
+  className = '',
+}: {
+  artist?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   const media = useMedia();
   const length = media.state?.lengthMs;
   const seconds = length === null || length === undefined ? null : Math.floor(length / 1000);
@@ -43,7 +51,7 @@ export function PlayerBar({ artist, actions }: { artist?: ReactNode; actions?: R
   return (
     <section
       aria-label={m.media_player()}
-      className="desk-glass flex shrink-0 items-center gap-lg rounded-full border px-lg py-xs"
+      className={`desk-glass flex shrink-0 items-center gap-lg rounded-full border px-lg py-xs ${className}`}
     >
       <Transport />
       <Cover named className="size-2xl rounded-full" />

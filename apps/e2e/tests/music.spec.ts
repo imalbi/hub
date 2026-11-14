@@ -132,12 +132,16 @@ for (const size of [
       const results = document.querySelector('section[aria-label="Risultati"] ul');
       return {
         page: document.documentElement.scrollHeight <= window.innerHeight,
-        surface: !!surface && surface.scrollHeight <= surface.clientHeight,
-        barInside: !!surface && !!bar && bar.getBoundingClientRect().bottom <= surface.getBoundingClientRect().bottom,
+        // The player hangs over the bottom edge (step 47b): it ends below the surface, inside the window.
+        barHangs:
+          !!surface &&
+          !!bar &&
+          bar.getBoundingClientRect().bottom > surface.getBoundingClientRect().bottom &&
+          bar.getBoundingClientRect().bottom <= window.innerHeight,
         listScrolls: !!results && results.scrollHeight > results.clientHeight,
       };
     });
-    expect(fit).toEqual({ page: true, surface: true, barInside: true, listScrolls: true });
+    expect(fit).toEqual({ page: true, barHangs: true, listScrolls: true });
   });
 }
 
@@ -270,4 +274,53 @@ test('public playlist can be found, played and saved locally', async ({ page }) 
   await library(page).getByRole('button', { name: 'Playlist pubblica', exact: true }).click();
   await holdDelete(page);
   await expect(library(page).getByRole('button', { name: 'Playlist pubblica', exact: true })).toHaveCount(0);
+});
+
+test('the player floats centred over the bottom edge of the surface, narrower than it, unclipped and clickable', async ({
+  page,
+}) => {
+  await page.goto('/desk/media');
+  const player = page.getByRole('region', { name: 'Player musicale' });
+  await expect(player).toBeVisible();
+  const surface = await page.locator('[data-page-surface]').boundingBox();
+  const box = await player.boundingBox();
+  expect(surface && box).toBeTruthy();
+  if (!surface || !box) return;
+  expect(box.width).toBeLessThan(surface.width);
+  expect(Math.abs(box.width / surface.width - 5 / 6)).toBeLessThan(0.03);
+  expect(Math.abs(box.x + box.width / 2 - (surface.x + surface.width / 2))).toBeLessThan(2);
+  // Hangs over the edge: its bottom is below the surface's, its top above it, and it stays inside the window.
+  expect(box.y + box.height).toBeGreaterThan(surface.y + surface.height);
+  expect(box.y).toBeLessThan(surface.y + surface.height);
+  expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+  // Nothing clips it: the part below the surface is hit-testable as the player's own.
+  const below = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x!, y!)?.closest('[aria-label="Player musicale"]') !== null,
+    [box.x + box.width / 2, surface.y + surface.height + (box.y + box.height - surface.y - surface.height) / 2],
+  );
+  expect(below).toBe(true);
+  await player.getByRole('button', { name: 'Metti in pausa la musica' }).click();
+  await expect(player.getByRole('button', { name: 'Riproduci musica' })).toBeVisible();
+});
+
+test('Ascolta lays the recent songs in five columns and Prossimi in two', async ({ page }) => {
+  const rows = [1, 2, 3, 4, 5].map((n) => ({
+    id: `recent0000${n}`,
+    title: `Vecchio ${n}`,
+    artist: 'Artista',
+    playedAt: n,
+  }));
+  await answerQueries(page, { 'music.history': rows });
+  await page.goto('/desk/media');
+  const recent = page.getByRole('region', { name: 'Ascoltati di recente' });
+  await expect(recent.getByRole('listitem')).toHaveCount(5);
+  const xs = await recent.getByRole('listitem').evaluateAll((items) => items.map((li) => li.getBoundingClientRect().x));
+  expect(new Set(xs.map(Math.round)).size).toBe(5);
+  await search(page);
+  await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Ascolta', exact: true }).click();
+  const next = page.getByRole('region', { name: 'Prossimi' });
+  await expect(next).toContainText('Brano 3');
+  const columns = await next.locator('ul').evaluate((ul) => getComputedStyle(ul).gridTemplateColumns.split(' ').length);
+  expect(columns).toBe(2);
 });

@@ -40,7 +40,33 @@
   "agents_command_label": "Comando per collegare un agent su questo PC",
   "agents_copy": "Copia comando",
   "agents_local": "Su questo PC",
-  "agents_last_call": "Ultima chiamata: {action}, {when}",
+  "agents_local_summary": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} chiamata oggi, ultima {action} {when}",
+        "countPlural=*": "{count} chiamate oggi, ultima {action} {when}"
+      }
+    }
+  ],
+  "devices_access_count": [
+    {
+      "declarations": [
+        "input devices",
+        "input agents",
+        "local devicesPlural = devices: plural",
+        "local agentsPlural = agents: plural"
+      ],
+      "selectors": ["devicesPlural", "agentsPlural"],
+      "match": {
+        "devicesPlural=one, agentsPlural=one": "{devices} dispositivo, {agents} agent remoto",
+        "devicesPlural=one, agentsPlural=*": "{devices} dispositivo, {agents} agent remoti",
+        "devicesPlural=*, agentsPlural=one": "{devices} dispositivi, {agents} agent remoto",
+        "devicesPlural=*, agentsPlural=*": "{devices} dispositivi, {agents} agent remoti"
+      }
+    }
+  ],
   "agents_token_idle": "Token, nessuna chiamata",
   "agents_token_last": "Token, ultima chiamata: {action}, {when}",
   "agents_calls_show": "Chiamate",

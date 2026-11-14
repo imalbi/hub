@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { desc, eq, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, gte, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { agentCalls, agents } from '../db/schema.ts';
 import { hashToken, newToken } from './auth.ts';
@@ -10,6 +10,16 @@ export const agentsRouter = router({
   localCalls: loopbackProcedure.query(({ ctx }) =>
     ctx.db.select().from(agentCalls).where(isNull(agentCalls.agentId)).orderBy(desc(agentCalls.id)).limit(20),
   ),
+  // The local list stops at 20 rows, so the day's count is its own query (server-local midnight, the PC's day).
+  localCallsToday: loopbackProcedure.query(async ({ ctx }) => {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const [row] = await ctx.db
+      .select({ value: count() })
+      .from(agentCalls)
+      .where(and(isNull(agentCalls.agentId), gte(agentCalls.createdAt, midnight)));
+    return row?.value ?? 0;
+  }),
   calls: loopbackProcedure
     .input(z.object({ id: z.number().int() }))
     .query(({ ctx, input }) =>

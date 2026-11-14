@@ -51,7 +51,8 @@ function SavedSongs({
 
 /**
  * The Musica page (alternative C, "libreria a lato"): the library column (search, Ascolta, Preferiti, Cronologia,
- * playlists) beside one content view, and the player as the last row. The view is local state: the artist page opens
+ * playlists) beside one content view, and the player floating over the surface's bottom edge
+ * (`float` tab: the surface does not clip it). The view is local state: the artist page opens
  * over whatever was showing and "Torna indietro" returns to it.
  */
 export function MusicPage() {
@@ -100,8 +101,9 @@ export function MusicPage() {
   else content = <SavedSongs kind={library} onPlay={onPlay} onArtist={setArtistId} />;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-lg">
-      <div className="flex min-h-0 flex-1 gap-xl">
+    <>
+      {/* The bottom room keeps the lists clear of the part of the floating player that overlaps the surface. */}
+      <div className="flex min-h-0 flex-1 gap-xl pb-2xl">
         <div className="flex w-library-col shrink-0 flex-col gap-lg border-r border-dashed border-border pr-lg">
           <SearchInput
             aria-label={m.music_search()}
@@ -133,6 +135,6 @@ export function MusicPage() {
         </div>
       </div>
       <MusicPlayer queue={queue} onArtist={setArtistId} />
-    </div>
+    </>
   );
 }

@@ -33,7 +33,7 @@ type Pairing = ReturnType<typeof usePairing>;
 
 function Step({ n, active = false, children }: { n: number; active?: boolean; children: ReactNode }) {
   return (
-    <li className="flex items-start gap-md">
+    <li className={`flex items-start gap-md ${n > 1 ? 'border-t border-dashed border-border pt-lg' : ''}`}>
       <span
         aria-hidden
         className={`flex size-xl shrink-0 items-center justify-center rounded-full text-label tabular-nums ${active ? 'bg-primary text-primary-foreground' : 'bg-surface'}`}
@@ -72,8 +72,11 @@ function ConnectPanel({ pairing: { createCode, remaining } }: { pairing: Pairing
           />
           {createCode.data && remaining > 0 && (
             <div className="flex w-full flex-col gap-xs">
+              {/* Two groups of three to read aloud and type; the gap is visual only, so the text stays six digits. */}
               <output aria-label={m.devices_code_label()} className="text-display tabular-nums">
-                {createCode.data.code}
+                {/* Inline spans: flex items are blocks, and innerText would split the code with a newline. */}
+                <span>{createCode.data.code.slice(0, 3)}</span>
+                <span className="ml-md">{createCode.data.code.slice(3)}</span>
               </output>
               <p className="text-caption text-muted-foreground tabular-nums">
                 {m.devices_code_expires({ seconds: remaining })}
@@ -114,6 +117,7 @@ function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing })
               label={m.device_revoke_hold({ name: device.name })}
               idle={m.device_revoke()}
               done={m.device_revoked()}
+              outline
               onConfirm={() => revoke.mutateAsync({ id: device.id, confirmed: true })}
             />
           </li>
@@ -124,18 +128,32 @@ function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing })
 }
 
 /**
- * The Dispositivi page as grid cells: connecting a phone and this PC's own devices on the left (4 columns), who has
- * access on the right (8). Outside a grid (the Panoramica widget) the cells simply stack.
+ * The Dispositivi page as grid cells: connecting a phone and this PC's own devices on the left (5 columns), who has
+ * access on the right (7). Outside a grid (the Panoramica widget) the cells simply stack; `fill` (the page) makes both
+ * columns as tall as the surface, the right panel scrolling inside.
  */
-export function DevicesBoard() {
+export function DevicesBoard({ fill = false }: { fill?: boolean }) {
+  const trpc = useTRPC();
   const pairing = usePairing();
+  const agents = useQuery({ ...trpc.agents.list.queryOptions(), enabled: pairing.devices.isSuccess });
   return (
     <>
-      <div className="col-span-4 flex min-w-0 flex-col gap-lg">
+      <div className="col-span-5 flex min-h-0 min-w-0 flex-col gap-lg">
         <ConnectPanel pairing={pairing} />
-        <ServicesPanel />
+        <ServicesPanel className={fill ? 'min-h-0 flex-1 overflow-y-auto' : ''} />
       </div>
-      <Panel title={m.devices_access_title()} className="col-span-8">
+      <Panel
+        title={m.devices_access_title()}
+        className={`col-span-7 ${fill ? 'min-h-0 overflow-y-auto' : ''}`}
+        action={
+          pairing.devices.data &&
+          agents.data && (
+            <span className="text-caption text-muted-foreground">
+              {m.devices_access_count({ devices: pairing.devices.data.length, agents: agents.data.length })}
+            </span>
+          )
+        }
+      >
         <PhonesList pairing={pairing} />
         <AgentsSection enabled={pairing.devices.isSuccess} />
       </Panel>

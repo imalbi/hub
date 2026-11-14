@@ -104,6 +104,7 @@ void test('device administration and codes are for the PC only', async () => {
     ['GET', 'devices.list'],
     ['GET', 'devices.deckUrl'],
     ['GET', 'agents.localCalls'],
+    ['GET', 'agents.localCallsToday'],
     ['POST', 'pairing.createCode'],
   ] as const) {
     assert.equal((await call(method, path, { remoteAddress: LAN, token })).code, 'FORBIDDEN', `${path} as a device`);
@@ -184,4 +185,5 @@ void test('local MCP calls are listed for the PC and only the PC', async () => {
     .array(z.object({ action: z.string(), agentId: z.null() }))
     .parse((await call('GET', 'agents.localCalls')).data);
   assert.equal(calls[0]?.action, 'media.playPause');
+  assert.equal((await call('GET', 'agents.localCallsToday')).data, 1);
 });

@@ -70,6 +70,7 @@ function AgentRow({
 function LocalAgentRow() {
   const trpc = useTRPC();
   const calls = useQuery(trpc.agents.localCalls.queryOptions());
+  const today = useQuery(trpc.agents.localCallsToday.queryOptions());
   return (
     <AgentRow
       name={m.agents_local()}
@@ -77,7 +78,11 @@ function LocalAgentRow() {
       calls={calls.data}
       summary={(last, now) =>
         last
-          ? m.agents_last_call({ action: last.action, when: lastSeen(Date.parse(last.createdAt), now) })
+          ? m.agents_local_summary({
+              count: today.data ?? 0,
+              action: last.action,
+              when: lastSeen(Date.parse(last.createdAt), now),
+            })
           : m.agents_no_calls()
       }
     />
@@ -108,6 +113,7 @@ function TokenAgentRow({ id, name }: { id: number; name: string }) {
         label={m.agents_revoke_hold({ name })}
         idle={m.agents_revoke()}
         done={m.agents_revoked()}
+        outline
         onConfirm={() => revoke.mutateAsync({ id, confirmed: true })}
       />
     </AgentRow>

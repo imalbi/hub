@@ -19,6 +19,7 @@ test.beforeEach(async ({ page }) => {
     ],
     // Other specs make local MCP calls; "Su questo PC" would show the last one.
     'agents.localCalls': [],
+    'agents.localCallsToday': 0,
   });
   await page.goto('/desk');
   await expect(page.getByText('42 s', { exact: true })).toBeVisible();

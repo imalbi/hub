@@ -19,6 +19,7 @@ export function MusicPlayer({ queue, onArtist }: { queue: Queue | undefined; onA
   const linked = current && current.title === media.state?.title;
   return (
     <PlayerBar
+      className="absolute -bottom-touch left-1/2 z-10 w-5/6 -translate-x-1/2"
       artist={linked ? <Artists artists={current.artists} onOpen={onArtist} /> : undefined}
       actions={
         <>

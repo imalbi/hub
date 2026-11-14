@@ -26,9 +26,9 @@ export function Listen({
           <h2 id="music-recent" className="text-heading">
             {m.music_recent()}
           </h2>
-          <ul className="flex gap-md overflow-hidden">
+          <ul className="grid grid-cols-5 gap-md">
             {recent.map((song) => (
-              <li key={song.id} className="w-4xl shrink-0">
+              <li key={song.id} className="min-w-0">
                 <button
                   type="button"
                   aria-label={m.music_play({ title: song.title })}

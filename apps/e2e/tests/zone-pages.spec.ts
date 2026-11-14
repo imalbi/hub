@@ -42,7 +42,8 @@ for (const { path, landmark } of surfacePages) {
     });
     // Radius xl and padding lg, one xl gap to the window bottom (the same as the top padding of the desk).
     const mainTop = await page.locator('main').evaluate((main) => parseFloat(getComputedStyle(main).paddingTop));
-    expect(look.bottomGap).toBe(mainTop);
+    // Media floats the player over the bottom edge, so it leaves twice the desk padding under the surface (`float`, mb-3xl).
+    expect(look.bottomGap).toBe(path === '/desk/media' ? 2 * mainTop : mainTop);
     expect(parseFloat(look.radius)).toBeGreaterThan(parseFloat(look.padding));
     // Tabs, when there are any, sit above the surface; the first row is reserved either way, so the pill never covers it.
     expect(look.top).toBeGreaterThanOrEqual(mainTop + 44);
@@ -51,6 +52,9 @@ for (const { path, landmark } of surfacePages) {
       const box = await tabs.boundingBox();
       expect(box!.y + box!.height).toBeLessThanOrEqual(look.top);
     }
+    // The 1px line the boards draw around the surface (step 47b).
+    await expect(surface).toHaveCSS('border-top-width', '1px');
+    await expect(surface).toHaveCSS('border-top-style', 'solid');
     // Inner panels: never inside another, never with a border.
     const panels = await page.evaluate(() => ({
       nested: document.querySelectorAll('[data-panel] [data-panel]').length,
@@ -128,12 +132,13 @@ test('the tab bar of a long zone page stays in view while the content scrolls', 
 });
 
 test('the core settings actions stay in view while the form scrolls past it', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 300 });
+  await page.setViewportSize({ width: 1280, height: 520 });
   await page.goto('/desk/settings/core');
   const save = page.getByRole('button', { name: 'Salva e riavvia' });
   await expect(save).toBeVisible();
   // Sticky lasts as long as the form does, so scroll part of the way, not to the end of the longer settings list.
-  const scroller = page.locator('main > div').last();
+  // The settings page scrolls in its own column of the surface.
+  const scroller = page.locator('[data-page-surface] > section');
   await scroller.evaluate((el) => el.scrollTo(0, 200));
   expect(await scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   await expect(save).toBeInViewport();
@@ -229,7 +234,7 @@ if (examples) {
     await page.route('**/trpc/health*', (route) =>
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
-    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [] });
+    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [], 'agents.localCallsToday': 0 });
     await page.goto('/desk/devices');
     await expect(page.getByRole('tablist', { name: 'Sezioni' })).toBeVisible();
     await page.evaluate(async () => {
@@ -249,3 +254,44 @@ if (examples) {
     await expect(page.getByRole('tablist')).toHaveCount(0);
   });
 }
+
+test('Impostazioni is one surface with the list and the open page as two inner panels, no bordered panel', async ({
+  page,
+}) => {
+  await page.goto('/desk/settings/core');
+  await expect(page.getByRole('navigation', { name: 'Sezioni' })).toBeVisible();
+  await expect(page.locator('[data-page-surface]')).toHaveCount(1);
+  await expect(page.locator('[data-page-surface]')).toHaveCSS('border-top-width', '1px');
+  const list = page.getByRole('navigation', { name: 'Sezioni' });
+  await expect(list).toHaveAttribute('data-panel', '');
+  const panels = await page.evaluate(() => ({
+    nested: document.querySelectorAll('[data-panel] [data-panel]').length,
+    bordered: [...document.querySelectorAll('[data-panel]')].filter(
+      (el) => getComputedStyle(el).borderTopWidth !== '0px',
+    ).length,
+    outside: [...document.querySelectorAll('[data-panel]')].filter((el) => !el.closest('[data-page-surface]')).length,
+    // Any bordered card left in the page would be a Panel drawn outside the surface context.
+    cards: [...document.querySelectorAll('main section')].filter(
+      (el) => el.classList.contains('rounded-xl') && el.classList.contains('border'),
+    ).length,
+  }));
+  expect(panels).toEqual({ nested: 0, bordered: 0, outside: 0, cards: 0 });
+  // The page opens beside the list, inside the surface.
+  const surface = await page.locator('[data-page-surface]').boundingBox();
+  const listBox = await list.boundingBox();
+  const essential = await page.getByRole('region', { name: 'Essenziale' }).boundingBox();
+  expect(surface && listBox && essential && essential.x >= listBox.x + listBox.width).toBe(true);
+  expect(surface && essential && essential.x + essential.width <= surface.x + surface.width).toBe(true);
+});
+
+test('the surface line is 1px in paper too', async ({ page }) => {
+  await page.goto('/desk/settings/appearance');
+  await chooseTheme(page, 'Chiaro');
+  try {
+    await page.goto('/desk/devices');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
+    await expect(page.locator('[data-page-surface]')).toHaveCSS('border-top-width', '1px');
+  } finally {
+    await page.evaluate(() => localStorage.removeItem('hub.theme'));
+  }
+});

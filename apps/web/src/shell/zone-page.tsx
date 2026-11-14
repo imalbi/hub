@@ -18,7 +18,9 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
   );
   const always = zone === 'messages';
   // Every zone page fills the desk height: the tabs stay fixed above the surface, which scrolls (or lays out its own lists).
-  const ownScroll = tabs.find(({ id }) => id === active)?.fill;
+  const activeTabDef = tabs.find(({ id }) => id === active);
+  const ownScroll = activeTabDef?.fill;
+  const float = activeTabDef?.float;
   // A zone made only of module sections has no page without them.
   if (tabs.length === 0 && zone === 'work' && sites.isPending) return <p>{m.tile_loading()}</p>;
   if (tabs.length === 0) throw notFound();
@@ -27,6 +29,7 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
       <ZoneTabs
         always={always}
         fill={ownScroll}
+        float={float}
         tabs={tabs.map(({ id, label, component: Content }) => ({ id, label: label(), content: <Content /> }))}
       />
     </div>

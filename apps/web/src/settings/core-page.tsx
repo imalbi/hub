@@ -47,7 +47,7 @@ export function CoreSettings() {
         <CaretLeftIcon aria-hidden className="size-icon-sm" />
         {m.settings_back()}
       </Link>
-      <div className="sticky top-0 z-10 -my-xs flex flex-wrap items-center gap-lg bg-background py-xs">
+      <div className="sticky top-0 z-10 -my-xs flex flex-wrap items-center gap-lg bg-surface py-xs">
         <h2 className="text-heading">{m.settings_core()}</h2>
         <div className="ml-auto flex items-center gap-sm">
           <ActionButton

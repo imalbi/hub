@@ -9,7 +9,7 @@ export type ModuleWidget = {
   component: ComponentType<{ size: WidgetSize }>;
 };
 /** One tab of a zone page. Ids are unique within a page; the first tab is the default one. */
-export type PageTab = { id: string; label: () => string; component: ComponentType; fill?: boolean };
+export type PageTab = { id: string; label: () => string; component: ComponentType; fill?: boolean; float?: boolean };
 /** A tab a module adds to a zone page, after the page's own tabs. */
 export type ModuleSection = PageTab & { zone: string };
 export type ModuleUI = {
@@ -20,7 +20,7 @@ export type ModuleUI = {
   /** Short lines in Oggi, rendered in module order. Components may return null or link to a zone. */
   todayItems?: ComponentType | ComponentType[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
-  zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean };
+  zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean; ownTabs?: boolean };
   /**
    * One row in the Dispositivi list of this PC's external devices (AirPlay, a light, a monitor), rendered in module
    * order while the module is on. Each component is one row (`DeviceRow`) and may return null until it has data.

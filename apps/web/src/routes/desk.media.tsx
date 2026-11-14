@@ -20,7 +20,7 @@ function MediaTab() {
   );
 }
 
-const own = [{ id: 'media', label: m.zone_media, component: MediaTab, fill: true }];
+const own = [{ id: 'media', label: m.zone_media, component: MediaTab, fill: true, float: true }];
 
 function Media() {
   return <ZonePage zone="media" own={own} />;

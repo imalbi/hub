@@ -251,7 +251,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
     );
     // The paired devices come from the run's own database; the shot is about the rows.
-    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [] });
+    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [], 'agents.localCallsToday': 0 });
     await page.goto('/desk/devices');
     await expect(
       page.getByRole('group', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
