@@ -23,12 +23,15 @@ const kindLabel = (entry: DayEntry) =>
     ? m.calendar_kind_work()
     : entry.kind === 'note'
       ? m.calendar_kind_note()
-      : m.calendar_kind_event());
+      : entry.kind === 'study'
+        ? m.calendar_kind_study()
+        : m.calendar_kind_event());
 
 const chipStyle: Record<CalendarItem['kind'], string> = {
   work: 'bg-accent text-background',
   event: 'border border-foreground/25 text-foreground',
   note: 'bg-foreground/15 italic text-foreground',
+  study: 'bg-foreground/10 text-foreground',
 };
 
 /** How many chips a cell of this height holds, so a busy day ends in "+N" instead of overflowing. */

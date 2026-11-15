@@ -53,6 +53,12 @@ export function readIndex(db: Db) {
   const done = new Set(
     records.filter((item) => item.kind === 'day' && item.value === 'done').map((item) => dayKey(item.planId, item.id)),
   );
+  // When a day was completed (ISO, empty once reopened): the calendar anchors a done day there (step 55).
+  const doneAt = new Map(
+    records
+      .filter((item) => item.kind === 'doneAt' && item.value)
+      .map((item) => [dayKey(item.planId, item.id), item.value]),
+  );
   const subjects = headers.flatMap((header) => header.subjects.map((item) => subjectKey(header.id, item.id)));
   const stored = settings?.mix ? mixShape.parse(JSON.parse(settings.mix)) : null;
   // A stored mix counts only while it names every active subject: a new plan or subject falls back to equal shares.
@@ -66,6 +72,7 @@ export function readIndex(db: Db) {
     subject: subjectKey(day.planId, day.subject),
     minutes: day.minutes ?? undefined,
     done: done.has(dayKey(day.planId, day.id)),
+    doneAt: done.has(dayKey(day.planId, day.id)) ? (doneAt.get(dayKey(day.planId, day.id)) ?? null) : null,
   }));
   const ordered = orderDays(rows, states, mix);
   const shown = new Set(ordered.map((day) => day.key));

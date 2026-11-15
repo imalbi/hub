@@ -25,7 +25,7 @@ export type CalendarItem = {
   day: string;
   time?: string;
   title: string;
-  kind: 'work' | 'note' | 'event';
+  kind: 'work' | 'note' | 'event' | 'study';
   label?: string;
   origin?: string;
   href?: string;

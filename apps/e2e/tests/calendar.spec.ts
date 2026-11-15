@@ -1,4 +1,8 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { clean, seed } from './calendar-data.ts';
+import { RUN_TMP } from './hosts.ts';
+import { legiblePlan } from './study-fixtures.ts';
 import { expect, test } from './fixtures.ts';
 
 const json = { 'content-type': 'application/json' };
@@ -91,4 +95,25 @@ test("Oggi lists today's own events", async ({ page, pc }) => {
   const today = page.getByRole('region', { name: 'Oggi', exact: true });
   await expect(today.getByRole('list', { name: 'Impegni di oggi' }).getByText('Dentista')).toBeVisible();
   await expect(today.getByText('16:30')).toBeVisible();
+});
+
+test('Studio days slide from today, one a day, and open Studio', async ({ page, pc }) => {
+  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
+  await mkdir(inbox, { recursive: true });
+  await writeFile(join(inbox, 'calendar.json'), JSON.stringify(await legiblePlan()));
+  expect((await pc.post('/trpc/study.activate', { data: { name: 'calendar.json' } })).ok()).toBe(true);
+  await page.goto('/desk/calendar');
+  const month = page.getByRole('region', { name: 'novembre 2026' });
+  // The current day (La foglia) is today; the next open day is tomorrow, not today.
+  await expect(month.locator('[data-day="2026-11-15"]').getByRole('button', { name: /La foglia/ })).toBeVisible();
+  await expect(month.locator('[data-day="2026-11-14"]').getByRole('button')).toHaveCount(1);
+  await expect(month.locator('[data-day="2026-11-16"]').getByRole('button')).toHaveCount(2);
+  await expect(
+    page.getByRole('complementary', { name: 'domenica 15 novembre' }).getByText('Studio', { exact: true }),
+  ).toBeVisible();
+  await month
+    .locator('[data-day="2026-11-15"]')
+    .getByRole('button', { name: /La foglia/ })
+    .click();
+  await expect(page).toHaveURL(/\/desk\/studio$/);
 });

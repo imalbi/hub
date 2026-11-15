@@ -9,6 +9,7 @@ import { useNotesCalendarItems } from '../modules/notes/calendar.ts';
 import { NotesColumn } from '../modules/notes/today.tsx';
 import { NotesWidget } from '../modules/notes/widget.tsx';
 import { StudyLibrary } from '../modules/study/library.tsx';
+import { useStudyCalendarItems } from '../modules/study/calendar.ts';
 import { StudyPlan } from '../modules/study/plan.tsx';
 import { StudyPlans } from '../modules/study/plans.tsx';
 import { StudyReview } from '../modules/study/review.tsx';
@@ -23,6 +24,7 @@ export const moduleUIs: ModuleUI[] = [
   {
     name: 'study',
     copy: {},
+    calendarItems: useStudyCalendarItems,
     sections: [
       { zone: 'study', id: 'piano', label: m.study_plan, component: StudyPlan },
       { zone: 'study', id: 'ripasso', label: m.study_review, component: StudyReview },
