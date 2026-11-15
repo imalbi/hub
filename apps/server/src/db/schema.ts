@@ -96,6 +96,9 @@ export const calendarEvents = sqliteTable('calendar_events', {
   day: text('day').notNull(),
   start: text('start'),
   end: text('end'),
+  // `event`, or `shift` (a person's work span, shown in the week and the agenda, never in the month grid). A shift may end the next day.
+  kind: text('kind').notNull().default('event'),
+  person: text('person'),
   source: text('source').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),

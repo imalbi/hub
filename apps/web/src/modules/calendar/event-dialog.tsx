@@ -1,6 +1,7 @@
 import { CalendarBlankIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Calendar } from '../../components/ui/calendar.tsx';
+import { Switch } from '../../components/ui/switch.tsx';
 import { MODAL_ROOT, SCRIM, useModal } from '../../components/ui/modal.ts';
 import { localDay } from '../../lib/day.ts';
 import { parseDay } from '../../lib/parse-day.ts';
@@ -73,6 +74,8 @@ function EventForm({
   const editing = 'event' in draft ? draft.event : null;
   const [today] = useState(() => localDay(new Date()));
   const [title, setTitle] = useState(editing?.title ?? '');
+  const [shift, setShift] = useState(editing?.kind === 'shift');
+  const [person, setPerson] = useState(editing?.person ?? '');
   const [day, setDay] = useState(editing?.day ?? ('day' in draft ? draft.day : today));
   const [start, setStart] = useState(editing?.start ?? '');
   const [end, setEnd] = useState(editing?.end ?? '');
@@ -80,8 +83,9 @@ function EventForm({
   const [typedDay, setTypedDay] = useState('');
   const [unknownDay, setUnknownDay] = useState(false);
   const pending = actions.add.isPending || actions.update.isPending;
-  const badTimes = end !== '' && (start === '' || end <= start);
-  const ready = title.trim().length > 0 && !badTimes;
+  // A shift may end the next day, so only an event has an order to keep.
+  const badTimes = !shift && end !== '' && (start === '' || end <= start);
+  const ready = shift ? person.trim().length > 0 && start !== '' && end !== '' : title.trim().length > 0 && !badTimes;
 
   function pick(next: string) {
     setDay(next);
@@ -96,7 +100,9 @@ function EventForm({
   }
   async function save() {
     if (!ready || pending) return;
-    const input = { title, day, start: start || null, end: end || null };
+    const input = shift
+      ? { title: m.calendar_kind_shift(), day, start, end, kind: 'shift' as const, person }
+      : { title, day, start: start || null, end: end || null, kind: 'event' as const, person: null };
     try {
       if (editing) await actions.update.mutateAsync({ ...input, id: editing.id });
       else await actions.add.mutateAsync(input);
@@ -109,13 +115,17 @@ function EventForm({
   const failed = actions.add.isError || actions.update.isError || actions.remove.isError;
   return (
     <div className="flex flex-col gap-md">
+      <Switch label={m.calendar_event_shift()} checked={shift} onCheckedChange={setShift} />
       <label className="flex flex-col gap-xs">
-        <span className="text-label text-muted-foreground">{m.calendar_event_title()}</span>
+        <span className="text-label text-muted-foreground">
+          {shift ? m.calendar_event_person() : m.calendar_event_title()}
+        </span>
         <input
+          key={shift ? 'person' : 'title'}
           data-initial-focus=""
-          value={title}
-          maxLength={120}
-          onChange={(event) => setTitle(event.target.value)}
+          value={shift ? person : title}
+          maxLength={shift ? 60 : 120}
+          onChange={(event) => (shift ? setPerson : setTitle)(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
               event.preventDefault();

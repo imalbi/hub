@@ -84,6 +84,8 @@ export default defineConfig({
               'notes.visual.spec.ts',
               'calendar.spec.ts',
               'calendar.visual.spec.ts',
+              'calendar-views.spec.ts',
+              'calendar-views.visual.spec.ts',
               'sites.spec.ts',
               'study.spec.ts',
               'study-today.spec.ts',

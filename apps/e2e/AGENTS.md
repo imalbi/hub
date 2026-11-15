@@ -181,6 +181,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 ## Calendario (step 55)
 
 - A day cell is a button under its chips: click it in its corner (`click({ position: { x: 20, y: 6 } })`), the middle of a busy cell is a chip that opens the event. `calendar.spec.ts` seeds four events on the 19th: at 1920 the cell shows one chip and "+3". A new rail entry changes the example-pass baselines too (`desk-devices-tabs`, `desk-example-4k`, `desk-lights-4k`, `desk-system-example`): rewrite them with `HUB_EXAMPLE_MODULES=1`.
+- Part B: `calendar-views.spec.ts` and `calendar-views.visual.spec.ts` (baselines `calendar-week`, `calendar-agenda`, `-4k`; the week one clicks to the week after today, 16 - 22 novembre). The view switch is `getByRole('toolbar', { name: 'Vista' })`, the Mostra switches are in the region `Mostra`, the agenda's small month is the region `Mese per scegliere il giorno`. Shifts come from `seedShifts` in `calendar-data.ts` (not in `seed`, so the month baselines stay as they were); the view choice lives in localStorage, a fresh context starts on Mese.
 
 ## Post-it (step 38)
 

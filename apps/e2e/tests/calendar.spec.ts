@@ -86,7 +86,12 @@ test('an end before the start is not saved', async ({ page }) => {
   await expect(card.getByRole('button', { name: 'Salva' })).toBeDisabled();
 });
 
-test("Oggi lists today's own events", async ({ page, pc }) => {
+test("Oggi lists today's own events, not a shift", async ({ page, pc }) => {
+  // A shift of today: someone else's day, so it stays off Oggi (removed by `clean` like the other events).
+  await pc.post('/trpc/calendar.add', {
+    data: { title: 'Turno', kind: 'shift', person: 'Persona A', day: '2026-11-15', start: '06:00', end: '14:00' },
+    headers: json,
+  });
   await pc.post('/trpc/layout.save', {
     data: { zone: 'overview', items: [{ widget: 'today', size: 'wide', x: 0, y: 0 }] },
     headers: json,
@@ -95,6 +100,7 @@ test("Oggi lists today's own events", async ({ page, pc }) => {
   const today = page.getByRole('region', { name: 'Oggi', exact: true });
   await expect(today.getByRole('list', { name: 'Impegni di oggi' }).getByText('Dentista')).toBeVisible();
   await expect(today.getByText('16:30')).toBeVisible();
+  await expect(today.getByRole('list', { name: 'Impegni di oggi' }).getByRole('listitem')).toHaveCount(1);
 });
 
 test('Studio days slide from today, one a day, and open Studio', async ({ page, pc }) => {

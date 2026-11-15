@@ -11,9 +11,18 @@ export type CalendarEvent = {
   day: string;
   start: string | null;
   end: string | null;
+  kind: 'event' | 'shift';
+  person: string | null;
   source: string;
 };
-type Fields = { title: string; day: string; start?: string | null | undefined; end?: string | null | undefined };
+type Fields = {
+  title: string;
+  day: string;
+  start?: string | null | undefined;
+  end?: string | null | undefined;
+  kind?: 'event' | 'shift' | undefined;
+  person?: string | null | undefined;
+};
 
 /** True when the event has no end, or ends after it starts (an end with no start is refused by the router). */
 export const endsAfterStart = (start: string | null | undefined, end: string | null | undefined) =>
@@ -37,7 +46,16 @@ export function createCalendar(db: Db, now: () => Date = () => new Date()) {
         .where(and(isNull(calendarEvents.removedAt), gte(calendarEvents.day, from), lte(calendarEvents.day, to)))
         .orderBy(asc(calendarEvents.day), asc(calendarEvents.start), asc(calendarEvents.createdAt))
         .all()
-        .map(({ id, title, day, start, end, source }) => ({ id, title, day, start, end, source }));
+        .map(({ id, title, day, start, end, kind, person, source }) => ({
+          id,
+          title,
+          day,
+          start,
+          end,
+          kind: kind === 'shift' ? 'shift' : 'event',
+          person,
+          source,
+        }));
     },
     add(input: Fields, source: string) {
       const at = now();
@@ -49,6 +67,8 @@ export function createCalendar(db: Db, now: () => Date = () => new Date()) {
           day: input.day,
           start: input.start ?? null,
           end: input.end ?? null,
+          kind: input.kind ?? 'event',
+          person: input.kind === 'shift' ? (input.person ?? null) : null,
           source,
           createdAt: at,
           updatedAt: at,
@@ -64,6 +84,8 @@ export function createCalendar(db: Db, now: () => Date = () => new Date()) {
           day: input.day,
           start: input.start ?? null,
           end: input.end ?? null,
+          kind: input.kind ?? 'event',
+          person: input.kind === 'shift' ? (input.person ?? null) : null,
           updatedAt: now(),
         })
         .where(eq(calendarEvents.id, id))

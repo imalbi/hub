@@ -196,6 +196,38 @@ test('the music volume slider changes the music volume only, not the system volu
   );
 });
 
+test('the music volume comes back when a song starts from outside the page after mpv was down', async ({
+  page,
+  pc,
+}) => {
+  // The page's first read finds mpv down (no volume): the slider is disabled and the button shows no percent.
+  let first = true;
+  await page.route('**/trpc/*music.state*', async (route) => {
+    if (!first) return route.fallback();
+    first = false;
+    const names = decodeURIComponent(new URL(route.request().url()).pathname.replace('/trpc/', '')).split(',');
+    const real: unknown = await (await route.fetch()).json();
+    const results = Array.isArray(real) ? real : [];
+    return route.fulfill({
+      json: names.map((name, i) =>
+        name === 'music.state' ? { result: { data: { available: true, volume: null, playing: null } } } : results[i],
+      ),
+    });
+  });
+  await page.goto('/desk/media');
+  await expect(page.getByRole('button', { name: /^Audio: \w+$/ })).toBeVisible();
+  // A song started from the palette, the deck or an agent, not from this page.
+  // A song other than the current one: only a change of song makes the page read the volume again.
+  const queue = (await (await pc.get('/trpc/music.queue')).json()).result.data;
+  const id = queue.current?.id === '00000000006' ? '00000000007' : '00000000006';
+  const played = await pc.post('/trpc/music.play', {
+    data: { id },
+    headers: { 'content-type': 'application/json' },
+  });
+  expect(played.ok()).toBe(true);
+  await expect(page.getByRole('button', { name: /^Audio: \w+, volume musica \d+%$/ })).toBeVisible({ timeout: 15_000 });
+});
+
 test('favorites are available as a view and can seed the radio', async ({ page }) => {
   await page.goto('/desk/media');
   await search(page);

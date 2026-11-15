@@ -36,5 +36,20 @@
   "calendar_removed": "Evento eliminato",
   "calendar_undo": "Annulla",
   "calendar_undo_named": "Annulla: {title}",
-  "calendar_today_region": "Impegni di oggi"
+  "calendar_today_region": "Impegni di oggi",
+  "calendar_view": "Vista",
+  "calendar_view_month": "Mese",
+  "calendar_view_week": "Settimana",
+  "calendar_view_agenda": "Agenda",
+  "calendar_week_previous": "Settimana precedente",
+  "calendar_week_next": "Settimana successiva",
+  "calendar_kind_shift": "Turno",
+  "calendar_shifts": "Turni",
+  "calendar_event_shift": "Turno",
+  "calendar_event_person": "Persona",
+  "calendar_upcoming": "Prossimi giorni",
+  "calendar_then": "Poi:",
+  "calendar_tomorrow": "Domani",
+  "calendar_show": "Mostra",
+  "calendar_pick_month": "Mese per scegliere il giorno"
 }

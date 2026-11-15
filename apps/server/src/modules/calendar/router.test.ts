@@ -14,6 +14,8 @@ const eventList = z.array(
     day: z.string(),
     start: z.string().nullable(),
     end: z.string().nullable(),
+    kind: z.enum(['event', 'shift']),
+    person: z.string().nullable(),
     source: z.string(),
   }),
 );
@@ -101,6 +103,68 @@ void test('events are added, changed, removed and restored; bad input is refused
   assert.equal((await call('calendar.restore', { id: dentist.id })).statusCode, 200);
   assert.equal((await range('2026-11-19', '2026-11-19')).events.length, 1);
   assert.equal((await call('calendar.remove', { id: 'missing' })).statusCode, 404);
+});
+
+void test('a shift keeps a person and may run past midnight; the range returns kind and person', async (t) => {
+  const { app, call, range } = open();
+  t.after(() => app.close());
+  const night = {
+    kind: 'shift',
+    title: 'Turno',
+    person: ' Persona A ',
+    day: '2026-11-18',
+    start: '22:00',
+    end: '06:00',
+  };
+  assert.equal((await call('calendar.add', night)).statusCode, 200);
+  assert.equal((await call('calendar.add', { ...night, start: '08:00', end: '08:00' })).statusCode, 200);
+  assert.equal((await call('calendar.add', { title: 'Dentista', day: '2026-11-18', start: '09:00' })).statusCode, 200);
+  const { events } = await range('2026-11-18', '2026-11-18');
+  assert.deepEqual(
+    events.map(({ kind, person, start, end }) => [kind, person, start, end]),
+    [
+      ['shift', 'Persona A', '08:00', '08:00'],
+      ['event', null, '09:00', null],
+      ['shift', 'Persona A', '22:00', '06:00'],
+    ],
+  );
+  const shift = events[2];
+  assert.ok(shift);
+  assert.equal(
+    (await call('calendar.update', { ...night, id: shift.id, person: 'Persona B', start: '23:00', end: '07:00' }))
+      .statusCode,
+    200,
+  );
+  assert.deepEqual(
+    (await range('2026-11-18', '2026-11-18')).events
+      .filter(({ kind }) => kind === 'shift')
+      .map(({ person, start }) => [person, start]),
+    [
+      ['Persona A', '08:00'],
+      ['Persona B', '23:00'],
+    ],
+  );
+  // An event keeps no person, even when one is sent.
+  assert.equal(
+    (await call('calendar.update', { id: shift.id, title: 'Cena', day: '2026-11-18', person: 'Persona C' })).statusCode,
+    200,
+  );
+  const turned = (await range('2026-11-18', '2026-11-18')).events.find(({ id }) => id === shift.id);
+  assert.deepEqual([turned?.kind, turned?.person], ['event', null]);
+  for (const bad of [
+    { ...night, person: undefined },
+    { ...night, person: '  ' },
+    { ...night, person: 'x'.repeat(61) },
+    { ...night, end: undefined },
+    { ...night, start: undefined },
+    { ...night, kind: 'meeting' },
+  ])
+    assert.equal((await call('calendar.add', bad)).statusCode, 400, JSON.stringify(bad));
+  // Events still refuse an end before the start.
+  assert.equal(
+    (await call('calendar.add', { title: 'x', day: '2026-11-18', start: '10:00', end: '09:00' })).statusCode,
+    400,
+  );
 });
 
 void test('an agent adds an event over MCP and its source names the agent', async (t) => {

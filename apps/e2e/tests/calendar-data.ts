@@ -25,6 +25,19 @@ export async function seed(pc: APIRequestContext) {
   await pc.post('/trpc/notes.add', { data: { text: 'Riprendere step 55', forDay: '2026-11-16' }, headers: json });
 }
 
+/** Shifts of a generic person across the week of 16 November; the overnight one ends on the 18th. */
+export async function seedShifts(pc: APIRequestContext) {
+  const add = (day: string, person: string, start: string, end: string) =>
+    pc.post('/trpc/calendar.add', {
+      data: { title: 'Turno', kind: 'shift', person, day, start, end },
+      headers: json,
+    });
+  await add('2026-11-16', 'Persona A', '06:00', '14:00');
+  await add('2026-11-17', 'Persona B', '22:00', '06:00');
+  await add('2026-11-19', 'Persona A', '14:00', '22:00');
+  await add('2026-11-21', 'Persona A', '06:00', '14:00');
+}
+
 export async function clean(pc: APIRequestContext) {
   const range = { from: '2026-10-01', to: '2026-12-31' };
   const events: Array<{ id: string }> = (

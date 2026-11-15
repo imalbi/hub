@@ -14,8 +14,19 @@ const fields = z
     day,
     start: time.nullish(),
     end: time.nullish(),
+    kind: z
+      .enum(['event', 'shift'])
+      .default('event')
+      .describe(
+        'shift is a work shift of a person: it needs a person, a start and an end, and an end not after the start means the next day',
+      ),
+    person: z.string().trim().min(1).max(60).nullish().describe('Who works the shift, 1 to 60 characters; shifts only'),
   })
-  .refine((value) => endsAfterStart(value.start, value.end), 'The end must come after the start');
+  .refine(
+    (value) =>
+      value.kind === 'shift' ? !!value.person && !!value.start && !!value.end : endsAfterStart(value.start, value.end),
+    'An event ends after it starts; a shift needs a person, a start and an end (an end not after the start means the next day)',
+  );
 const range = z.object({ from: day, to: day }).refine((value) => value.from <= value.to, 'from is after to');
 
 export function createCalendarRouter(store: CalendarStore) {
@@ -33,7 +44,10 @@ export function createCalendarRouter(store: CalendarStore) {
         store.add(input, ctx.client.kind === 'agent' ? `agent:${ctx.client.name}` : 'desk'),
       ),
     update: agentOrLoopbackProcedure
-      .meta({ label: 'Modifica evento', description: 'Change the title, day and times of an event by its id' })
+      .meta({
+        label: 'Modifica evento',
+        description: 'Change the title, day, times, kind and person of an event or shift by its id',
+      })
       .input(fields.and(z.object({ id })))
       .mutation(({ input }) => store.update(input.id, input)),
     remove: agentOrLoopbackProcedure

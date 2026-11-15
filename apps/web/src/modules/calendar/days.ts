@@ -5,8 +5,27 @@ import { addDays, dayDate, localDay } from '../../lib/day.ts';
 
 export type CalendarEvent = inferRouterOutputs<AppRouter>['calendar']['range'][number];
 
-/** What one day of the grid holds: an own event keeps its row for editing, a contribution is read only. */
-export type DayEntry = (CalendarItem & { own?: undefined }) | (CalendarItem & { own: CalendarEvent });
+/** A shift is an own event; no other module contributes one. */
+export type EntryKind = CalendarItem['kind'] | 'shift';
+/**
+ * What one day holds: an own event keeps its row for editing, a contribution is read only. A shift's `title` is its
+ * person and `span` its text ("22:00 - 6:00"); `time` stays the start, for ordering.
+ */
+export type DayEntry = Omit<CalendarItem, 'kind'> & { kind: EntryKind; span?: string; own?: CalendarEvent };
+
+/** Which kinds Settimana and Agenda show. Own events are always shown. */
+export type Show = Record<'work' | 'study' | 'shift' | 'note', boolean>;
+export const SHOW_ALL: Show = { work: true, study: true, shift: true, note: true };
+export const filterEntries = (entries: readonly DayEntry[], show: Show) =>
+  entries.filter((entry) => entry.kind === 'event' || show[entry.kind]);
+
+/** "6:00 - 14:00" from `HH:MM` times; a shift ending at or before its start ends the next day, the text is the same. */
+export const shiftSpan = (start: string, end: string) => `${start.replace(/^0/, '')} - ${end.replace(/^0/, '')}`;
+/** The card's short form, as the week board writes it: "6-14", "22-6", "6:30-14" (whole hours lose their minutes). */
+export const shortSpan = (start: string, end: string) => {
+  const short = (time: string) => time.replace(/^0/, '').replace(/:00$/, '');
+  return `${short(start)}-${short(end)}`;
+};
 
 /** The 42 days of a 6 by 7 month grid, Monday first, starting with the week the month begins in. */
 export function monthDays(month: string) {
@@ -31,14 +50,26 @@ export function shiftMonth(month: string, count: number) {
  */
 export function entriesByDay(events: readonly CalendarEvent[], items: readonly CalendarItem[]) {
   const entries: DayEntry[] = [
-    ...events.map((event): DayEntry => ({
-      id: `event-${event.id}`,
-      day: event.day,
-      ...(event.start ? { time: event.start } : {}),
-      title: event.title,
-      kind: 'event',
-      own: event,
-    })),
+    ...events.map((event): DayEntry =>
+      event.kind === 'shift' && event.start && event.end
+        ? {
+            id: `event-${event.id}`,
+            day: event.day,
+            time: event.start,
+            span: shiftSpan(event.start, event.end),
+            title: event.person ?? event.title,
+            kind: 'shift',
+            own: event,
+          }
+        : {
+            id: `event-${event.id}`,
+            day: event.day,
+            ...(event.start ? { time: event.start } : {}),
+            title: event.title,
+            kind: 'event',
+            own: event,
+          },
+    ),
     ...items,
   ];
   const days = new Map<string, DayEntry[]>();
@@ -55,3 +86,48 @@ const dayLong = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeri
 const monthLong = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' });
 export const dayTitle = (day: string) => dayLong.format(dayDate(day));
 export const monthTitle = (month: string) => monthLong.format(dayDate(`${month}-01`));
+
+/** The Monday-first week the day is in: seven days. */
+export function weekDays(day: string) {
+  const start = addDays(day, -((dayDate(day).getDay() + 6) % 7));
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
+
+const dayMonth = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
+const dayShortMonth = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short' });
+/** "16 - 22 novembre", or "26 ott - 1 nov" across two months. */
+export function weekTitle(days: readonly string[]) {
+  const first = days[0];
+  const last = days[days.length - 1];
+  if (!first || !last) return '';
+  if (monthOf(first) === monthOf(last)) return `${Number(first.slice(8))} - ${dayMonth.format(dayDate(last))}`;
+  return `${dayShortMonth.format(dayDate(first))} - ${dayShortMonth.format(dayDate(last))}`;
+}
+
+const weekdayShort = new Intl.DateTimeFormat('it-IT', { weekday: 'short' });
+const weekdayLong = new Intl.DateTimeFormat('it-IT', { weekday: 'long' });
+export const weekdayName = (day: string) => weekdayShort.format(dayDate(day));
+/** "lun 24" for the "Poi:" line. */
+export const shortDay = (day: string) => `${weekdayShort.format(dayDate(day))} ${Number(day.slice(8))}`;
+
+/**
+ * The days of the agenda: from `from`, the next `limit` days, each with its entries; a day with none is left out.
+ * A day with items always has them in the order `entriesByDay` gave.
+ */
+export function agendaDays(byDay: ReadonlyMap<string, DayEntry[]>, from: string, limit: number) {
+  const days: Array<{ day: string; entries: DayEntry[] }> = [];
+  for (let index = 0; index < limit; index += 1) {
+    const day = addDays(from, index);
+    const entries = byDay.get(day);
+    if (entries?.length) days.push({ day, entries });
+  }
+  return days;
+}
+
+/** The agenda's first line of a day: Oggi and Domani for the first two days from today, then the weekday. */
+export const agendaName = (day: string, today: string, words: { today: string; tomorrow: string }) =>
+  day === today ? words.today : day === addDays(today, 1) ? words.tomorrow : weekdayLong.format(dayDate(day));
+const agendaDate = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+/** "dom 15 nov" for Oggi and Domani, "17 nov" for the rest (the name already says the weekday). */
+export const agendaDateText = (day: string, today: string) =>
+  day === today || day === addDays(today, 1) ? agendaDate.format(dayDate(day)) : dayShortMonth.format(dayDate(day));
