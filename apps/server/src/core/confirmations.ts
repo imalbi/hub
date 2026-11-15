@@ -6,15 +6,21 @@ type Status =
   | { state: 'pending' | 'running' | 'denied' | 'expired' }
   | { state: 'confirmed'; result: unknown }
   | { state: 'failed'; error: string };
-type Entry = Request & { id: string; expiresAt: number; status: Status };
+type Entry = Request & { id: string; expiresAt: number; finishedAt?: number; status: Status };
+
+const KEEP_FINISHED_MS = 10 * 60_000;
 type Notice = Pick<Entry, 'id' | 'name' | 'action' | 'input' | 'expiresAt'>;
 
 export function createConfirmations(now: () => number = Date.now) {
   const entries = new Map<string, Entry>();
   const listeners = new Set<(items: Notice[]) => void>();
+  // Entries hold their `run` closure, so finished ones go after a grace period; `status` answers a gone id as expired.
   const updateExpiry = () => {
-    for (const entry of entries.values())
+    for (const [id, entry] of entries) {
       if (entry.status.state === 'pending' && now() >= entry.expiresAt) entry.status = { state: 'expired' };
+      if (entry.status.state === 'pending' || entry.status.state === 'running') continue;
+      if (now() >= (entry.finishedAt ?? entry.expiresAt) + KEEP_FINISHED_MS) entries.delete(id);
+    }
   };
   const list = () => {
     updateExpiry();
@@ -45,8 +51,7 @@ export function createConfirmations(now: () => number = Date.now) {
       if (listeners.size === 0) return null;
       const id = randomUUID();
       entries.set(id, { ...request, id, expiresAt: now() + 120_000, status: { state: 'pending' } });
-      const timer = setTimeout(emit, 120_000);
-      timer.unref();
+      for (const delay of [120_000, 120_000 + KEEP_FINISHED_MS]) setTimeout(emit, delay).unref();
       emit();
       return id;
     },
@@ -59,17 +64,20 @@ export function createConfirmations(now: () => number = Date.now) {
       } catch (error) {
         entry.status = { state: 'failed', error: error instanceof Error ? error.message : 'Action failed' };
       }
+      entry.finishedAt = now();
       emit();
     },
     deny(id: string) {
-      requirePending(id).status = { state: 'denied' };
+      const entry = requirePending(id);
+      entry.status = { state: 'denied' };
+      entry.finishedAt = now();
       emit();
     },
     status(id: string, agentId: number) {
       updateExpiry();
       const entry = entries.get(id);
-      if (!entry || entry.agentId !== agentId)
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'No such confirmation' });
+      if (!entry) return { state: 'expired' } satisfies Status;
+      if (entry.agentId !== agentId) throw new TRPCError({ code: 'NOT_FOUND', message: 'No such confirmation' });
       return entry.status;
     },
   };

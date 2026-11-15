@@ -15,6 +15,8 @@ const sender = (message: MailMessage) => message.from?.name || message.from?.ema
  */
 export function createNewMailNotifier(run: Run) {
   const known = new Map<string, Set<string>>();
+  // Newest date seen per account: an archive or delete slides older unread rows into the window, and those are not new.
+  const newest = new Map<string, number>();
   return function observe(state: MailState) {
     const fresh: MailMessage[] = [];
     for (const account of state.accounts) {
@@ -22,7 +24,20 @@ export function createNewMailNotifier(run: Run) {
       if (account.failure) continue;
       const before = known.get(account.account);
       known.set(account.account, new Set(account.latest.map((message) => message.id)));
-      if (before) fresh.push(...account.latest.filter((message) => !message.seen && !before.has(message.id)));
+      const since = newest.get(account.account) ?? Number.NEGATIVE_INFINITY;
+      const times = account.latest.map((message) => (message.date ? Date.parse(message.date) : Number.NaN));
+      newest.set(account.account, Math.max(since, ...times.filter((time) => !Number.isNaN(time))));
+      // shortcut: an undated row counts as new by id alone, as there is nothing to compare.
+      if (before) {
+        fresh.push(
+          ...account.latest.filter(
+            (message, index) =>
+              !message.seen &&
+              !before.has(message.id) &&
+              (Number.isNaN(times[index] ?? Number.NaN) || (times[index] ?? 0) > since),
+          ),
+        );
+      }
     }
     if (fresh.length > NOTIFY_EACH_MAX) {
       void run('notify-send', ['--app-name', 'Hub', 'Nuova mail', `${fresh.length} nuove mail`]);

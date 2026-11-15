@@ -130,3 +130,23 @@ void test('a failing read ends the subscription with that error', async () => {
   const hub = createLiveHub(() => Promise.reject(new Error('boom')), POLL_MS);
   await assert.rejects(hub.subscribe().next(), { message: 'boom' });
 });
+
+void test('a push-only hub does not replay a state read after its last subscriber left', async () => {
+  let release: (() => void) | undefined;
+  let count = 0;
+  const read = () => {
+    const value = `v${++count}`;
+    if (count > 1) return Promise.resolve(value);
+    return new Promise<string>((resolve) => (release = () => resolve(value)));
+  };
+  const hub = createLiveHub(read, null);
+  const controller = new AbortController();
+  const consume = collect(hub.subscribe(controller.signal), []);
+  await flush(); // the read is in flight
+  await stop(controller, consume); // the last subscriber leaves during the read
+  release?.();
+  await flush();
+  const second = hub.subscribe();
+  assert.deepEqual(await second.next(), { value: 'v2', done: false });
+  await second.return();
+});

@@ -15,6 +15,8 @@ export function createLiveHub<T>(read: () => Promise<T>, intervalMs: number | nu
   async function readOnce() {
     try {
       const value = await read();
+      // Nobody left to keep it fresh: storing it would replay it to the next subscriber.
+      if (subscribers === 0) return;
       const json = JSON.stringify(value);
       if (json === latest?.json) return;
       latest = { value, json };

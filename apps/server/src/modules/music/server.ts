@@ -519,7 +519,9 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
               replacePlaylistSongs(input.playlistId, rows);
             }),
           favorites: protectedProcedure.query(() => db.select().from(favorites).orderBy(desc(favorites.addedAt)).all()),
-          history: protectedProcedure.query(() => db.select().from(history).orderBy(desc(history.playedAt)).all()),
+          history: protectedProcedure.query(() =>
+            db.select().from(history).orderBy(desc(history.playedAt)).limit(200).all(),
+          ),
           /** The last five distinct songs with their covers, for the Ascolta tiles. */
           recent: protectedProcedure.query(async () => {
             const seen = new Map<string, typeof history.$inferSelect>();

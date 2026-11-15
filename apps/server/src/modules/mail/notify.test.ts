@@ -81,6 +81,20 @@ void test('four new at once are one notification', () => {
   assert.deepEqual(sent, [['notify-send', '--app-name', 'Hub', 'Nuova mail', '4 nuove mail']]);
 });
 
+void test('an old unread row sliding into the window after an archive sends nothing; a newer one still does', () => {
+  const { sent, observe } = notifier();
+  const dated = (id: number): MailMessage => ({
+    ...row(String(id), `Oggetto ${id}`),
+    date: new Date(Date.UTC(2026, 10, 15 - id)).toISOString(),
+  });
+  const rows = Array.from({ length: 11 }, (_, id) => dated(id));
+  observe(state(account('work', rows.slice(0, 10))));
+  observe(state(account('work', rows.slice(1, 11))));
+  assert.deepEqual(sent, [], 'row 10 is weeks old: row 0 was archived, nothing arrived');
+  observe(state(account('work', [{ ...dated(0), id: 'new', date: '2026-11-16T00:00:00Z' }, ...rows.slice(1, 10)])));
+  assert.equal(sent.length, 1);
+});
+
 const config = (notify: boolean) => ({
   ...emptyConfig,
   mail: { accounts: [{ label: 'Lavoro', account: 'work' }], archiveMailbox: 'archive', notify },

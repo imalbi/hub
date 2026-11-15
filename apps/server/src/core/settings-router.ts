@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { chmod, copyFile, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
@@ -57,7 +58,7 @@ async function readConfigJson(path: string): Promise<Record<string, unknown>> {
 async function writeConfigSafely(path: string, text: string) {
   const current = await stat(path).catch(() => undefined);
   if (current) await copyFile(path, `${path}.bak`);
-  const temporary = `${path}.tmp-${process.pid}`;
+  const temporary = `${path}.tmp-${process.pid}-${randomUUID()}`;
   // Secrets live in this file: keep its permissions, or owner-only for a new one.
   await writeFile(temporary, text, { mode: current?.mode ?? 0o600 });
   if (current) await chmod(temporary, current.mode);
@@ -81,6 +82,13 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
     if (!configPath) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'No config file is set up' });
     return configPath;
   };
+  // Saves are read-modify-write on one file: run them one after the other so none overwrites another's change.
+  let queue: Promise<unknown> = Promise.resolve();
+  const serialized = <T>(task: () => Promise<T>): Promise<T> => {
+    const result = queue.then(task);
+    queue = result.catch(() => undefined);
+    return result;
+  };
   const known = (name: string) => {
     const info = states.get(name);
     if (!info) throw notFound();
@@ -95,19 +103,21 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
     saveCore: loopbackProcedure
       .meta({ label: 'Salva sistema', description: 'Save core settings and restart Hub' })
       .input(editableCoreSchema)
-      .mutation(async ({ ctx, input }) => {
-        const path = requirePath();
-        const file = await readConfigJson(path);
-        const next = { ...file, ...input };
-        const parsed = configSchema.safeParse(next);
-        if (!parsed.success)
-          return {
-            ok: false as const,
-            issues: parsed.error.issues.map(({ path, message }) => ({ path: path.map(String), message })),
-          };
-        await writeConfigSafely(path, `${JSON.stringify(next, null, 2)}\n`);
-        return { ok: true as const, restarting: ctx.restart() };
-      }),
+      .mutation(({ ctx, input }) =>
+        serialized(async () => {
+          const path = requirePath();
+          const file = await readConfigJson(path);
+          const next = { ...file, ...input };
+          const parsed = configSchema.safeParse(next);
+          if (!parsed.success)
+            return {
+              ok: false as const,
+              issues: parsed.error.issues.map(({ path, message }) => ({ path: path.map(String), message })),
+            };
+          await writeConfigSafely(path, `${JSON.stringify(next, null, 2)}\n`);
+          return { ok: true as const, restarting: ctx.restart() };
+        }),
+      ),
     modules: loopbackProcedure.query(() =>
       states.list().map(({ name, kind, status, schema }) => ({ name, kind, status, hasConfig: schema !== undefined })),
     ),
@@ -140,44 +150,46 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
         description: "Save one module's settings and its on/off switch, then restart Hub",
       })
       .input(z.object({ module: z.string(), enabled: z.boolean(), value: z.unknown().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        const info = known(input.module);
-        const path = requirePath();
-        const file = await readConfigJson(path);
-        let next = file;
-        if (input.value !== undefined && info.schema) {
-          next = setAt(
-            file,
-            info.configPath,
-            restoreSchemaSecrets(info.schema, input.value, getAt(file, info.configPath)),
-          );
-        }
-        const off = new Set(Array.isArray(next.modulesOff) ? next.modulesOff.map(String) : []);
-        if (input.enabled) off.delete(info.name);
-        else off.add(info.name);
-        next = off.size > 0 || 'modulesOff' in next ? { ...next, modulesOff: [...off].toSorted() } : next;
+      .mutation(({ ctx, input }) =>
+        serialized(async () => {
+          const info = known(input.module);
+          const path = requirePath();
+          const file = await readConfigJson(path);
+          let next = file;
+          if (input.value !== undefined && info.schema) {
+            next = setAt(
+              file,
+              info.configPath,
+              restoreSchemaSecrets(info.schema, input.value, getAt(file, info.configPath)),
+            );
+          }
+          const off = new Set(Array.isArray(next.modulesOff) ? next.modulesOff.map(String) : []);
+          if (input.enabled) off.delete(info.name);
+          else off.add(info.name);
+          next = off.size > 0 || 'modulesOff' in next ? { ...next, modulesOff: [...off].toSorted() } : next;
 
-        if (ctx.client.kind === 'agent' || ctx.agentRequest) {
-          const manual =
-            info.schema && hasManualChanges(info.schema, getAt(file, info.configPath), getAt(next, info.configPath));
-          const disablingCore =
-            !input.enabled &&
-            ['pairing', 'devices', 'health'].includes(info.name) &&
-            !(Array.isArray(file.modulesOff) && file.modulesOff.includes(info.name));
-          if (manual || disablingCore)
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'These settings require a manual change' });
-        }
+          if (ctx.client.kind === 'agent' || ctx.agentRequest) {
+            const manual =
+              info.schema && hasManualChanges(info.schema, getAt(file, info.configPath), getAt(next, info.configPath));
+            const disablingCore =
+              !input.enabled &&
+              ['pairing', 'devices', 'health'].includes(info.name) &&
+              !(Array.isArray(file.modulesOff) && file.modulesOff.includes(info.name));
+            if (manual || disablingCore)
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'These settings require a manual change' });
+          }
 
-        const errors: Array<z.ZodError | undefined> = [configSchema.safeParse(next).error];
-        // A discovered module's slice is a free record in the core schema: its own schema checks it.
-        if (info.kind === 'private' && info.schema)
-          errors.push(info.schema.safeParse(getAt(next, info.configPath)).error);
-        const issues = errors.flatMap((error) => (error ? issueList(error, info) : []));
-        if (issues.length > 0) return { ok: false as const, issues };
+          const errors: Array<z.ZodError | undefined> = [configSchema.safeParse(next).error];
+          // A discovered module's slice is a free record in the core schema: its own schema checks it.
+          if (info.kind === 'private' && info.schema)
+            errors.push(info.schema.safeParse(getAt(next, info.configPath)).error);
+          const issues = errors.flatMap((error) => (error ? issueList(error, info) : []));
+          if (issues.length > 0) return { ok: false as const, issues };
 
-        await writeConfigSafely(path, `${JSON.stringify(next, null, 2)}\n`);
-        return { ok: true as const, restarting: ctx.restart() };
-      }),
+          await writeConfigSafely(path, `${JSON.stringify(next, null, 2)}\n`);
+          return { ok: true as const, restarting: ctx.restart() };
+        }),
+      ),
 
     /** Swap the config file with `<file>.bak` (the version before the last save), then restart. */
     restore: agentOrLoopbackProcedure
@@ -187,35 +199,38 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
         danger: true,
       })
       .input(z.object({ confirmed: z.literal(true) }))
-      .mutation(async ({ ctx }) => {
-        const backup = configPath && (await readFileText(`${configPath}.bak`));
-        if (!configPath || backup === undefined)
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'There is no previous version' });
-        // A backup the server cannot start with (a broken hand edit) would leave the service failing on every restart.
-        if (!configSchema.safeParse(parseJson(backup)).success)
-          throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'The previous version is not a valid config' });
-        if (ctx.client.kind === 'agent' || ctx.agentRequest) {
-          const before = await readConfigJson(configPath);
-          const after = parseJson(backup);
-          const off = (value: unknown) => (isObject(value) && Array.isArray(value.modulesOff) ? value.modulesOff : []);
-          const disablingCore = ['pairing', 'devices', 'health'].some(
-            (name) => !off(before).includes(name) && off(after).includes(name),
-          );
-          const manual =
-            hasManualChanges(configSchema, before, after) ||
-            states
-              .list()
-              .some(
-                (info) =>
-                  info.schema &&
-                  hasManualChanges(info.schema, getAt(before, info.configPath), getAt(after, info.configPath)),
-              );
-          if (manual || disablingCore)
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'These settings require a manual change' });
-        }
-        await writeConfigSafely(configPath, backup);
-        return { restarting: ctx.restart() };
-      }),
+      .mutation(({ ctx }) =>
+        serialized(async () => {
+          const backup = configPath && (await readFileText(`${configPath}.bak`));
+          if (!configPath || backup === undefined)
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'There is no previous version' });
+          // A backup the server cannot start with (a broken hand edit) would leave the service failing on every restart.
+          if (!configSchema.safeParse(parseJson(backup)).success)
+            throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'The previous version is not a valid config' });
+          if (ctx.client.kind === 'agent' || ctx.agentRequest) {
+            const before = await readConfigJson(configPath);
+            const after = parseJson(backup);
+            const off = (value: unknown) =>
+              isObject(value) && Array.isArray(value.modulesOff) ? value.modulesOff : [];
+            const disablingCore = ['pairing', 'devices', 'health'].some(
+              (name) => !off(before).includes(name) && off(after).includes(name),
+            );
+            const manual =
+              hasManualChanges(configSchema, before, after) ||
+              states
+                .list()
+                .some(
+                  (info) =>
+                    info.schema &&
+                    hasManualChanges(info.schema, getAt(before, info.configPath), getAt(after, info.configPath)),
+                );
+            if (manual || disablingCore)
+              throw new TRPCError({ code: 'FORBIDDEN', message: 'These settings require a manual change' });
+          }
+          await writeConfigSafely(configPath, backup);
+          return { restarting: ctx.restart() };
+        }),
+      ),
   });
 }
 

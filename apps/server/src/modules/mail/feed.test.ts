@@ -76,3 +76,54 @@ void test('the end: no cursor once every account is read out', async () => {
   assert.equal(result.value.cursor, null);
   assert.equal(result.value.rows.length, 3);
 });
+
+const dated = (id: string, day: number | null): MailMessage => ({
+  ...message(id, day ?? 1),
+  date: day === null ? null : `2026-11-${String(day).padStart(2, '0')}T09:00:00Z`,
+});
+
+async function walkBoxes(lists: Record<string, MailMessage[]>, size: number) {
+  const accounts = Object.keys(lists);
+  const fetchPage: FetchPage = (account, page) =>
+    Promise.resolve({ ok: true, value: (lists[account] ?? []).slice((page - 1) * size, page * size) });
+  const ids: string[] = [];
+  let cursor: FeedCursor | null = {};
+  for (let guard = 0; cursor && guard < 50; guard++) {
+    const result = await nextFeed(accounts, cursor, size, fetchPage);
+    assert.ok(result.ok);
+    ids.push(...result.value.rows.map((row) => `${row.account}:${row.id}`));
+    cursor = result.value.cursor;
+  }
+  return ids;
+}
+
+void test('an undated row and an out-of-order row keep every id once, in listing order (one account)', async () => {
+  const a = [
+    dated('m0', 20),
+    dated('n2', null),
+    dated('m1', 18),
+    dated('m2', 17),
+    dated('old', 5),
+    dated('m3', 16),
+    dated('m4', 15),
+  ];
+  assert.deepEqual(
+    await walkBoxes({ a }, 3),
+    a.map((row) => `a:${row.id}`),
+  );
+});
+
+void test('an undated row and an out-of-order row lose nothing with two accounts', async () => {
+  const a = [dated('a0', 20), dated('a1', null), dated('a2', 18), dated('a3', 5), dated('a4', 16), dated('a5', 15)];
+  const b = [dated('b0', 19), dated('b1', 17), dated('b2', 14), dated('b3', 13)];
+  const ids = await walkBoxes({ a, b }, 3);
+  assert.equal(new Set(ids).size, ids.length, 'no duplicate');
+  assert.deepEqual(
+    ids.filter((id) => id.startsWith('a:')),
+    a.map((row) => `a:${row.id}`),
+  );
+  assert.deepEqual(
+    ids.filter((id) => id.startsWith('b:')),
+    b.map((row) => `b:${row.id}`),
+  );
+});

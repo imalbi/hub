@@ -223,6 +223,31 @@ void test('recent lists each song once, newest first, with its cover through the
   assert.ok(fetched.includes('https://i.ytimg.com/cover'));
 });
 
+void test('history returns the latest 200 plays, newest first', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return 30;
+      return wiring.ipc.request(command);
+    },
+  };
+  const app = buildServer({ dbPath: ':memory:', music: { ...wiring, ipc }, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'song' })));
+  for (let listen = 0; listen < 205; listen++) {
+    await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+    t.mock.timers.tick(30000);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  const rows: { playedAt: number }[] = (await app.inject('/trpc/music.history')).json().result.data;
+  assert.equal(rows.length, 200);
+  assert.deepEqual(
+    rows.map((row) => row.playedAt),
+    rows.map((row) => row.playedAt).toSorted((a, b) => b - a),
+  );
+});
+
 void test('a recent song with no stored cover asks YouTube for its artwork once and keeps it', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
   calls.covers.length = 0;

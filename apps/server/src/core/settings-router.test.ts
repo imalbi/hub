@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -153,4 +153,50 @@ void test('an agent never reads the raw slice of a module without a schema', asy
   assert.equal((await agent.config({ module: 'opaque' })).value, null);
   const human = settings.createCaller({ ...context, client: { kind: 'loopback' } });
   assert.deepEqual((await human.config({ module: 'opaque' })).value, { token: 'not-for-agents' });
+});
+
+void test('two concurrent saves both land and leave a valid file', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'hub-concurrent-settings-'));
+  const path = join(dir, 'config.json');
+  await writeFile(path, JSON.stringify({ modules: {} }));
+  const db = openDb(':memory:');
+  const files = createFiles();
+  const jobs = createJobRunner(db, streamSpawn, 2);
+  t.after(async () => {
+    jobs.close();
+    await files.close();
+    db.$client.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+  const states = createModuleStates();
+  for (const name of ['one', 'two'])
+    states.set({
+      name,
+      kind: 'private',
+      status: 'on',
+      configPath: ['modules', name],
+      schema: z.object({ label: z.string() }),
+    });
+  const caller = createSettingsRouter({ states, configPath: path }).createCaller({
+    db,
+    files,
+    jobs,
+    run: createFakeDesktop(),
+    config: emptyConfig,
+    client: { kind: 'loopback' },
+    remoteAddress: '',
+    sockets: createDeviceSockets(),
+    restart: () => false,
+  });
+  const results = await Promise.all([
+    caller.save({ module: 'one', enabled: true, value: { label: 'a' } }),
+    caller.save({ module: 'two', enabled: true, value: { label: 'b' } }),
+  ]);
+  assert.deepEqual(
+    results.map((result) => result.ok),
+    [true, true],
+  );
+  const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.deepEqual(saved.modules, { one: { label: 'a' }, two: { label: 'b' } });
+  assert.deepEqual((await readdir(dir)).toSorted(), ['config.json', 'config.json.bak']);
 });
