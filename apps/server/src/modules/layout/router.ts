@@ -8,6 +8,7 @@ import { deskLayouts } from '../../db/schema.ts';
 // that differ from their ids (`studio`, `lavoro`, `messaggi`) are taken too.
 export const builtinZones = [
   'overview',
+  'calendar',
   'study',
   'media',
   'system',

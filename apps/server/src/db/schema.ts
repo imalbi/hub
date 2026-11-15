@@ -87,3 +87,17 @@ export const notes = sqliteTable('notes', {
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   removedAt: integer('removed_at', { mode: 'timestamp_ms' }),
 });
+
+// An event the owner (or an agent) put on the calendar: a local day (`YYYY-MM-DD`) and optional `HH:MM` times.
+// `source` is `desk`, `agent:<name>`, or later the name of an import. Removing sets `removedAt`, so Annulla can bring it back.
+export const calendarEvents = sqliteTable('calendar_events', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  day: text('day').notNull(),
+  start: text('start'),
+  end: text('end'),
+  source: text('source').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  removedAt: integer('removed_at', { mode: 'timestamp_ms' }),
+});

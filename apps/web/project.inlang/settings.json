@@ -14,7 +14,8 @@
       "./src/modules/theme/messages/{locale}.json",
       "./src/modules/system/messages/{locale}.json",
       "./src/modules/news/messages/{locale}.json",
-      "./src/modules/notes/messages/{locale}.json"
+      "./src/modules/notes/messages/{locale}.json",
+      "./src/modules/calendar/messages/{locale}.json"
     ]
   }
 }

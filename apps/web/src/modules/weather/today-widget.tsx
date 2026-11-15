@@ -40,7 +40,7 @@ export function TodayWidget() {
                 : [module.todayItems]
               : [];
             return items.map((Item, index) => (
-              <div className="text-body" key={`${module.name}-${index}`}>
+              <div className="text-body empty:hidden" key={`${module.name}-${index}`}>
                 <Item />
               </div>
             ));

@@ -2,6 +2,10 @@ import { SitesSection, SitesWidget } from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
 import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
+import { CalendarDotsIcon } from '@phosphor-icons/react';
+import { CalendarZone } from '../modules/calendar/zone.tsx';
+import { CalendarToday } from '../modules/calendar/today.tsx';
+import { useNotesCalendarItems } from '../modules/notes/calendar.ts';
 import { NotesColumn } from '../modules/notes/today.tsx';
 import { NotesWidget } from '../modules/notes/widget.tsx';
 import { StudyLibrary } from '../modules/study/library.tsx';
@@ -41,9 +45,16 @@ export const moduleUIs: ModuleUI[] = [
     name: 'notes',
     copy: {},
     todayColumn: NotesColumn,
+    calendarItems: useNotesCalendarItems,
     widgets: [
       { id: 'notes', label: m.notes_title, sizes: ['medium', 'large', 'wide', 'full'], component: NotesWidget },
     ],
+  },
+  {
+    name: 'calendar',
+    copy: {},
+    todayItems: CalendarToday,
+    zone: { id: 'calendar', label: m.calendar_title, icon: CalendarDotsIcon, page: CalendarZone, fill: true },
   },
   ...[...Object.values(local), ...Object.values(examples)].map((module) => module.default),
 ];

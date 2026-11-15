@@ -16,6 +16,22 @@ export type ModuleSection = PageTab & { zone: string };
 export type ModuleActivity = { id: string; label: string; detail: string; progress?: number; href: string };
 /** A hook: a shell component calls it, so the ball knows whether anything runs without rendering the module's page. */
 export type ModuleActivityHook = () => ModuleActivity | null;
+/**
+ * One dated thing a module shows on the Calendario page (read only). `time` is `HH:MM`; `label` is the muted first line
+ * after the time (the kind's name when absent); `origin` is where it comes from; `href` is the page it opens.
+ */
+export type CalendarItem = {
+  id: string;
+  day: string;
+  time?: string;
+  title: string;
+  kind: 'work' | 'note' | 'event';
+  label?: string;
+  origin?: string;
+  href?: string;
+};
+/** A hook the Calendario page calls with the days it shows (`YYYY-MM-DD`, inclusive); undefined while it loads. */
+export type CalendarItemsHook = (range: { from: string; to: string }) => CalendarItem[] | undefined;
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
@@ -25,6 +41,8 @@ export type ModuleUI = {
   todayItems?: ComponentType | ComponentType[];
   /** The middle column of Oggi, bottom aligned between the date column and the weather: a stack of short cards. One per app (the post-its). */
   todayColumn?: ComponentType;
+  /** Read-only items for the Calendario page, in module order while the module is on. Not named `use...` by the caller (see `activities`). */
+  calendarItems?: CalendarItemsHook | CalendarItemsHook[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
   zone?: { id: string; label: () => string; icon: Icon; page: ComponentType; fill?: boolean; ownTabs?: boolean };
   /**

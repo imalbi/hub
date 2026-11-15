@@ -48,6 +48,8 @@
   --spacing-widget-row: 15rem;
   /* The theme editor's side sheet: narrow enough to leave most of the page visible as the live preview. */
   --spacing-sheet: 28rem;
+  /* Calendario's chosen-day panel: board A draws it 300 px wide at 1280, i.e. 450 px on the 1920 desk at 24 px a rem. */
+  --spacing-day-panel: 18.75rem;
   /* The label column of a short key/value list (the Lavoro detail summary), so the values line up. */
   --spacing-label-col: 6rem;
   /* A settings number with its stepper buttons and a short unit ("secondi"): wide enough for 6 digits, narrow enough to read as a number, not a text field. */

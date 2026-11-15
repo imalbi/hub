@@ -11,6 +11,7 @@ const zones = [
   ['Sistema', '/desk/system'],
   ['Dispositivi', '/desk/devices'],
   ['Messaggi', '/desk/messaggi'],
+  ['Calendario', '/desk/calendar'],
   ['Impostazioni', '/desk/settings'],
 ];
 

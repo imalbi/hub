@@ -82,6 +82,8 @@ export default defineConfig({
               'widgets.spec.ts',
               'notes.spec.ts',
               'notes.visual.spec.ts',
+              'calendar.spec.ts',
+              'calendar.visual.spec.ts',
               'sites.spec.ts',
               'study.spec.ts',
               'study-today.spec.ts',

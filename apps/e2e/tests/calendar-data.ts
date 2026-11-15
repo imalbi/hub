@@ -1,0 +1,26 @@
+import type { APIRequestContext } from '@playwright/test';
+
+const json = { 'content-type': 'application/json' };
+
+export async function seed(pc: APIRequestContext) {
+  const add = (title: string, day: string, start?: string, end?: string) =>
+    pc.post('/trpc/calendar.add', { data: { title, day, start, end }, headers: json });
+  await add('Dentista', '2026-11-15', '16:30');
+  await add('Cena da Marco', '2026-11-21', '20:00', '22:30');
+  await add('Visita', '2026-11-19', '09:00');
+  await add('Pranzo', '2026-11-19', '12:30');
+  await add('Riunione', '2026-11-19', '15:00');
+  await add('Corso', '2026-11-19', '18:00');
+  await pc.post('/trpc/notes.add', { data: { text: 'Riprendere step 55', forDay: '2026-11-16' }, headers: json });
+}
+
+export async function clean(pc: APIRequestContext) {
+  const range = { from: '2026-10-01', to: '2026-12-31' };
+  const events: Array<{ id: string }> = (
+    await (await pc.get(`/trpc/calendar.range?input=${encodeURIComponent(JSON.stringify(range))}`)).json()
+  ).result.data;
+  for (const { id } of events) await pc.post('/trpc/calendar.remove', { data: { id }, headers: json });
+  const notes: Array<{ id: string }> = (await (await pc.get('/trpc/notes.open')).json()).result.data;
+  for (const { id } of notes) await pc.post('/trpc/notes.remove', { data: { id }, headers: json });
+  await pc.post('/trpc/layout.reset', { data: { zone: 'overview' }, headers: json });
+}

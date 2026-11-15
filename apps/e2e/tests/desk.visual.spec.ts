@@ -12,8 +12,9 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await freezePomodoro(page);
   await page.clock.setFixedTime(NOW);
-  await page.route('**/trpc/health*', (route) => route.fulfill({ json: json({ ok: true, uptime: 42 }) }));
   await answerQueries(page, {
+    // Through answerQueries: Oggi's calendar query can lead the batch health travels in, which a glob on health misses.
+    health: { ok: true, uptime: 42 },
     'devices.list': [
       { id: 1, name: 'iPhone', createdAt: NOW.getTime() - 3_600_000, lastSeenAt: NOW.getTime() - 300_000 },
     ],
