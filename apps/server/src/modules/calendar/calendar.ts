@@ -30,6 +30,16 @@ export const endsAfterStart = (start: string | null | undefined, end: string | n
 
 export { isDay };
 
+export const KIND_RULE =
+  'An event ends after it starts; a shift needs a person, a start and an end (an end not after the start means the next day)';
+/** The rules of a kind on a whole row: a shift needs its person and both times, an event ends after it starts. */
+export const fitsKind = (row: {
+  kind: 'event' | 'shift';
+  person?: string | null | undefined;
+  start?: string | null | undefined;
+  end?: string | null | undefined;
+}) => (row.kind === 'shift' ? !!row.person && !!row.start && !!row.end : endsAfterStart(row.start, row.end));
+
 export function createCalendar(db: Db, now: () => Date = () => new Date()) {
   function existing(id: string) {
     const row = db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get();
@@ -77,15 +87,20 @@ export function createCalendar(db: Db, now: () => Date = () => new Date()) {
       return { id };
     },
     update(id: string, input: Fields) {
-      existing(id);
+      const row = existing(id);
+      // A missing kind keeps the stored one, and a shift keeps its person unless a new one is sent.
+      const kind = input.kind ?? (row.kind === 'shift' ? 'shift' : 'event');
+      const person = kind === 'shift' ? (input.person === undefined ? row.person : input.person) : null;
+      if (!fitsKind({ kind, person, start: input.start, end: input.end }))
+        throw new TRPCError({ code: 'BAD_REQUEST', message: KIND_RULE });
       db.update(calendarEvents)
         .set({
           title: input.title,
           day: input.day,
           start: input.start ?? null,
           end: input.end ?? null,
-          kind: input.kind ?? 'event',
-          person: input.kind === 'shift' ? (input.person ?? null) : null,
+          kind,
+          person,
           updatedAt: now(),
         })
         .where(eq(calendarEvents.id, id))

@@ -95,11 +95,13 @@ export async function listThreadEntries(
   return { entries: [...inbox.entries, ...sent.entries], truncated: inbox.truncated || sent.truncated };
 }
 
-/** A paired device gets the counts only: the senders and subjects of the latest rows stay on the PC. */
+/** A paired device gets the counts only: account names, labels, senders and subjects stay on the PC. */
 function forClient(state: MailState, kind: string): MailState {
   if (kind === 'loopback') return state;
-  return { accounts: state.accounts.map((account) => ({ ...account, latest: [] })) };
+  return { accounts: state.accounts.map((account, index) => ({ ...account, ...anonymous(index), latest: [] })) };
 }
+
+const anonymous = (index: number) => ({ account: `#${index + 1}`, label: '' });
 
 export type ThreadAnswer = { account: string; messageId: string; thread: ThreadView | null };
 
@@ -124,7 +126,12 @@ export function createMailRouter({
   return router({
     // The deck shows the unread count (state); what the mail says stays on the PC (owner, 2026-11-09).
     // Cheap: answers from the config, so the UI may ask on every page whether Posta is configured.
-    accounts: protectedProcedure.query(() => accounts.map(({ account, label }) => ({ account, label }))),
+    // A paired phone only learns how many accounts there are (the deck checks that Posta is on), not their names.
+    accounts: protectedProcedure.query(({ ctx }) =>
+      accounts.map(({ account, label }, index) =>
+        ctx.client.kind === 'loopback' ? { account, label } : anonymous(index),
+      ),
+    ),
     state: protectedProcedure.query(async ({ ctx }) => forClient(await readMailState(run, accounts), ctx.client.kind)),
     refresh: protectedProcedure.input(z.object({})).query(async () => {
       await live.notify();

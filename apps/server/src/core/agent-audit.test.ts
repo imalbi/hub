@@ -38,3 +38,24 @@ void test('an audit value cannot suppress masking with a guard allow comment', a
   const [row] = await db.select().from(agentCalls);
   assert.equal(row?.input.includes(value), false);
 });
+
+void test('a large result is stored as its first 2 KB and its full length', async (t) => {
+  const db = openDb(':memory:');
+  t.after(() => db.$client.close());
+  const result = { rows: 'x'.repeat(10_000) };
+  const full = JSON.stringify(result).length;
+  await recordAgentCall(db, { agentId: 1, name: 'Test', action: 'test', input: {}, result, durationMs: 0 });
+  const [row] = await db.select().from(agentCalls);
+  assert.ok(row);
+  assert.ok(row.result.length < 2048 + 40);
+  assert.ok(row.result.endsWith(`[truncated, ${full} chars]`));
+  await recordAgentCall(db, {
+    agentId: 1,
+    name: 'Test',
+    action: 'test',
+    input: {},
+    result: { ok: true },
+    durationMs: 0,
+  });
+  assert.equal((await db.select().from(agentCalls)).at(-1)?.result, '{"ok":true}');
+});

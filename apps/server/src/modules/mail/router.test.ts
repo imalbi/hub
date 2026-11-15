@@ -236,6 +236,11 @@ void test('a paired phone gets the unread state but never the content of the mai
   const phoneAccounts: { unread: number | null; latest: unknown[] }[] = phoneState.json().result.data.accounts;
   assert.ok(phoneAccounts.some((account) => account.unread !== null && account.unread > 0));
   assert.ok(phoneAccounts.every((account) => account.latest.length === 0));
+  // Nor does it learn the account names or labels, from the state or from the account list.
+  assert.ok(!phoneState.body.includes('work') && !phoneState.body.includes('Lavoro'));
+  const phoneList = await fromPhone('mail.accounts', undefined);
+  assert.equal(phoneList.json().result.data.length, 2);
+  assert.ok(!/work|personal|Lavoro|Personale/.test(phoneList.body));
   const pcAccounts: { latest: unknown[] }[] = (await get('mail.state', undefined)).json().result.data.accounts;
   assert.ok(pcAccounts.some((account) => account.latest.length > 0));
   for (const [path, input] of [

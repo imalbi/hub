@@ -144,9 +144,30 @@ void test('a shift keeps a person and may run past midnight; the range returns k
       ['Persona B', '23:00'],
     ],
   );
-  // An event keeps no person, even when one is sent.
+  // An update that does not name the kind keeps it: an agent changing a shift's hours must not turn it into an event.
   assert.equal(
-    (await call('calendar.update', { id: shift.id, title: 'Cena', day: '2026-11-18', person: 'Persona C' })).statusCode,
+    (await call('calendar.update', { id: shift.id, title: 'Turno', day: '2026-11-18', start: '21:00', end: '05:00' }))
+      .statusCode,
+    200,
+  );
+  const kept = (await range('2026-11-18', '2026-11-18')).events.find(({ id }) => id === shift.id);
+  assert.deepEqual([kept?.kind, kept?.person, kept?.start], ['shift', 'Persona B', '21:00']);
+  // Still a shift, so it still needs its end.
+  assert.equal(
+    (await call('calendar.update', { id: shift.id, title: 'Turno', day: '2026-11-18', start: '21:00' })).statusCode,
+    400,
+  );
+  // Naming the kind turns it into an event, which keeps no person even when one is sent.
+  assert.equal(
+    (
+      await call('calendar.update', {
+        id: shift.id,
+        kind: 'event',
+        title: 'Cena',
+        day: '2026-11-18',
+        person: 'Persona C',
+      })
+    ).statusCode,
     200,
   );
   const turned = (await range('2026-11-18', '2026-11-18')).events.find(({ id }) => id === shift.id);

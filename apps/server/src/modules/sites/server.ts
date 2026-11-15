@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineModule, z } from '../../core/module.ts';
 import { createLiveHub } from '../../core/live.ts';
-import { protectedProcedure, router } from '../../core/trpc.ts';
+import { agentOrLoopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
 import { probe, readSites, recordCheck } from './sites.ts';
 
 export const sitesModule = defineModule({
@@ -47,11 +47,12 @@ export const sitesModule = defineModule({
       router: router({
         // Answered from the config, so the web can decide whether Siti is on without waiting for a check.
         configured: protectedProcedure.query(() => config.length > 0),
-        state: protectedProcedure.query(async () => {
+        // Names and URLs stay on the PC and its agents: the deck reads only `configured`.
+        state: agentOrLoopbackProcedure.query(async () => {
           await pending;
           return read();
         }),
-        onState: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
+        onState: agentOrLoopbackProcedure.subscription(({ signal }) => live.subscribe(signal)),
       }),
       close: async () => {
         closed = true;

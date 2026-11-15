@@ -14,6 +14,14 @@ function mask(value: unknown, key = ''): unknown {
   return value;
 }
 
+const RESULT_CAP = 2048;
+
+// A result can carry mail or application text: keep a short masked head and the full length, never the whole thing.
+function shortResult(result: unknown) {
+  const json = JSON.stringify(mask(result)) ?? 'null';
+  return json.length > RESULT_CAP ? `${json.slice(0, RESULT_CAP)} …[truncated, ${json.length} chars]` : json;
+}
+
 export async function recordAgentCall(
   db: Db,
   call: { agentId: number | null; name: string; action: string; input: unknown; result: unknown; durationMs: number },
@@ -21,7 +29,7 @@ export async function recordAgentCall(
   await db.insert(agentCalls).values({
     ...call,
     input: JSON.stringify(mask(call.input)) ?? 'null',
-    result: JSON.stringify(mask(call.result)) ?? 'null',
+    result: shortResult(call.result),
     createdAt: new Date(),
   });
   db.run(sql`delete from agent_calls where id not in (select id from agent_calls order by id desc limit 500)`);

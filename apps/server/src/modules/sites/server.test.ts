@@ -35,3 +35,30 @@ void test('state exposes the results of injected site checks', async (t) => {
   assert.match(output, /503/);
   assert.deepEqual(urls.toSorted(), ['https://example.com/down', 'https://example.com/up']);
 });
+
+void test('a paired phone learns whether Siti is on, never a name or an address', async (t) => {
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop(), fetch: async () => new Response(null, { status: 200 }) },
+    config: { ...emptyConfig, sites: [{ name: 'Invented', url: 'https://example.com/up' }] },
+  });
+  t.after(() => app.close());
+  const code = (await app.inject({ method: 'POST', url: '/trpc/pairing.createCode', payload: {} })).json().result.data
+    .code;
+  const LAN = '192.0.2.31';
+  const pair = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.redeem',
+    remoteAddress: LAN,
+    payload: { code, deviceName: 'Phone' },
+  });
+  const headers = { authorization: `Bearer ${pair.json().result.data.token}` };
+  const configured = await app.inject({ url: '/trpc/sites.configured', remoteAddress: LAN, headers });
+  assert.deepEqual(configured.json(), { result: { data: true } });
+  for (const path of ['sites.state']) {
+    const denied = await app.inject({ url: `/trpc/${path}`, remoteAddress: LAN, headers });
+    assert.equal(denied.statusCode, 403, path);
+    assert.ok(!/Invented|example\.com/.test(denied.body));
+  }
+  assert.equal((await app.inject('/trpc/sites.state')).statusCode, 200);
+});
