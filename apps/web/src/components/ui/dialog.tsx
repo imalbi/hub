@@ -41,7 +41,7 @@ export interface DialogProps {
   /** Buttons along the bottom, or a function that gets `close`. */
   footer?: React.ReactNode | ((api: { close: () => void }) => React.ReactNode);
   /** A named width (`--spacing-dialog-*`): 25, 32.5, 48 or 56rem. */
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   /** Accessible name of the close button. */
   closeLabel?: string;
   /** Element or ref to focus immediately upon opening. */
@@ -51,7 +51,13 @@ export interface DialogProps {
   className?: string;
 }
 
-const WIDTH = { sm: 'max-w-dialog-sm', md: 'max-w-dialog-md', lg: 'max-w-dialog-lg', xl: 'max-w-dialog-xl' };
+const WIDTH = {
+  sm: 'max-w-dialog-sm',
+  md: 'max-w-dialog-md',
+  lg: 'max-w-dialog-lg',
+  xl: 'max-w-dialog-xl',
+  '2xl': 'max-w-dialog-2xl',
+};
 
 export function Dialog({
   open: controlled,
