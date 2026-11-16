@@ -10,7 +10,7 @@ import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 // suite as N shards in parallel is N independent runs: no worker shares audio, media, pairing or a scheme file.
 // Four processes at once is the owner's OK of 2026-11-13 (12 cores) and the hard cap. Three is what runs: the private pass (3 min, the
 // critical path) bounds the wall time anyway, and with a fourth process the timing-sensitive Pomodoro specs failed under load.
-export const WORKERS = 3;
+export const WORKERS = 4;
 
 export interface Job {
   label: string;
