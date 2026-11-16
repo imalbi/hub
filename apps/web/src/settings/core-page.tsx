@@ -2,6 +2,7 @@ import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { z } from 'zod';
 import { ActionButton } from '../components/ui/action-button.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
@@ -11,7 +12,7 @@ import { setAt, startsWith } from './path.ts';
 import { beginRestart } from './restart.ts';
 import { buildForm, type Path } from './schema-fields.ts';
 
-/** Impostazioni > Sistema e agenti: the editable core config sections (`mcp`, `jobs`), never `server`. */
+/** Impostazioni > Sistema e agenti: the editable core config sections (`mcp`, `jobs`, `backup`), never `server`. */
 export function CoreSettings() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -96,21 +97,20 @@ export function CoreSettings() {
   );
 }
 
-function editable(value: unknown): { mcp: { enabled: boolean }; jobs: { maxConcurrent: number } } {
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    !('mcp' in value) ||
-    !('jobs' in value) ||
-    typeof value.mcp !== 'object' ||
-    value.mcp === null ||
-    !('enabled' in value.mcp) ||
-    typeof value.mcp.enabled !== 'boolean' ||
-    typeof value.jobs !== 'object' ||
-    value.jobs === null ||
-    !('maxConcurrent' in value.jobs) ||
-    typeof value.jobs.maxConcurrent !== 'number'
-  )
-    throw new Error('Invalid core settings');
-  return { mcp: { enabled: value.mcp.enabled }, jobs: { maxConcurrent: value.jobs.maxConcurrent } };
+const editableSchema = z.object({
+  mcp: z.object({ enabled: z.boolean() }),
+  jobs: z.object({ maxConcurrent: z.number() }),
+  // An emptied folder field means "next to the database": leave it out rather than send an empty string.
+  backup: z.object({
+    enabled: z.boolean(),
+    keep: z.number(),
+    dir: z
+      .string()
+      .optional()
+      .transform((dir) => dir || undefined),
+  }),
+});
+
+function editable(value: unknown) {
+  return editableSchema.parse(value);
 }

@@ -54,5 +54,16 @@
   "webcam_denied": "Permesso negato: consenti webcam e microfono a questo sito nelle impostazioni del browser.",
   "webcam_missing": "Nessuna webcam trovata su questo PC.",
   "webcam_unavailable": "Webcam non disponibile.",
-  "system_lock_row": "Blocca lo schermo"
+  "system_lock_row": "Blocca lo schermo",
+  "system_backup_row": "Backup",
+  "system_backup_action": "Esegui",
+  "system_backup_action_name": "Esegui backup",
+  "system_backup_never": "Mai eseguito",
+  "system_backup_failed": "Ultima copia non riuscita",
+  "system_backup_off": "Disattivato",
+  "system_backup_today": "oggi, {time}",
+  "system_backup_yesterday": "ieri, {time}",
+  "system_backup_day": "{day}, {time}",
+  "system_backup_copies_one": "{when} · 1 copia",
+  "system_backup_copies_many": "{when} · {count} copie"
 }

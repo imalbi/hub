@@ -6,6 +6,7 @@ import { createConfirmations } from './core/confirmations.ts';
 import { createConfirmationsRouter } from './core/confirmations-router.ts';
 import { agentsRouter } from './core/agents-router.ts';
 import { createJobRunner } from './core/jobs.ts';
+import { createBackup, createBackupRouter, type Backup } from './core/backup.ts';
 import { createJobsRouter } from './core/jobs-router.ts';
 import { streamSpawn } from './core/exec.ts';
 import { createEnabledRouter, createSettingsRouter } from './core/settings-router.ts';
@@ -26,6 +27,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     dbPath = ':memory:',
     jobs = createJobRunner(deps.db, streamSpawn, 2),
     confirmations = createConfirmations(),
+    backup = createBackup({ dbPath }),
   }: {
     states?: ModuleStates;
     off?: readonly string[];
@@ -33,6 +35,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     dbPath?: string;
     jobs?: ReturnType<typeof createJobRunner>;
     confirmations?: ReturnType<typeof createConfirmations>;
+    backup?: Backup;
   } = {},
 ) {
   type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
@@ -53,7 +56,10 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     const ownDb = definition.migrations
       ? openDatabase(moduleDbPath(dbPath, definition.name), definition.migrations)
       : undefined;
-    if (ownDb) onClose(() => ownDb.$client.close());
+    if (ownDb) {
+      backup.add(definition.name, ownDb.$client);
+      onClose(() => ownDb.$client.close());
+    }
     const instance = definition.create({ ...deps, ...(ownDb && { db: ownDb }), config: config[definition.name] });
     if (instance.close) onClose(instance.close);
     states.set({ ...info, status: 'on' });
@@ -65,14 +71,22 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     jobs: ReturnType<typeof createJobsRouter>;
   });
   const settings = createSettingsRouter({ states, configPath });
+  const backupRouter = createBackupRouter(backup);
   const confirmationRouter = createConfirmationsRouter(confirmations);
-  const registered = router({ ...app._def.record, settings, agents: agentsRouter, confirmations: confirmationRouter });
+  const registered = router({
+    ...app._def.record,
+    settings,
+    agents: agentsRouter,
+    confirmations: confirmationRouter,
+    backup: backupRouter,
+  });
   return router({
     ...app._def.record,
     registry: createRegistryRouter(() => registered),
     settings,
     agents: agentsRouter,
     confirmations: confirmationRouter,
+    backup: backupRouter,
     modules: createEnabledRouter(states),
   });
 }

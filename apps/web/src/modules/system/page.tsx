@@ -8,6 +8,7 @@ import { useLiveModuleUIs } from '../../lib/enabled-modules.ts';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
 import { AudioRows } from '../audio/system-rows.tsx';
+import { BackupRow } from './backup-row.tsx';
 import { MonitorRows } from './monitor-rows.tsx';
 import { powerText } from './power-text.ts';
 import { uptimeText } from './uptime.ts';
@@ -138,6 +139,7 @@ export function SystemTab() {
           <WebcamRow />
           <MonitorRows />
           <ModuleRows />
+          <BackupRow />
         </div>
         <PowerHolds />
       </Panel>

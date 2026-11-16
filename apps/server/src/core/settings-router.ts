@@ -20,7 +20,7 @@ import { agentOrLoopbackProcedure, loopbackProcedure, protectedProcedure, router
 /** Exit code that asks the service manager for a new start (`Restart=on-failure` restarts on any non-zero code). */
 export const RESTART_EXIT_CODE = 75;
 
-const editableCoreSchema = coreConfigSchema.pick({ mcp: true, jobs: true });
+const editableCoreSchema = coreConfigSchema.pick({ mcp: true, jobs: true, backup: true });
 
 const notFound = () => new TRPCError({ code: 'NOT_FOUND', message: 'No such module' });
 

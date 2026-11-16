@@ -120,7 +120,11 @@ void test('core settings save only for loopback and preserve unrelated config', 
   const human = settings.createCaller({ ...context, client: { kind: 'loopback' } });
   assert.equal((await human.core()).value.mcp.enabled, true);
   assert.equal((await human.saveCore(input)).ok, true);
-  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), { server: { host: '127.0.0.1' }, ...input });
+  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), {
+    server: { host: '127.0.0.1' },
+    ...input,
+    backup: { enabled: true, keep: 14 },
+  });
 });
 
 void test('an agent never reads the raw slice of a module without a schema', async (t) => {

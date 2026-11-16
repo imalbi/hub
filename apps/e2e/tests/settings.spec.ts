@@ -59,7 +59,7 @@ if (!example) {
     try {
       await page.goto('/desk/settings');
       await page.getByRole('link', { name: 'Sistema e agenti' }).click();
-      await page.getByRole('switch', { name: 'Attivo' }).uncheck();
+      await page.getByRole('region', { name: 'MCP' }).getByRole('switch', { name: 'Attivo' }).uncheck();
       await page.getByRole('button', { name: 'Aumenta Job simultanei' }).click();
       await page.getByRole('button', { name: 'Salva e riavvia' }).click();
       await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
@@ -71,6 +71,22 @@ if (!example) {
       });
       await expect.poll(async () => core().catch(() => null), RESTARTED).toEqual(original);
     }
+  });
+
+  test('the backup section shows its three fields in Italian and refuses zero copies', async ({ page, pc }) => {
+    await page.goto('/desk/settings/core');
+    const backup = page.getByRole('region', { name: 'Backup' });
+    await expect(backup.getByRole('switch', { name: 'Attivo' })).toBeChecked();
+    await expect(backup.getByText('Cartella', { exact: true })).toBeVisible();
+    await expect(backup.getByRole('textbox', { name: 'Cartella' })).toBeVisible();
+    const keep = backup.getByRole('group', { name: 'Copie da tenere' });
+    await expect(keep.getByRole('status')).toHaveText('14');
+    // The stepper stops at 1; the server refuses 0 on its own, so a hand-made request cannot slip it in.
+    const refused = await pc.post('/trpc/settings.saveCore', {
+      data: { mcp: { enabled: true }, jobs: { maxConcurrent: 2 }, backup: { enabled: true, keep: 0 } },
+    });
+    expect(refused.status()).toBe(400);
+    expect(await refused.text()).toMatch(/too small/i);
   });
 
   test('a word list field shows its title and its caption like the other fields', async ({ page }) => {

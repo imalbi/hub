@@ -21,6 +21,24 @@ export const coreConfigSchema = z.object({
     })
     .default({ maxConcurrent: 2 })
     .meta({ title: 'Job', description: 'Limiti dei job in esecuzione.' }),
+  backup: z
+    .object({
+      enabled: z
+        .boolean()
+        .default(true)
+        .meta({ title: 'Attivo', description: 'Copia ogni giorno i dati di Hub nella cartella dei backup.' }),
+      dir: z.string().min(1).optional().meta({
+        title: 'Cartella',
+        description:
+          'Dove salvare le copie; se vuota, accanto al database di Hub. Sullo stesso disco protegge da una migrazione sbagliata o da una cancellazione, non da un guasto: indica un altro disco o una cartella sincronizzata.',
+      }),
+      keep: z.number().int().min(1).max(365).default(14).meta({
+        title: 'Copie da tenere',
+        description: 'Quante copie giornaliere restano; le più vecchie vengono tolte.',
+      }),
+    })
+    .default({ enabled: true, keep: 14 })
+    .meta({ title: 'Backup', description: 'Copia giornaliera dei database di Hub.' }),
   server: z
     .object({
       // Where to listen. Loopback until the deck is paired; `0.0.0.0` (or a LAN address) opens Hub to the home network.

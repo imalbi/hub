@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { moduleDbPath, openDatabase, type Db } from '../db/index.ts';
 import { router } from './trpc.ts';
@@ -47,6 +48,7 @@ export async function discoverModules({
   onClose,
   states,
   off = [],
+  onDb,
 }: {
   roots?: readonly string[];
   examples?: boolean;
@@ -61,6 +63,8 @@ export async function discoverModules({
   /** Receives one entry per module found: on, off (named in `off`, never created) or failed. */
   states?: ModuleStates;
   off?: readonly string[];
+  /** Gets each discovered module's own open database (never the core one) with its name. */
+  onDb?: (name: string, db: DatabaseSync) => void;
 }) {
   const routers: Record<string, ModuleInstance['router']> = {};
   const names = new Set(reserved);
@@ -111,7 +115,10 @@ export async function discoverModules({
         // Fastify runs onClose hooks last in, first out: the database goes first in so it closes after the module's
         // own cleanup, which may still write.
         const own = db;
-        if (own) onClose(() => own.$client.close());
+        if (own) {
+          onDb?.(definition.name, own.$client);
+          onClose(() => own.$client.close());
+        }
         if (parsed.close) onClose(parsed.close);
       } catch {
         try {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { answerQueries } from './desktop.ts';
 import { DECK_STATE, PHONE_URL } from './hosts.ts';
 import { freezePomodoro } from './pomodoro-visual.ts';
 
@@ -59,10 +60,9 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 
   test('an example row in Sistema sits in Questo PC after Webcam and before Alimentazione', async ({ page }) => {
-    // The uptime figure moves with the run; the baseline pins it like the other visual specs.
-    await page.route('**/trpc/health*', (route) =>
-      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
-    );
+    // The uptime figure moves with the run; the baseline pins it like the other visual specs. Through answerQueries:
+    // the Backup row's query can lead the batch health travels in, which a glob on health misses.
+    await answerQueries(page, { health: { ok: true, uptime: 42 } });
     await page.goto('/desk/system');
     const pc = page.getByRole('region', { name: 'Questo PC' });
     const rows = pc.getByRole('group');

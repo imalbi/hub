@@ -31,6 +31,7 @@ import { createMusicModule } from './modules/music/server.ts';
 import { discoverModules } from './core/discovery.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
 import { createModuleStates } from './core/module-states.ts';
+import { createBackup, startDailyCheck } from './core/backup.ts';
 import { createAppRouter, type AppRouter } from './router.ts';
 
 // `run` and `config` default to the real system and an empty config so tests never touch the desktop or personal files.
@@ -46,6 +47,7 @@ export function buildServer({
   onlyModules,
   settings,
   music,
+  autoBackup = false,
 }: {
   dbPath: string;
   music?: Parameters<typeof createMusicModule>[0];
@@ -70,9 +72,18 @@ export function buildServer({
    * out, a save writes the file and answers `restarting: false` (a dev server nobody would start again).
    */
   settings?: { configPath: string; onRestart?: () => void };
+  /** Starts the daily copy check. Only `index.ts` sets it: tests and the e2e fake run a copy through `backup.run`. */
+  autoBackup?: boolean;
 }) {
   const run = deps.run ?? realRun;
   const db = openDb(dbPath);
+  const backup = createBackup({
+    dbPath,
+    core: db.$client,
+    enabled: config.backup.enabled,
+    dir: config.backup.dir,
+    keep: config.backup.keep,
+  });
   const jobs = createJobRunner(db, deps.spawn ?? streamSpawn, config.jobs.maxConcurrent);
   deps.onJobs?.(jobs);
   const app = fastify({
@@ -129,13 +140,22 @@ export function buildServer({
       roots: moduleRoots,
       examples: exampleModules,
       onlyModules,
-      reserved: [...publicModules.map((m) => m.name), 'registry', 'settings', 'modules', 'agents', 'confirmations'],
+      reserved: [
+        ...publicModules.map((m) => m.name),
+        'registry',
+        'settings',
+        'modules',
+        'agents',
+        'confirmations',
+        'backup',
+      ],
       deps: discoveredDeps,
       dbPath,
       config: config.modules ?? {},
       onClose,
       states,
       off: config.modulesOff,
+      onDb: backup.add,
     });
     const modules = music
       ? publicModules.map((module) => (module.name === 'music' ? createMusicModule(music) : module))
@@ -153,8 +173,12 @@ export function buildServer({
         configPath: settings?.configPath,
         jobs,
         confirmations,
+        backup,
       },
     );
+    if (autoBackup) onClose(startDailyCheck(backup).stop);
+    // Last hook of the scope, so it runs first: a copy in progress finishes before any module or core handle closes.
+    onClose(() => backup.close());
     if (config.mcp.enabled)
       registerMcp(scope, allowlist, isLoopback, db, appRouter, confirmations, {
         db,

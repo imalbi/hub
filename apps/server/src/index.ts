@@ -28,6 +28,7 @@ const app = buildServer({
   config,
   webRoot,
   moduleRoots: defaultModuleRoots,
+  autoBackup: true,
   // Under systemd (`INVOCATION_ID`) a save exits and `hub.service` (`Restart=on-failure`) starts it again, any non-zero
   // code does. From a terminal (`pnpm dev`, `pnpm serve`) nobody would start it again: it only writes the file.
   settings: {

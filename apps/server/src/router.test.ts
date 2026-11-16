@@ -55,6 +55,7 @@ void test('every mutation carries an Italian label and an English description in
     'audio.stepVolume',
     'audio.toggleMicMute',
     'audio.toggleMute',
+    'backup.run',
     'calendar.add',
     'calendar.remove',
     'calendar.restore',

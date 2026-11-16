@@ -180,3 +180,18 @@ for (const [name, sentence] of [
     await expect(dialog.locator('video')).toHaveCount(0);
   });
 }
+
+test('the Backup row says it never ran, then shows the time and count a run answers', async ({ page }) => {
+  const row = thisPc(page).getByRole('group', { name: 'Backup', exact: true });
+  await expect(row).toContainText('Mai eseguito');
+  // A fixed answer: the fake must not copy anything.
+  const at = new Date();
+  at.setHours(3, 12, 0, 0);
+  await page.route('**/trpc/backup.run*', (route) =>
+    route.fulfill({
+      json: [{ result: { data: { status: 'ok', at: at.getTime(), date: '2026-11-16', copies: 4, bytes: 1024 } } }],
+    }),
+  );
+  await row.getByRole('button', { name: 'Esegui backup' }).click();
+  await expect(row).toContainText('oggi, 03:12 · 4 copie');
+});
