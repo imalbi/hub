@@ -1,0 +1,5 @@
+# Music (server)
+
+- Music is public (`modules/music/server.ts`); `buildServer({ music })` injects its YouTube and mpv fakes for isolated tests. Public module databases still need an explicit integration before Music persistence is added.
+- Music follows mpv's `start-file` and keeps one upcoming song in its playlist; the IPC fake must emit playlist events for skip to update the queue. `followStart` ignores the start-file of mpv's current index (`currentPos`): a playlist can hold one song twice in a row, so matching the next song by URL alone advanced the queue on the first copy's own start (23f). YouTube calls that a mutation awaits go through a wrapper that answers 503 with a fixed message (`publicList`), never the library's text.
+- Music volume is mpv's own `volume` property: `music.setVolume` (zod int 0..100, `schedule`d, 503 on IPC failure) sets it, `music.state` reports `volume` (null when mpv is unreachable). mpv allows up to 130 (`--volume-max`) but Hub's slider is 0..100. The system volume stays in the `audio` module. Fakes (`music/test-wiring.ts`, `testing/fake.ts`) keep a volume; e2e `restoreDesktop` resets it to 100.

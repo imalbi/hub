@@ -1,0 +1,3 @@
+# Notes (server)
+
+- Notes (step 38, `modules/notes/`): built-in `coreDb` module, table `notes` in the core schema (text UUID ids because agents see them). `forDay` is a plain local `YYYY-MM-DD` the client sends (the server's own today only fills a missing one, `localDay` in `notes.ts`); "what is due today" is decided in the web app, so a day change needs no server timer. `source` is `desk` or `agent:<name>` from `ctx.client` (`Locale` for the loopback MCP). Remove sets `removedAt`; `restore` clears it. The `notes` name is taken: a test fixture or private module must not use it (the module-db tests use `memo`).

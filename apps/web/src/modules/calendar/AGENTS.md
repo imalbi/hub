@@ -1,0 +1,4 @@
+# Calendar (web)
+
+- `modules/calendar/month.tsx`, `week.tsx`, `agenda.tsx` each fetch their own range; the month's chip capacity hook lives in `MonthView` because it measures a ref in an effect that runs once. A shift (own event, kind `shift`) is a `DayEntry` with `kind: 'shift'`, `title` the person and `span` its text; the month grid filters it out of chips and "+N" but keeps it in the day panel. `filterEntries`/`Show` (Mostra) apply to week and agenda only.
+- `view-state.ts` reads and writes localStorage in try/catch; a hook returned as an object must use arrow properties (`setView: (v) => ...`) or the type-aware lint flags the destructured method as unbound.

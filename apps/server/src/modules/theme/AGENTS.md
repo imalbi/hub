@@ -1,0 +1,4 @@
+# Theme (server)
+
+- `modules/theme/`: `values.ts` (zod `themeValuesSchema`: mode plus twelve hex colors, the only shape that reaches CSS), `caelestia.ts` (parses Caelestia's `scheme.json`, maps Material roles to ours with buttons neutral and Caelestia's key color as the accent, missing roles fall back to the ink/paper hex values; a live hub polling every 2 s while subscribed keeps the last good theme while the file is rewritten) and `router.ts` (`theme.caelestia/onCaelestia`, `theme.list/onList`, `save`, `rename`, `delete` with `danger`). Custom themes live in the `themes` table, `values` as JSON validated on read.
+- Config `theme.caelestiaScheme` (optional). Unset means no Caelestia theme; `src/index.ts` fills in `~/.local/state/caelestia/scheme.json`, so tests and `emptyConfig` never read it. The e2e fake copies `modules/theme/fixtures/scheme.json` to the temp dir and points at it.

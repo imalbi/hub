@@ -1,0 +1,5 @@
+# Airplay (server)
+
+- Public integration in `src/integrations/airplay/` (`config.ts` `airplayConfigSchema`, `live.ts` `readAirPlayState`, `router.ts` `airplay.state/onState/start/stop`, `module.ts` `createConfiguredAirPlay`), private wiring in `modules.local/airplay/server.ts`, the same pattern as Hue; the example wiring `modules.example/airplay/` fixes `command: 'airplay'`, which the fake desktop answers. Config is `modules.airplay.command` in the owner's config. <!-- guard-private: allow Repository-local module directory -->
+- `command` is required. Without it the module fails to load (not in `modules.enabled`): no routes, no palette actions, no tile, no row. There is no 412 path any more.
+- `status` exit code 0 means running, non-zero stopped, polled every 2 s while subscribed. `start`/`stop` run `<command> start|stop` and push fresh state. Tests wire the integration through a temporary module root (`router.test.ts`) and never run the real binary. The real helper starts uxplay with `setsid ... &`, so it lives in the `hub.service` cgroup: restarting the service stops AirPlay.

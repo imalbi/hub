@@ -1,0 +1,4 @@
+# Music (web)
+
+- Media music uses `modules/music/favorite.tsx` for the current song and list rows; its three-view `ButtonGroup` in `search.tsx` is the extension point for playlists.
+- Musica page (step 48, `modules/music/page.tsx`): one fill surface, library column (`w-library-col`) and one content view split by a dashed line, no inner panel (zone-pages exempts Media from the panel count). View state is local (`library`, `playlistId`, `artistId`, `query`); a library entry clears search and artist. `SongRow` plays through a stretched title button (`after:inset-0`), everything else on the row sits at `z-10`. Shared pieces live in `parts.tsx` (no imports of other music files, to avoid import cycles with `songs.tsx` and `add-to-playlist.tsx`). Tailwind v4 adds `content` to `after:` itself: the token guard rejects `after:content-['']` and `aria-[...]` variants, use a conditional class.

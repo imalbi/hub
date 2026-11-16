@@ -1,0 +1,3 @@
+# Jobs (web)
+
+- The Sistema `Job` fill tab uses `modules/jobs/jobs.tsx` and the vendored MIT Hairline `ui/log-stream.tsx`, with Italian copy from Paraglide. It loads up to 500 output lines and subscribes for more; cancellation uses `HoldButton`. Upstream `bg-accent` (shadcn's subtle hover) was mapped to `bg-muted` in `log-stream.tsx`: here `accent` is the theme color and turned the level chips teal with unreadable counts. `rounded-panel` does not exist (radii are sm..xl); a wrong radius name compiles to nothing. The running jobs appear in the activity ball (`shell/activity.tsx`) and the deck badge strip in `shell/deck-pages.tsx`.
