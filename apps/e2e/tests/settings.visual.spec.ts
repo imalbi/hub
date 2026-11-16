@@ -13,18 +13,20 @@ test.beforeEach(async ({ page }) => {
   // Whether a `.bak` exists depends on which spec of this process saved before: the restore row is not under test here.
   await page.route('**/trpc/**', async (route) => {
     const paths = new URL(route.request().url()).pathname.replace('/trpc/', '').split(',');
-    if (!paths.includes('settings.config')) return route.continue();
+    if (!paths.includes('settings.config') && !paths.includes('settings.modules')) return route.continue();
     const response = await route.fetch();
     const body: unknown = await response.json();
     if (Array.isArray(body))
       for (const [index, entry] of body.entries())
         if (paths[index] === 'settings.config' && entry?.result?.data) entry.result.data.hasBackup = false;
+        // Whether a place was saved by an earlier spec decides the weather note: pin it, so the list is the same each run.
+        else if (paths[index] === 'settings.modules')
+          for (const module of entry?.result?.data ?? []) if (module.name === 'weather') module.note = 'manca la città';
     return route.fulfill({ response, json: body });
   });
 });
 
 const pages = [
-  { path: '/desk/settings', ready: "Scegli una voce dall'elenco.", file: 'desk-settings-4k.png' },
   { path: '/desk/settings/pomodoro', ready: 'Durata del focus', file: 'desk-settings-module-4k.png' },
   // Audio's outputs are a list of flat objects: the rows editor, shown here empty with its Aggiungi button.
   { path: '/desk/settings/audio', ready: 'Uscite audio', file: 'desk-settings-rows-4k.png' },

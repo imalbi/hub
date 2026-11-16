@@ -45,6 +45,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
       kind: 'public',
       schema: configSchemaOf(definition.settingsSchema ?? definition.config),
       configPath: [definition.name],
+      setupNote: definition.setupNote,
     } as const;
     // A module that is off is not created: no router, no timers. tRPC answers NOT_FOUND for its paths, and
     // `settings.modules` (the states) is how clients learn it is off.

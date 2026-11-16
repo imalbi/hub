@@ -12,7 +12,8 @@ const zones = [
   ['Dispositivi', '/desk/devices'],
   ['Messaggi', '/desk/messaggi'],
   ['Calendario', '/desk/calendar'],
-  ['Impostazioni', '/desk/settings'],
+  // Impostazioni opens on Aspetto (step 63): the rail link goes to the index, which replaces itself.
+  ['Impostazioni', '/desk/settings/appearance'],
 ];
 
 test('the rail navigates every zone and marks exactly the active destination', async ({ page }) => {
@@ -54,7 +55,7 @@ test('number keys switch zones but do not interfere with typing or modified shor
     await expect(page).toHaveURL(new RegExp(`${zones[i]?.[1]}/?$`));
   }
   await page.keyboard.press('Control+1');
-  await expect(page).toHaveURL(/\/desk\/settings$/);
+  await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
   await page.evaluate(() => {
     const input = document.createElement('input');
     input.setAttribute('aria-label', 'Campo di prova');
@@ -63,7 +64,7 @@ test('number keys switch zones but do not interfere with typing or modified shor
   await page.getByRole('textbox', { name: 'Campo di prova' }).focus();
   await page.keyboard.press('1');
   await expect(page.getByRole('textbox', { name: 'Campo di prova' })).toHaveValue('1');
-  await expect(page).toHaveURL(/\/desk\/settings$/);
+  await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
   await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).focus();
   await page.keyboard.press('1');
   await expect(page).toHaveURL(/\/desk\/?$/);

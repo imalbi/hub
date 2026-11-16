@@ -15,7 +15,7 @@ function StudioTab() {
   );
 }
 
-const own = [{ id: 'study', label: m.zone_study, component: StudioTab }];
+const own = [{ id: 'study', label: m.study_today_tab, component: StudioTab }];
 
 function Studio() {
   return <ZonePage zone="study" own={own} />;

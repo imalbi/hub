@@ -378,7 +378,7 @@ test('Vai a lists the rail zones above the actions and navigates', async ({ page
   expect(first?.y).toBeLessThan(action?.y ?? 0);
   await palette.getByRole('combobox').fill('Impostazioni');
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/desk\/settings$/);
+  await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
   await expect(palette).not.toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Impostazioni' })).toBeVisible();
   expect(await page.evaluate(() => 'navigationMarker' in window)).toBe(true);

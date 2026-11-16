@@ -7,6 +7,27 @@ import { SERVER_PORT } from './hosts.ts';
 const RESTARTED = { timeout: 30_000 };
 const example = process.env.HUB_EXAMPLE_MODULES === '1';
 
+// What the fake server's public modules read as, sorted by label; the example pass adds its own module.
+const EXPECTED_MODULES = [
+  'Abbinamento',
+  'Audio',
+  'Calendario',
+  'Dispositivi',
+  'Disposizione',
+  'Meteomanca la città', // the note is forced by the test: a saved place in an earlier spec would clear it
+  'Musica',
+  'Notizie',
+  'Pomodoro',
+  'Post-it',
+  'Posta',
+  'Sistema',
+  'Siti',
+  'Stato',
+  'Studio',
+  'Temi',
+  'YouTube Music',
+];
+
 type ModuleState = { name: string; status: string };
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
@@ -25,6 +46,21 @@ async function moduleStates(pc: APIRequestContext) {
       ? [{ name: entry.name, status: entry.status }]
       : [],
   );
+}
+
+/** Rewrites `settings.modules` answers: the weather row carries its note whatever an earlier spec saved. */
+async function withModuleNotes(page: Page, change: (module: Record<string, unknown>) => void = () => {}) {
+  await page.route('**/trpc/settings.modules*', async (route) => {
+    const response = await route.fetch();
+    const body: unknown = await response.json();
+    if (Array.isArray(body))
+      for (const entry of body)
+        for (const module of entry?.result?.data ?? []) {
+          if (module.name === 'weather') module.note = 'manca la città';
+          change(module);
+        }
+    return route.fulfill({ response, json: body });
+  });
 }
 
 /** Flip a module's switch on its page and save; resolves once Hub answered again, without a reload. */
@@ -129,6 +165,8 @@ if (!example) {
     await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Località esempio');
+    // With a place saved the row has nothing to say.
+    await expect(page.getByRole('link', { name: /^Meteo/ })).not.toContainText('manca la città');
   });
 
   test('the list has Generale with Aspetto and Moduli with a row per module and its state', async ({ page, pc }) => {
@@ -147,6 +185,36 @@ if (!example) {
     await expect(list.getByRole('link', { name: /^Music\b/ })).toHaveCount(0);
   });
 
+  test('modules read in Italian alphabetical order, and Impostazioni opens on Aspetto', async ({ page }) => {
+    await withModuleNotes(page);
+    await page.goto('/desk/settings');
+    await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
+    const list = page.getByRole('navigation', { name: 'Sezioni' });
+    await expect(list.getByRole('link', { name: /^Aspetto/ })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('heading', { level: 2, name: 'Aspetto' })).toBeVisible();
+    // After the two general rows: by label, so a module sits where its Italian name falls, not its id. Read once the
+    // list has loaded (it read an empty list under the parallel verify).
+    await expect(list.getByRole('link')).toHaveCount(EXPECTED_MODULES.length + 2);
+    const rows = (await list.getByRole('link').allTextContents()).map((text) => text.replace(/\s*Attivo$/, '').trim());
+    expect(rows.slice(2)).toEqual(EXPECTED_MODULES);
+    await page.goBack();
+    await expect(page).not.toHaveURL(/settings/);
+  });
+
+  test('a row has a dot only when it is off or has a setup note', async ({ page }) => {
+    await withModuleNotes(page, (module) => {
+      if (module.name === 'audio') module.status = 'off';
+    });
+    await page.goto('/desk/settings/appearance');
+    const row = (name: RegExp) => page.getByRole('navigation', { name: 'Sezioni' }).getByRole('link', { name });
+    await expect(row(/^Meteo/)).toContainText('manca la città');
+    await expect(row(/^Meteo/).locator('[data-state-dot]')).toHaveCount(1);
+    await expect(row(/^Audio/)).toContainText('Spento');
+    await expect(row(/^Audio/).locator('[data-state-dot]')).toHaveCount(1);
+    await expect(row(/^Pomodoro/).locator('[data-state-dot]')).toHaveCount(0);
+    await expect(row(/^Pomodoro/)).toHaveText(/^Pomodoro\s*Attivo$/);
+  });
+
   test('a module row opens its page beside the list; the back row, browser back and a deep link work', async ({
     page,
   }) => {
@@ -159,19 +227,17 @@ if (!example) {
     await expect(page.getByRole('heading', { level: 2, name: 'Pomodoro' })).toBeVisible();
     // The list is still there: it stays on the left while the page opens next to it.
     await expect(page.getByRole('navigation', { name: 'Sezioni' })).toBeVisible();
+    // The back row goes to the index, which opens Aspetto in place of itself.
     await page.getByRole('main').getByRole('link', { name: 'Impostazioni', exact: true }).click();
-    await expect(page).toHaveURL(/\/desk\/settings$/);
-    await expect(page.getByText("Scegli una voce dall'elenco.")).toBeVisible();
+    await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/desk\/settings\/pomodoro$/);
     await page.goBack();
-    await expect(page).toHaveURL(/\/desk\/settings$/);
+    await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
     // A deep link loads the page by itself, and Aspetto opens the same way.
     await page.goto('/desk/settings/audio');
     await expect(page.getByRole('heading', { level: 2, name: 'Audio' })).toBeVisible();
-    await page.goto('/desk/settings');
-    await page.getByRole('link', { name: /^Aspetto/ }).click();
-    await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
+    await page.goto('/desk/settings/appearance');
     await expect(page.getByRole('region', { name: 'Aspetto' })).toBeVisible();
     // The rail still marks Impostazioni on a nested page.
     await expect(

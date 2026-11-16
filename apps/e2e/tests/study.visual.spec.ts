@@ -82,7 +82,7 @@ for (const theme of [
     for (const tab of [
       { name: 'Oggi', id: 'studio' },
       { name: 'Piano', id: 'piano' },
-      { name: 'Piani', id: 'piani' },
+      { name: 'Materie', id: 'piani' },
       { name: 'Libreria', id: 'libreria' },
       { name: 'Ripasso', id: 'ripasso' },
       { name: 'Oggi lungo', id: 'studio', long: true },

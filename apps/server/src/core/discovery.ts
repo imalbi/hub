@@ -23,6 +23,7 @@ const definitionSchema = z.object({
   config: z.custom<z.ZodType>((value) => value instanceof z.ZodType).optional(),
   settingsSchema: z.custom<z.ZodType>((value) => value instanceof z.ZodType).optional(),
   zones: z.array(name).optional(),
+  setupNote: z.custom<NonNullable<ModuleInfo['setupNote']>>((value) => typeof value === 'function').optional(),
   // A relative path would resolve against the server's working directory.
   migrations: z.string().refine(isAbsolute).optional(),
   // Public modules only: a discovered module asking for the core database is refused, not served.
@@ -92,6 +93,7 @@ export async function discoverModules({
           kind: 'private',
           schema: configSchemaOf(definition.settingsSchema ?? definition.config),
           configPath: ['modules', definition.name],
+          setupNote: definition.setupNote,
         };
         // Importing reads the definition only; `create` (database, timers, routes) never runs for an off module.
         if (off.includes(definition.name)) {

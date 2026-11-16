@@ -153,6 +153,8 @@ function TodayDay({
                 hideLabel
                 block={false}
                 size="sm"
+                // The Select shows its label above, not beside the value: the pill itself says what it is the state of.
+                display={(option) => `${m.study_select_status()}: ${option?.label ?? ''}`}
                 value={index.states[subjectInfo.key] ?? 'active'}
                 onValueChange={(value) => {
                   if (value === 'active' || value === 'paused' || value === 'passed')

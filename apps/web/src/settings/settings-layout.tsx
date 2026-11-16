@@ -8,7 +8,8 @@ import { PageSurface } from '../shell/page-surface.tsx';
 import { moduleLabel } from './module-label.ts';
 
 const states = { on: m.settings_state_on, off: m.settings_state_off, failed: m.settings_state_failed } as const;
-const dots = { on: 'bg-success', off: 'border border-muted-foreground', failed: 'bg-danger' } as const;
+// `on` only has a dot when the module carries a note (not set up yet): muted, not the old green.
+const dots = { on: 'bg-muted-foreground', off: 'border border-muted-foreground', failed: 'bg-danger' } as const;
 
 const rowClass =
   'flex min-h-touch items-center gap-sm rounded-lg px-md text-body transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-accent';
@@ -40,21 +41,31 @@ export function SettingsLayout() {
             <span className="grow">{m.settings_core()}</span>
           </Link>
           <p className="px-md pt-md text-label text-muted-foreground">{m.settings_modules()}</p>
-          {modules.data?.map(({ name, status }) => (
-            <Link
-              key={name}
-              to="/desk/settings/$module"
-              params={{ module: name }}
-              className={`${rowClass} ${status === 'off' ? 'text-muted-foreground' : ''}`}
-              activeProps={rowActive}
-            >
-              <span aria-hidden className={`size-2xs shrink-0 rounded-full ${dots[status]}`} />
-              <span className="grow">{moduleLabel(name)}</span>
-              {status !== 'on' && <span className="text-label text-muted-foreground">{states[status]()}</span>}
-              {/* The dot and the quiet label are not enough on their own: the row says its state to a screen reader. */}
-              {status === 'on' && <span className="sr-only">{states.on()}</span>}
-            </Link>
-          ))}
+          {modules.data
+            ?.toSorted((a, b) => moduleLabel(a.name).localeCompare(moduleLabel(b.name), 'it'))
+            .map(({ name, status, note }) => {
+              // A module that is on and set up says nothing; the dot comes with the words, to the right of the label.
+              const words = status === 'on' ? note : states[status]();
+              return (
+                <Link
+                  key={name}
+                  to="/desk/settings/$module"
+                  params={{ module: name }}
+                  className={`${rowClass} ${status === 'off' ? 'text-muted-foreground' : ''}`}
+                  activeProps={rowActive}
+                >
+                  <span className="grow">{moduleLabel(name)}</span>
+                  {words && (
+                    <>
+                      <span data-state-dot aria-hidden className={`size-2xs shrink-0 rounded-full ${dots[status]}`} />
+                      <span className="text-label text-muted-foreground">{words}</span>
+                    </>
+                  )}
+                  {/* A row with nothing to say still tells a screen reader that the module is on. */}
+                  {!words && status === 'on' && <span className="sr-only">{states.on()}</span>}
+                </Link>
+              );
+            })}
         </nav>
         {/* `relative`: the containing block of the sr-only live regions of the page, or they stretch the surface (step 33). */}
         <section className="relative min-w-0 flex-1 overflow-y-auto overscroll-contain">

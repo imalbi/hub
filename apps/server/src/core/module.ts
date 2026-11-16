@@ -22,6 +22,7 @@ export type ModuleDefinition = {
   config?: z.ZodType;
   settingsSchema?: z.ZodType;
   zones?: readonly string[];
+  setupNote?: (config: unknown) => string | undefined;
   migrations?: string;
   create: (deps: ModuleDeps & { config: unknown }) => ModuleInstance;
 };
@@ -46,6 +47,8 @@ export function defineModule<
    */
   settingsSchema?: z.ZodType;
   zones?: readonly string[];
+  /** Impostazioni shows this note in the module's row while it is on and still unusable (Italian text, like a schema `title`). */
+  setupNote?: (config: unknown) => string | undefined;
   migrations?: M;
   coreDb?: C;
   create: (

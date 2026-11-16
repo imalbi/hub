@@ -11,6 +11,8 @@ export type ModuleInfo = {
   schema?: z.ZodType;
   /** Where the module's slice sits in the config file: `[name]` for a public module, `['modules', name]` otherwise. */
   configPath: readonly string[];
+  /** A short Italian note when the module is on but its config leaves it unusable; `undefined` when nothing is missing. */
+  setupNote?: (config: unknown) => string | undefined;
 };
 
 /** What the startup learned about every module, filled by `createAppRouter` and `discoverModules`. */

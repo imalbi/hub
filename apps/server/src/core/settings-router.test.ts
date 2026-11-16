@@ -204,3 +204,52 @@ void test('two concurrent saves both land and leave a valid file', async (t) => 
   assert.deepEqual(saved.modules, { one: { label: 'a' }, two: { label: 'b' } });
   assert.deepEqual((await readdir(dir)).toSorted(), ['config.json', 'config.json.bak']);
 });
+
+void test('modules lists a setup note only while the module is on and its slice is missing; a throwing note is none', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'hub-setup-note-'));
+  const path = join(dir, 'config.json');
+  await writeFile(path, JSON.stringify({ place: { name: 'x' } }));
+  const db = openDb(':memory:');
+  const files = createFiles();
+  const jobs = createJobRunner(db, streamSpawn, 2);
+  t.after(async () => {
+    jobs.close();
+    await files.close();
+    db.$client.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+  const states = createModuleStates();
+  const note = (config: unknown) => (config ? undefined : 'manca qualcosa');
+  states.set({ name: 'missing', kind: 'public', status: 'on', configPath: ['missing'], setupNote: note });
+  states.set({ name: 'place', kind: 'public', status: 'on', configPath: ['place'], setupNote: note });
+  states.set({ name: 'plain', kind: 'public', status: 'on', configPath: ['plain'] });
+  states.set({ name: 'off', kind: 'public', status: 'off', configPath: ['off'], setupNote: note });
+  states.set({
+    name: 'throws',
+    kind: 'public',
+    status: 'on',
+    configPath: ['throws'],
+    setupNote: () => {
+      throw new Error('boom');
+    },
+  });
+  const caller = createSettingsRouter({ states, configPath: path }).createCaller({
+    db,
+    files,
+    jobs,
+    run: createFakeDesktop(),
+    config: emptyConfig,
+    client: { kind: 'loopback' },
+    remoteAddress: '',
+    sockets: createDeviceSockets(),
+    restart: () => false,
+  });
+  const notes = Object.fromEntries((await caller.modules()).map(({ name, note }) => [name, note]));
+  assert.deepEqual(notes, {
+    missing: 'manca qualcosa',
+    off: undefined,
+    place: undefined,
+    plain: undefined,
+    throws: undefined,
+  });
+});

@@ -140,7 +140,7 @@ test('a second plan is active next to the first, filters by plan and pauses from
     await subjects.getByRole('button', { name: 'Secondo corso' }).click();
     await expect(page.getByRole('button', { name: /· Rocce A01$/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /· La foglia$/ })).not.toBeVisible();
-    await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+    await page.getByRole('tab', { name: 'Materie', exact: true }).click();
     await page
       .getByRole('region', { name: 'Secondo corso' })
       .getByRole('button', { name: 'Metti in pausa il piano' })
@@ -168,7 +168,7 @@ test('Oggi tracks steps, notes, autonomy and a chosen day without completing ear
   await page.goto(`${PC_URL}/desk/studio?tab=piano`);
   await page.getByRole('button', { name: 'G2 · Il cielo' }).click();
   await page.getByRole('button', { name: 'Imposta come corrente' }).last().click();
-  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Il cielo' })).toBeVisible();
   await page.getByRole('button', { name: 'Stelle: Da valutare' }).click();
   await page.getByRole('option', { name: 'Verde' }).click();
@@ -210,10 +210,13 @@ test('Oggi preserves a failed tick until retry and passed subjects can be resume
   await page.unroute('**/trpc/study.setStep*');
   await page.getByRole('button', { name: 'Riprova' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Stato materia: In corso' }).click();
+  const state = page.getByRole('button', { name: 'Materia: In corso' });
+  await expect(state).toContainText('Materia');
+  await expect(state).toContainText('In corso');
+  await state.click();
   await page.getByRole('option', { name: 'Superato' }).click();
   await expect(page.getByRole('heading', { name: 'Il cielo' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+  await page.getByRole('tab', { name: 'Materie', exact: true }).click();
   await page.getByRole('button', { name: 'Riprendi' }).click();
   await expect(page.getByRole('button', { name: 'Segna superato' }).first()).toBeVisible();
   await page.getByRole('tab', { name: 'Piano', exact: true }).click();
@@ -232,7 +235,7 @@ test('Oggi keeps a failed note through navigation and saves it on retry', async 
   await page.getByRole('textbox', { name: 'Note' }).blur();
   await expect(page.getByRole('alert')).toContainText('Salvataggio non riuscito');
   await page.getByRole('tab', { name: 'Piano', exact: true }).click();
-  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Note' })).toHaveValue('Nota conservata');
   await page.unroute('**/trpc/study.setNote*');
   await page.getByRole('button', { name: 'Riprova' }).click();
@@ -248,15 +251,15 @@ test('pausing a subject renumbers Oggi and Piano and completing today offers the
   db.close();
   await page.goto(`${PC_URL}/desk/studio`);
   await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+  await page.getByRole('tab', { name: 'Materie', exact: true }).click();
   const astronomy = page.getByRole('listitem').filter({ hasText: 'Astronomia' });
   await astronomy.getByRole('button', { name: 'Metti in pausa' }).click();
-  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
   await expect(page.getByText('G2 · La radice')).toBeVisible();
   await page.getByRole('tab', { name: 'Piano', exact: true }).click();
   await page.getByRole('button', { name: /^Settimana 2 ·/ }).click();
   await expect(page.getByRole('button', { name: 'G2 · La radice' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
   await page.getByRole('checkbox', { name: 'Descrivi una foglia.' }).check();
   await page.getByRole('button', { name: 'Vai alla prossima G' }).click();
   await expect(page.getByRole('heading', { name: 'La radice' })).toBeVisible();
@@ -290,14 +293,14 @@ test('mix reorders next days while weekly hours update estimates and preserve to
   await page.getByRole('spinbutton', { name: 'Astronomia · Quota %' }).fill('80');
   await page.getByRole('button', { name: 'Salva', exact: true }).click();
   await expect(page.getByText('80% · 3,2 ore a settimana')).toBeVisible();
-  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
   await expect(page.getByText('G3 · Stelle B02')).toBeVisible();
-  await page.getByRole('tab', { name: 'Piani', exact: true }).click();
+  await page.getByRole('tab', { name: 'Materie', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Ore a settimana' }).fill('8');
   await page.getByRole('button', { name: 'Salva', exact: true }).click();
   await expect(page.getByText('80% · 6,4 ore a settimana')).toBeVisible();
-  await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
   await expect(page.getByText('G3 · Stelle B02')).toBeVisible();
 });
@@ -328,7 +331,7 @@ test('Ripasso lists threads, half days, open steps and errors, and ticking there
     await pc.post('/trpc/study.setStep', { data: { key: 'example/A01', id: 'A01.m.1', done: true } });
 
     // An error entry from a step: the reference starts from the step's file and page, only reference and cause are needed.
-    await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+    await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'La foglia' })).toBeVisible();
     await page.getByRole('button', { name: 'Registra un errore su: Disegna una foglia.' }).click();
     const form = page.getByRole('form', { name: 'Registra un errore' });
@@ -373,7 +376,7 @@ test('Ripasso lists threads, half days, open steps and errors, and ticking there
     await page.getByRole('checkbox', { name: 'Disegna una foglia.' }).click();
     await expect(page.getByRole('checkbox', { name: 'Disegna una foglia.' })).toHaveCount(0);
     await expect(half.getByText('1 di 3 passi ancora da fare')).toBeVisible();
-    await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+    await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
     await expect(page.getByRole('checkbox', { name: 'Disegna una foglia.' })).toBeChecked();
 
     // Editing: solving an entry takes it out of the retry list.
@@ -396,7 +399,7 @@ test('Ripasso lists threads, half days, open steps and errors, and ticking there
 
     // Recall in Oggi shows the errors of the recalled day, solved or not.
     await pc.post('/trpc/study.setCurrent', { data: { key: 'example/A02' } });
-    await page.getByRole('tab', { name: 'Studio', exact: true }).click();
+    await page.getByRole('tab', { name: 'Oggi', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'La radice' })).toBeVisible();
     await expect(page.getByText('Errori: Foglio 1, es. 3 · Calcolo')).toBeVisible();
 
@@ -408,4 +411,12 @@ test('Ripasso lists threads, half days, open steps and errors, and ticking there
     db.prepare("DELETE FROM progress WHERE plan_id IN ('example', '*')").run();
     db.close();
   }
+});
+
+test('the Studio tab bar names what each tab holds, and an old Materie link still opens it', async ({ page }) => {
+  await page.goto(`${PC_URL}/desk/studio`);
+  await expect(page.getByRole('tab').first()).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveText(['Oggi', 'Piano', 'Ripasso', 'Libreria', 'Materie']);
+  await page.goto(`${PC_URL}/desk/studio?tab=piani`);
+  await expect(page.getByRole('tab', { name: 'Materie', exact: true })).toHaveAttribute('aria-selected', 'true');
 });

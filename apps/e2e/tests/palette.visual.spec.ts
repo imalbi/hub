@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/desk/studio');
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
   // Studio's tab bar arrives with the study module's UI: open the palette only once the page has settled.
-  await expect(page.getByRole('tab', { name: 'Piani' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Materie' })).toBeVisible();
   await page.evaluate(async () => {
     await document.fonts.ready;
   });

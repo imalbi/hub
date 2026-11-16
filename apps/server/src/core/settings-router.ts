@@ -22,6 +22,15 @@ export const RESTART_EXIT_CODE = 75;
 
 const editableCoreSchema = coreConfigSchema.pick({ mcp: true, jobs: true, backup: true });
 
+/** A note that throws is no note: the list must still draw. */
+function noteOf(setupNote: ModuleInfo['setupNote'], config: unknown) {
+  try {
+    return setupNote?.(config);
+  } catch {
+    return undefined;
+  }
+}
+
 const notFound = () => new TRPCError({ code: 'NOT_FOUND', message: 'No such module' });
 
 async function readFileText(path: string) {
@@ -118,9 +127,19 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
           return { ok: true as const, restarting: ctx.restart() };
         }),
       ),
-    modules: loopbackProcedure.query(() =>
-      states.list().map(({ name, kind, status, schema }) => ({ name, kind, status, hasConfig: schema !== undefined })),
-    ),
+    modules: loopbackProcedure.query(async () => {
+      const list = states.list();
+      // The notes read the stored slice, so a saved place clears one; the file is only read when a module has a note.
+      const file =
+        configPath && list.some(({ setupNote }) => setupNote) ? await readConfigJson(configPath).catch(() => ({})) : {};
+      return list.map(({ name, kind, status, schema, setupNote, configPath: at }) => ({
+        name,
+        kind,
+        status,
+        hasConfig: schema !== undefined,
+        note: status === 'on' ? noteOf(setupNote, getAt(file, at)) : undefined,
+      }));
+    }),
 
     /** One module's JSON Schema and its stored value, with every secret replaced by `{ set: true }` (or absent). */
     config: agentOrLoopbackProcedure

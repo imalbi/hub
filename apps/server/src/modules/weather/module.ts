@@ -6,6 +6,7 @@ import { createWeather, locationSchema, searchLocations } from './weather.ts';
 export const weatherModule = defineModule({
   name: 'weather',
   config: locationSchema.optional(),
+  setupNote: (config) => (config ? undefined : 'manca la città'),
   create({ config, fetch }) {
     const weather = createWeather(fetch, config);
     return {

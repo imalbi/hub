@@ -1,6 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { m } from '../paraglide/messages.js';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
+// Replace, so the back button never lands on an empty Impostazioni.
 export const Route = createFileRoute('/desk/settings/')({
-  component: () => <p className="text-body text-muted-foreground">{m.settings_choose()}</p>,
+  beforeLoad: () => {
+    throw redirect({ to: '/desk/settings/appearance', replace: true });
+  },
 });
