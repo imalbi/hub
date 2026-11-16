@@ -101,19 +101,34 @@ type Item = {
 
 const iconClass = 'size-icon';
 
-/** A progress ring (a conic fill, 0 to 1) around its content; without progress it is a plain disc. */
+/**
+ * A thin progress line on the outer edge: a round-capped arc from 12 o'clock over a track, drawn in the viewBox so it
+ * scales with the rem size of the ball and the rows. The ball's own glass border is its track, so it passes none.
+ */
+function Arc({ progress, track = false }: { progress?: number; track?: boolean }) {
+  // Viewbox units, not sizes: a 3-unit line centred at 48.5 lies on the edge, over the ball's 1px border.
+  const circle = { cx: 50, cy: 50, r: 48.5, fill: 'none', strokeWidth: 3 };
+  return (
+    <svg aria-hidden viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 size-full -rotate-90">
+      {track && <circle {...circle} stroke="var(--border)" />}
+      {progress !== undefined && progress > 0 && (
+        <circle
+          {...circle}
+          stroke="var(--foreground)"
+          strokeLinecap="round"
+          pathLength="100"
+          strokeDasharray={`${Math.min(progress, 1) * 100} 100`}
+        />
+      )}
+    </svg>
+  );
+}
+
+/** A disc with its content, and the progress line around it. */
 function Ring({ progress, className, children }: { progress?: number; className: string; children: ReactNode }) {
   return (
-    <span
-      aria-hidden
-      className={`grid shrink-0 place-items-center rounded-full p-2xs ${className}`}
-      style={{
-        background:
-          progress === undefined
-            ? 'var(--muted)'
-            : `conic-gradient(var(--foreground) ${Math.round(progress * 100)}%, var(--muted) 0)`,
-      }}
-    >
+    <span aria-hidden className={`relative grid shrink-0 place-items-center rounded-full p-2xs ${className}`}>
+      <Arc progress={progress} track />
       <span className="grid size-full place-items-center rounded-full bg-background">{children}</span>
     </span>
   );
@@ -308,13 +323,8 @@ export function ActivityBall() {
                       .join(', '),
                   })}
                   className="desk-glass relative grid size-ball place-items-center rounded-full border p-2xs"
-                  style={{
-                    background:
-                      first.progress === undefined
-                        ? undefined
-                        : `conic-gradient(var(--foreground) ${Math.round(first.progress * 100)}%, var(--muted) 0)`,
-                  }}
                 >
+                  {first.progress !== undefined && <Arc progress={first.progress} />}
                   <span className="grid size-full place-items-center rounded-full bg-background text-label font-semibold tabular-nums">
                     {pomodoro?.clock ?? first.icon}
                   </span>
