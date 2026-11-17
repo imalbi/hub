@@ -13,6 +13,8 @@ Notes about one module live in `AGENTS.md` inside that module's folder (`src/mod
 
 - Plain desk pages scroll the inner scroller of `PageSurface`; the rounded outer frame clips its native scrollbar (default width, owner 2026-11-17). Its opaque sticky band holds the tabs and optional page controls. Fill pages with independent panes keep their own scroll regions. Impostazioni action rows remain sticky within their own pane; a sticky element lasts only as long as its parent, and the side aside sticks below the actions.
 
+- **Scroll rules (2026-11-17).** One scroller per pane: the window never scrolls, each pane owns at most one `overflow-y-auto` and nothing between the shell and it scrolls (`min-h-0` / `min-w-0` on every flex or grid child of that chain, or the wrong box scrolls). Padding goes inside the scroller, so the scrollbar sits on the edge; spacing between blocks comes from the parent's `gap`, never from a child's outer margin, so paddings do not add up through nested panels. Headers and tabs are `sticky` inside the scroller, not above it. Every desk scrollbar takes `scrollbar-color: var(--muted-foreground) transparent` from the one rule in `index.css` (an opaque track drew a dark stripe on surfaces); do not set it per element. A rounded scroller clips its scrollbar only through `clip-path` on its frame (see `shell/AGENTS.md`). To find a stray scroller, the Elements panel of Chrome DevTools marks each scroll container with a "scroll" badge.
+
 ## Where files go
 
 ```

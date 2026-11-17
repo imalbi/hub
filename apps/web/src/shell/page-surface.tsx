@@ -64,7 +64,6 @@ export function PageSurface({
               ref={surface}
               data-page-scroller
               onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
-              style={{ scrollbarColor: 'var(--muted-foreground) transparent' }}
               className={`flex min-h-0 flex-1 [scrollbar-gutter:stable] flex-col overflow-y-auto overscroll-contain bg-surface p-lg ${bar ? 'gap-0 pt-0' : 'gap-lg'}`}
             >
               {content}

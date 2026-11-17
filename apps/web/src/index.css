@@ -433,7 +433,7 @@ html[data-layout='desk'] ::selection {
   color: var(--background);
 }
 html[data-layout='desk'] * {
-  scrollbar-color: var(--muted-foreground) var(--background);
+  scrollbar-color: var(--muted-foreground) transparent;
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-layout='desk'] *,
