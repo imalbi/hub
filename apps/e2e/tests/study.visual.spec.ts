@@ -21,6 +21,45 @@ test.beforeAll(async ({ request }) => {
   expect((await request.post(`${PC_URL}/trpc/study.activate`, { data: { name: 'visual.json' } })).ok()).toBe(true);
 });
 
+test('Sistema and a scrolling Piano align their rightmost panel edges', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 2160 });
+  await page.goto('/desk/system');
+  const system = page.getByRole('region', { name: 'Audio', exact: true });
+  await expect(system).toBeVisible();
+  expect(
+    await page.locator('[data-page-scroller]').evaluate((element) => element.scrollHeight <= element.clientHeight),
+  ).toBe(true);
+  const right = (await system.boundingBox())!.x + (await system.boundingBox())!.width;
+  const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));
+  const row = db.prepare("SELECT data FROM days WHERE plan_id = 'example' AND id = 'A01'").get();
+  if (typeof row?.data !== 'string') throw new Error('The example plan is not active');
+  const day = JSON.parse(row.data);
+  const insert = db.prepare("INSERT INTO days (plan_id, id, position, data) VALUES ('example', ?, ?, ?)");
+  for (let i = 0; i < 210; i++) {
+    const id = `extra-${i}`;
+    insert.run(id, i + 3, JSON.stringify({ ...day, id }));
+  }
+  try {
+    await page.goto('/desk/studio?tab=piano');
+    const piano = page.getByRole('region', { name: /Piano · Piano di esempio/ });
+    await expect(piano).toBeVisible();
+    const surface = page.locator('[data-page-scroller]');
+    expect(await surface.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    const panel = page.getByRole('tabpanel');
+    await surface.evaluate((element) => element.scrollTo(0, 400));
+    expect(await surface.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    expect(await panel.evaluate((element) => element.scrollTop)).toBe(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight === document.documentElement.clientHeight),
+    ).toBe(true);
+    const box = (await piano.boundingBox())!;
+    expect(Math.abs(box.x + box.width - right)).toBeLessThanOrEqual(1);
+  } finally {
+    db.prepare("DELETE FROM days WHERE plan_id = 'example' AND id LIKE 'extra-%'").run();
+    db.close();
+  }
+});
+
 /** Gives Ripasso something to list without touching the other Studio baselines: undone by the returned function. */
 function seedReview() {
   const db = new DatabaseSync(join(RUN_TMP, 'modules', 'study.db'));

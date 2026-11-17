@@ -8,3 +8,10 @@ export function TabBarActions({ children }: { children: ReactNode }) {
   const slot = useContext(TabBarSlot);
   return slot ? createPortal(children, slot) : null;
 }
+
+export const TabBarRowSlot = createContext<HTMLElement | null>(null);
+
+export function TabBarRow({ children }: { children: ReactNode }) {
+  const slot = useContext(TabBarRowSlot);
+  return slot ? createPortal(children, slot) : null;
+}
