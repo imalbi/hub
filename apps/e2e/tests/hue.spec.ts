@@ -247,17 +247,21 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await freezePomodoro(page);
-    await page.route('**/trpc/health*', (route) =>
-      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
-    );
     // The paired devices come from the run's own database; the shot is about the rows.
-    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [], 'agents.localCallsToday': 0 });
+    await answerQueries(page, {
+      health: { ok: true, uptime: 42 },
+      'devices.list': [],
+      'agents.localCalls': [],
+      'agents.localCallsToday': 0,
+    });
     await page.goto('/desk/devices');
     await expect(
       page.getByRole('group', { name: 'Luci', exact: true }).getByText('Accesa, 80%', { exact: true }),
     ).toBeVisible();
     await settleFonts(page);
     await expect(page).toHaveScreenshot('desk-lights-4k.png', { animations: 'disabled' });
+    // Panoramica asks for `health` too since the status line (step 68): drop the stub so no answer is in flight at the end.
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
     await page.goto('/desk');
     await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();
     await expect(page.getByRole('region', { name: 'Luci', exact: true })).toHaveCount(0);
@@ -271,6 +275,11 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     try {
       const widget = page.locator('[data-widget="lights"]');
       await expect(widget.getByText('Accesa, 80%', { exact: true })).toBeVisible();
+      await expect(widget.getByRole('heading', { name: 'Luci' })).toHaveCSS('font-family', /JetBrains Mono/);
+      await expect(widget.locator('[data-readout]')).toHaveCSS('font-family', /JetBrains Mono/);
+      const brightness = widget.getByRole('img', { name: '4 di 5' });
+      await expect(brightness.locator('i')).toHaveCount(5);
+      await expect(brightness.locator('i[data-filled]')).toHaveCount(4);
       await widget.getByRole('button', { name: /^Luce:/ }).click();
       await expect(widget.getByText('Spenta', { exact: true })).toBeVisible();
       expect(await writes(request)).toEqual([{ type: 'setPower', on: false }]);

@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/urbanist';
+@import '@fontsource-variable/jetbrains-mono';
 
 /* Tailwind scans apps/web only. Private module UI lives in the ignored module root, so name it here or its utilities never compile; a clone without the folder builds as before. */
 @source '../../../modules.local'; /* guard-private: allow Repository-local module directory */
@@ -82,7 +83,7 @@
      weight, so a component picks a role and never sets those by hand. */
   --font-*: initial;
   --font-sans: 'Urbanist Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 
   --text-*: initial;
   --text-caption: 0.75rem;
@@ -248,7 +249,7 @@
   --surface: oklch(0.99 0 0);
   --surface-raised: oklch(0.18 0 0);
   --muted: oklch(0.9 0.003 100);
-  --muted-foreground: oklch(0.5 0.005 100);
+  --muted-foreground: oklch(0.49 0.005 100);
   --border: oklch(0 0 0 / 0.1);
   --primary: oklch(0.18 0 0);
   --primary-foreground: oklch(0.99 0 0);
@@ -373,6 +374,12 @@
   --backdrop-art-display: block;
   --backdrop-art-opacity: 0.1;
   color-scheme: dark;
+}
+
+/* The deck keeps its existing code font when the desk's mono role changes. */
+html[data-layout='deck'] {
+  --font-mono: ui-monospace, 'JetBrains Mono', monospace;
+  --default-mono-font-family: var(--font-mono);
 }
 
 html[data-layout='desk'] body {
@@ -709,4 +716,111 @@ html {
 }
 .hold-tile-ring[data-on='true'] {
   opacity: 1;
+}
+
+/* The machine voice: measured figures and short labels, independent of the day voice. */
+@utility text-readout {
+  font-family: var(--font-mono);
+  font-size: 2.5rem;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility text-mono-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.ticks {
+  display: inline-flex;
+  align-items: end;
+  gap: 0.333rem;
+}
+.ticks i {
+  width: 0.25rem;
+  height: 1.333rem;
+  background: var(--border);
+  border-radius: 1px;
+}
+.ticks i[data-filled] {
+  background: var(--foreground);
+}
+.day-ruler {
+  position: relative;
+  height: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background-image:
+    repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px 100%),
+    repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px 100%);
+  background-size:
+    calc(100% / 18) 100%,
+    calc(100% / 72) 33%;
+  background-position:
+    0 0,
+    0 100%;
+  background-repeat: repeat-x;
+}
+.day-block {
+  position: absolute;
+  bottom: 0;
+  height: 0.75rem;
+  background: var(--foreground);
+}
+.day-mark {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 1.5rem;
+  background: var(--foreground);
+}
+.day-now {
+  position: absolute;
+  bottom: -0.4rem;
+  width: 2px;
+  height: 2.3rem;
+  background: var(--accent);
+}
+.day-caption {
+  position: absolute;
+  top: 3.5rem;
+  left: 0.25rem;
+  white-space: nowrap;
+}
+.study-step {
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+}
+.study-step[data-current] {
+  background: var(--muted);
+  border-radius: var(--radius-sm);
+  padding-inline: 0.75rem;
+}
+.study-error {
+  opacity: 0;
+}
+.study-step[data-current] .study-error,
+.study-step:hover .study-error,
+.study-error:focus-visible {
+  opacity: 1;
+}
+.pomodoro-settings {
+  max-height: min(24rem, 60vh);
+  overflow-y: auto;
+}
+.instrument-dial {
+  position: relative;
+  width: 100%;
+  max-width: 25rem;
+  aspect-ratio: 1;
+  container-type: inline-size;
+}
+/* Sized by the ring: at 1920 the Studio column narrows the dial and a fixed hero size crossed the ring. */
+.instrument-dial [role='timer'] {
+  font-size: min(var(--text-hero), 18cqi);
 }

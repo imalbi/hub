@@ -124,3 +124,34 @@ void test('configure validates the limits of the config schema', async (t) => {
     assert.equal((await configure({ ...valid, ...invalid })).statusCode, 400, JSON.stringify(invalid));
   }
 });
+
+void test('today returns completed focus sessions ending today in start order with their tags', async (t) => {
+  mock.timers.enable({ apis: ['Date'], now: new Date(2026, 10, 4, 18) });
+  const root = mkdtempSync(join(tmpdir(), 'hub-pomodoro-today-'));
+  const dbPath = join(root, 'history.db');
+  const app = buildServer({ dbPath, deps: { run: createFakeDesktop() }, config: emptyConfig });
+  t.after(async () => {
+    await app.close();
+    mock.timers.reset();
+    rmSync(root, { recursive: true, force: true });
+  });
+  await app.ready();
+  const db = new DatabaseSync(dbPath);
+  const insert = db.prepare(
+    'INSERT INTO pomodoro_sessions (kind, started_at, ended_at, completed, tag) VALUES (?, ?, ?, ?, ?)',
+  );
+  const time = (day: number, hour: number, minute = 0) => new Date(2026, 10, day, hour, minute).getTime();
+  insert.run('focus', time(4, 11), time(4, 11, 25), 1, null);
+  insert.run('break', time(4, 10, 25), time(4, 10, 30), 1, null);
+  insert.run('focus', time(3, 10), time(3, 10, 25), 1, 'yesterday');
+  insert.run('focus', time(4, 12), time(4, 12, 25), 0, 'incomplete');
+  insert.run('focus', time(4, 10), time(4, 10, 25), 1, 'study/example');
+  db.close();
+  const result = await app.inject('/trpc/pomodoro.today');
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(result.json().result.data, [
+    { startedAt: time(4, 10), endedAt: time(4, 10, 25), tag: 'study/example' },
+    { startedAt: time(4, 11), endedAt: time(4, 11, 25), tag: null },
+  ]);
+  assert.equal((await app.inject({ url: '/trpc/pomodoro.today', remoteAddress: '192.0.2.20' })).statusCode, 401);
+});

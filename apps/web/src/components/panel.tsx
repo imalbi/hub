@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
-import { useInSurface } from '../shell/page-surface.tsx';
+import { useInWidget } from '../shell/widget-context.ts';
+import { useInSurface } from '../shell/surface-context.ts';
 
 export function Panel({
   title,
@@ -18,21 +19,22 @@ export function Panel({
   const titleId = useId();
   // On a page surface a panel is an inner one: lighter than the surface, one radius down, no border (step 47).
   const inner = useInSurface();
+  const widget = useInWidget();
   return (
     <section
       aria-labelledby={title ? titleId : undefined}
       data-panel={inner ? '' : undefined}
-      className={`flex min-w-0 flex-col gap-lg p-lg ${inner ? 'rounded-lg bg-muted' : 'rounded-xl border border-border bg-surface'} ${className}`}
+      className={`flex min-w-0 flex-col gap-lg p-lg ${widget ? 'rounded-lg border border-border bg-surface' : inner ? 'rounded-lg bg-muted' : 'rounded-xl border border-border bg-surface'} ${className}`}
     >
       {title && (
         <div className={`flex justify-between gap-md ${subtitle ? 'items-start' : 'items-center'}`}>
           <div className="flex min-w-0 flex-col gap-3xs">
-            <h2 id={titleId} className="text-title">
+            <h2 id={titleId} className={widget ? 'text-mono-label text-muted-foreground' : 'text-title'}>
               {title}
             </h2>
             {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
           </div>
-          {action}
+          {widget && action ? <div className="text-mono-label">{action}</div> : action}
         </div>
       )}
       {children}

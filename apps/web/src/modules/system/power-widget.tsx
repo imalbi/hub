@@ -1,3 +1,4 @@
+import { Readout } from '../../components/readout.tsx';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { Panel } from '../../components/panel.tsx';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
@@ -14,7 +15,7 @@ export function PowerWidget() {
     <Panel title={m.power_title()} className={`h-full ${stale ? 'opacity-60' : ''}`}>
       <div className="mt-auto flex flex-col gap-2xs">
         <p className="text-caption text-muted-foreground tabular-nums">{today}</p>
-        {power.data && <p className="text-display tabular-nums">{figure ?? m.power_not_measured()}</p>}
+        {power.data && <p>{figure ? <Readout>{figure}</Readout> : m.power_not_measured()}</p>}
       </div>
     </Panel>
   );

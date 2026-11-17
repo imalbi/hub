@@ -1,3 +1,4 @@
+import { Readout } from '../../components/readout.tsx';
 import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../../components/panel.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -20,7 +21,11 @@ function SmallServer() {
         <p className="text-caption text-muted-foreground">
           {health.data ? m.server_up_since() : health.error ? m.server_unreachable() : m.server_connecting()}
         </p>
-        {health.data && <p className="text-display tabular-nums">{uptimeText(health.data.uptime)}</p>}
+        {health.data && (
+          <p>
+            <Readout>{uptimeText(health.data.uptime)}</Readout>
+          </p>
+        )}
       </div>
     </Panel>
   );

@@ -1,8 +1,11 @@
 import { Link } from '@tanstack/react-router';
+import { useInWidget } from '../../shell/widget-context.ts';
+import { Readout } from '../../components/readout.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { ServerStatus } from './server-status.tsx';
 export function StatusPanel({ overview = false, className = '' }: { overview?: boolean; className?: string }) {
+  const widget = useInWidget();
   return (
     <Panel
       title={m.server_panel_title()}
@@ -16,7 +19,13 @@ export function StatusPanel({ overview = false, className = '' }: { overview?: b
       }
     >
       <p className="text-title tabular-nums">
-        <ServerStatus />
+        {widget ? (
+          <Readout>
+            <ServerStatus />
+          </Readout>
+        ) : (
+          <ServerStatus />
+        )}
       </p>
     </Panel>
   );

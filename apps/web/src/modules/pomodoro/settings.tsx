@@ -62,6 +62,7 @@ export function PomodoroSettings({ settings }: { settings: Settings | undefined 
   return (
     <Popover
       label={m.pomodoro_settings()}
+      className="pomodoro-settings"
       align="end"
       trigger={
         <button

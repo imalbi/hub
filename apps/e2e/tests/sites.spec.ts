@@ -1,3 +1,4 @@
+import { answerQueries } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { SERVER_URL } from './hosts.ts';
 
@@ -23,6 +24,7 @@ test('Siti shows daily history and the widget lists only unreachable sites', asy
   await configure(request, true);
   try {
     await page.setViewportSize({ width: 3840, height: 2160 });
+    await answerQueries(page, { health: { ok: true, uptime: 42 } });
     await page.goto('/desk/lavoro');
     await expect(page.getByRole('heading', { name: 'Alcuni siti non sono raggiungibili' })).toBeVisible();
     const history = page.getByRole('button', { name: 'Sito non raggiungibile' });

@@ -32,16 +32,51 @@ test.afterEach(async ({ pc }) => {
   });
 });
 
+test('widget labels and measured figures use the self-hosted mono voice', async ({ page, pc, browser }) => {
+  const ids = ['pomodoro', 'audio', 'mail', 'news', 'devices', 'power', 'server'];
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: ids.map((widget, y) => ({ widget, size: 'small', x: 0, y })) },
+  });
+  const fresh = await browser.newPage();
+  const font = fresh.waitForResponse((response) => /jetbrains-mono.*\.woff2/.test(response.url()) && response.ok());
+  await fresh.goto(page.url());
+  await font;
+  await fresh.close();
+  await page.reload();
+  for (const id of ids) {
+    const widget = cell(page, id);
+    const title = widget.getByRole('heading').first();
+    await expect(title).toHaveCSS('font-family', /JetBrains Mono/);
+    await expect(title).toHaveCSS('text-transform', 'uppercase');
+    await expect(widget.locator('[data-readout]').first()).toHaveCSS('font-family', /JetBrains Mono/);
+    await expect(widget.locator('[data-readout]').first()).toHaveCSS('font-variant-numeric', /tabular-nums/);
+  }
+});
+
 test('Oggi leads the default board and shows the Italian date and weather', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
   await page.reload();
   await expect(page.locator('[data-widget]').first()).toHaveAttribute('data-widget', 'today');
   const today = cell(page, 'today');
   await expect(today.getByText('mercoledì 4 novembre')).toBeVisible();
+  await expect(today.locator('[data-readout]').first()).toHaveCSS('font-family', /JetBrains Mono/);
   await expect(today.getByText('Località esempio')).toBeVisible();
 });
 
-test('widgets on the same row have the same height, two small ones fill a medium width', async ({ page }) => {
+test('widgets on the same row have the same height, two small ones fill a medium width', async ({ page, pc }) => {
+  await pc.post('/trpc/layout.save', {
+    data: {
+      zone: 'overview',
+      items: [
+        { widget: 'pomodoro', size: 'medium', x: 0, y: 0 },
+        { widget: 'media', size: 'medium', x: 6, y: 0 },
+        { widget: 'server', size: 'small', x: 0, y: 1 },
+        { widget: 'audio', size: 'small', x: 3, y: 1 },
+      ],
+    },
+  });
+  await page.reload();
+  await expect(cell(page, 'server')).toBeVisible();
   const [pomodoro, media, server, audio] = await Promise.all(
     ['pomodoro', 'media', 'server', 'audio'].map((widget) => box(page, widget)),
   );
@@ -102,6 +137,7 @@ test('the large Musica widget fits its cell: the hero-sized cover once pushed th
 
 test('a widget is removed, offered in Aggiungi widget, and added back', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
+  await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Server' }).click());
   await andSaved(page, () => page.getByRole('button', { name: 'Rimuovi Server' }).click());
   await expect(cell(page, 'server')).toHaveCount(0);
   await page.reload();
@@ -150,6 +186,7 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
   await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText([
+    'Server',
     'Posta',
     'Comandi',
     'Consumo',
@@ -183,7 +220,7 @@ test('edit mode dims and disables content, and focuses the missing list', async 
   await expect(pomodoro.getByRole('button', { name: 'Avvia' })).toBeVisible();
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
   await page.getByRole('button', { name: 'Aggiungi widget', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Aggiungi Posta' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Aggiungi Server' })).toBeFocused();
   await page.getByRole('button', { name: 'Aggiungi Comandi' }).click();
   await expect(cell(page, 'controls')).toHaveAttribute('data-size', 'large');
 });

@@ -1,3 +1,4 @@
+import { answerQueries } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
 import { clean, seed } from './calendar-data.ts';
 
@@ -7,6 +8,7 @@ const NOW = new Date(2026, 10, 15, 10, 0);
 test.beforeEach(async ({ page, pc }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.clock.setFixedTime(NOW);
+  await answerQueries(page, { health: { ok: true, uptime: 42 } });
   await seed(pc);
 });
 test.afterEach(async ({ pc }) => clean(pc));

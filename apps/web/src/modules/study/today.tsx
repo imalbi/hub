@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Panel } from '../../components/panel.tsx';
 import { NumberRoll } from '../../components/ui/number-roll.tsx';
+import { Ticks } from '../../components/ticks.tsx';
+import { TabBarActions } from '../../shell/header-slot.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { Select } from '../../components/ui/select.tsx';
 import { PomodoroPanel } from '../pomodoro/desk-panel.tsx';
@@ -149,13 +150,17 @@ function TodayDay({
   }
   return (
     <div className="col-span-12 grid grid-cols-12 items-start gap-lg">
-      <Panel className="col-span-8">
-        <div className="flex flex-wrap items-center justify-between gap-md">
-          <span className="text-caption text-muted-foreground">
-            {[`G${current?.g}`, subjectInfo?.label, header.phases.find((phase) => phase.id === day.phase)?.title]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
+      <TabBarActions>
+        <div className="ml-auto flex items-center gap-md text-mono-label text-muted-foreground">
+          {subjectInfo && (
+            <span>
+              {m.study_subject_header({
+                subject: subjectInfo.label,
+                day: current?.g ?? 0,
+                total: index.days.filter((entry) => entry.subject === current?.subject).length,
+              })}
+            </span>
+          )}
           {subjectInfo && (
             <div>
               <Select
@@ -179,12 +184,18 @@ function TodayDay({
             </div>
           )}
         </div>
-        <h2 className="text-display">{day.title}</h2>
-        <p className="text-caption">
-          <NumberRoll value={checked.size} /> {m.study_steps_of({ total: allSteps.length })}
+      </TabBarActions>
+      <section data-study-day className="col-span-6 flex min-w-0 flex-col gap-lg pr-lg">
+        <h2 className="text-hero">{day.title}</h2>
+        <p className="flex items-center gap-sm text-mono-label">
+          <Ticks value={checked.size} total={allSteps.length} />
+          <span>
+            <NumberRoll value={checked.size} /> {m.study_steps_of({ total: allSteps.length })}
+          </span>
         </p>
         <DayBody
           body={day}
+          instrument
           header={header}
           titles={titles}
           checked={checked}
@@ -231,6 +242,47 @@ function TodayDay({
             </button>
           </div>
         ))}
+        <TodayNote
+          key={day.key}
+          dayKey={day.key}
+          initial={own.find((row) => row.kind === 'note' && row.id === day.id)?.value ?? ''}
+        />
+        {day.done && <RegistryButton label={m.study_next()} action={() => open.mutateAsync()} />}
+      </section>
+      <section data-study-dial className="col-span-3 min-w-0 border-l border-border px-lg">
+        <PomodoroPanel
+          instrument
+          tag={`study/${day.key}`}
+          footer={m.study_focus_minutes({ minutes: (minutes.data?.[`study/${day.key}`] ?? 0).toLocaleString('it') })}
+        />
+      </section>
+      <section data-study-next className="col-span-3 flex min-w-0 flex-col gap-lg border-l border-border pl-lg">
+        <h3 className="text-mono-label text-muted-foreground">{m.study_next_days()}</h3>
+        <ul>
+          {index.days
+            .filter((item) => !item.done && item.key !== day.key)
+            .slice(0, 5)
+            .map((item) => (
+              <li key={item.key} className="border-b border-dashed border-border py-sm text-body">
+                G{item.g} · {item.title}
+              </li>
+            ))}
+        </ul>
+        <p>{m.study_done_of({ done: index.days.filter((item) => item.done).length, total: index.days.length })}</p>
+        {/* One subject would repeat the line above. */}
+        {subjects.length > 1 && (
+          <ul>
+            {subjects.map((item) => {
+              const days = [...index.days, ...index.hiddenDays].filter((entry) => entry.subject === item.key);
+              return (
+                <li className="text-caption text-muted-foreground" key={item.key}>
+                  {item.label} ·{' '}
+                  {m.study_done_of({ done: days.filter((entry) => entry.done).length, total: days.length })}
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {day.threads.length > 0 && (
           <fieldset className="flex flex-col gap-sm">
             <legend className="text-title">{m.study_autonomy()}</legend>
@@ -262,46 +314,7 @@ function TodayDay({
               ))}
           </fieldset>
         )}
-        <TodayNote
-          key={day.key}
-          dayKey={day.key}
-          initial={own.find((row) => row.kind === 'note' && row.id === day.id)?.value ?? ''}
-        />
-        {day.done && <RegistryButton label={m.study_next()} action={() => open.mutateAsync()} />}
-      </Panel>
-      <div className="col-span-4 flex flex-col gap-lg">
-        <PomodoroPanel
-          tag={`study/${day.key}`}
-          footer={m.study_focus_minutes({ minutes: (minutes.data?.[`study/${day.key}`] ?? 0).toLocaleString('it') })}
-        />
-        <Panel title={m.study_next_days()}>
-          <ul>
-            {index.days
-              .filter((item) => !item.done && item.key !== day.key)
-              .slice(0, 5)
-              .map((item) => (
-                <li key={item.key} className="border-b border-dashed border-border py-sm text-body">
-                  G{item.g} · {item.title}
-                </li>
-              ))}
-          </ul>
-          <p>{m.study_done_of({ done: index.days.filter((item) => item.done).length, total: index.days.length })}</p>
-          {/* One subject would repeat the line above. */}
-          {subjects.length > 1 && (
-            <ul>
-              {subjects.map((item) => {
-                const days = [...index.days, ...index.hiddenDays].filter((entry) => entry.subject === item.key);
-                return (
-                  <li className="text-caption text-muted-foreground" key={item.key}>
-                    {item.label} ·{' '}
-                    {m.study_done_of({ done: days.filter((entry) => entry.done).length, total: days.length })}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Panel>
-      </div>
+      </section>
     </div>
   );
 }

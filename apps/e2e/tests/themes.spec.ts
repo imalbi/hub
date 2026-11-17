@@ -4,8 +4,27 @@ import { expect, test } from './fixtures.ts';
 import { SERVER_URL } from './hosts.ts';
 import { ballOf } from './ball.ts';
 import { chooseTheme, createFrom, restoreScheme, themeSettled, writeScheme } from './themes.ts';
+import { contrastRatio } from './contrast.ts';
 
 const builtIn = ['Scuro', 'Chiaro', 'Muschio', 'Pietra', 'Notte', 'Brace', 'Laguna', 'Caelestia'];
+
+test('muted mono labels on panels meet contrast in built-in themes', async ({ page }) => {
+  for (const name of builtIn.slice(0, 7)) {
+    await chooseTheme(page, name);
+    await page.evaluate(() => {
+      let sample = document.getElementById('mono-contrast-sample');
+      if (!sample) {
+        sample = document.createElement('div');
+        sample.id = 'mono-contrast-sample';
+        sample.className = 'bg-muted';
+        sample.innerHTML = '<span class="text-mono-label text-muted-foreground">Etichetta</span>';
+        document.body.append(sample);
+      }
+    });
+    await expect.poll(() => contrastRatio(page.locator('#mono-contrast-sample span'))).toBeGreaterThanOrEqual(4.5);
+  }
+  await chooseTheme(page, 'Scuro');
+});
 const json = { 'content-type': 'application/json' };
 
 async function deleteCustomThemes(pc: APIRequestContext) {

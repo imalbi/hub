@@ -1,3 +1,4 @@
+import { Readout } from '../../components/readout.tsx';
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { Panel } from '../../components/panel.tsx';
@@ -32,7 +33,7 @@ export function NewsWidget({ size }: { size: WidgetSize }) {
           </p>
           {state && (
             <p className="flex items-baseline gap-xs">
-              <span className="text-display tabular-nums">{state.items}</span>
+              <Readout>{state.items}</Readout>
               <span className="text-caption text-muted-foreground">
                 {state.fresh ? m.news_fresh() : m.news_last_page()}
               </span>

@@ -6,6 +6,7 @@ import { protectedProcedure, router } from '../../core/trpc.ts';
 export function createPomodoroRouter(pomodoro: PomodoroLive) {
   return router({
     state: protectedProcedure.query(() => pomodoro.state()),
+    today: protectedProcedure.query(() => pomodoro.today()),
     onState: protectedProcedure.subscription(({ signal }) => pomodoro.subscribe(signal)),
     start: protectedProcedure
       .meta({ label: 'Avvia Pomodoro', description: 'Start a Pomodoro focus session from idle' })

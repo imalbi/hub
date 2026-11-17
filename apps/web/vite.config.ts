@@ -22,6 +22,10 @@ const licensesFile = 'third-party-licenses.md';
 // OFL asks for its notice to travel with the font), and the Hairline components are vendored into src.
 const extraNotices = [
   { title: '@fontsource-variable/urbanist (OFL-1.1)', file: './node_modules/@fontsource-variable/urbanist/LICENSE' },
+  {
+    title: '@fontsource-variable/jetbrains-mono (OFL-1.1)',
+    file: './node_modules/@fontsource-variable/jetbrains-mono/LICENSE',
+  },
   { title: 'Hairline UI, vendored in src/components/ui (MIT)', file: './src/components/ui/LICENSE' },
   // rough-notation ships roughjs inlined (a devDependency it bundled), so the bundler sees one package and one notice.
   { title: 'roughjs 4.3.1, inlined in rough-notation (MIT)', file: './third-party/roughjs-LICENSE' },

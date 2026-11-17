@@ -56,6 +56,8 @@ src/
 
 ## Styling: Tailwind v4 + design tokens
 
+- The Strumento kit uses `text-readout` for measured figures and `text-mono-label` for short machine labels and states. These roles self-host JetBrains Mono. Keep human titles, steps, notes and buttons in Urbanist; do not apply mono wholesale. `Ticks` represents discrete counts, not continuous progress.
+
 - Never key a rule on a theme name (`[data-theme='paper'] .x`); add a variable instead.
 - Theme changes glide: the color variables are registered with `@property` (`<color>`, end of `index.css`) and `html` transitions them over `--motion-standard`, so the browser interpolates every color and a change in mid-glide starts from the current one.
 - A new color variable used by themes must be registered there too. Hover previews start after the pointer rests 200 ms on a card.
@@ -77,6 +79,8 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 - Components come from Hairline UI via the shadcn CLI (`npx shadcn@latest add https://hairlineui.com/r/<name>.json`). Generated component code is ours to edit.
 
 ## Aesthetic
+
+- The machine speaks in mono for figures, units, clocks, labels and states; the day speaks in Urbanist for titles, steps, notes and sentences. Never invent a metric.
 
 - Neutrals only, one theme accent for active state and the main figure; other color comes from cover art and photos. Keep the font, Urbanist, and a few weight roles; main figures are large and light.
 - Borders are low-opacity 1px hairlines; separators inside panels are dashed. Panels use large radii, nested shapes step down one radius, controls/nav/filters/badges/player are pills. Lots of air and few elements per panel.

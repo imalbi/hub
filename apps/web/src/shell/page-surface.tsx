@@ -1,22 +1,27 @@
 import { createContext, use, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { StatusLineContext, SurfaceContext } from './surface-context.ts';
 
-/** True inside a page surface: `Panel` then draws itself as an inner panel. */
-export const SurfaceContext = createContext(false);
 export const SurfaceScroller = createContext<React.RefObject<HTMLDivElement | null> | null>(null);
-
-export function useInSurface() {
-  return use(SurfaceContext);
-}
 
 export function PageSurface({
   fill = false,
   float = false,
   bar,
+  dayLine,
+  statusLine,
   scrollKey,
   className = '',
   ...rest
-}: { fill?: boolean; float?: boolean; bar?: ReactNode; scrollKey?: string } & ComponentProps<'div'>) {
+}: {
+  fill?: boolean;
+  float?: boolean;
+  bar?: ReactNode;
+  dayLine?: ReactNode;
+  statusLine?: ReactNode;
+  scrollKey?: string;
+} & ComponentProps<'div'>) {
   const scrolls = !fill && !float;
+  const defaultStatusLine = use(StatusLineContext);
   const surface = useRef<HTMLDivElement>(null);
   const band = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -46,6 +51,7 @@ export function PageSurface({
           {scrolls && scrolled && <div aria-hidden className="absolute inset-x-0 bottom-0 border-b border-border" />}
         </div>
       )}
+      {dayLine && <div className="shrink-0 pb-xl">{dayLine}</div>}
       <div className={`${scrolls ? 'shrink-0' : 'min-h-0'} flex flex-1 flex-col ${className}`} {...rest} />
     </>
   );
@@ -71,6 +77,7 @@ export function PageSurface({
           ) : (
             content
           )}
+          {statusLine === undefined ? defaultStatusLine : statusLine}
         </div>
       </SurfaceScroller>
     </SurfaceContext>

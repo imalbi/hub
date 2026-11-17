@@ -1,3 +1,4 @@
+import { Readout } from '../../components/readout.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useMail } from './use-mail.ts';
@@ -17,8 +18,9 @@ export function MailWidget() {
       ) : summary.count === null ? (
         m.mail_error()
       ) : (
-        <p className="text-title tabular-nums">
-          {summary.capped ? m.mail_count_capped({ count: summary.count }) : m.mail_count({ count: summary.count })}
+        <p>
+          {summary.capped && m.mail_at_least()}
+          <Readout>{summary.count}</Readout> {m.mail_widget_unread()}
         </p>
       )}
       {latest && (

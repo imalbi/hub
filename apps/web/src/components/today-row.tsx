@@ -19,7 +19,15 @@ export function TodayRow({ line }: { line: TodayLine }) {
         {line.muted && <span className="text-muted-foreground"> {line.muted}</span>}
       </span>
       {(line.value ?? (line.href ? m.today_open() : undefined)) && (
-        <span className="shrink-0 text-caption text-muted-foreground tabular-nums">{line.value ?? m.today_open()}</span>
+        <span
+          className={
+            line.value
+              ? 'shrink-0 text-mono-label text-muted-foreground'
+              : 'shrink-0 text-caption text-muted-foreground'
+          }
+        >
+          {line.value ?? m.today_open()}
+        </span>
       )}
     </>
   );

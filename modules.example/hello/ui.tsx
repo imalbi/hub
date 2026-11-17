@@ -8,10 +8,12 @@ import type { ModuleUI, RecordSource, TodayDay, TodayLine } from '../../apps/web
 import { useConnectionLost } from '../../apps/web/src/lib/trpc.ts';
 import { DeviceRow } from '../../apps/web/src/components/device-row.tsx';
 import { PageGrid } from '../../apps/web/src/components/page-grid.tsx';
+import { Readout } from '../../apps/web/src/components/readout.tsx';
 import { Panel } from '../../apps/web/src/components/panel.tsx';
 import { RegistryButton } from '../../apps/web/src/components/registry-button.tsx';
 import { Tile } from '../../apps/web/src/components/tile.tsx';
 import { RecordNotes } from '../../apps/web/src/components/record-notes.tsx';
+import { useNow } from '../../apps/web/src/lib/use-now.ts';
 import { setCurrentRecord } from '../../apps/web/src/lib/current-record.ts';
 
 export const copy = {
@@ -39,7 +41,9 @@ function HelloPanel() {
   return (
     <Panel title={copy.title} className="h-full">
       <p className="text-body">{state.data?.greeting ?? copy.loading}</p>
-      <p className="text-display tabular-nums">{state.data?.count ?? 0}</p>
+      <p>
+        <Readout>{state.data?.count ?? 0}</Readout>
+      </p>
       <RegistryButton label={copy.action} action={() => greet.mutateAsync()} />
     </Panel>
   );
@@ -84,6 +88,12 @@ const greetings: RecordSource = {
     return { total, rows: rows.map((row) => ({ ...row, detail: copy.title, href: '/desk/hello' })) };
   },
 };
+function useHelloMarks() {
+  const now = useNow('clock');
+  const at = new Date(now);
+  at.setHours(12, 45, 0, 0);
+  return [{ id: 'hello', at: at.getTime(), label: copy.greeting }];
+}
 function HelloTile() {
   const { state, greet } = useHello();
   const stale = useConnectionLost();
@@ -103,6 +113,7 @@ export default {
   name: 'hello',
   copy,
   todayItems: useHelloToday,
+  dayMarks: useHelloMarks,
   records: greetings,
   deviceRows: HelloRow,
   // The same row again in Sistema, after Webcam and the monitors, so the slot has an example.

@@ -1,3 +1,4 @@
+import { Readout } from '../../components/readout.tsx';
 import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
@@ -22,7 +23,9 @@ function SmallPomodoro() {
         {timer.state ? timer.phaseLabel : timer.connectionLost ? m.tile_unavailable() : m.tile_loading()}
       </p>
       <div className="mt-auto flex items-end justify-between gap-sm">
-        <p className="text-display tabular-nums">{timer.time}</p>
+        <p>
+          <Readout>{timer.time}</Readout>
+        </p>
         <RegistryButton
           iconOnly
           label={timer.primaryLabel}

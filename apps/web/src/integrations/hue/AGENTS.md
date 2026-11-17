@@ -1,3 +1,5 @@
 # Hue (web)
 
+- The Luci widget presents a brightness readout and five discrete ticks; the slider remains continuous and writes only on release.
+
 - `src/integrations/hue/`: `use-hue.ts` (the typed client from a type-only import of the server module, and the one text for panel and tile, `describeLight`), `lights-panel.tsx` (`useLightControls`, `PowerToggle`, `BrightnessSlider` and the Luci widget; `light-row.tsx` is the Dispositivi row built from the same pieces, there is no Luci tab any more; state plus an icon-only RegistryButton named `Luce: <state>`, `aria-pressed` follows power, outline when off and primary when on, disabled on Bluetooth/Hub loss; small is state and power, medium adds the brightness slider on the same row; the slider writes once on release, is disabled while the light is off or unavailable and is absent when the light has no brightness), `light-tile.tsx`, `hue-ui.ts` (the `ModuleUI` both `modules.example/hue/ui.tsx` and the private wiring export) and `copy.ts` (Italian, plain). "Senza Bluetooth" is the unavailable text on purpose: it is distinct from Hub's own "Non disponibile" and fits a deck tile in two lines.

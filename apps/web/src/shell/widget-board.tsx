@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, ArrowRightIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import { useRef, useState, useSyncExternalStore } from 'react';
 import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
+import { WidgetContext } from './widget-context.ts';
+import { DayLine } from './day-line.tsx';
 import { SplitPill } from '../components/split-pill.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { smallestWidgetSize, widgetCells, type WidgetSize } from '../lib/widget-size.ts';
@@ -89,28 +91,33 @@ export function WidgetBoard() {
 
   return (
     <section aria-label={m.widget_board()} className="flex flex-col gap-md">
-      <div className="flex items-center justify-end gap-sm">
-        {editing && (
-          <button
-            type="button"
-            disabled={missing.length === 0}
-            onClick={() => {
-              missingRef.current?.scrollIntoView({ block: 'nearest' });
-              missingRef.current?.querySelector('button')?.focus();
-            }}
-            className="min-h-touch rounded-full border border-border px-lg text-label disabled:opacity-40"
-          >
-            {m.widget_add()}
-          </button>
-        )}
-        <SplitPill
-          open={editing}
-          label={editing ? m.widget_done() : m.widget_edit()}
-          onClick={() => setEditing((value) => !value)}
-          extraLabel={m.widget_reset()}
-          onExtra={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
-        />
-      </div>
+      <DayLine
+        heading
+        actions={
+          <div className="flex items-center justify-end gap-sm">
+            {editing && (
+              <button
+                type="button"
+                disabled={missing.length === 0}
+                onClick={() => {
+                  missingRef.current?.scrollIntoView({ block: 'nearest' });
+                  missingRef.current?.querySelector('button')?.focus();
+                }}
+                className="min-h-touch rounded-full border border-border px-lg text-label disabled:opacity-40"
+              >
+                {m.widget_add()}
+              </button>
+            )}
+            <SplitPill
+              open={editing}
+              label={editing ? m.widget_done() : m.widget_edit()}
+              onClick={() => setEditing((value) => !value)}
+              extraLabel={m.widget_reset()}
+              onExtra={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
+            />
+          </div>
+        }
+      />
       {editing && <p className="text-caption text-muted-foreground">{m.widget_drag_hint()}</p>}
       <div ref={containerRef} className={`${editing ? 'widget-board editing' : 'widget-board'}`}>
         {mounted && (
@@ -136,7 +143,9 @@ export function WidgetBoard() {
                 <div key={item.widget} data-widget={item.widget} data-size={item.size} className="widget-cell">
                   {/* While editing the widget is a picture to move: its own buttons must not take the press. */}
                   <div className="h-full overflow-hidden rounded-lg" inert={editing}>
-                    <Widget size={item.size} />
+                    <WidgetContext value>
+                      <Widget size={item.size} />
+                    </WidgetContext>
                   </div>
                   {editing && (
                     <>

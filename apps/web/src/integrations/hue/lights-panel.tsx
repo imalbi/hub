@@ -1,3 +1,5 @@
+import { Readout } from '../../components/readout.tsx';
+import { Ticks } from '../../components/ticks.tsx';
 import { LightbulbIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Panel } from '../../components/panel.tsx';
@@ -80,6 +82,12 @@ export function LightsPanel({ size }: { size: WidgetSize }) {
       className={`h-full ${connectionLost || light?.availability === 'unavailable' ? 'opacity-60' : ''}`}
     >
       <p className="mt-auto text-heading break-words">{describeLight(light, connectionLost)}</p>
+      {light?.brightnessPercent !== null && light?.brightnessPercent !== undefined && (
+        <p>
+          <Readout>{light.brightnessPercent}%</Readout>{' '}
+          <Ticks value={Math.round(light.brightnessPercent / 20)} total={5} />
+        </p>
+      )}
       <div className={size === 'small' ? 'flex flex-col gap-sm' : 'flex items-center gap-md'}>
         {light?.capabilities.power && (
           <div className="min-w-0 flex-1">

@@ -35,3 +35,7 @@ export function useStudyTodayLines(day: TodayDay): TodayLine[] | null {
     },
   ];
 }
+
+export function useStudyDaySummary() {
+  return useStudyTodayLines('today')?.[0]?.value ?? null;
+}

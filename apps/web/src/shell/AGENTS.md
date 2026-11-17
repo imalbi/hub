@@ -18,3 +18,5 @@
 - `ZoneTabs` restores tab focus after selection: switching between a plain and a multi-pane tab replaces the band subtree, which would otherwise drop keyboard focus.
 
 - `shell/command-palette.tsx` queries `assistant.state` once on open and appends the assistant for two-word queries when enabled. Its result page lists the action outcomes; the existing agent hold dialog handles danger actions.
+
+- `PageSurface` accepts `dayLine` and `statusLine`; its default quiet `StatusLine` footer appears on desk pages through `StatusLineContext` supplied by `DeskShell`; the context keeps module imports of `PageSurface` independent of the shell module registry. `DayLine` on Studio Oggi and Panoramica renders completed focus and enabled modules' `dayMarks` probes; the Panoramica heading also calls each `daySummary` once. `statusItems` are optional module components and leave no gap on null. Widget context gives `Panel` titles and actions the mono label role; figures use `Readout` and discrete counts use `Ticks`.

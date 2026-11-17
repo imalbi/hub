@@ -18,11 +18,13 @@ export function ZoneTabs({
   always = false,
   fill = false,
   float = false,
+  dayLine,
 }: {
   tabs: ZoneTab[];
   always?: boolean;
   fill?: boolean;
   float?: boolean;
+  dayLine?: ReactNode;
 }) {
   const id = useId();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
@@ -41,7 +43,7 @@ export function ZoneTabs({
   // No bar: the surface starts at the top inset of the desk, with the content only.
   if (tabs.length === 1 && !always)
     return (
-      <PageSurface fill={fill} float={float}>
+      <PageSurface fill={fill} float={float} dayLine={dayLine}>
         {active.content}
       </PageSurface>
     );
@@ -49,6 +51,7 @@ export function ZoneTabs({
     <PageSurface
       fill={fill}
       float={float}
+      dayLine={dayLine}
       scrollKey={active.id}
       role="tabpanel"
       id={`${id}-panel`}

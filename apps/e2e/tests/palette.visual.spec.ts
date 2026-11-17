@@ -1,3 +1,4 @@
+import { answerQueries } from './desktop.ts';
 import { expect, test } from '@playwright/test';
 import { freezePomodoro } from './pomodoro-visual.ts';
 
@@ -6,9 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await freezePomodoro(page);
   await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
-  await page.route('**/trpc/health*', (route) =>
-    route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
-  );
+  await answerQueries(page, { health: { ok: true, uptime: 42 }, 'pomodoro.today': [] });
   await page.goto('/desk/studio');
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
   // Studio's tab bar arrives with the study module's UI: open the palette only once the page has settled.

@@ -180,3 +180,15 @@ test('audio widget keeps its output selector inside its bounds', async ({ page }
   });
   expect(fits).toBe(true);
 });
+
+test('status line is quiet and present on every desk page', async ({ page }) => {
+  for (const [, path] of zones) {
+    await page.goto(path);
+    const footer = page.getByRole('contentinfo', { name: 'Stato di Hub' });
+    await expect(footer).toBeVisible();
+    await expect(footer).toContainText('hub');
+    await expect(footer).toContainText(/\d+\s*(s|min|h|g)/);
+    await expect(footer).not.toHaveAttribute('aria-live');
+    await expect(footer.locator('[role="status"]')).toHaveCount(0);
+  }
+});

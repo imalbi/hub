@@ -7,9 +7,20 @@ import { freezePomodoro } from './pomodoro-visual.ts';
 const rail = (page: Page) => page.getByRole('navigation', { name: 'Zone' });
 
 if (process.env.HUB_EXAMPLE_MODULES === '1') {
+  test('example mark follows module availability', async ({ page }) => {
+    await page.goto('/desk');
+    await expect(page.locator('[data-day-ruler]').getByText(/12:45.*Ciao dal modulo di esempio/)).toHaveCount(1);
+    await answerQueries(page, { 'modules.enabled': [] });
+    await page.reload();
+    await expect(page.locator('[data-day-ruler]').getByText(/12:45.*Ciao dal modulo di esempio/)).toHaveCount(0);
+  });
   test('a greeting captures its post-it and shows its link', async ({ page, pc }) => {
     try {
       await page.setViewportSize({ width: 3840, height: 2160 });
+      // In the evening the capture card starts on Domani, and the post-it would leave Oggi: pin the morning.
+      const morning = new Date();
+      morning.setHours(10, 0, 0, 0);
+      await page.clock.install({ time: morning });
       await pc.post('/trpc/notes.add', {
         data: { text: 'Altro saluto', about: { source: 'hello-greetings', id: '2', title: 'Ciao a tutti' } },
       });
@@ -75,6 +86,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await freezePomodoro(page);
+    await answerQueries(page, { health: { ok: true, uptime: 42 } });
     await page.goto('/desk');
     await page.locator('[data-widget="today"]').getByRole('link', { name: 'Ciao dal modulo di esempio' }).click();
     await expect(page).toHaveURL(/\/desk\/hello$/);
@@ -177,6 +189,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await resized;
     await page.reload();
     await expect(page.locator('[data-widget="hello"]')).toHaveAttribute('data-size', 'large');
+    await expect(page.locator('[data-widget="hello"] [data-readout]')).toHaveCSS('font-family', /JetBrains Mono/);
     await page.getByRole('button', { name: 'Modifica', exact: true }).click();
     await page.getByRole('button', { name: 'Ripristina', exact: true }).click();
     await expect(page.locator('[data-widget="hello"]')).toHaveCount(0);

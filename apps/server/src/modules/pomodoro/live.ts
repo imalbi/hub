@@ -125,6 +125,26 @@ export function createPomodoro(
     return { ...timerState(timer, Date.now()), settings, lastCompletedAt };
   }
 
+  function today() {
+    const now = Date.now();
+    return db
+      .select({ startedAt: pomodoroSessions.startedAt, endedAt: pomodoroSessions.endedAt, tag: pomodoroSessions.tag })
+      .from(pomodoroSessions)
+      .where(
+        and(
+          eq(pomodoroSessions.kind, 'focus'),
+          eq(pomodoroSessions.completed, true),
+          gte(pomodoroSessions.endedAt, new Date(localMidnight(now))),
+          lt(pomodoroSessions.endedAt, new Date(nextMidnight(now))),
+        ),
+      )
+      .orderBy(pomodoroSessions.startedAt)
+      .all()
+      .flatMap(({ startedAt, endedAt, tag }) =>
+        endedAt === null ? [] : [{ startedAt: startedAt.getTime(), endedAt: endedAt.getTime(), tag }],
+      );
+  }
+
   function act(action: Exclude<TimerAction, 'complete'>, nextTag?: string) {
     settle();
     apply(action);
@@ -150,7 +170,7 @@ export function createPomodoro(
   }
 
   schedule();
-  return { state, act, configure, subscribe, close };
+  return { state, today, act, configure, subscribe, close };
 }
 
 export type PomodoroLive = ReturnType<typeof createPomodoro>;

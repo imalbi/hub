@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Panel } from '../../components/panel.tsx';
+import { Readout } from '../../components/readout.tsx';
 import { TodayRow } from '../../components/today-row.tsx';
 import { useLiveModuleUIs, useIsOn } from '../../lib/enabled-modules.ts';
 import type { TodayDay, TodayLine, TodayLinesHook } from '../../lib/module-ui.ts';
@@ -44,7 +45,9 @@ export function TodayWidget({ size }: { size: WidgetSize }) {
   const clock = (
     <div className="flex flex-col gap-2xs">
       <p className="text-title whitespace-nowrap">{date.format(now)}</p>
-      <p className="text-hero tabular-nums">{time.format(now)}</p>
+      <p>
+        <Readout>{time.format(now)}</Readout>
+      </p>
     </div>
   );
   const probes = days.flatMap((day) =>

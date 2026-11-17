@@ -1,3 +1,4 @@
+import { answerQueries } from './desktop.ts';
 import { copyFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -132,6 +133,8 @@ for (const theme of [
           await page.setViewportSize(size);
           await page.emulateMedia({ reducedMotion: 'reduce' });
           await freezePomodoro(page);
+          await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
+          await answerQueries(page, { health: { ok: true, uptime: 42 }, 'pomodoro.today': [] });
           await page.goto('/desk/settings/appearance');
           await chooseTheme(page, theme.name);
           await page.goto(`/desk/studio?tab=${tab.id}`);

@@ -13,12 +13,14 @@ test.beforeEach(async ({ page }) => {
   // Whether a `.bak` exists depends on which spec of this process saved before: the restore row is not under test here.
   await page.route('**/trpc/**', async (route) => {
     const paths = new URL(route.request().url()).pathname.replace('/trpc/', '').split(',');
-    if (!paths.includes('settings.config') && !paths.includes('settings.modules')) return route.continue();
+    if (!paths.includes('settings.config') && !paths.includes('settings.modules') && !paths.includes('health'))
+      return route.continue();
     const response = await route.fetch();
     const body: unknown = await response.json();
     if (Array.isArray(body))
       for (const [index, entry] of body.entries())
-        if (paths[index] === 'settings.config' && entry?.result?.data) entry.result.data.hasBackup = false;
+        if (paths[index] === 'health' && entry?.result) entry.result.data = { ok: true, uptime: 42 };
+        else if (paths[index] === 'settings.config' && entry?.result?.data) entry.result.data.hasBackup = false;
         // Whether a place was saved by an earlier spec decides the weather note: pin it, so the list is the same each run.
         else if (paths[index] === 'settings.modules')
           for (const module of entry?.result?.data ?? []) if (module.name === 'weather') module.note = 'manca la città';

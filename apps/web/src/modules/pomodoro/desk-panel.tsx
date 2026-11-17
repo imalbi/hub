@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
+import { useInWidget } from '../../shell/widget-context.ts';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { usePomodoro } from './use-pomodoro.ts';
@@ -12,14 +13,18 @@ export function PomodoroPanel({
   className = '',
   tag,
   footer,
+  instrument = false,
 }: {
   compact?: boolean;
   className?: string;
   tag?: string;
   footer?: ReactNode;
+  instrument?: boolean;
 }) {
   const timer = usePomodoro(tag);
+  const widget = useInWidget();
   const disabled = timer.pending || timer.state === undefined || timer.connectionLost;
+  if (instrument) return <InstrumentTimer timer={timer} disabled={disabled} tag={tag} footer={footer} />;
   return (
     <Panel
       title={m.pomodoro_title()}
@@ -54,7 +59,12 @@ export function PomodoroPanel({
           <p className="text-caption text-muted-foreground">
             {timer.state ? timer.phaseLabel : timer.connectionLost ? m.tile_unavailable() : m.tile_loading()}
           </p>
-          <p role="timer" aria-label={m.pomodoro_remaining()} className="text-display tabular-nums">
+          <p
+            role="timer"
+            aria-label={m.pomodoro_remaining()}
+            data-readout={widget ? '' : undefined}
+            className={widget ? 'text-readout' : 'text-display tabular-nums'}
+          >
             <span className="sr-only">{timer.time}</span>
             <span aria-hidden className="select-none">
               {/* Digits mount with the first real value, so arriving at the page is not a change they roll for. */}
@@ -110,5 +120,103 @@ export function PomodoroPanel({
         </p>
       )}
     </Panel>
+  );
+}
+
+// The total as the timer reads it: a fractional preset (the e2e fake runs 0.1 minutes) printed "0.1:00".
+function clock(ms: number) {
+  const total = Math.round(ms / 1000);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function InstrumentTimer({
+  timer,
+  disabled,
+  tag,
+  footer,
+}: {
+  timer: ReturnType<typeof usePomodoro>;
+  disabled: boolean;
+  tag?: string;
+  footer?: ReactNode;
+}) {
+  return (
+    <section aria-label={m.pomodoro_title()} className="flex flex-col items-center gap-lg">
+      <div className="flex w-full justify-between gap-sm text-mono-label text-muted-foreground">
+        <h3>{m.pomodoro_title()}</h3>
+        <span className="flex items-center gap-xs">
+          {timer.phaseLabel}
+          <PomodoroSettings settings={timer.state?.settings} />
+        </span>
+      </div>
+      <progress aria-label={m.pomodoro_progress()} value={timer.progress} max={1} className="sr-only" />
+      <div className="instrument-dial">
+        <svg viewBox="0 0 100 100" aria-hidden className="pomodoro-ring size-full -rotate-90">
+          <circle cx="50" cy="50" r="46" className="stroke-border" />
+          <circle
+            cx="50"
+            cy="50"
+            r="46"
+            pathLength="100"
+            strokeDasharray="100"
+            strokeDashoffset={100 - timer.progress * 100}
+            className="stroke-foreground"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-xs">
+          <p role="timer" aria-label={m.pomodoro_remaining()} className="text-readout">
+            <span className="sr-only">{timer.time}</span>
+            <span aria-hidden className="select-none">
+              {timer.state ? (
+                <>
+                  <NumberRoll
+                    value={timer.minutes}
+                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
+                    locales="it"
+                    direction="down"
+                  />
+                  :
+                  <NumberRoll
+                    value={timer.seconds}
+                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
+                    locales="it"
+                    direction="down"
+                  />
+                </>
+              ) : (
+                <span className="invisible">{timer.time}</span>
+              )}
+            </span>
+          </p>
+          <span className="text-mono-label text-muted-foreground">
+            {m.pomodoro_instrument_remaining({
+              duration: clock(timer.state?.durationMs || (timer.state?.settings.focusMinutes ?? 0) * 60_000),
+            })}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-wrap justify-center gap-xs">
+        {timer.state?.phase !== 'idle' && timer.state && (
+          <>
+            <RegistryButton secondary label={m.pomodoro_skip()} action={timer.skip} disabled={disabled} />
+            <RegistryButton secondary label={m.pomodoro_stop()} action={timer.stop} disabled={disabled} />
+          </>
+        )}
+        <RegistryButton
+          label={tag && timer.primaryAction === 'start' ? m.study_start_pomodoro() : timer.primaryLabel}
+          action={() => timer.act(timer.primaryAction)}
+          disabled={disabled}
+        />
+      </div>
+      <p className="text-mono-label text-muted-foreground">
+        {timer.state ? m.pomodoro_today({ count: timer.state.completedFocusToday }) : m.tile_loading()}
+      </p>
+      {footer && <p className="text-mono-label text-muted-foreground">{footer}</p>}
+      {timer.error && (
+        <p role="alert" className="text-caption text-danger">
+          {m.pomodoro_error()}
+        </p>
+      )}
+    </section>
   );
 }

@@ -43,8 +43,7 @@ export const defaultLayout: WidgetItem[] = [
   { widget: 'today', size: 'wide', x: 0, y: 0 },
   { widget: 'pomodoro', size: 'medium', x: 0, y: 1 },
   { widget: 'media', size: 'medium', x: 6, y: 1 },
-  { widget: 'server', size: 'small', x: 0, y: 2 },
-  { widget: 'audio', size: 'small', x: 3, y: 2 },
+  { widget: 'audio', size: 'medium', x: 0, y: 2 },
   { widget: 'news', size: 'medium', x: 6, y: 2 },
 ];
 

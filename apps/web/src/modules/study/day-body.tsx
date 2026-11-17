@@ -31,6 +31,7 @@ export function DayBody({
   notes,
   errors,
   onError,
+  instrument = false,
 }: {
   body: Body;
   header: StudyHeader;
@@ -42,8 +43,11 @@ export function DayBody({
   errors?: StudyError[];
   /** Starts an error entry on a step (Oggi only). */
   onError?: (step: Body['blocks'][number]['steps'][number]) => void;
+  instrument?: boolean;
 }) {
   const files = filesToOpen(body);
+  const allSteps = body.blocks.flatMap((block) => block.steps);
+  const current = allSteps.find((step) => !checked?.has(step.id))?.id;
   const threads = header.threads.filter((thread) => body.threads.includes(thread.id));
   return (
     <div className="flex flex-col gap-md">
@@ -96,10 +100,29 @@ export function DayBody({
             key={block.id}
             className="flex min-w-0 flex-col gap-xs border-t border-dashed border-border pt-md first:border-t-0 first:pt-0"
           >
-            <h4 className="text-caption text-muted-foreground uppercase">{block.title}</h4>
+            <h4
+              className={
+                instrument ? 'text-mono-label text-muted-foreground' : 'text-caption text-muted-foreground uppercase'
+              }
+            >
+              {block.title}
+            </h4>
             <ul className="flex flex-col gap-sm">
               {block.steps.map((step) => (
-                <li key={step.id} className="flex items-center gap-sm text-body">
+                <li
+                  key={step.id}
+                  data-current={(instrument && current === step.id) || undefined}
+                  className={
+                    instrument
+                      ? 'study-step group flex items-center gap-sm text-body'
+                      : 'flex items-center gap-sm text-body'
+                  }
+                >
+                  {instrument && (
+                    <span className="text-mono-label text-muted-foreground">
+                      {String(allSteps.findIndex((item) => item.id === step.id) + 1).padStart(2, '0')}
+                    </span>
+                  )}
                   {onStep ? (
                     <Checkbox
                       aria-label={step.text}
@@ -125,11 +148,20 @@ export function DayBody({
                         <Tooltip content={m.study_error_add()}>
                           <button
                             type="button"
+                            // The visible "Errore" alone would not say which step it is about.
                             aria-label={m.study_error_step({ step: step.text })}
                             onClick={() => onError(step)}
-                            className="flex size-icon shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                            className={
+                              instrument
+                                ? 'study-error cursor-pointer rounded-full border border-border px-sm text-label focus-visible:opacity-100'
+                                : 'flex size-icon shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
+                            }
                           >
-                            <WarningCircleIcon aria-hidden="true" className="size-icon-sm" />
+                            {instrument ? (
+                              m.study_error_short()
+                            ) : (
+                              <WarningCircleIcon aria-hidden="true" className="size-icon-sm" />
+                            )}
                           </button>
                         </Tooltip>
                       )}

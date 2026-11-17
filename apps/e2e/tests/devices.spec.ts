@@ -213,8 +213,11 @@ test('the page is a 5/7 split at the surface height with a dashed step separator
   if (!connect || !right || !surface) return;
   // 5 and 7 of 12 columns: the right panel is 7/5 as wide as the left column (the gap is shared).
   expect(Math.abs(right.width / connect.width - 7 / 5)).toBeLessThan(0.05);
-  // Both columns reach the bottom of the surface padding.
-  expect(Math.abs(right.y + right.height - (surface.y + surface.height - 36))).toBeLessThan(40);
+  // Both columns reach the bottom of the surface padding, above the status line at the foot of the surface (step 68).
+  const foot = await page.getByRole('contentinfo', { name: 'Stato di Hub' }).boundingBox();
+  expect(foot && foot.y > right.y && foot.y + foot.height <= surface.y + surface.height + 1).toBe(true);
+  if (!foot) return;
+  expect(Math.abs(right.y + right.height - (foot.y - 36))).toBeLessThan(40);
   expect(await access.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   const second = page.getByRole('region', { name: 'Collega un telefono' }).getByRole('listitem').nth(1);
   await expect(second).toHaveCSS('border-top-style', 'dashed');

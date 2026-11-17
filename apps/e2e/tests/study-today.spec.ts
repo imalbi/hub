@@ -77,7 +77,7 @@ test('Oggi stacks the blocks and shows a compact link per step instead of the pa
 
 test('Oggi header, counters and the next days read cleanly without phases', async ({ page, pc }) => {
   await openToday(page, pc);
-  await expect(page.getByText('G1 · Botanica', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Botanica.*G1/)).toBeVisible();
   const count = page.getByRole('paragraph').filter({ hasText: 'di 6 passi' });
   await expect(count).toMatchAriaSnapshot('- paragraph: 0 di 6 passi');
   await page.getByRole('checkbox', { name: 'Scrivi tre righe di sintesi.' }).check();
@@ -121,4 +121,101 @@ test('no step error button covers text or another button', async ({ page, pc }) 
   const marks = await Promise.all((await buttons.all()).map((button) => box(button)));
   for (const mark of marks) for (const text of texts) expect(intersects(mark, text)).toBe(false);
   for (const [i, a] of marks.entries()) for (const b of marks.slice(i + 1)) expect(intersects(a, b)).toBe(false);
+});
+
+test('instrument columns, ticks, current step and timer follow the study day', async ({ page, pc }) => {
+  await openToday(page, pc);
+  const steps = page.locator('[data-study-day] li').filter({ has: page.getByRole('checkbox') });
+  await expect(steps).toHaveCount(6);
+  for (let index = 0; index < 6; index++)
+    await expect(steps.nth(index)).toContainText(String(index + 1).padStart(2, '0'));
+  for (const viewport of [
+    { width: 3840, height: 2160 },
+    { width: 1920, height: 1080 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const day = await box(page.locator('[data-study-day]'));
+    const dial = await box(page.locator('[data-study-dial]'));
+    const next = await box(page.locator('[data-study-next]'));
+    expect(day.x).toBeLessThan(dial.x);
+    expect(dial.x).toBeLessThan(next.x);
+    expect(Math.abs(day.y - dial.y)).toBeLessThan(8);
+    expect(Math.abs(day.y - next.y)).toBeLessThan(8);
+  }
+  await page.getByRole('checkbox', { name: 'Leggi il capitolo sui tessuti e annota i termini nuovi.' }).check();
+  await page.getByRole('checkbox', { name: 'Rileggi gli esempi come riscontro.' }).check();
+  const ticks = page.getByRole('img', { name: '2 di 6' });
+  await expect(ticks.locator('i')).toHaveCount(6);
+  await expect(ticks.locator('i[data-filled]')).toHaveCount(2);
+  const current = page.locator('li[data-current]');
+  await expect(current).toContainText('Svolgi gli esercizi da 1 a 11.');
+  await expect(current.getByRole('button', { name: /^Registra un errore su: / })).toBeVisible();
+  await current.getByRole('checkbox').check();
+  await expect(page.getByRole('img', { name: '3 di 6' })).toBeVisible();
+  await expect(page.locator('li[data-current]')).toContainText('Confronta con le soluzioni.');
+  await page
+    .locator('li[data-current]')
+    .getByRole('button', { name: /^Registra un errore su: / })
+    .click();
+  await expect(page.getByRole('textbox', { name: /Riferimento/ })).toBeVisible();
+  await expect(page.getByText('Leggi il capitolo sui tessuti e annota i termini nuovi.')).not.toHaveCSS(
+    'font-family',
+    /JetBrains Mono/,
+  );
+  await expect(page.getByText('Leggi il capitolo sui tessuti e annota i termini nuovi.')).toHaveCSS(
+    'font-family',
+    /Urbanist/,
+  );
+  await expect(page.getByRole('timer', { name: /tempo rimanente/i })).toHaveCSS('font-family', /JetBrains Mono/);
+});
+
+test('the instrument timer pauses the server and the subject selector saves its state', async ({ page, pc }) => {
+  await openToday(page, pc);
+  await expect(page.getByText(/Botanica.*G1 di 3/i)).toBeVisible();
+  try {
+    await page.getByRole('button', { name: 'Avvia Pomodoro' }).click();
+    const paused = page.waitForResponse((response) => response.url().includes('pomodoro.pause') && response.ok());
+    await page.getByRole('button', { name: 'Metti in pausa' }).click();
+    await paused;
+    const state = (await (await pc.get('/trpc/pomodoro.state')).json()).result.data;
+    expect(state.pausedRemainingMs).toBeGreaterThan(0);
+    const seconds = Math.ceil(state.pausedRemainingMs / 1000);
+    await expect(page.getByRole('timer', { name: 'Tempo rimanente' })).toContainText(
+      `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`,
+    );
+  } finally {
+    await pc.post('/trpc/pomodoro.stop', { data: {} });
+  }
+  const subject = page.getByRole('button', { name: 'Materia: In corso' });
+  await subject.click();
+  const saved = page.waitForResponse((response) => response.url().includes('study.setSubject') && response.ok());
+  await page.getByRole('option', { name: 'In pausa' }).click();
+  await saved;
+  await expect(page.getByText('Nessun piano attivo')).toBeVisible();
+  await pc.post('/trpc/study.setSubject', { data: { plan: 'example', id: 'a', state: 'active' } });
+});
+
+test('day ruler places completed focus and advances the present mark', async ({ page }) => {
+  const { answerQueries } = await import('./desktop.ts');
+  const now = new Date();
+  now.setHours(18, 40, 0, 0);
+  const start = new Date(now);
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(10, 25, 0, 0);
+  await page.clock.install({ time: now });
+  await answerQueries(page, {
+    'pomodoro.today': [{ startedAt: start.getTime(), endedAt: end.getTime(), tag: 'test' }],
+  });
+  await page.goto('/desk/studio');
+  const ruler = page.locator('[data-day-ruler]');
+  const mark = page.locator('[data-day-now]');
+  const area = await box(ruler);
+  const block = await box(page.locator('[data-day-block]'));
+  expect(Math.abs(block.x - area.x - (area.width * 4) / 18)).toBeLessThan(2);
+  const before = await box(mark);
+  expect(Math.abs(before.x - area.x - (area.width * (12 + 40 / 60)) / 18)).toBeLessThan(2);
+  await page.clock.fastForward('01:00:00');
+  const after = await box(mark);
+  expect(Math.abs(after.x - before.x - area.width / 18)).toBeLessThan(2);
 });

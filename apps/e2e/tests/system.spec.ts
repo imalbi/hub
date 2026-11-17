@@ -36,6 +36,10 @@ test('without a powerstat directory Consumo is gone and Server takes the whole b
   const server = page.getByRole('region', { name: 'Server' });
   await expect(server).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consumo' })).toHaveCount(0);
+  const footer = page.getByRole('contentinfo', { name: 'Stato di Hub' });
+  await expect(footer).not.toContainText(' W');
+  await expect(footer).not.toContainText('kWh');
+  await expect(footer.locator('span:empty')).toHaveCount(0);
   const audio = await page.getByRole('region', { name: 'Audio', exact: true }).boundingBox();
   const figure = await server.boundingBox();
   if (!audio || !figure) throw new Error('missing box');

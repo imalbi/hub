@@ -64,8 +64,9 @@ for (const { path, landmark } of surfacePages) {
     // Inner panels: never inside another, never with a border.
     const panels = await page.evaluate(() => ({
       nested: document.querySelectorAll('[data-panel] [data-panel]').length,
+      // Panoramica's widget cells keep a hairline, as board I1 draws them (step 68); page panels have none.
       bordered: [...document.querySelectorAll('[data-panel]')].filter(
-        (el) => getComputedStyle(el).borderTopWidth !== '0px',
+        (el) => !el.closest('[data-widget]') && getComputedStyle(el).borderTopWidth !== '0px',
       ).length,
       outside: [...document.querySelectorAll('[data-panel]')].filter((el) => !el.closest('[data-page-surface]')).length,
       count: document.querySelectorAll('[data-panel]').length,
@@ -74,7 +75,7 @@ for (const { path, landmark } of surfacePages) {
     expect(panels.bordered).toBe(0);
     expect(panels.outside).toBe(0);
     // Musica is one surface split by a dashed line (library and content are one thing), so it has no inner panel.
-    if (path !== '/desk/media') expect(panels.count).toBeGreaterThan(0);
+    if (path !== '/desk/media' && path !== '/desk/studio') expect(panels.count).toBeGreaterThan(0);
   });
 }
 
@@ -243,10 +244,12 @@ if (examples) {
     page,
   }) => {
     await freezePomodoro(page);
-    await page.route('**/trpc/health*', (route) =>
-      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
-    );
-    await answerQueries(page, { 'devices.list': [], 'agents.localCalls': [], 'agents.localCallsToday': 0 });
+    await answerQueries(page, {
+      health: { ok: true, uptime: 42 },
+      'devices.list': [],
+      'agents.localCalls': [],
+      'agents.localCallsToday': 0,
+    });
     await page.goto('/desk/devices');
     await expect(page.getByRole('tablist', { name: 'Sezioni' })).toBeVisible();
     await page.evaluate(async () => {

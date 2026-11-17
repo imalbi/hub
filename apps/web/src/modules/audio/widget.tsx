@@ -1,3 +1,4 @@
+import { Readout } from '../../components/readout.tsx';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { Panel } from '../../components/panel.tsx';
@@ -27,7 +28,11 @@ function SmallAudio() {
               ? m.tile_unavailable()
               : m.tile_loading()}
         </p>
-        {audio.data && <NumberRoll className="text-display" value={Math.round(audio.data.volume * 100)} suffix="%" />}
+        {audio.data && (
+          <Readout>
+            <NumberRoll value={Math.round(audio.data.volume * 100)} suffix="%" />
+          </Readout>
+        )}
       </div>
       <OutputSwitch />
     </Panel>

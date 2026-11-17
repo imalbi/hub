@@ -4,6 +4,7 @@ import { useLiveModuleUIs } from '../lib/enabled-modules.ts';
 import type { PageTab } from '../lib/module-ui.ts';
 import { pageTabs } from './zone-sections.ts';
 import { useSitesConfigured } from '../modules/sites/sites.tsx';
+import { DayLine } from './day-line.tsx';
 import { m } from '../paraglide/messages.js';
 import { activeTab } from '../lib/zone-search.ts';
 
@@ -27,6 +28,7 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
   return (
     <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
       <ZoneTabs
+        dayLine={zone === 'study' && active === 'study' ? <DayLine /> : undefined}
         always={always}
         fill={ownScroll}
         float={float}

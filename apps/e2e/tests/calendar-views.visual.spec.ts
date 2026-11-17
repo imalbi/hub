@@ -1,3 +1,4 @@
+import { answerQueries } from './desktop.ts';
 import { clean, seed, seedShifts } from './calendar-data.ts';
 import { expect, test } from './fixtures.ts';
 
@@ -8,6 +9,7 @@ const NOW = new Date(2026, 10, 15, 10, 0);
 test.beforeEach(async ({ page, pc }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.clock.setFixedTime(NOW);
+  await answerQueries(page, { health: { ok: true, uptime: 42 } });
   await seed(pc);
   await seedShifts(pc);
   // Two dated things after the week, for the "Poi:" line.
