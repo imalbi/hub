@@ -480,5 +480,28 @@
   "mail_reply_via": "Da: {account}, copia in Inviata",
   "mail_save_copy": "copia in Inviata",
   "mail_reply_loading": "Preparo la risposta",
-  "mail_clear_search": "Svuota la ricerca"
+  "mail_clear_search": "Svuota la ricerca",
+  "today_open": "Apri",
+  "today_more": "e altre {count}",
+  "today_tomorrow": "Domani, {day}",
+  "today_lines": "Righe di oggi",
+  "today_lines_tomorrow": "Righe di domani",
+  "today_weather_missing": "Meteo non disponibile",
+  "today_weather_set": "Imposta la città",
+  "calendar_tomorrow_none": "Nessun evento tuo",
+  "calendar_chip": "Calendario",
+  "study_chip": "Studio",
+  "study_today_line": "G{g} · {title}",
+  "study_steps_done": "{done} di {total} passi",
+  "study_steps_total": [
+    {
+      "declarations": ["input total", "local plural = total: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "{total} passo",
+        "plural=*": "{total} passi"
+      }
+    }
+  ],
+  "mail_chip": "Posta"
 }

@@ -20,7 +20,7 @@ export function NotesWidget() {
       action={
         <button
           type="button"
-          onClick={openCapture}
+          onClick={() => openCapture()}
           className="flex min-h-xl cursor-pointer items-center gap-xs rounded-full border border-border px-md text-label hover:bg-muted"
         >
           <PlusIcon className="size-icon-xs" aria-hidden />

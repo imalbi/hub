@@ -89,6 +89,7 @@ export default defineConfig({
               'sites.spec.ts',
               'study.spec.ts',
               'study-today.spec.ts',
+              'today.spec.ts',
               'study-library.spec.ts',
               'study.visual.spec.ts',
               'jobs.spec.ts',

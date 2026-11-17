@@ -41,13 +41,6 @@ test('Oggi leads the default board and shows the Italian date and weather', asyn
   await expect(today.getByText('Località esempio')).toBeVisible();
 });
 
-test('Oggi omits the weather when it is not configured', async ({ page }) => {
-  await page.route('**/trpc/weather.state*', (route) => route.fulfill({ json: [{ result: { data: null } }] }));
-  await page.reload();
-  await expect(cell(page, 'today')).toBeVisible();
-  await expect(cell(page, 'today').getByText('Località esempio')).toHaveCount(0);
-});
-
 test('widgets on the same row have the same height, two small ones fill a medium width', async ({ page }) => {
   const [pomodoro, media, server, audio] = await Promise.all(
     ['pomodoro', 'media', 'server', 'audio'].map((widget) => box(page, widget)),

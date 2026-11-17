@@ -3,7 +3,7 @@ import { createTRPCOptionsProxy, useSubscription } from '@trpc/tanstack-react-qu
 import { HandWavingIcon } from '@phosphor-icons/react';
 import type definition from './server.ts';
 import { createModuleClient } from '../../apps/web/src/lib/module-client.ts';
-import type { ModuleUI } from '../../apps/web/src/lib/module-ui.ts';
+import type { ModuleUI, TodayDay, TodayLine } from '../../apps/web/src/lib/module-ui.ts';
 import { useConnectionLost } from '../../apps/web/src/lib/trpc.ts';
 import { DeviceRow } from '../../apps/web/src/components/device-row.tsx';
 import { PageGrid } from '../../apps/web/src/components/page-grid.tsx';
@@ -58,8 +58,9 @@ function HelloRow() {
     </DeviceRow>
   );
 }
-function HelloToday() {
-  return <a href="/desk/hello">{copy.greeting}</a>;
+// An Oggi line (step 66): a hook that returns rows, so Oggi can count and cut them. Nothing for tomorrow.
+function useHelloToday(day: TodayDay): TodayLine[] | null {
+  return day === 'today' ? [{ id: 'hello', chip: copy.title, text: copy.greeting, href: '/desk/hello' }] : null;
 }
 function HelloTile() {
   const { state, greet } = useHello();
@@ -79,7 +80,7 @@ function HelloTile() {
 export default {
   name: 'hello',
   copy,
-  todayItems: HelloToday,
+  todayItems: useHelloToday,
   deviceRows: HelloRow,
   // The same row again in Sistema, after Webcam and the monitors, so the slot has an example.
   systemRows: HelloRow,

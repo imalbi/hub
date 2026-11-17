@@ -73,7 +73,10 @@ test.beforeEach(async ({ page, pc }) => {
   });
   await page.goto('/desk');
   await expect(page.getByRole('region', { name: 'Post-it', exact: true }).getByText('Comprare il caffe')).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Post-it per oggi' }).getByText('Comprare il caffe')).toBeVisible();
+  // Esteso shows two cards a day (step 66): the first is the readiness check.
+  await expect(
+    page.getByRole('region', { name: 'Post-it per oggi' }).getByText(/Oggi facciamo lo step 40/),
+  ).toBeVisible();
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
@@ -137,7 +140,10 @@ test('Oggi, the widget and the capture card in paper', async ({ page }) => {
   await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
   await expect(page.getByRole('region', { name: 'Post-it', exact: true }).getByText('Comprare il caffe')).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Post-it per oggi' }).getByText('Comprare il caffe')).toBeVisible();
+  // Esteso shows two cards a day (step 66): the first is the readiness check.
+  await expect(
+    page.getByRole('region', { name: 'Post-it per oggi' }).getByText(/Oggi facciamo lo step 40/),
+  ).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page.getByRole('region', { name: 'Oggi', exact: true })).toHaveScreenshot('notes-oggi-paper.png', {
     animations: 'disabled',

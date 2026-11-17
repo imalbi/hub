@@ -4,7 +4,9 @@ import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
 import { CalendarDotsIcon } from '@phosphor-icons/react';
 import { CalendarZone } from '../modules/calendar/zone.tsx';
-import { CalendarToday } from '../modules/calendar/today.tsx';
+import { useCalendarTodayLines } from '../modules/calendar/today.tsx';
+import { useMailTodayLines } from '../modules/mail/today-line.ts';
+import { useStudyTodayLines } from '../modules/study/today-line.ts';
 import { useNotesCalendarItems } from '../modules/notes/calendar.ts';
 import { NotesColumn } from '../modules/notes/today.tsx';
 import { NotesWidget } from '../modules/notes/widget.tsx';
@@ -23,6 +25,7 @@ const examples =
 export const moduleUIs: ModuleUI[] = [
   {
     name: 'study',
+    todayItems: useStudyTodayLines,
     copy: {},
     calendarItems: useStudyCalendarItems,
     sections: [
@@ -40,6 +43,7 @@ export const moduleUIs: ModuleUI[] = [
   },
   {
     name: 'mail',
+    todayItems: useMailTodayLines,
     copy: {},
     sections: [{ zone: 'messages', id: 'mail', label: m.module_mail, component: PostaSection, fill: true }],
   },
@@ -55,7 +59,7 @@ export const moduleUIs: ModuleUI[] = [
   {
     name: 'calendar',
     copy: {},
-    todayItems: CalendarToday,
+    todayItems: useCalendarTodayLines,
     zone: { id: 'calendar', label: m.calendar_title, icon: CalendarDotsIcon, page: CalendarZone, fill: true },
   },
   ...[...Object.values(local), ...Object.values(examples)].map((module) => module.default),

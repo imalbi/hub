@@ -49,7 +49,10 @@ function CaptureForm() {
   const add = useMutation(trpc.notes.add.mutationOptions());
   const [today] = useState(() => localDay(new Date()));
   const [text, setText] = useState('');
-  const [when, setWhen] = useState<When>(() => (new Date().getHours() >= EVENING_HOUR ? 'tomorrow' : 'today'));
+  const preset = useNotesUi().day;
+  const [when, setWhen] = useState<When>(
+    () => preset ?? (new Date().getHours() >= EVENING_HOUR ? 'tomorrow' : 'today'),
+  );
   const [picked, setPicked] = useState(() => addDays(today, 2));
   const [choosing, setChoosing] = useState(false);
   const [typedDay, setTypedDay] = useState('');

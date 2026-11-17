@@ -98,9 +98,10 @@ test("Oggi lists today's own events, not a shift", async ({ page, pc }) => {
   });
   await page.goto('/desk');
   const today = page.getByRole('region', { name: 'Oggi', exact: true });
-  await expect(today.getByRole('list', { name: 'Impegni di oggi' }).getByText('Dentista')).toBeVisible();
-  await expect(today.getByText('16:30')).toBeVisible();
-  await expect(today.getByRole('list', { name: 'Impegni di oggi' }).getByRole('listitem')).toHaveCount(1);
+  // Step 66: one Oggi row per own event, chip "Calendario".
+  const events = today.getByRole('link').filter({ hasText: 'Calendario' });
+  await expect(events).toHaveCount(1);
+  await expect(events).toContainText('16:30 Dentista');
 });
 
 test('Studio days slide from today, one a day, and open Studio', async ({ page, pc }) => {

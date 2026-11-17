@@ -31,5 +31,28 @@
   "notes_type_day_placeholder": "venerdì, tra 3 giorni, 4 dic",
   "notes_day_unknown": "Non capisco il giorno. Prova con domani o 4 dic.",
   "notes_month_previous": "Mese prima",
-  "notes_month_next": "Mese dopo"
+  "notes_month_next": "Mese dopo",
+  "notes_count_today": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "{count} post-it per oggi",
+        "plural=*": "{count} post-it per oggi"
+      }
+    }
+  ],
+  "notes_count_tomorrow": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "{count} post-it per domani",
+        "plural=*": "{count} post-it per domani"
+      }
+    }
+  ],
+  "notes_tomorrow_region": "Post-it per domani",
+  "notes_today_heading": "Post-it di oggi",
+  "notes_add_tomorrow": "Aggiungi un post-it per domani"
 }

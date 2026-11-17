@@ -32,15 +32,37 @@ export type CalendarItem = {
 };
 /** A hook the Calendario page calls with the days it shows (`YYYY-MM-DD`, inclusive); undefined while it loads. */
 export type CalendarItemsHook = (range: { from: string; to: string }) => CalendarItem[] | undefined;
+/** Which day an Oggi line or column is about: Esteso asks for tomorrow too. */
+export type TodayDay = 'today' | 'tomorrow';
+/**
+ * One line of Oggi, drawn by `TodayRow`: the module's chip, the text (with an optional muted tail), and on the right a
+ * value or "Apri". With `href` the whole row is one link; `dismiss` is for rows without a link (a link cannot hold a button).
+ */
+export type TodayLine = {
+  id: string;
+  chip?: string;
+  text: string;
+  muted?: string;
+  value?: string;
+  href?: string;
+  dismiss?: { label: string; run: () => void };
+};
+/** A hook Oggi calls per day it shows; null or [] when the module has nothing to say about that day. */
+export type TodayLinesHook = (day: TodayDay) => TodayLine[] | null;
+/** How Oggi wants the post-its: a count, a titled column, titled cards two per row, or a bare stack (Esteso). */
+export type TodayColumnVariant = 'count' | 'column' | 'grid' | 'stack';
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
   /** Widgets are for Panoramica, the one board: it offers every widget of every module. */
   widgets?: ModuleWidget[];
-  /** Short lines in Oggi, rendered in module order. Components may return null or link to a zone. */
-  todayItems?: ComponentType | ComponentType[];
-  /** The middle column of Oggi, bottom aligned between the date column and the weather: a stack of short cards. One per app (the post-its). */
-  todayColumn?: ComponentType;
+  /**
+   * Lines in Oggi, in module order (step 66). Hooks, not components, so Oggi can count every line and cut them by
+   * number ("e altre N") instead of clipping. Not named `use...` by the caller (see `activities`).
+   */
+  todayItems?: TodayLinesHook | TodayLinesHook[];
+  /** The post-its of a day in Oggi, in the shape the size asks for. One per app (the post-its). */
+  todayColumn?: ComponentType<{ day: TodayDay; variant: TodayColumnVariant; max: number }>;
   /** Read-only items for the Calendario page, in module order while the module is on. Not named `use...` by the caller (see `activities`). */
   calendarItems?: CalendarItemsHook | CalendarItemsHook[];
   /** A page of its own in the rail. It lays itself out, and uses `ZoneTabs` when it needs tabs. */
