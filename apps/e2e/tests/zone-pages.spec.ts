@@ -416,11 +416,11 @@ test('keyboard focus scrolls a covered control below the surface band', async ({
   expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(band!.y + band!.height - 1);
 });
 
-test('the rounded frame clips a thin styled native scrollbar', async ({ page }) => {
+test('the rounded frame clips a styled native scrollbar', async ({ page }) => {
   await page.goto('/desk/studio');
   const frame = page.locator('[data-page-surface]');
   const scroller = page.locator('[data-page-scroller]');
-  await expect(scroller).toHaveCSS('scrollbar-width', 'thin');
+  await expect(scroller).toHaveCSS('scrollbar-width', 'auto');
   expect(await scroller.evaluate((element) => getComputedStyle(element).scrollbarColor)).toContain('rgba(0, 0, 0, 0)');
   await expect(frame).toHaveCSS('overflow', 'hidden');
   const radius = await frame.evaluate((element) => getComputedStyle(element).borderTopRightRadius);
