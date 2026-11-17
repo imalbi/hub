@@ -8,12 +8,12 @@ import { createRouterClient } from '../../lib/module-client.ts';
 export type MailRouter = ReturnType<typeof createMailRouter>;
 export type MailFilter = NonNullable<inferRouterInputs<MailRouter>['inbox']['filter']>;
 export type InboxRow = inferRouterOutputs<MailRouter>['inbox']['rows'][number];
-const client = createRouterClient<MailRouter>('mail');
+export const mailClient = createRouterClient<MailRouter>('mail');
 
 export function useMailTRPC() {
   const queryClient = useQueryClient();
   return createTRPCOptionsProxy<MailRouter, ofFeatureFlags<{ keyPrefix: true }>>({
-    client,
+    client: mailClient,
     queryClient,
     keyPrefix: 'mail',
   });

@@ -11,7 +11,7 @@ export type StudyDayBody = inferRouterOutputs<StudyRouter>['daysById'][number];
 export type StudyError = inferRouterOutputs<StudyRouter>['errors'][number];
 export type StudyReview = inferRouterOutputs<StudyRouter>['review'];
 export type StudyDay = StudyIndex['days'][number] | StudyIndex['hiddenDays'][number];
-const client = createModuleClient<typeof studyModule>('study');
+export const studyClient = createModuleClient<typeof studyModule>('study');
 
 /** Every subject of the active plans, keyed `<planId>:<subjectId>` like the server's index (decision 15). */
 export type StudySubject = { key: string; planId: string; id: string; name: string; label: string };
@@ -47,7 +47,7 @@ export function subjectShade(subjects: StudySubject[], key: string) {
 export function useStudyTRPC() {
   const queryClient = useQueryClient();
   return createTRPCOptionsProxy<StudyRouter, ofFeatureFlags<{ keyPrefix: true }>>({
-    client,
+    client: studyClient,
     queryClient,
     keyPrefix: 'study',
   });

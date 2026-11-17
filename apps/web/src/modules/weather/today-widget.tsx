@@ -18,7 +18,8 @@ const time = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digi
 // Lines per day by size (decision 9): cut by count with "e altre N", never clipped or scrolled.
 const LINES: Partial<Record<WidgetSize, number>> = { medium: 2, wide: 3, large: 4, full: 6 };
 // Post-it cards per day by size, cut the same way.
-const CARDS: Partial<Record<WidgetSize, number>> = { wide: 2, large: 4, full: 2 };
+// Grande keeps one row of two: with four lines, "e altre N" and two rows of cards it overflowed its cell (step 64 review).
+const CARDS: Partial<Record<WidgetSize, number>> = { wide: 2, large: 2, full: 2 };
 
 type Reported = Record<string, TodayLine[] | null>;
 

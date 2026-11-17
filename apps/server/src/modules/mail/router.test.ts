@@ -246,6 +246,7 @@ void test('a paired phone gets the unread state but never the content of the mai
   for (const [path, input] of [
     ['mail.list', { account: 'work' }],
     ['mail.search', { account: 'work', filter: { subject: 'Offerta' } }],
+    ['mail.searchRecords', { query: 'Offerta' }],
     ['mail.read', { account: 'work', id: '310' }],
     ['mail.threads', { links: [{ account: 'work', messageId: '<a@example.com>' }] }],
   ] as const)
@@ -305,4 +306,36 @@ void test('thread links share a stable key using inbox sender and sent recipient
   assert.equal(second.thread.key, first.thread.key);
   assert.equal(second.thread.messages.length, 2);
   assert.equal(second.thread.messages[1].counterpart, 'person@example.com');
+});
+
+void test('searchRecords finds subjects in every account, newest first, cut at 3 with the full count', async (t) => {
+  const { get, calls } = setup(t);
+  const all = (await get('mail.searchRecords', { query: 'o' })).json().result.data;
+  assert.equal(all.total, 4);
+  assert.deepEqual(
+    all.rows.map((row: { account: string; id: string; label: string }) => [row.account, row.id, row.label]),
+    [
+      ['work', '310', 'Lavoro'],
+      ['personal', '88', 'Personale'],
+      ['work', '309', 'Lavoro'],
+    ],
+  );
+  const one = (await get('mail.searchRecords', { query: 'iscrizione' })).json().result.data;
+  assert.deepEqual([one.total, one.rows[0].id], [1, '88']);
+  assert.ok(calls.some((call) => call.join(' ').includes('envelope search -m INBOX -p 1 -s 25 subject "iscrizione"')));
+  assert.equal((await get('mail.searchRecords', { query: '' })).statusCode, 400);
+});
+
+void test('searchRecords keeps the answering accounts when another one fails, and fails when none answers', async (t) => {
+  const desktop = createFakeDesktop();
+  const run: Run = (bin, args, options) =>
+    args.includes('personal') ? Promise.resolve({ stdout: '', stderr: 'boom', code: 1 }) : desktop(bin, args, options);
+  const { get } = setup(t, withMail, run);
+  const partial = (await get('mail.searchRecords', { query: 'o' })).json().result.data;
+  assert.deepEqual(
+    partial.rows.map((row: { id: string }) => row.id),
+    ['310', '309', '308'],
+  );
+  const down = setup(t, withMail, failing({ stdout: '', stderr: 'boom', code: 1 }));
+  assert.equal((await down.get('mail.searchRecords', { query: 'o' })).statusCode, 500);
 });

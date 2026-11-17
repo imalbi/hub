@@ -5,6 +5,7 @@
 
 import * as React from 'react';
 import { CaretRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
+import { Badge } from './badge.tsx';
 import { Kbd } from './kbd.tsx';
 import { TextMorph } from './text-morph.tsx';
 
@@ -60,6 +61,14 @@ export interface CommandItem {
   note?: string;
   /** Muted text at the right edge, e.g. where the action lives. */
   meta?: string;
+  /** Hub: a muted line under the label (a record's context); the row is then taller. */
+  detail?: string;
+  /** Hub: outline chips at the right edge, before `meta`. */
+  badges?: string[];
+  /** Hub: the caller already matched this row (a record found by the server), so the query never hides it. */
+  always?: boolean;
+  /** Hub: shown at the right of this row's group heading (the first row that has one wins): a count and a link. */
+  groupAside?: { text: string; link?: { label: string; onSelect: () => void } };
   /** Run it. Return a promise to show progress on the row before the palette closes; a rejection shakes the row. */
   onSelect?: () => void | Promise<unknown>;
   /** A nested list, opened in place (e.g. "Change theme…"). */
@@ -92,6 +101,10 @@ export interface CommandPaletteProps {
   /** The letter that opens it with Ctrl. Empty string turns the hotkey off. */
   hotkey?: string;
   onOpenChange?: (open: boolean) => void;
+  /** Hub: every change of the query, and '' when the palette starts over. */
+  onQueryChange?: (query: string) => void;
+  /** Hub: with a query and rows elsewhere but none under `heading`, that heading stays at the end with `text`. */
+  emptyGroup?: { heading: string; text: (query: string) => string };
   className?: string;
   /** Hub: `rail` is a round icon button (the caption under it is the caller's); the panel grows out of it but opens centred near the top of the screen. */
   trigger?: 'pill' | 'rail';
@@ -108,10 +121,14 @@ const DURATION = 440;
 // Sizes in rem, so the desk's root font size scales the palette with everything else. Width is the dialog-md token.
 const WIDTH = 32.5;
 const ROW = 2.5;
+// A row with a detail line (a record): title and detail on two lines.
+const DETAIL_ROW = 3.5;
 const HEADER = 3.25;
 const FOOTER = 2.3125;
 const LIST_PAD = 0.75;
 const LIST_MAX = 22;
+// Records make a taller list: three groups of two or three rows should not scroll at once.
+const LIST_MAX_RECORDS = 36;
 const RADIUS = 1.25;
 const FOCUS = 'focus-visible:outline focus-visible:outline-accent';
 
@@ -163,7 +180,9 @@ function rank(items: CommandItem[], query: string): Row[] {
   const rows: Row[] = [];
   for (const item of items) {
     const marks = match(item.label, q);
-    if (marks) {
+    if (item.always) {
+      rows.push({ item, marks: [], score: 0 });
+    } else if (marks) {
       const contiguous = marks.length > 1 && marks[marks.length - 1] - marks[0] === marks.length - 1;
       const start = marks[0] ?? 0;
       const wordStart = start === 0 || item.label[start - 1] === ' ';
@@ -174,7 +193,11 @@ function rank(items: CommandItem[], query: string): Row[] {
       rows.push({ item, marks: [], score: 10 });
     }
   }
-  return rows.sort((a, b) => b.score - a.score);
+  // Groups keep the order they have in `items` (records, Vai a, Azioni); the score orders rows inside a group.
+  const order = new Map<string | undefined, number>();
+  for (const item of items) if (!order.has(item.group)) order.set(item.group, order.size);
+  const at = (row: Row) => order.get(row.item.group) ?? 0;
+  return rows.sort((a, b) => at(a) - at(b) || b.score - a.score);
 }
 
 function Marked({ text, marks }: { text: string; marks: number[] }) {
@@ -241,6 +264,9 @@ function Results({
   setActive,
   choose,
   rowRefs,
+  query = '',
+  emptyGroup,
+  close,
 }: {
   rows: Row[];
   run: RunState | null;
@@ -252,6 +278,9 @@ function Results({
   setActive?: (i: number) => void;
   choose?: (i: number) => void;
   rowRefs?: React.RefObject<(HTMLDivElement | null)[]>;
+  query?: string;
+  emptyGroup?: CommandPaletteProps['emptyGroup'];
+  close?: () => void;
 }) {
   // Consecutive rows of one group share a labelled group, so a screen reader hears the heading.
   const groups: { heading: string | null; rows: { row: Row; i: number }[] }[] = [];
@@ -261,84 +290,140 @@ function Results({
     if (last && last.heading === heading) last.rows.push({ row, i });
     else groups.push({ heading, rows: [{ row, i }] });
   });
+  // A heading with nothing under it says so, once a query has found rows elsewhere.
+  const emptyHeading =
+    emptyGroup && query && rows.length > 0 && !groups.some((group) => group.heading === emptyGroup.heading)
+      ? emptyGroup
+      : null;
   return (
     <div id={listId} role={listId ? 'listbox' : undefined} aria-label={listId ? listLabel : undefined}>
-      {groups.map((group, g) => (
-        <div key={g} role={group.heading ? 'group' : 'presentation'} aria-label={group.heading ?? undefined}>
-          {group.heading && (
-            <div aria-hidden="true" className="px-sm pt-xs pb-2xs text-caption text-muted-foreground first:pt-2xs">
-              {group.heading}
-            </div>
-          )}
-          {group.rows.map(({ row, i }) => {
-            const { item } = row;
-            const running = run?.id === item.id;
-            const state = running ? run.state : null;
-            const isExit = Boolean(item.items || item.view);
-            return (
-              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- A listbox option: the combobox input owns the keys and focus (aria-activedescendant). // guard-private: allow lint rule names, not a token
-              <div
-                key={item.id}
-                ref={(el) => {
-                  if (rowRefs) rowRefs.current[i] = el;
-                }}
-                id={optionId?.(i)}
-                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- A native <option> cannot hold an icon, a note and a status; the listbox is the combobox popup.
-                role="option"
-                aria-selected={i === active}
-                aria-disabled={Boolean(run) || undefined}
-                onPointerMove={() => i !== active && setActive?.(i)}
-                onClick={() => choose?.(i)}
-                className="relative flex cursor-pointer items-center gap-sm rounded-md px-sm text-label text-foreground/80"
-                style={{ height: `${ROW}rem` }}
-              >
-                {item.icon && (
-                  <span
-                    aria-hidden="true"
-                    className="flex size-icon-sm shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-icon-sm"
-                  >
-                    {item.icon}
+      {groups.map((group, g) => {
+        const aside = group.rows.find(({ row }) => row.item.groupAside)?.row.item.groupAside;
+        return (
+          <div key={g} role={group.heading ? 'group' : 'presentation'} aria-label={group.heading ?? undefined}>
+            {group.heading && (
+              <div className="flex items-baseline justify-between gap-sm px-sm pt-xs pb-2xs text-caption text-muted-foreground first:pt-2xs">
+                <span aria-hidden="true">{group.heading}</span>
+                {aside && (
+                  <span className="flex items-baseline gap-3xs">
+                    <span>{aside.text}</span>
+                    {aside.link && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          // The field keeps focus, so the keys still work after a click that does not leave.
+                          onPointerDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            aside.link?.onSelect();
+                            close?.();
+                          }}
+                          className={`cursor-pointer rounded-sm text-caption text-muted-foreground hover:text-foreground ${FOCUS}`}
+                        >
+                          {aside.link.label}
+                        </button>
+                      </>
+                    )}
                   </span>
                 )}
-                <span className="min-w-0 truncate">
-                  <Marked text={item.label} marks={row.marks} />
-                  {item.items && <span className="text-muted-foreground">…</span>}
-                </span>
-                {item.note && <span className="min-w-0 truncate text-caption text-muted-foreground">{item.note}</span>}
-                {/* The right edge: where it lives or a chevron, which blurs into a spinner and then a check while it runs. */}
-                <span className="relative ml-auto flex h-icon shrink-0 items-center justify-end">
-                  <span className="flex items-center gap-2xs" style={swap(!state, reduced)}>
-                    {item.items ? (
-                      <CaretRightIcon aria-hidden="true" className="size-icon-sm text-muted-foreground" />
-                    ) : (
-                      item.meta && <span className="text-caption text-muted-foreground">{item.meta}</span>
-                    )}
-                    {isExit && !item.items && (
-                      <CaretRightIcon aria-hidden="true" className="size-icon-sm text-muted-foreground" />
-                    )}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-y-0 right-0 flex items-center"
-                    style={swap(state === 'pending', reduced)}
-                  >
-                    <span
-                      className={`size-icon-sm rounded-full border-2 border-border border-t-foreground/70 motion-reduce:animate-none ${state === 'pending' ? 'animate-spin' : ''}`}
-                    />
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-y-0 right-0 flex items-center text-success"
-                    style={swap(state === 'done', reduced)}
-                  >
-                    <Check drawn={state === 'done'} reduced={reduced} />
-                  </span>
-                </span>
               </div>
-            );
-          })}
+            )}
+            {group.rows.map(({ row, i }) => {
+              const { item } = row;
+              const running = run?.id === item.id;
+              const state = running ? run.state : null;
+              const isExit = Boolean(item.items || item.view);
+              return (
+                // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- A listbox option: the combobox input owns the keys and focus (aria-activedescendant). // guard-private: allow lint rule names, not a token
+                <div
+                  key={item.id}
+                  ref={(el) => {
+                    if (rowRefs) rowRefs.current[i] = el;
+                  }}
+                  id={optionId?.(i)}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- A native <option> cannot hold an icon, a note and a status; the listbox is the combobox popup.
+                  role="option"
+                  aria-selected={i === active}
+                  aria-disabled={Boolean(run) || undefined}
+                  onPointerMove={() => i !== active && setActive?.(i)}
+                  onClick={() => choose?.(i)}
+                  className="relative flex cursor-pointer items-center gap-sm rounded-md px-sm text-label text-foreground/80"
+                  style={{ height: `${item.detail ? DETAIL_ROW : ROW}rem` }}
+                >
+                  {item.icon && (
+                    <span
+                      aria-hidden="true"
+                      className="flex size-icon-sm shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-icon-sm"
+                    >
+                      {item.icon}
+                    </span>
+                  )}
+                  {item.detail ? (
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{item.label}</span>
+                      <span className="truncate text-caption text-muted-foreground">{item.detail}</span>
+                    </span>
+                  ) : (
+                    <span className="min-w-0 truncate">
+                      <Marked text={item.label} marks={row.marks} />
+                      {item.items && <span className="text-muted-foreground">…</span>}
+                    </span>
+                  )}
+                  {item.note && (
+                    <span className="min-w-0 truncate text-caption text-muted-foreground">{item.note}</span>
+                  )}
+                  {/* The right edge: where it lives or a chevron, which blurs into a spinner and then a check while it runs. */}
+                  <span className="relative ml-auto flex h-icon shrink-0 items-center justify-end">
+                    <span className="flex items-center gap-2xs" style={swap(!state, reduced)}>
+                      {item.badges?.map((badge) => (
+                        <Badge key={badge} outline size="sm" className="shrink-0">
+                          {badge}
+                        </Badge>
+                      ))}
+                      {item.items ? (
+                        <CaretRightIcon aria-hidden="true" className="size-icon-sm text-muted-foreground" />
+                      ) : (
+                        item.meta && <span className="text-caption text-muted-foreground">{item.meta}</span>
+                      )}
+                      {isExit && !item.items && (
+                        <CaretRightIcon aria-hidden="true" className="size-icon-sm text-muted-foreground" />
+                      )}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-y-0 right-0 flex items-center"
+                      style={swap(state === 'pending', reduced)}
+                    >
+                      <span
+                        className={`size-icon-sm rounded-full border-2 border-border border-t-foreground/70 motion-reduce:animate-none ${state === 'pending' ? 'animate-spin' : ''}`}
+                      />
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-y-0 right-0 flex items-center text-success"
+                      style={swap(state === 'done', reduced)}
+                    >
+                      <Check drawn={state === 'done'} reduced={reduced} />
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      {emptyHeading && (
+        <div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- The same labelled group as the others, with no row in it: a fieldset would need a legend and a reset.
+          role="group"
+          aria-label={emptyHeading.heading}
+          className="flex items-baseline justify-between gap-sm px-sm pt-xs pb-2xs text-caption text-muted-foreground"
+        >
+          <span aria-hidden="true">{emptyHeading.heading}</span>
+          <span>{emptyHeading.text(query)}</span>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -358,6 +443,8 @@ export function CommandPalette({
   emptyText,
   hotkey = 'k',
   onOpenChange,
+  onQueryChange,
+  emptyGroup,
   className = '',
   trigger = 'pill',
 }: CommandPaletteProps) {
@@ -397,6 +484,8 @@ export function CommandPalette({
   const view = page?.view;
   const pageItems = page ? page.items : items;
   const rows = React.useMemo(() => (pageItems ? rank(pageItems, query) : []), [pageItems, query]);
+  // Hub: the caller learns every query (records are asked for from it); '' when the palette starts over.
+  React.useEffect(() => onQueryChange?.(query), [onQueryChange, query]);
   // The active row, kept in range as the results change.
   const current = Math.min(active, Math.max(0, rows.length - 1));
 
@@ -536,7 +625,10 @@ export function CommandPalette({
     if (!row || !list) return;
     const top = row.offsetTop;
     setHighlight((h) => (h.top === top && h.ready ? h : { top, ready: h.ready || isOpen }));
-    if (top < list.scrollTop) list.scrollTop = top - 4;
+    // Hub: while the panel still eases out of 0 (just opened), every row looks below the fold; scrolling then hid the
+    // first heading for good (real data at 4K, step 64). The first row needs no scroll at all.
+    if (current === 0 || list.clientHeight === 0) list.scrollTop = 0;
+    else if (top < list.scrollTop) list.scrollTop = top - 4;
     else if (top + row.offsetHeight > list.scrollTop + list.clientHeight)
       list.scrollTop = top + row.offsetHeight - list.clientHeight + 4;
   }, [current, rows, isOpen]);
@@ -664,7 +756,8 @@ export function CommandPalette({
       }
     : null;
   const shape = isOpen || !from ? final : from;
-  const listVisible = Math.min(listHeight, LIST_MAX * unit);
+  const listMax = rows.some(({ item }) => item.detail) ? LIST_MAX_RECORDS : LIST_MAX;
+  const listVisible = Math.min(listHeight, listMax * unit);
   const panelHeight = (HEADER + FOOTER) * unit + (listVisible ? listVisible + LIST_PAD * unit : 0);
   const empty = !view && rows.length === 0;
   const listId = `${id}-list`;
@@ -795,7 +888,7 @@ export function CommandPalette({
                     className="absolute inset-x-0 rounded-md bg-muted"
                     style={{
                       top: 0,
-                      height: `${ROW}rem`,
+                      height: `${rows[current]?.item.detail ? DETAIL_ROW : ROW}rem`,
                       transform: `translateY(${highlight.top}px)`,
                       transition: highlight.ready && !reduced ? `transform 200ms ${EASE}` : 'none',
                     }}
@@ -821,6 +914,9 @@ export function CommandPalette({
                       setActive={(i) => !run && setActive(i)}
                       choose={(i) => void choose(i)}
                       rowRefs={rowRefs}
+                      query={query.trim()}
+                      emptyGroup={page ? undefined : emptyGroup}
+                      close={() => setOpen(false)}
                     />
                   )}
                 </div>

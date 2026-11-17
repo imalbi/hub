@@ -42,6 +42,9 @@ async function open(page: Page) {
 test.afterEach(async ({ pc }) => clean(pc));
 
 test('every size fits its cell without scrolling or clipping', async ({ page, pc }) => {
+  // With weather data, as after a spec that sets a city: Grande overflowed with two rows of post-its (step 64 review).
+  const weather = { name: 'Località esempio', temperature: 19, code: 1, min: 12, max: 23, stale: false };
+  await page.route('**/trpc/weather.state*', (route) => route.fulfill({ json: { result: { data: weather } } }));
   await studyOn(pc, 2);
   for (const day of ['2026-11-19', '2026-11-20'])
     for (const title of ['Dentista', 'Riunione', 'Corso', 'Visita'])

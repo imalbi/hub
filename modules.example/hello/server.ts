@@ -2,8 +2,20 @@ import { fileURLToPath } from 'node:url';
 import { z } from '../../apps/server/src/core/module.ts';
 import { defineModule } from '../../apps/server/src/core/module.ts';
 import { greetings } from './schema.ts';
+import { fold } from '../../apps/server/src/core/fold.ts';
 import { createLiveHub } from '../../apps/server/src/core/live.ts';
-import { protectedProcedure, router } from '../../apps/server/src/core/trpc.ts';
+import { loopbackProcedure, protectedProcedure, router } from '../../apps/server/src/core/trpc.ts';
+
+// The example's records for the palette (step 64): fixed phrases, so the public and example tests need no private data.
+const PHRASES = [
+  'Ciao dal modulo di esempio',
+  'Ciao a tutti',
+  'Ciao mondo',
+  'Ciao di nuovo',
+  'Ciao e a presto',
+  'Buongiorno dal modulo',
+  'Buonasera dal modulo',
+];
 
 export default defineModule({
   name: 'hello',
@@ -90,6 +102,15 @@ export default defineModule({
           .mutation(async ({ ctx, input }) => {
             const original = await ctx.files.get(input.fileId);
             return ctx.files.put(await ctx.files.read(input.fileId), { name: original.name, mime: original.mime });
+          }),
+        // Matching on the server, cut to 3 with the full count: the palette never downloads the list.
+        searchRecords: loopbackProcedure
+          .input(z.object({ query: z.string().trim().min(1).max(100) }))
+          .query(({ input }) => {
+            const found = PHRASES.map((title, index) => ({ id: String(index + 1), title })).filter(({ title }) =>
+              fold(title).includes(fold(input.query)),
+            );
+            return { total: found.length, rows: found.slice(0, 3) };
           }),
         state: protectedProcedure.query(state),
         onState: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),

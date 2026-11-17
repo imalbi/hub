@@ -5,7 +5,9 @@ import { m } from '../paraglide/messages.js';
 import { CalendarDotsIcon } from '@phosphor-icons/react';
 import { CalendarZone } from '../modules/calendar/zone.tsx';
 import { useCalendarTodayLines } from '../modules/calendar/today.tsx';
+import { mailMessages } from '../modules/mail/records.ts';
 import { useMailTodayLines } from '../modules/mail/today-line.ts';
+import { studyDays } from '../modules/study/records.ts';
 import { useStudyTodayLines } from '../modules/study/today-line.ts';
 import { useNotesCalendarItems } from '../modules/notes/calendar.ts';
 import { NotesColumn } from '../modules/notes/today.tsx';
@@ -26,6 +28,7 @@ export const moduleUIs: ModuleUI[] = [
   {
     name: 'study',
     todayItems: useStudyTodayLines,
+    records: studyDays,
     copy: {},
     calendarItems: useStudyCalendarItems,
     sections: [
@@ -44,6 +47,7 @@ export const moduleUIs: ModuleUI[] = [
   {
     name: 'mail',
     todayItems: useMailTodayLines,
+    records: mailMessages,
     copy: {},
     sections: [{ zone: 'messages', id: 'mail', label: m.module_mail, component: PostaSection, fill: true }],
   },

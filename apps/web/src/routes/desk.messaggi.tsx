@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { zoneSearch } from '../lib/zone-search.ts';
+import { postaSearch } from '../modules/mail/search.ts';
 import { ZonePage } from '../shell/zone-page.tsx';
 
-export const Route = createFileRoute('/desk/messaggi')({ validateSearch: zoneSearch, component: Messages });
+export const Route = createFileRoute('/desk/messaggi')({ validateSearch: postaSearch, component: Messages });
 
 // Same shape as Lavoro: the channels (mail, later chat apps) arrive as module sections.
 function Messages() {

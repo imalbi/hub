@@ -65,6 +65,7 @@ export default defineConfig({
           : [
               'palette.spec.ts',
               'palette-regressions.spec.ts',
+              'palette-records.spec.ts',
               'palette.visual.spec.ts',
               'zone-pages.spec.ts',
               'modules.spec.ts',

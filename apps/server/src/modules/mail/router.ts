@@ -23,6 +23,7 @@ import {
   moveArgs,
   PAGE_SIZE,
   plainTextOf,
+  queryValueSchema,
   readArgs,
   recipientsSchema,
   replyArgs,
@@ -167,6 +168,33 @@ export function createMailRouter({
         );
         return envelopes.map(toMessage);
       }),
+
+    // The palette's records (step 64): subject matches in every account's inbox, newest first, cut to 3 with the count
+    // (a lower bound when an account has more than one page). A failed account is left out while another answers.
+    searchRecords: loopbackProcedure.input(z.object({ query: queryValueSchema })).query(async ({ input }) => {
+      const settled = await Promise.all(
+        accounts.map(async ({ account, label }) => {
+          const result = await himalaya(
+            run,
+            searchArgs(account, INBOX, 1, PAGE_SIZE, { subject: input.query }),
+            envelopesSchema,
+          );
+          return result.ok
+            ? {
+                ok: true as const,
+                found: result.value.envelopes.map((envelope) => ({ ...toMessage(envelope), account, label })),
+              }
+            : result;
+        }),
+      );
+      const answered = settled.flatMap((entry) => (entry.ok ? [entry.found] : []));
+      const failed = settled.find((entry) => !entry.ok);
+      if (failed && !failed.ok && answered.length === 0) unwrap(failed);
+      const found = answered
+        .flat()
+        .toSorted((a, b) => (Date.parse(b.date ?? '') || 0) - (Date.parse(a.date ?? '') || 0));
+      return { total: found.length, rows: found.slice(0, 3) };
+    }),
 
     // The inbox of one account or of all of them merged (no `account`), a page at a time: the cursor is what the last
     // answer returned. Reading, replying and archiving then use each row's own `account`.

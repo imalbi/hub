@@ -2,6 +2,7 @@ import { test as base, type APIRequestContext } from '@playwright/test';
 import { PC_URL, PHONE_URL } from './hosts.ts';
 
 export { expect } from '@playwright/test';
+export type { Page } from '@playwright/test';
 
 /**
  * Two API clients on the same fake server: `pc` calls it as the PC does (the desk, a media key), `phone` as a device

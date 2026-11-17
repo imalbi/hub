@@ -113,7 +113,7 @@ test('schema forms reject empty input, submit valid values and show generic fail
   await expect(palette).not.toBeVisible();
 });
 
-test('danger needs a hold and unsupported schemas remain listed without a run control', async ({ page }) => {
+test('danger needs a hold', async ({ page }) => {
   await page.goto('/desk');
   await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toBeVisible();
   await page.keyboard.press('Control+k');
@@ -144,12 +144,20 @@ test('danger needs a hold and unsupported schemas remain listed without a run co
   await expect(palette).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(palette).not.toBeVisible();
+});
+
+// Step 64 reverses step 24 on purpose: an action whose schema the palette cannot draw has no way to run from there, so it is not listed.
+test('an action with an unsupported schema is not listed, and no row says it cannot run', async ({ page }) => {
+  await page.goto('/desk');
+  await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toBeVisible();
   await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await expect(palette.getByRole('option', { name: /Avvia Pomodoro/ })).toBeVisible();
+  await expect(palette.getByRole('option', { name: /Salva disposizione widget/ })).toHaveCount(0);
+  await expect(palette.getByText('Dati non supportati')).toHaveCount(0);
   await palette.getByRole('combobox').fill('Salva disposizione widget');
-  await expect(palette.getByRole('option', { name: /Salva disposizione widget/ })).toBeVisible();
-  await page.keyboard.press('Enter');
-  await expect(palette.getByText('Questa azione richiede dati non supportati dalla palette.')).toBeVisible();
-  await expect(palette.getByRole('button', { name: 'Esegui', exact: true })).toHaveCount(0);
+  await expect(palette.getByRole('status')).toContainText('Nessun risultato');
+  await expect(palette.getByRole('option', { name: /Salva disposizione widget/ })).toHaveCount(0);
 });
 
 test('a schema enum offers the registered workspace values and submits one valid value', async ({ page }) => {
@@ -421,3 +429,32 @@ if (examples)
         { type: 'setPower', on: false },
       ]);
   });
+
+// Step 64, P1 and the server cut: the example module's greetings, found by two characters.
+test('two characters find the example greetings under Saluti, one character finds none, and 5 matches show 3 rows', async ({
+  page,
+}) => {
+  test.skip(!examples, 'the greetings are the example module');
+  await page.goto('/desk');
+  await expect(pill(page)).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  const field = palette.getByRole('combobox');
+  const saluti = palette.getByRole('group', { name: /Saluti/ });
+  await expect(field).toBeFocused();
+  await field.fill('b');
+  // Past the 150 ms delay: no request is made for one character, so no group can appear.
+  await page.waitForTimeout(400);
+  await expect(saluti).toHaveCount(0);
+  await field.fill('bu');
+  await expect(saluti.getByRole('option')).toHaveCount(2);
+  await expect(saluti).toContainText('2');
+  await expect(saluti.getByRole('option').first()).toContainText('Buongiorno dal modulo');
+  await field.fill('b');
+  await expect(saluti).toHaveCount(0);
+  // Five greetings start with "Ciao": three rows, the count says 5.
+  await field.fill('ci');
+  await expect(saluti.getByRole('option')).toHaveCount(3);
+  await expect(saluti).toContainText('5');
+  await expect(saluti.getByRole('button')).toHaveCount(0);
+});

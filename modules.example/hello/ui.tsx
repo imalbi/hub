@@ -3,7 +3,7 @@ import { createTRPCOptionsProxy, useSubscription } from '@trpc/tanstack-react-qu
 import { HandWavingIcon } from '@phosphor-icons/react';
 import type definition from './server.ts';
 import { createModuleClient } from '../../apps/web/src/lib/module-client.ts';
-import type { ModuleUI, TodayDay, TodayLine } from '../../apps/web/src/lib/module-ui.ts';
+import type { ModuleUI, RecordSource, TodayDay, TodayLine } from '../../apps/web/src/lib/module-ui.ts';
 import { useConnectionLost } from '../../apps/web/src/lib/trpc.ts';
 import { DeviceRow } from '../../apps/web/src/components/device-row.tsx';
 import { PageGrid } from '../../apps/web/src/components/page-grid.tsx';
@@ -62,6 +62,15 @@ function HelloRow() {
 function useHelloToday(day: TodayDay): TodayLine[] | null {
   return day === 'today' ? [{ id: 'hello', chip: copy.title, text: copy.greeting, href: '/desk/hello' }] : null;
 }
+// The palette finds greetings (step 64): the module's own typed client, a plain async function.
+const greetings: RecordSource = {
+  id: 'hello-greetings',
+  label: () => 'Saluti',
+  search: async (query, signal) => {
+    const { total, rows } = await client.searchRecords.query({ query }, { signal });
+    return { total, rows: rows.map((row) => ({ ...row, detail: copy.title, href: '/desk/hello' })) };
+  },
+};
 function HelloTile() {
   const { state, greet } = useHello();
   const stale = useConnectionLost();
@@ -81,6 +90,7 @@ export default {
   name: 'hello',
   copy,
   todayItems: useHelloToday,
+  records: greetings,
   deviceRows: HelloRow,
   // The same row again in Sistema, after Webcam and the monitors, so the slot has an example.
   systemRows: HelloRow,

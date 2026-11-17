@@ -51,6 +51,20 @@ export type TodayLine = {
 export type TodayLinesHook = (day: TodayDay) => TodayLine[] | null;
 /** How Oggi wants the post-its: a count, a titled column, titled cards two per row, or a bare stack (Esteso). */
 export type TodayColumnVariant = 'count' | 'column' | 'grid' | 'stack';
+/** One row of a record group in the palette: `href` is the page that shows the record, `detail` the muted line under the title. */
+export type RecordRow = { id: string; title: string; detail: string; badges?: string[]; href: string };
+/**
+ * A module's records the palette can find (step 64). `search` is a plain async function that asks the module's own
+ * server query (matching happens there); the palette keeps at most 3 rows, `total` is the number of matches before
+ * the cut. `id` is permanent: later steps store it next to a record id, so name it for what it holds.
+ */
+export type RecordSource = {
+  id: string;
+  label: () => string;
+  search: (query: string, signal: AbortSignal) => Promise<{ total: number; rows: RecordRow[] }>;
+  /** Where "Vedi tutti" goes, with the query applied; absent when the page has no search of its own. */
+  allHref?: (query: string) => string;
+};
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
@@ -61,6 +75,8 @@ export type ModuleUI = {
    * number ("e altre N") instead of clipping. Not named `use...` by the caller (see `activities`).
    */
   todayItems?: TodayLinesHook | TodayLinesHook[];
+  /** Records the palette finds by typing, one group each, in module order while the module is on (step 64). */
+  records?: RecordSource | RecordSource[];
   /** The post-its of a day in Oggi, in the shape the size asks for. One per app (the post-its). */
   todayColumn?: ComponentType<{ day: TodayDay; variant: TodayColumnVariant; max: number }>;
   /** Read-only items for the Calendario page, in module order while the module is on. Not named `use...` by the caller (see `activities`). */

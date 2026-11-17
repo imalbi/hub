@@ -26,7 +26,7 @@ export const mailboxSchema = z
   .min(1)
   .max(100)
   .regex(/^[^\s-][^\0\r\n]*$/);
-const queryValueSchema = z
+export const queryValueSchema = z
   .string()
   .min(1)
   .max(200)

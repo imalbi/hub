@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/index.ts';
+import { fold } from '../../core/fold.ts';
 import { z } from '../../core/module.ts';
 import { effectiveMix, orderDays } from './order.ts';
 import { planShape } from './plan.ts';
@@ -137,4 +138,24 @@ function readSelected(db: Db, selected: Entry[]) {
     const day = byKey.get(item.key);
     return day ? [{ ...day, key: item.key, planId: item.planId, g: item.g, done: item.done }] : [];
   });
+}
+
+/** At most this many rows of a palette search; `total` counts every match. */
+export const SEARCH_ROWS = 3;
+
+/**
+ * Days whose title holds the query (case and accents ignored), from the index only: no day body is read. Paused
+ * subjects' days are found too (they have no G number).
+ */
+export function searchDays(db: Db, query: string) {
+  const index = readIndex(db);
+  if (!index) return { total: 0, rows: [] };
+  const needle = fold(query);
+  const found = [...index.days, ...index.hiddenDays].filter((day) => fold(day.title).includes(needle));
+  return {
+    total: found.length,
+    rows: found
+      .slice(0, SEARCH_ROWS)
+      .map((day) => ({ key: day.key, g: day.g, title: day.title, subject: day.subject, done: day.done })),
+  };
 }

@@ -1,11 +1,13 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
+import { useSearch } from '../../lib/zone-search.ts';
 import { ButtonGroup } from '../../components/ui/button-group.tsx';
 import { m } from '../../paraglide/messages.js';
 import { TabBarActions } from '../../shell/header-slot.tsx';
 import { ComposeForm } from './compose.tsx';
 import { InboxList, rowKey } from './inbox-list.tsx';
 import { MailReader } from './reader.tsx';
+import { postaSearch } from './search.ts';
 import { useMail, useMailAccounts, useMailTRPC, type InboxRow, type MailFilter } from './use-mail.ts';
 
 const ALL = 'all';
@@ -23,6 +25,18 @@ export function PostaSection() {
   const [composing, setComposing] = useState(false);
   const [archived, setArchived] = useState<Archived | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // A palette link: search the subject in every account and select the message it names. Adjusted while rendering
+  // (state derived from the URL), not in an effect, so the first paint already shows the search.
+  const { message: linked, subject: linkedSubject } = postaSearch.parse(useSearch({ strict: false }));
+  const link = linked === undefined && linkedSubject === undefined ? null : `${linked}|${linkedSubject}`;
+  const [appliedLink, setAppliedLink] = useState<string | null>(null);
+  if (link !== null && link !== appliedLink) {
+    setAppliedLink(link);
+    setChosen(ALL);
+    setFilter(linkedSubject ? { subject: linkedSubject } : {});
+    setSelected(linked ?? '');
+    setComposing(false);
+  }
   // The configured accounts come from the config at once; the live state reads every mailbox and comes later.
   const accounts = mailAccounts.data ?? mail.data?.accounts ?? [];
   const labels = new Map(accounts.map((item) => [item.account, item.label]));

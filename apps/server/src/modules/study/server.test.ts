@@ -589,3 +589,53 @@ void test('day materials reach daysById unchanged and do not break the state fil
   const exported = JSON.parse(await readFile(join(dir, 'stato', 'example.json'), 'utf8'));
   assert.deepEqual(exported.days.find((day: { id: string }) => day.id === 'A01').openSteps, []);
 });
+
+void test('searchRecords matches titles without case or accents, cuts at 3 and counts every match', async (t) => {
+  const { searchDays } = await import('./read.ts');
+  const db = openDatabase(':memory:', fileURLToPath(new URL('./drizzle', import.meta.url)));
+  t.after(() => db.$client.close());
+  const plan = course('p', 5);
+  savePlan(db, {
+    ...plan,
+    days: plan.days.map((day, i) => ({ ...day, title: i === 4 ? 'Reazióni e redox' : `Reazioni ${i}` })),
+  });
+  const found = searchDays(db, 'REAZIONI');
+  assert.equal(found.total, 5);
+  assert.deepEqual(
+    found.rows.map((row) => [row.key, row.g, row.done]),
+    [
+      ['p/D1', 1, false],
+      ['p/D2', 2, false],
+      ['p/D3', 3, false],
+    ],
+  );
+  assert.deepEqual(
+    searchDays(db, 'redox').rows.map((row) => row.key),
+    ['p/D5'],
+  );
+  assert.deepEqual(searchDays(db, 'nessuno'), { total: 0, rows: [] });
+});
+
+void test('searchRecords is for the PC only: a paired phone is refused', async (t) => {
+  const app = buildServer({ dbPath: ':memory:', deps: { run: createFakeDesktop() }, config: { ...emptyConfig } });
+  t.after(() => app.close());
+  const LAN = '192.0.2.30';
+  const input = encodeURIComponent(JSON.stringify({ query: 'x' }));
+  assert.equal((await app.inject(`/trpc/study.searchRecords?input=${input}`)).statusCode, 200);
+  const code = (await app.inject({ method: 'POST', url: '/trpc/pairing.createCode', payload: {} })).json().result.data
+    .code;
+  const redeemed = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.redeem',
+    remoteAddress: LAN,
+    headers: { 'content-type': 'application/json' },
+    payload: JSON.stringify({ code, deviceName: 'Phone' }),
+  });
+  const token: string = redeemed.json().result.data.token;
+  const phone = await app.inject({
+    url: `/trpc/study.searchRecords?input=${input}`,
+    remoteAddress: LAN,
+    headers: { authorization: `Bearer ${token}` },
+  });
+  assert.equal(phone.statusCode, 403);
+});

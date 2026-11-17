@@ -6,12 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
 import { createLiveHub } from '../../core/live.ts';
-import { protectedProcedure, router } from '../../core/trpc.ts';
+import { loopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
 import { errorInput, readErrors, readReview, serializeError } from './errors.ts';
 import { listInbox, readPlan } from './inbox.ts';
 import { listMaterials, readMaterial } from './library.ts';
 import { planShape } from './plan.ts';
-import { activeHeaders, GLOBAL, readDays, readDaysById, readIndex, subjectKey } from './read.ts';
+import { activeHeaders, GLOBAL, readDays, readDaysById, readIndex, searchDays, subjectKey } from './read.ts';
 import { plans, preferences, progress } from './schema.ts';
 import { savePlan } from './store.ts';
 import { createStateWriter } from './state.ts';
@@ -192,6 +192,11 @@ export const studyModule = defineModule({
         days: protectedProcedure
           .input(z.object({ offset: z.int().min(0), limit: z.int().min(1).max(100) }))
           .query(({ input }) => readDays(db, input.offset, input.limit)),
+        // The palette's records (step 64): PC only, like every search that returns titles.
+        searchRecords: loopbackProcedure
+          .input(z.object({ query: z.string().trim().min(1).max(100) }))
+          // The headers ride along so one request is enough to name each day's subject.
+          .query(({ input }) => ({ ...searchDays(db, input.query), headers: activeHeaders(db) })),
         daysById: protectedProcedure
           .input(z.object({ keys: z.array(z.string()).max(100) }))
           .query(({ input }) => readDaysById(db, input.keys)),
