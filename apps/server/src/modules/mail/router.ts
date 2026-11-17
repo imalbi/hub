@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { Run } from '../../core/exec.ts';
+import type { DiscoveredDeps } from '../../core/module.ts';
 import { loopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
 import type { MailAccount } from './config.ts';
 import { readMailState, type MailLive, type MailState } from './live.ts';
@@ -104,7 +105,21 @@ function forClient(state: MailState, kind: string): MailState {
 
 const anonymous = (index: number) => ({ account: `#${index + 1}`, label: '' });
 
-export type ThreadAnswer = { account: string; messageId: string; thread: ThreadView | null };
+export type ThreadAnswer = {
+  account: string;
+  messageId: string;
+  thread: ThreadView | null;
+  status: 'ok' | 'account' | 'missing' | 'timeout';
+  resolvedMessageId?: string;
+};
+
+export function logThreadFailure(
+  log: { warn: (fields: { kind: string; account: string }, message: string) => void },
+  kind: Exclude<ThreadAnswer['status'], 'ok'>,
+  account: string,
+) {
+  log.warn({ kind, account }, 'Mail thread unavailable');
+}
 
 // Offsets in the merged inbox cursor: far past any real mailbox, only a bound on the input.
 const MAX_OFFSET = PAGE_SIZE * 500;
@@ -114,12 +129,14 @@ export function createMailRouter({
   accounts,
   archiveMailbox,
   live,
+  log,
 }: {
   run: Run;
   accounts: readonly MailAccount[];
   /** Name or alias in himalaya of the folder "Archivia" moves to. */
   archiveMailbox: string;
   live: MailLive;
+  log: DiscoveredDeps['log'];
 }) {
   const setFlag = (account: string, flag: 'seen' | 'flagged', ids: readonly string[], add: boolean) =>
     himalaya(run, flagArgs(account, INBOX, add, flag, ids), flagResultSchema);
@@ -246,16 +263,89 @@ export function createMailRouter({
         const accountNames = [...new Set(input.links.map((link) => link.account))];
         const sides = await Promise.all(
           accountNames.map(async (name) => {
-            const { account } = findAccount(accounts, name);
-            return [name, await listThreadEntries(run, account, after)] as const;
+            const account = accounts.find((item) => item.account === name);
+            if (!account) return [name, { status: 'account' as const, entries: [], truncated: false }] as const;
+            try {
+              const listing = await listThreadEntries(run, name, after);
+              const missing = input.links.some(
+                (link) => link.account === name && !threadOf(listing.entries, link.messageId),
+              );
+              if (missing) {
+                const folders = unwrap(
+                  await himalaya(
+                    run,
+                    ['--json', '-a', name, 'mailbox', 'list'],
+                    z.object({
+                      mailboxes: z.array(z.object({ id: mailboxSchema, name: z.string(), role: z.string().nullish() })),
+                    }),
+                  ),
+                );
+                // In parallel: each search is about 1.3 s on the owner's accounts and a mailbox has about ten folders.
+                const found = await Promise.all(
+                  folders.mailboxes
+                    .filter(
+                      (item) =>
+                        !['inbox', 'sent'].includes(item.id.toLowerCase()) &&
+                        !['inbox', 'sent'].includes(item.role ?? ''),
+                    )
+                    .map(async (folder) => ({
+                      folder: folder.id,
+                      envelopes: unwrap(
+                        await himalaya(run, searchArgs(name, folder.id, 1, THREAD_WINDOW, { after }), envelopesSchema),
+                      ).envelopes,
+                    })),
+                );
+                for (const { folder, envelopes } of found) {
+                  listing.truncated ||= envelopes.length >= THREAD_WINDOW;
+                  listing.entries.push(
+                    ...envelopes.map((envelope): ThreadEntry => {
+                      const message = toMessage(envelope);
+                      return {
+                        mailbox: 'inbox',
+                        folder,
+                        id: message.id,
+                        messageId: message.messageId,
+                        inReplyTo: envelope['in-reply-to'],
+                        subject: message.subject,
+                        date: message.date,
+                        counterpart: envelope.from[0]?.email?.toLowerCase() ?? null,
+                      };
+                    }),
+                  );
+                }
+              }
+              return [name, { ...listing, status: 'ok' as const }] as const;
+            } catch (error) {
+              return [
+                name,
+                {
+                  status:
+                    error instanceof TRPCError && error.code === 'TIMEOUT'
+                      ? ('timeout' as const)
+                      : ('account' as const),
+                  entries: [],
+                  truncated: false,
+                },
+              ] as const;
+            }
           }),
         );
-        const byAccount = new Map(sides);
-        const answers: ThreadAnswer[] = input.links.map((link) => ({
-          account: link.account,
-          messageId: link.messageId,
-          thread: threadOf(byAccount.get(link.account)?.entries ?? [], link.messageId),
-        }));
+        const byAccount = new Map<
+          string,
+          { status: 'ok' | 'account' | 'timeout'; entries: readonly ThreadEntry[]; truncated: boolean }
+        >(sides);
+        const answers: ThreadAnswer[] = input.links.map((link) => {
+          const side = byAccount.get(link.account);
+          const entries = side?.entries ?? [];
+          const legacy = entries.filter((entry) => entry.id === link.messageId && entry.messageId);
+          const direct = threadOf(entries, link.messageId);
+          const resolvedMessageId = !direct && legacy.length === 1 ? (legacy[0]?.messageId ?? undefined) : undefined;
+          const thread = direct ?? (resolvedMessageId ? threadOf(entries, resolvedMessageId) : null);
+          const status = side?.status !== 'ok' ? (side?.status ?? 'account') : thread ? 'ok' : 'missing';
+          if (status !== 'ok')
+            logThreadFailure(log, status, accounts.find((account) => account.account === link.account)?.label ?? '');
+          return { ...link, thread, status, ...(resolvedMessageId && thread ? { resolvedMessageId } : {}) };
+        });
         const truncated = sides.some(([, side]) => side.truncated);
         return { threads: answers, truncated, after };
       }),

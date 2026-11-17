@@ -1,6 +1,7 @@
 /** One message of a listing, from the inbox or the sent mailbox. `sent` is the owner's side of a conversation. */
 export type ThreadEntry = {
   mailbox: 'inbox' | 'sent';
+  folder?: string;
   id: string;
   messageId: string | null;
   inReplyTo: readonly string[];

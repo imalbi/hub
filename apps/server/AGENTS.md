@@ -165,6 +165,8 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - `core/jobs.ts` runs registry jobs with `jobs.maxConcurrent` (default 2), a 10-minute default timeout and a fakeable `StreamSpawn` from `core/exec.ts`; commands use a binary plus argument array, never a shell. A job action uses `jobProcedure.meta({ label, description, job: true, timeoutMs? })` and returns `ctx.startJob(binary, args)`; only registered actions choose commands.
 - `jobs.list/onUpdate/output/onOutput/cancel` are protected. Cancellation is `danger: true` and requires `confirmed: true`. The core SQLite history retains 100 records and 50 output lines per record; the live runner keeps 500 lines per job. Shutdown kills and records active and queued jobs as cancelled. No real job action ships yet.
 
+- `mail.threads` resolves header Message-IDs across INBOX and sent, then lists other folders only for missing links. Each folder is bounded to 200 envelopes within the requested window; failures log only kind and configured account label. Legacy envelope IDs resolve only when unique in the current listings.
+
 ## MCP agents
 
 - `state` and `onState` also carry `latest` rows (sender, subject) for the desk widget: `forClient` in `router.ts` empties them for any caller that is not loopback (tests in `router.test.ts` and `core/auth-ws.test.ts`). Any new field with mail content in the state must go through it too.

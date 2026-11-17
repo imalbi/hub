@@ -193,6 +193,10 @@ export function createFakeHimalaya(): (args: readonly string[]) => RunResult {
     if (!parsed || !(account in accounts)) return refused;
     const { options, positional } = parsed;
 
+    if (group === 'mailbox' && action === 'list') {
+      return ok(JSON.stringify({ mailboxes: Object.keys(boxes[account] ?? {}).map((name) => ({ id: name, name })) }));
+    }
+
     if (group === 'envelope' && (action === 'list' || action === 'search')) {
       const mailbox = options.get('-m') ?? 'INBOX';
       const pageNumber = Number(options.get('-p') ?? 1);

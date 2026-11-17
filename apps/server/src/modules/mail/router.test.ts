@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { emptyConfig, type Config } from '../../core/config.ts';
 import type { Run, RunResult } from '../../core/exec.ts';
 import { buildServer } from '../../server.ts';
+import { logThreadFailure } from './router.ts';
 import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 
 process.env.NODE_ENV = 'test';
@@ -50,6 +51,12 @@ const failing =
   (result: RunResult): Run =>
   () =>
     Promise.resolve(result);
+
+void test('a thread failure log includes only its kind and account label', () => {
+  const calls: unknown[] = [];
+  logThreadFailure({ warn: (fields: unknown, message: string) => calls.push({ fields, message }) }, 'timeout', 'Work');
+  assert.deepEqual(calls, [{ fields: { kind: 'timeout', account: 'Work' }, message: 'Mail thread unavailable' }]);
+});
 
 void test('a listing asks for one page of the mailbox and gives its rows, newest first', async (t) => {
   const { get, calls } = setup(t);
@@ -210,6 +217,51 @@ void test('a thread is rebuilt from both mailboxes over the window, starting the
   assert.equal(missing.thread, null);
   assert.ok(calls.some((call) => call.includes('after') && call.includes('2026-09-09')));
   assert.ok(calls.some((call) => call.join(' ').includes('-m sent')));
+});
+
+void test('an archived linked message remains readable by its Message-ID', async (t) => {
+  mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 10, 9, 12) });
+  t.after(() => mock.timers.reset());
+  const { get, post } = setup(t);
+  assert.equal((await post('mail.archive', { account: 'work', id: '310', confirmed: true })).statusCode, 200);
+  const result = await get('mail.threads', { links: [{ account: 'work', messageId: 'offer@example.org' }] });
+  const thread = result.json().result.data.threads[0].thread;
+  assert.ok(thread);
+  const moved = thread.messages.find((message: { messageId: string }) => message.messageId === 'offer@example.org');
+  assert.ok(moved);
+  assert.notEqual(moved.id, '310');
+  assert.equal((await get('mail.read', { account: 'work', id: moved.id, mailbox: moved.folder })).statusCode, 200);
+});
+
+void test('threads report account, timeout and missing separately', async (t) => {
+  const desktop = createFakeDesktop();
+  const run: Run = (bin, args, options) => {
+    if (args.includes('personal')) return Promise.resolve({ stdout: '', stderr: '', code: -1 });
+    return desktop(bin, args, options);
+  };
+  const { get } = setup(t, withMail, run);
+  const response = await get('mail.threads', {
+    links: [
+      { account: 'work', messageId: 'missing@example.org' },
+      { account: 'personal', messageId: 'timeout@example.org' },
+      { account: 'unknown', messageId: 'account@example.org' },
+    ],
+  });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(
+    response.json().result.data.threads.map((entry: { status: string }) => entry.status),
+    ['missing', 'timeout', 'account'],
+  );
+});
+
+void test('a legacy envelope ID resolves only when it identifies a single message', async (t) => {
+  mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 10, 9, 12) });
+  t.after(() => mock.timers.reset());
+  const { get } = setup(t);
+  const response = await get('mail.threads', { links: [{ account: 'work', messageId: '310' }] });
+  const result = response.json().result.data.threads[0];
+  assert.equal(result.resolvedMessageId, 'offer@example.org');
+  assert.ok(result.thread);
 });
 
 void test('a paired phone gets the unread state but never the content of the mail', async (t) => {
