@@ -17,6 +17,9 @@ export function assistantActions(app: AnyRouter) {
   );
 }
 
+// Ollama unloads after 5 minutes by default; the palette is opened less often than that.
+const keepAlive = '30m';
+
 export function createAssistantRouter(
   app: () => AnyRouter,
   confirmations: ReturnType<typeof createConfirmations>,
@@ -24,6 +27,19 @@ export function createAssistantRouter(
 ) {
   return router({
     state: loopbackProcedure.query(({ ctx }) => ({ enabled: ctx.config.assistant.enabled })),
+    // Opening the palette loads the model while the sentence is typed: an empty `messages` list only loads it.
+    warm: publicProcedure
+      .meta({ label: 'Prepara assistente', description: 'Load the local assistant model', pageOnly: true })
+      .mutation(({ ctx }) => {
+        if (ctx.client.kind !== 'loopback') throw new TRPCError({ code: 'UNAUTHORIZED' });
+        const config = ctx.config.assistant;
+        if (!config.enabled) return { loading: false };
+        // Not awaited: a failed load only makes the first question slower, and `ask` reports it then.
+        void ollamaChat(fetcher, { model: config.model, numCtx: config.numCtx, messages: [], keepAlive }).catch(
+          () => undefined,
+        );
+        return { loading: true };
+      }),
     ask: publicProcedure
       .meta({ label: 'Chiedi a Hub', description: 'Ask the local assistant', pageOnly: true })
       .input(z.object({ text: z.string().trim().min(1).max(300) }))
@@ -54,6 +70,7 @@ export function createAssistantRouter(
                   { role: 'user', content: input.text },
                 ],
                 tools,
+                keepAlive,
               }),
             { counted: false, front: true },
           );

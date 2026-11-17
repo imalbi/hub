@@ -471,7 +471,10 @@ test('assistant is absent when off and appears last for two words, then runs an 
   try {
     await page.reload();
     await pc.post('/trpc/audio.setOutput', { data: { label: 'Casse' } });
+    // Opening the palette loads the model while the sentence is typed.
+    const warm = page.waitForRequest((request) => request.url().includes('/trpc/assistant.warm'));
     await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).click();
+    await warm;
     await field.fill('cuffie');
     await expect(palette.getByRole('option', { name: /Chiedi a Hub/ })).toHaveCount(0);
     await field.fill('metti le cuffie');

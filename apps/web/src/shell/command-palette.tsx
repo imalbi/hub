@@ -106,6 +106,9 @@ export function DeskCommandPalette() {
   const [query, setQuery] = useState('');
   const records = useRecordItems(query, open);
   const assistant = useQuery(trpc.assistant.state.queryOptions(undefined, { enabled: open, staleTime: Infinity }));
+  useEffect(() => {
+    if (open && assistant.data?.enabled) client.assistant.warm.mutate().catch(() => undefined);
+  }, [open, assistant.data?.enabled, client]);
   const answer = useRef<Awaited<ReturnType<typeof client.assistant.ask.mutate>> | null>(null);
   const [recent, setRecent] = useState(recentPaths);
   const zones = useZones();

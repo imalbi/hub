@@ -50,6 +50,7 @@ void test('every mutation carries an Italian label and an English description in
     'agents.create',
     'agents.revoke',
     'assistant.ask',
+    'assistant.warm',
     'audio.cycleOutput',
     'audio.setOutput',
     'audio.setVolume',

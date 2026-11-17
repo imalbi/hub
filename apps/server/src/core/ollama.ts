@@ -32,6 +32,7 @@ export async function ollamaChat(
     signal?: AbortSignal;
     format?: object;
     temperature?: number;
+    keepAlive?: string;
   },
 ) {
   try {
@@ -45,6 +46,7 @@ export async function ollamaChat(
         ...(input.tools && { tools: input.tools }),
         stream: false,
         think: false,
+        ...(input.keepAlive && { keep_alive: input.keepAlive }),
         ...(input.format && { format: input.format }),
         options: { num_ctx: input.numCtx, temperature: input.temperature ?? 0 },
       }),

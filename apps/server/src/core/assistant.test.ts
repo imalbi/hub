@@ -195,3 +195,46 @@ void test('model confirmation cannot power off until the human confirms', async 
     await app.close();
   }
 });
+
+void test('warm loads the model with the same context and keep-alive as ask, only when on and only from the PC', async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const fetcher: typeof fetch = async (_url, init) => {
+    bodies.push(JSON.parse(typeof init?.body === 'string' ? init.body : '{}'));
+    return Response.json({ message: { content: '' }, done_reason: 'load' });
+  };
+  const build = (enabled: boolean) =>
+    buildServer({
+      dbPath: ':memory:',
+      config: configSchema.parse({ assistant: { enabled, numCtx: 8192 } }),
+      deps: { run: createFakeDesktop(), fetch: fetcher },
+    });
+  const off = build(false);
+  try {
+    const res = await off.inject({ method: 'POST', url: '/trpc/assistant.warm', payload: {} });
+    assert.deepEqual(res.json().result.data, { loading: false });
+    assert.equal(bodies.length, 0);
+  } finally {
+    await off.close();
+  }
+  const on = build(true);
+  try {
+    const lan = await on.inject({
+      method: 'POST',
+      url: '/trpc/assistant.warm',
+      remoteAddress: '192.0.2.20',
+      payload: {},
+    });
+    assert.equal(lan.statusCode, 401);
+    assert.equal(bodies.length, 0);
+    const res = await on.inject({ method: 'POST', url: '/trpc/assistant.warm', payload: {} });
+    assert.deepEqual(res.json().result.data, { loading: true });
+    await on.inject({ method: 'POST', url: '/trpc/assistant.ask', payload: { text: 'metti le cuffie' } });
+    const [warm, ask] = bodies;
+    assert.deepEqual(warm?.messages, []);
+    assert.equal(warm?.keep_alive, '30m');
+    assert.deepEqual(warm?.options, ask?.options);
+    assert.equal(ask?.keep_alive, '30m');
+  } finally {
+    await on.close();
+  }
+});
