@@ -79,14 +79,17 @@ export function LightsPanel({ size }: { size: WidgetSize }) {
   return (
     <Panel
       title={copy.title}
+      // The state in the header and the figure once below (board I1): "Accesa, 100%" above "100%" said it twice.
+      action={light?.power === true ? copy.on : describeLight(light, connectionLost)}
       className={`h-full ${connectionLost || light?.availability === 'unavailable' ? 'opacity-60' : ''}`}
     >
-      <p className="mt-auto text-heading break-words">{describeLight(light, connectionLost)}</p>
-      {light?.brightnessPercent !== null && light?.brightnessPercent !== undefined && (
-        <p>
-          <Readout>{light.brightnessPercent}%</Readout>{' '}
+      {light?.power === true && light.brightnessPercent !== null ? (
+        <p className="mt-auto flex items-end justify-between gap-md">
+          <Readout>{light.brightnessPercent}%</Readout>
           <Ticks value={Math.round(light.brightnessPercent / 20)} total={5} />
         </p>
+      ) : (
+        <span className="mt-auto" />
       )}
       <div className={size === 'small' ? 'flex flex-col gap-sm' : 'flex items-center gap-md'}>
         {light?.capabilities.power && (

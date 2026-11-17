@@ -29,12 +29,12 @@ export function Panel({
       {title && (
         <div className={`flex justify-between gap-md ${subtitle ? 'items-start' : 'items-center'}`}>
           <div className="flex min-w-0 flex-col gap-3xs">
-            <h2 id={titleId} className={widget ? 'text-mono-label text-muted-foreground' : 'text-title'}>
+            <h2 id={titleId} className={widget ? 'text-caps text-muted-foreground' : 'text-title'}>
               {title}
             </h2>
             {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
           </div>
-          {widget && action ? <div className="text-mono-label">{action}</div> : action}
+          {widget && action ? <div className="text-caps">{action}</div> : action}
         </div>
       )}
       {children}

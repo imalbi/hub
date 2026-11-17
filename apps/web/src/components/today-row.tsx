@@ -21,9 +21,7 @@ export function TodayRow({ line }: { line: TodayLine }) {
       {(line.value ?? (line.href ? m.today_open() : undefined)) && (
         <span
           className={
-            line.value
-              ? 'shrink-0 text-mono-label text-muted-foreground'
-              : 'shrink-0 text-caption text-muted-foreground'
+            line.value ? 'shrink-0 text-caps text-muted-foreground' : 'shrink-0 text-caption text-muted-foreground'
           }
         >
           {line.value ?? m.today_open()}

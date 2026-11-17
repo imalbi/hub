@@ -142,7 +142,7 @@ function InstrumentTimer({
 }) {
   return (
     <section aria-label={m.pomodoro_title()} className="flex flex-col items-center gap-lg">
-      <div className="flex w-full justify-between gap-sm text-mono-label text-muted-foreground">
+      <div className="flex w-full justify-between gap-sm text-caps text-muted-foreground">
         <h3>{m.pomodoro_title()}</h3>
         <span className="flex items-center gap-xs">
           {timer.phaseLabel}
@@ -188,7 +188,7 @@ function InstrumentTimer({
               )}
             </span>
           </p>
-          <span className="text-mono-label text-muted-foreground">
+          <span className="text-caps text-muted-foreground">
             {m.pomodoro_instrument_remaining({
               duration: clock(timer.state?.durationMs || (timer.state?.settings.focusMinutes ?? 0) * 60_000),
             })}
@@ -208,10 +208,10 @@ function InstrumentTimer({
           disabled={disabled}
         />
       </div>
-      <p className="text-mono-label text-muted-foreground">
+      <p className="text-caps text-muted-foreground">
         {timer.state ? m.pomodoro_today({ count: timer.state.completedFocusToday }) : m.tile_loading()}
       </p>
-      {footer && <p className="text-mono-label text-muted-foreground">{footer}</p>}
+      {footer && <p className="text-caps text-muted-foreground">{footer}</p>}
       {timer.error && (
         <p role="alert" className="text-caption text-danger">
           {m.pomodoro_error()}

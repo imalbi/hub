@@ -17,7 +17,7 @@ test('muted mono labels on panels meet contrast in built-in themes', async ({ pa
         sample = document.createElement('div');
         sample.id = 'mono-contrast-sample';
         sample.className = 'bg-muted';
-        sample.innerHTML = '<span class="text-mono-label text-muted-foreground">Etichetta</span>';
+        sample.innerHTML = '<span class="text-caps text-muted-foreground">Etichetta</span>';
         document.body.append(sample);
       }
     });

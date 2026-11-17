@@ -56,7 +56,7 @@ src/
 
 ## Styling: Tailwind v4 + design tokens
 
-- The Strumento kit uses `text-readout` for measured figures and `text-mono-label` for short machine labels and states. These roles self-host JetBrains Mono. Keep human titles, steps, notes and buttons in Urbanist; do not apply mono wholesale. `Ticks` represents discrete counts, not continuous progress.
+- **One rule for the two faces (owner, 2026-11-17):** JetBrains Mono only for figures that change: `text-readout` (a large figure: clock, timer, percentages, counts) and `text-figure` (a small one: a unit, the day line's hours, the status line, Studio's step numbers). Every label, title and state, machine ones included, is Urbanist: `text-caps` (small capitals) or the type roles. Code the owner reads or copies (a command, a JSON setting) is `text-code`. `lint:tokens` fails on a hand-written `font-mono` outside `components/ui/`. The boards of step 68 drew labels in mono; the owner found the mix incoherent once built ("robe slegate"), so the rule replaced them. `Ticks` represents discrete counts, not continuous progress.
 
 - Never key a rule on a theme name (`[data-theme='paper'] .x`); add a variable instead.
 - Theme changes glide: the color variables are registered with `@property` (`<color>`, end of `index.css`) and `html` transitions them over `--motion-standard`, so the browser interpolates every color and a change in mid-glide starts from the current one.
@@ -80,7 +80,7 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 
 ## Aesthetic
 
-- The machine speaks in mono for figures, units, clocks, labels and states; the day speaks in Urbanist for titles, steps, notes and sentences. Never invent a metric.
+- Mono for figures only (see Styling); Urbanist for everything else. Never invent a metric.
 
 - Neutrals only, one theme accent for active state and the main figure; other color comes from cover art and photos. Keep the font, Urbanist, and a few weight roles; main figures are large and light.
 - Borders are low-opacity 1px hairlines; separators inside panels are dashed. Panels use large radii, nested shapes step down one radius, controls/nav/filters/badges/player are pills. Lots of air and few elements per panel.

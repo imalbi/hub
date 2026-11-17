@@ -43,7 +43,7 @@ export function JsonBlock({
         minRows={8}
         maxRows={40}
         spellCheck={false}
-        textareaClassName="font-mono"
+        textareaClassName="text-code"
         error={parsed.ok ? undefined : m.settings_json_invalid({ message: parsed.message })}
         onValueChange={(next) => {
           setText(next);

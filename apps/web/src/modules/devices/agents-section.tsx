@@ -178,7 +178,7 @@ export function AgentsSection({ enabled }: { enabled: boolean }) {
     <section className="flex flex-col gap-md" aria-label={m.agents_title()}>
       <h3 className="text-label text-muted-foreground">{m.agents_title()}</h3>
       <div className="flex items-center gap-md">
-        <code aria-label={m.agents_command_label()} className="min-w-0 flex-1 truncate font-mono text-label">
+        <code aria-label={m.agents_command_label()} className="min-w-0 flex-1 truncate text-code text-label">
           {COMMAND}
         </code>
         <RegistryButton

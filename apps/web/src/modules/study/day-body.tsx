@@ -102,7 +102,7 @@ export function DayBody({
           >
             <h4
               className={
-                instrument ? 'text-mono-label text-muted-foreground' : 'text-caption text-muted-foreground uppercase'
+                instrument ? 'text-caps text-muted-foreground' : 'text-caption text-muted-foreground uppercase'
               }
             >
               {block.title}
@@ -119,7 +119,7 @@ export function DayBody({
                   }
                 >
                   {instrument && (
-                    <span className="text-mono-label text-muted-foreground">
+                    <span className="text-figure text-muted-foreground">
                       {String(allSteps.findIndex((item) => item.id === step.id) + 1).padStart(2, '0')}
                     </span>
                   )}

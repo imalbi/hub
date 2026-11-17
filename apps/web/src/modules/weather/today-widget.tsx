@@ -12,7 +12,6 @@ import { addDays, dayDate, localDay } from '../../lib/day.ts';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
 
-const date = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 const weekday = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric' });
 const time = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' });
 
@@ -24,7 +23,7 @@ const CARDS: Partial<Record<WidgetSize, number>> = { wide: 2, large: 2, full: 2 
 
 type Reported = Record<string, TodayLine[] | null>;
 
-/** Oggi in four sizes (step 66, board P2): date and time, the modules' lines, the post-its and the weather. */
+/** Oggi in four sizes (step 66, board P2): the time, the modules' lines, the post-its and the weather. */
 export function TodayWidget({ size }: { size: WidgetSize }) {
   const now = useNow('clock');
   const modules = useLiveModuleUIs();
@@ -44,7 +43,7 @@ export function TodayWidget({ size }: { size: WidgetSize }) {
   const cards = CARDS[size] ?? 2;
   const clock = (
     <div className="flex flex-col gap-2xs">
-      <p className="text-title whitespace-nowrap">{date.format(now)}</p>
+      {/* No date: the day line above the board already says it (step 68, the owner saw it twice). */}
       <p>
         <Readout>{time.format(now)}</Readout>
       </p>

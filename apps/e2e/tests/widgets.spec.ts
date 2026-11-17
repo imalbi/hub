@@ -46,19 +46,21 @@ test('widget labels and measured figures use the self-hosted mono voice', async 
   for (const id of ids) {
     const widget = cell(page, id);
     const title = widget.getByRole('heading').first();
-    await expect(title).toHaveCSS('font-family', /JetBrains Mono/);
+    // Mono only for figures (owner, 2026-11-17): a widget title is an Urbanist label in capitals.
+    await expect(title).toHaveCSS('font-family', /Urbanist/);
     await expect(title).toHaveCSS('text-transform', 'uppercase');
     await expect(widget.locator('[data-readout]').first()).toHaveCSS('font-family', /JetBrains Mono/);
     await expect(widget.locator('[data-readout]').first()).toHaveCSS('font-variant-numeric', /tabular-nums/);
   }
 });
 
-test('Oggi leads the default board and shows the Italian date and weather', async ({ page }) => {
+test('Oggi leads the default board; the Italian date is said once, in the day line', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
   await page.reload();
   await expect(page.locator('[data-widget]').first()).toHaveAttribute('data-widget', 'today');
   const today = cell(page, 'today');
-  await expect(today.getByText('mercoledì 4 novembre')).toBeVisible();
+  await expect(page.getByText('mercoledì 4 novembre', { exact: true })).toHaveCount(1);
+  await expect(today.getByText('mercoledì 4 novembre')).toHaveCount(0);
   await expect(today.locator('[data-readout]').first()).toHaveCSS('font-family', /JetBrains Mono/);
   await expect(today.getByText('Località esempio')).toBeVisible();
 });

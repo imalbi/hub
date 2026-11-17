@@ -8,7 +8,7 @@
     "typecheck": "pnpm i18n && tsr generate && tsc -p .",
     "test": "node --test 'src/**/*.test.ts'",
     "i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
-    "lint:tokens": "! rg -n '(^|[\" :])(-?[a-z]+(-[a-z]+)*)-\\[' src --glob '*.tsx' --glob '!src/paraglide/**' --glob '!src/components/ui/**'"
+    "lint:tokens": "! rg -n '(^|[\" :])(-?[a-z]+(-[a-z]+)*)-\\[' src --glob '*.tsx' --glob '!src/paraglide/**' --glob '!src/components/ui/**' && ! rg -n '\\bfont-mono\\b' src --glob '*.tsx' --glob '!src/paraglide/**' --glob '!src/components/ui/**'"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

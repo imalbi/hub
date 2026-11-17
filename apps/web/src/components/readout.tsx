@@ -4,7 +4,7 @@ export function Readout({ children, unit }: { children: ReactNode; unit?: ReactN
   return (
     <span data-readout className="text-readout">
       {children}
-      {unit && <span className="text-mono-label text-muted-foreground"> {unit}</span>}
+      {unit && <span className="text-figure text-muted-foreground"> {unit}</span>}
     </span>
   );
 }

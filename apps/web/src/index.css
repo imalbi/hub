@@ -718,7 +718,11 @@ html {
   opacity: 1;
 }
 
-/* The machine voice: measured figures and short labels, independent of the day voice. */
+/*
+ * One rule for the two faces (owner, 2026-11-17): JetBrains Mono only for figures that change (clock, timer, %,
+ * W and kWh, counts, the day line's hours), Urbanist for everything else, labels and states included.
+ * `text-readout` is a large figure, `text-figure` a small one, `text-caps` a small label in capitals.
+ */
 @utility text-readout {
   font-family: var(--font-mono);
   font-size: 2.5rem;
@@ -728,8 +732,20 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
-@utility text-mono-label {
+/* Code the owner reads or copies (a command, a JSON setting): mono, but not a figure. */
+@utility text-code {
   font-family: var(--font-mono);
+}
+
+@utility text-figure {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility text-caps {
+  font-family: var(--font-sans);
   font-size: 0.8rem;
   line-height: 1.25;
   letter-spacing: 0.08em;

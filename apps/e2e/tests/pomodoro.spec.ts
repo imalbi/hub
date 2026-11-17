@@ -229,7 +229,8 @@ for (const [paused, via] of [
       await expect(page).toHaveURL(via === 'Media' ? /\/desk\/media$/ : /\/desk$/);
       // Panoramica has its own Pomodoro panel: read it there; otherwise come back to Studio.
       if (via === 'Media') await rail.getByRole('link', { name: 'Studio', exact: true }).click();
-      await expect(timeText(page)).toHaveText(/^\d\d:\d\d$/);
+      // Until the first push the hidden text is the 00:00 placeholder, and the session is at 24:5x: wait for the push.
+      await expect(timeText(page)).toHaveText(/^(?!00:00)\d\d:\d\d$/);
       const after = await timeText(page).textContent();
       expect(after).not.toBe('25:00');
       // What the owner sees are the rolling digits, not the screen reader text: once they settle they must agree.

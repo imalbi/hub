@@ -62,8 +62,8 @@ export function DayLine({ heading = false, actions }: { heading?: boolean; actio
       )}
       {heading && (
         <div className="flex items-center justify-between gap-md text-muted-foreground">
-          <span className="text-mono-label">{date.format(now)}</span>
-          <span className="ml-auto text-mono-label">
+          <span className="text-caps">{date.format(now)}</span>
+          <span className="ml-auto text-caps">
             {[
               m.day_focus_summary({ count: blocks.length, minutes: totalMinutes }),
               ...reports.map((entry) => entry.summary).filter(Boolean),
@@ -88,16 +88,16 @@ export function DayLine({ heading = false, actions }: { heading?: boolean; actio
           .flatMap((entry) => entry.marks ?? [])
           .map((mark) => (
             <span key={mark.id} className="day-mark" style={{ left: `${dayPosition(mark.at, now) * 100}%` }}>
-              <span className="day-caption text-mono-label tracking-normal normal-case">
+              <span className="day-caption text-caps tracking-normal normal-case">
                 {time.format(mark.at)} {mark.label}
               </span>
             </span>
           ))}
         <span data-day-now className="day-now" style={{ left: `${dayPosition(now) * 100}%` }}>
-          <span className="day-caption text-mono-label tracking-normal text-accent normal-case">{m.day_now()}</span>
+          <span className="day-caption text-caps tracking-normal text-accent normal-case">{m.day_now()}</span>
         </span>
       </div>
-      <div aria-hidden className="mb-lg flex justify-between text-mono-label text-muted-foreground">
+      <div aria-hidden className="mb-lg flex justify-between text-figure text-muted-foreground">
         {Array.from({ length: 10 }, (_, i) => (
           <span key={i}>{String(6 + i * 2).padStart(2, '0')}</span>
         ))}

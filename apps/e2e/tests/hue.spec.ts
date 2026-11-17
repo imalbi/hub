@@ -274,8 +274,11 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await page.getByRole('button', { name: 'Fine' }).click();
     try {
       const widget = page.locator('[data-widget="lights"]');
-      await expect(widget.getByText('Accesa, 80%', { exact: true })).toBeVisible();
-      await expect(widget.getByRole('heading', { name: 'Luci' })).toHaveCSS('font-family', /JetBrains Mono/);
+      // The state once in the header and the figure once below, not "Accesa, 80%" above "80%".
+      await expect(widget.getByText('Accesa', { exact: true })).toBeVisible();
+      await expect(widget.locator('[data-readout]')).toHaveText('80%');
+      await expect(widget.getByText('Accesa, 80%', { exact: true })).toHaveCount(0);
+      await expect(widget.getByRole('heading', { name: 'Luci' })).toHaveCSS('font-family', /Urbanist/);
       await expect(widget.locator('[data-readout]')).toHaveCSS('font-family', /JetBrains Mono/);
       const brightness = widget.getByRole('img', { name: '4 di 5' });
       await expect(brightness.locator('i')).toHaveCount(5);

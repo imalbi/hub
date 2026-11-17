@@ -17,7 +17,7 @@ export function StatusLine() {
     <footer
       role="contentinfo"
       aria-label={m.status_line()}
-      className="flex shrink-0 items-center gap-xl overflow-hidden border-t border-border px-lg py-sm text-mono-label tracking-normal text-muted-foreground normal-case"
+      className="flex shrink-0 items-center gap-xl overflow-hidden border-t border-border px-lg py-sm text-figure text-muted-foreground normal-case"
     >
       <span className="text-foreground">hub</span>
       {health.data && <span>{uptimeText(health.data.uptime)}</span>}

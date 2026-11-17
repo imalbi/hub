@@ -151,7 +151,7 @@ function TodayDay({
   return (
     <div className="col-span-12 grid grid-cols-12 items-start gap-lg">
       <TabBarActions>
-        <div className="ml-auto flex items-center gap-md text-mono-label text-muted-foreground">
+        <div className="ml-auto flex items-center gap-md text-caps text-muted-foreground">
           {subjectInfo && (
             <span>
               {m.study_subject_header({
@@ -187,7 +187,7 @@ function TodayDay({
       </TabBarActions>
       <section data-study-day className="col-span-6 flex min-w-0 flex-col gap-lg pr-lg">
         <h2 className="text-hero">{day.title}</h2>
-        <p className="flex items-center gap-sm text-mono-label">
+        <p className="flex items-center gap-sm text-caps">
           <Ticks value={checked.size} total={allSteps.length} />
           <span>
             <NumberRoll value={checked.size} /> {m.study_steps_of({ total: allSteps.length })}
@@ -257,7 +257,7 @@ function TodayDay({
         />
       </section>
       <section data-study-next className="col-span-3 flex min-w-0 flex-col gap-lg border-l border-border pl-lg">
-        <h3 className="text-mono-label text-muted-foreground">{m.study_next_days()}</h3>
+        <h3 className="text-caps text-muted-foreground">{m.study_next_days()}</h3>
         <ul>
           {index.days
             .filter((item) => !item.done && item.key !== day.key)
