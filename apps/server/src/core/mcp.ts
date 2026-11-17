@@ -13,7 +13,7 @@ import { isAllowedOrigin } from './origin.ts';
 import { extractToken, resolveAgent, type IsLoopback } from './auth.ts';
 import type { Db } from '../db/index.ts';
 import { listActions } from './registry.ts';
-import { recordAgentCall } from './agent-audit.ts';
+import { callAgentAction } from './agent-action.ts';
 import type { Context } from './trpc.ts';
 import type { createConfirmations } from './confirmations.ts';
 
@@ -88,53 +88,14 @@ export function registerMcp(
         ),
     }));
     server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
-      const started = Date.now();
-      const action = listActions(router)
-        .filter((action) => !action.pageOnly)
-        .find(({ path }) => path === params.name);
-      let result: unknown;
-      let isError = false;
-      try {
-        if (!action) throw new Error('Unknown tool');
-        const input = action.schema === null ? undefined : (params.arguments ?? {});
-        const ctx: Context = { ...baseContext, client, remoteAddress: req.socket.remoteAddress ?? '' };
-        const invoke = (context: Context, raw: unknown) =>
-          callTRPCProcedure({
-            router,
-            path: action.path,
-            type: action.kind,
-            ctx: context,
-            getRawInput: async () => raw,
-            signal: undefined,
-            batchIndex: 0,
-          });
-        if (action.danger) {
-          const id = confirmations.request({
-            agentId: client.agentId,
-            name: client.name,
-            action: action.path,
-            input,
-            run: () =>
-              invoke(
-                { ...ctx, client: { kind: 'loopback' }, agentRequest: true },
-                { ...params.arguments, confirmed: true },
-              ),
-          });
-          if (!id) throw new Error('No desk or deck client connected');
-          result = { status: 'awaiting confirmation', id };
-        } else result = await invoke(ctx, input);
-      } catch (error) {
-        isError = true;
-        result = { error: error instanceof Error ? error.message : 'Action failed' };
-      }
-      await recordAgentCall(db, {
-        agentId: client.agentId || null,
-        name: client.name,
-        action: params.name,
-        input: params.arguments ?? {},
-        result,
-        durationMs: Date.now() - started,
-      });
+      const { result, isError } = await callAgentAction(
+        router,
+        confirmations,
+        { ...baseContext, client, remoteAddress: req.socket.remoteAddress ?? '' },
+        client,
+        params.name,
+        params.arguments,
+      );
       return { content: [{ type: 'text', text: JSON.stringify(result) ?? 'null' }], ...(isError && { isError: true }) };
     });
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });

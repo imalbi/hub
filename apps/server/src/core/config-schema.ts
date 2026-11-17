@@ -1,5 +1,25 @@
 import { z } from 'zod';
 export const coreConfigSchema = z.object({
+  assistant: z
+    .object({
+      enabled: z
+        .boolean()
+        .default(false)
+        .meta({ title: 'Attivo', description: 'Consente di chiedere azioni al modello locale.' }),
+      model: z
+        .string()
+        .min(1)
+        .default('gemma4:12b-it-qat')
+        .meta({ title: 'Modello', description: 'Nome del modello locale in Ollama.' }),
+      numCtx: z
+        .number()
+        .int()
+        .min(1024)
+        .default(16384)
+        .meta({ title: 'Contesto', description: 'Numero massimo di token nel contesto del modello.' }),
+    })
+    .default({ enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384 })
+    .meta({ title: 'Assistente', description: 'Modello locale per le azioni richieste nella ricerca.' }),
   mcp: z
     .object({
       enabled: z

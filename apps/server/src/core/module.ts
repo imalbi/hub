@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
 import type { FocusHistory } from './focus-history.ts';
+export { ollamaChat, ollamaUrl, OllamaError } from './ollama.ts';
 
 /** What a discovered (private or example) module gets: never the core database. */
 export type DiscoveredDeps = {

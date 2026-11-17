@@ -110,6 +110,17 @@ const monitors = fakeMonitors();
 /** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (url.endsWith('/api/chat')) {
+    const body = z
+      .object({ messages: z.array(z.object({ content: z.string() })) })
+      .parse(JSON.parse(typeof init?.body === 'string' ? init.body : '{}'));
+    const text = body.messages.at(-1)?.content;
+    const call =
+      text === 'spegni il pc'
+        ? { name: 'system_powerOff', arguments: { confirmed: true } }
+        : { name: 'audio_setOutput', arguments: { label: 'Cuffie' } };
+    return Response.json({ prompt_eval_count: 100, message: { content: '', tool_calls: [{ function: call }] } });
+  }
   if (url === 'https://example.com/up') return new Response(null, { status: 200 });
   if (url === 'https://example.com/down') return new Response(null, { status: 503 });
   if (url.startsWith('https://api.open-meteo.com/'))
@@ -270,6 +281,12 @@ function build() {
     settings: { configPath, onRestart: () => void restart() },
   });
   app.get('/__fake/core', () => ({ mcp: effectiveConfig.mcp.enabled, jobs: effectiveConfig.jobs.maxConcurrent }));
+  app.post('/__fake/assistant', (request, reply) => {
+    const parsed = z.object({ enabled: z.boolean() }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send();
+    effectiveConfig.assistant.enabled = parsed.data.enabled;
+    return { enabled: parsed.data.enabled };
+  });
   return app;
 }
 

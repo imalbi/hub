@@ -124,6 +124,7 @@ void test('core settings save only for loopback and preserve unrelated config', 
     server: { host: '127.0.0.1' },
     ...input,
     backup: { enabled: true, keep: 14 },
+    assistant: { enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384 },
   });
 });
 

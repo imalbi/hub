@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { getUntypedClient } from '@trpc/client';
@@ -105,6 +105,8 @@ export function DeskCommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const records = useRecordItems(query, open);
+  const assistant = useQuery(trpc.assistant.state.queryOptions(undefined, { enabled: open, staleTime: Infinity }));
+  const answer = useRef<Awaited<ReturnType<typeof client.assistant.ask.mutate>> | null>(null);
   const [recent, setRecent] = useState(recentPaths);
   const zones = useZones();
   const registry = useQuery(trpc.registry.list.queryOptions(undefined, { enabled: open }));
@@ -163,6 +165,37 @@ export function DeskCommandPalette() {
           : { onSelect: () => run(action) }),
       };
     }),
+    ...(assistant.data?.enabled && query.trim().split(/\s+/).length >= 2
+      ? [
+          {
+            id: 'assistant:ask',
+            label: m.assistant_ask({ query: query.trim() }),
+            group: m.assistant_group(),
+            always: true,
+            onSelect: async () => {
+              answer.current = await client.assistant.ask.mutate({ text: query.trim() });
+              await queryClient.invalidateQueries();
+            },
+            view: () => (
+              <div className="flex flex-col gap-sm">
+                {answer.current?.steps.map((step, index) => (
+                  <p key={`${step.path}-${index}`} className="text-body">
+                    {step.label} ·{' '}
+                    {step.status === 'done'
+                      ? m.assistant_done()
+                      : step.status === 'awaiting confirmation'
+                        ? m.assistant_confirm()
+                        : step.status === 'refused'
+                          ? m.assistant_refused()
+                          : m.assistant_failed()}
+                  </p>
+                ))}
+                {answer.current?.text && <p className="text-body">{answer.current.text}</p>}
+              </div>
+            ),
+          } satisfies CommandItem,
+        ]
+      : []),
   ];
 
   return (
@@ -171,7 +204,11 @@ export function DeskCommandPalette() {
       items={items}
       onOpenChange={setOpen}
       onQueryChange={setQuery}
-      emptyGroup={{ heading: m.palette_actions(), text: (typed) => m.palette_no_actions({ query: typed }) }}
+      emptyGroup={
+        assistant.data?.enabled && query.trim().split(/\s+/).length >= 2
+          ? undefined
+          : { heading: m.palette_actions(), text: (typed) => m.palette_no_actions({ query: typed }) }
+      }
       emptyText={(query) =>
         registry.isError ? m.palette_error() : registry.isPending ? m.palette_loading() : m.palette_empty({ query })
       }

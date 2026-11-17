@@ -40,6 +40,7 @@ void test('registry lists all public mutations with labels, descriptions and the
   assert.equal(actions.find((a: { path: string }) => a.path === 'media.playPause').schema, null);
   assert.equal(actions.find((a: { path: string }) => a.path === 'system.powerOff').danger, true);
   assert.ok(!actions.some((a: { path: string }) => a.path === 'registry.list'));
+  assert.ok(!actions.some((a: { path: string }) => a.path === 'assistant.ask'));
 });
 
 void test('registry is protected and automatically includes optional module actions and ranges', async (t) => {

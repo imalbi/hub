@@ -2,6 +2,7 @@
 import { moduleDbPath, openDatabase } from './db/index.ts';
 import { router } from './core/trpc.ts';
 import { createRegistryRouter } from './core/registry.ts';
+import { createAssistantRouter } from './core/assistant.ts';
 import { createConfirmations } from './core/confirmations.ts';
 import { createConfirmationsRouter } from './core/confirmations-router.ts';
 import { agentsRouter } from './core/agents-router.ts';
@@ -83,6 +84,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   });
   return router({
     ...app._def.record,
+    assistant: createAssistantRouter(() => registered, confirmations, deps.fetch),
     registry: createRegistryRouter(() => registered),
     settings,
     agents: agentsRouter,

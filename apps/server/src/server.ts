@@ -56,6 +56,7 @@ export function buildServer({
     fetch?: typeof fetch;
     spawn?: StreamSpawn;
     onJobs?: (jobs: ReturnType<typeof createJobRunner>) => void;
+    onConfirmations?: (confirmations: ReturnType<typeof createConfirmations>) => void;
     testRouters?: Record<string, AnyRouter>;
   };
   config?: Config;
@@ -106,6 +107,7 @@ export function buildServer({
   );
   const sockets = createDeviceSockets();
   const confirmations = createConfirmations();
+  deps.onConfirmations?.(confirmations);
   const allowlist = allowedOrigins(config);
   // CORS does not cover WebSockets, so any page open in the browser could otherwise drive the desktop through
   // localhost. `verifyClient` runs inside the upgrade, before the connection is bound.
@@ -148,6 +150,7 @@ export function buildServer({
         'agents',
         'confirmations',
         'backup',
+        'assistant',
       ],
       deps: discoveredDeps,
       dbPath,

@@ -505,5 +505,11 @@
       }
     }
   ],
-  "mail_chip": "Posta"
+  "mail_chip": "Posta",
+  "assistant_group": "Assistente",
+  "assistant_ask": "Chiedi a Hub: «{query}»",
+  "assistant_done": "fatto",
+  "assistant_confirm": "conferma con la pressione",
+  "assistant_refused": "non consentito",
+  "assistant_failed": "non riuscito"
 }

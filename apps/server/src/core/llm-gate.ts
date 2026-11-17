@@ -31,7 +31,7 @@ export function createLlmGate() {
   function run<T>(
     cap: number,
     call: (signal: AbortSignal) => Promise<T>,
-    { minIntervalMs = 0, counted = true } = {},
+    { minIntervalMs = 0, counted = true, front = false } = {},
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       function start() {
@@ -69,7 +69,8 @@ export function createLlmGate() {
           next();
         });
       }
-      if (active) queue.push(start);
+      if (active && front) queue.unshift(start);
+      else if (active) queue.push(start);
       else start();
     });
   }

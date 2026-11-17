@@ -458,3 +458,52 @@ test('two characters find the example greetings under Saluti, one character find
   await expect(saluti).toContainText('5');
   await expect(saluti.getByRole('button')).toHaveCount(0);
 });
+
+test('assistant is absent when off and appears last for two words, then runs an audio action', async ({ page, pc }) => {
+  await page.goto('/desk');
+  await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).click();
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  const field = palette.getByRole('combobox');
+  await field.fill('metti le cuffie');
+  await expect(palette.getByRole('option', { name: /Chiedi a Hub/ })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await pc.post(`${SERVER_URL}/__fake/assistant`, { data: { enabled: true } });
+  try {
+    await page.reload();
+    await pc.post('/trpc/audio.setOutput', { data: { label: 'Casse' } });
+    await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).click();
+    await field.fill('cuffie');
+    await expect(palette.getByRole('option', { name: /Chiedi a Hub/ })).toHaveCount(0);
+    await field.fill('metti le cuffie');
+    const option = palette.getByRole('option', { name: 'Chiedi a Hub: «metti le cuffie»' });
+    await expect(option).toBeVisible();
+    await expect(palette.getByRole('option').last()).toHaveText(/Chiedi a Hub/);
+    await expect(palette.getByRole('group').last()).toHaveAccessibleName('Assistente');
+    await page.keyboard.press('Enter');
+    await expect(palette.getByText('Seleziona uscita audio · fatto')).toBeVisible();
+    await expect
+      .poll(async () => await (await pc.get('/trpc/audio.state')).text())
+      .toContain('"current":{"label":"Cuffie"}');
+  } finally {
+    await pc.post(`${SERVER_URL}/__fake/assistant`, { data: { enabled: false } });
+  }
+});
+
+test('assistant danger action requires the hold dialog', async ({ page, pc }) => {
+  await pc.post(`${SERVER_URL}/__fake/assistant`, { data: { enabled: true } });
+  try {
+    await page.goto('/desk');
+    await page.getByRole('button', { name: 'Cerca o esegui, scorciatoia Ctrl K' }).click();
+    const palette = page.getByRole('dialog', { name: 'Comandi' });
+    await palette.getByRole('combobox').fill('spegni il pc');
+    await palette.getByRole('option', { name: 'Chiedi a Hub: «spegni il pc»' }).click();
+    const confirmation = page.getByRole('dialog', { name: 'Richiesta di conferma' });
+    await expect(confirmation).toBeVisible();
+    await expect(palette.getByText('Spegni PC · conferma con la pressione')).toBeVisible();
+    const system = await (await pc.get(`${SERVER_URL}/__fake/system`)).json();
+    expect(system.calls).not.toContain('systemctl poweroff');
+    await confirmation.getByRole('button', { name: 'Rifiuta' }).click();
+  } finally {
+    await pc.post(`${SERVER_URL}/__fake/assistant`, { data: { enabled: false } });
+  }
+});

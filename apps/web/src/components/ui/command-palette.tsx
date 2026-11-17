@@ -669,7 +669,7 @@ export function CommandPalette({
     setActive(i);
     setFailed(false);
     if (item.items) return go(1, [...stack, { title: item.label.replace(/…$/, ''), items: item.items }]);
-    if (item.view) return go(1, [...stack, { title: item.label, view: item.view }]);
+    if (item.view && !item.onSelect) return go(1, [...stack, { title: item.label, view: item.view }]);
     const mine = session.current;
     const result = item.onSelect?.();
     if (!(result instanceof Promise)) return setOpen(false);
@@ -677,6 +677,10 @@ export function CommandPalette({
     try {
       await result;
       if (session.current !== mine) return;
+      if (item.view) {
+        setRun(null);
+        return go(1, [...stack, { title: item.label, view: item.view }]);
+      }
       setRun({ id: item.id, state: 'done' });
       timer.current = window.setTimeout(() => setOpen(false), reduced ? 0 : 520);
     } catch {

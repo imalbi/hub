@@ -97,3 +97,30 @@ void test('an uncounted call queues behind the others but neither meets the cap 
   assert.equal(await gate(1, call, { counted: false }), 'ok');
   assert.equal(gate.used(), 1);
 });
+
+void test('a front call runs ahead of waiting calls without interrupting the active call', async () => {
+  const gate = createLlmGate();
+  const order: string[] = [];
+  let finish: (() => void) | undefined;
+  const first = gate(10, () => {
+    order.push('active');
+    return new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+  });
+  const waiting = ['one', 'two'].map((name) =>
+    gate(10, async () => {
+      order.push(name);
+    }),
+  );
+  const front = gate(
+    10,
+    async () => {
+      order.push('front');
+    },
+    { front: true },
+  );
+  finish?.();
+  await Promise.all([first, ...waiting, front]);
+  assert.deepEqual(order, ['active', 'front', 'one', 'two']);
+});
