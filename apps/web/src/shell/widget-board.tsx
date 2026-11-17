@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, ArrowRightIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
 import { SplitPill } from '../components/split-pill.tsx';
 import { useTRPC } from '../lib/trpc.ts';
-import { widgetCells, type WidgetSize } from '../lib/widget-size.ts';
+import { smallestWidgetSize, widgetCells, type WidgetSize } from '../lib/widget-size.ts';
 import { m } from '../paraglide/messages.js';
-import { HeaderActions } from './header-slot.tsx';
 import { defaultLayout, useWidgets, type WidgetItem } from './widgets.ts';
 
 // The server keeps one saved board, Panoramica's.
@@ -47,6 +46,7 @@ export function WidgetBoard() {
   const save = useMutation(trpc.layout.save.mutationOptions());
   const reset = useMutation(trpc.layout.reset.mutationOptions());
   const [editing, setEditing] = useState(false);
+  const missingRef = useRef<HTMLDivElement>(null);
   const { width, containerRef, mounted } = useContainerWidth();
 
   const widgets = useWidgets();
@@ -88,8 +88,21 @@ export function WidgetBoard() {
   const [rowHeight = 0, gap = 0] = useSyncExternalStore(subscribeToResize, readGridMetrics).split(' ').map(Number);
 
   return (
-    <section aria-label={m.widget_board()} className="col-span-12 flex flex-col gap-md pt-touch">
-      <HeaderActions>
+    <section aria-label={m.widget_board()} className="flex flex-col gap-md">
+      <div className="flex items-center justify-end gap-sm">
+        {editing && (
+          <button
+            type="button"
+            disabled={missing.length === 0}
+            onClick={() => {
+              missingRef.current?.scrollIntoView({ block: 'nearest' });
+              missingRef.current?.querySelector('button')?.focus();
+            }}
+            className="min-h-touch rounded-full border border-border px-lg text-label disabled:opacity-40"
+          >
+            {m.widget_add()}
+          </button>
+        )}
         <SplitPill
           open={editing}
           label={editing ? m.widget_done() : m.widget_edit()}
@@ -97,8 +110,9 @@ export function WidgetBoard() {
           extraLabel={m.widget_reset()}
           onExtra={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
         />
-      </HeaderActions>
-      <div ref={containerRef} className={`mt-lg ${editing ? 'widget-board editing' : 'widget-board'}`}>
+      </div>
+      {editing && <p className="text-caption text-muted-foreground">{m.widget_drag_hint()}</p>}
+      <div ref={containerRef} className={`${editing ? 'widget-board editing' : 'widget-board'}`}>
         {mounted && (
           <ReactGridLayout
             layout={layout}
@@ -121,7 +135,7 @@ export function WidgetBoard() {
               return (
                 <div key={item.widget} data-widget={item.widget} data-size={item.size} className="widget-cell">
                   {/* While editing the widget is a picture to move: its own buttons must not take the press. */}
-                  <div className="h-full overflow-hidden rounded-xl" inert={editing}>
+                  <div className="h-full overflow-hidden rounded-lg" inert={editing}>
                     <Widget size={item.size} />
                   </div>
                   {editing && (
@@ -182,17 +196,20 @@ export function WidgetBoard() {
         )}
       </div>
       {editing && missing.length > 0 && (
-        <div className="flex flex-col gap-sm">
-          <h2 className="text-label">{m.widget_add()}</h2>
+        <div ref={missingRef} className="flex flex-col gap-sm rounded-lg border border-dashed border-border p-lg">
+          <div className="flex justify-between gap-sm">
+            <h2 className="text-label">{m.widget_add()}</h2>
+            <span className="text-caption text-muted-foreground">{m.widget_missing_hint()}</span>
+          </div>
           <div className="flex flex-wrap gap-xs">
             {missing.map((widget) => (
               <button
                 key={widget.id}
                 type="button"
                 aria-label={m.widget_add_item({ name: widget.label() })}
-                // Added at the bottom in its first size; vertical compaction pulls it up into the first gap.
+                // Vertical compaction pulls the added widget into the first gap.
                 onClick={() =>
-                  commit([...items, { widget: widget.id, size: widget.sizes[0] ?? 'small', x: 0, y: 200 }])
+                  commit([...items, { widget: widget.id, size: smallestWidgetSize(widget.sizes), x: 0, y: 200 }])
                 }
                 className="flex min-h-touch items-center gap-xs rounded-full border border-dashed border-border px-md text-label hover:bg-muted focus-visible:outline focus-visible:outline-accent"
               >
@@ -201,6 +218,7 @@ export function WidgetBoard() {
               </button>
             ))}
           </div>
+          <p className="text-caption text-muted-foreground">{m.widget_add_hint()}</p>
         </div>
       )}
       {save.isError && (

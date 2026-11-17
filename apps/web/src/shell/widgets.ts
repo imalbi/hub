@@ -34,7 +34,7 @@ export const widgets: Array<{
   { id: 'power', label: m.power_title, sizes: ['small', 'medium'], component: PowerWidget },
   { id: 'audio', label: m.tile_audio_output, sizes: ['small', 'medium', 'wide'], component: AudioWidget },
   // Lists that grow scroll inside their cell, so they only come in sizes tall enough to show a few rows.
-  { id: 'devices', label: m.devices_title, sizes: ['large', 'full'], component: DevicesWidget },
+  { id: 'devices', label: m.devices_title, sizes: ['small', 'large'], component: DevicesWidget },
   { id: 'theme', label: m.theme_title, sizes: ['large', 'full'], component: ThemeWidget },
 ];
 

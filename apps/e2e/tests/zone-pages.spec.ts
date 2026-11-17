@@ -14,8 +14,9 @@ const pages = [
   { path: '/desk/settings', landmark: { role: 'navigation', name: 'Sezioni' } },
 ] as const;
 
-// The zone pages (not Impostazioni, not Panoramica): one surface each, step 47.
+// Zone pages and Panoramica share one surface.
 const surfacePages = [
+  { path: '/desk', landmark: { role: 'region', name: 'Widget' } },
   { path: '/desk/studio', landmark: { role: 'region', name: 'Pomodoro' } },
   { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
   { path: '/desk/system', landmark: { role: 'region', name: 'Questo PC' } },

@@ -13,7 +13,7 @@ import { AgentsSection } from './agents-section.tsx';
 import { lastSeen } from './last-seen.ts';
 import { ServicesPanel } from './services-panel.tsx';
 
-function usePairing() {
+export function usePairing() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const createCode = useMutation(trpc.pairing.createCode.mutationOptions());
@@ -92,7 +92,7 @@ function ConnectPanel({ pairing: { createCode, remaining } }: { pairing: Pairing
   );
 }
 
-function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing }) {
+export function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing }) {
   return (
     <section className="flex flex-col gap-md" aria-label={m.devices_phones_title()}>
       <h3 className="text-label text-muted-foreground">{m.devices_phones_title()}</h3>
@@ -129,8 +129,7 @@ function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pairing })
 
 /**
  * The Dispositivi page as grid cells: connecting a phone and this PC's own devices on the left (5 columns), who has
- * access on the right (7). Outside a grid (the Panoramica widget) the cells simply stack; `fill` (the page) makes both
- * columns as tall as the surface, the right panel scrolling inside.
+ * access on the right (7). `fill` makes both columns as tall as the surface, the right panel scrolling inside.
  */
 export function DevicesBoard({ fill = false }: { fill?: boolean }) {
   const trpc = useTRPC();

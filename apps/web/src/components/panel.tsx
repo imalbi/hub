@@ -16,7 +16,7 @@ export function Panel({
   children: ReactNode;
 }) {
   const titleId = useId();
-  // On a page surface a panel is an inner one: lighter than the surface, one radius down, no border (step 47). On Panoramica and Impostazioni it stays the bordered card.
+  // On a page surface a panel is an inner one: lighter than the surface, one radius down, no border (step 47).
   const inner = useInSurface();
   return (
     <section

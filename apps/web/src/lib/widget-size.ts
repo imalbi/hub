@@ -8,3 +8,11 @@ export const widgetCells = {
 } as const;
 
 export type WidgetSize = keyof typeof widgetCells;
+
+export function smallestWidgetSize(sizes: readonly WidgetSize[]): WidgetSize {
+  return sizes.reduce(
+    (smallest, size) =>
+      widgetCells[size].w * widgetCells[size].h <= widgetCells[smallest].w * widgetCells[smallest].h ? size : smallest,
+    'full',
+  );
+}

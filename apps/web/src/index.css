@@ -584,7 +584,7 @@ html {
   cursor: grab;
 }
 .widget-board.editing .widget-cell > [inert] {
-  opacity: 0.85;
+  opacity: 0.3;
 }
 @media (prefers-reduced-motion: reduce) {
   .widget-board .react-grid-layout,

@@ -36,6 +36,17 @@
   "devices_step_open_lan": "Per aprire il deck da un telefono serve la rete locale: attivala nella configurazione di Hub.",
   "devices_step_code": "Scrivi il codice nell'app",
   "devices_access_title": "Chi ha accesso",
+  "devices_remote_count": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": { "plural=one": "{count} agent remoto", "plural=*": "{count} agent remoti" }
+    }
+  ],
+  "devices_widget_phones": "telefoni",
+  "devices_widget_connect": "Collega",
+  "devices_widget_hint": "Per collegare un telefono apri Dispositivi",
+  "devices_widget_link": "Collega un telefono",
   "devices_phones_title": "Telefoni e tablet",
   "agents_command_label": "Comando per collegare un agent su questo PC",
   "agents_copy": "Copia comando",

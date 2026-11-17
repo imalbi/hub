@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ThemeProvider } from '../theme/theme.tsx';
 import { useZones, zoneAt } from './zones.ts';
 import { m } from '../paraglide/messages.js';
@@ -8,7 +8,6 @@ import { DeskRail } from './rail.tsx';
 import { MediaProvider } from '../modules/media/media-provider.tsx';
 import { DeskBackdrop } from './backdrop.tsx';
 import { ActivityBall } from './activity.tsx';
-import { HeaderSlot } from './header-slot.tsx';
 import { RestartScreen } from '../settings/restart-screen.tsx';
 import { AgentConfirmation } from './agent-confirmation.tsx';
 import { useIsOn } from '../lib/enabled-modules.ts';
@@ -22,8 +21,6 @@ export function DeskShell() {
   const zones = useZones();
   const location = useLocation();
   const navigate = useNavigate();
-  // A callback ref into state, so zones can portal their actions into the header once it exists.
-  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const active = zoneAt(location.pathname, zones);
   const notesOn = useIsOn()('notes');
   useEffect(() => {
@@ -62,16 +59,10 @@ export function DeskShell() {
         <ActivityBall />
         <main className="flex h-dvh flex-col overflow-hidden pt-xl pl-desk-inset">
           <h1 className="sr-only">{active?.label() ?? m.desk_title()}</h1>
-          {/* Floating top right: the page's own actions (Panoramica's Modifica); the activity ball is on the left, by the rail. */}
-          <header className="pointer-events-none fixed top-md right-xl z-30 flex h-ball items-center [&>*]:pointer-events-auto">
-            <div ref={setSlot} className="flex items-center gap-xs" />
-          </header>
           {/* `relative`: the containing block of absolutely placed sr-only nodes, or they stretch the document past the scroller. The right padding sits inside it so the scrollbar is flush with the window edge. */}
           <div className="relative min-h-0 flex-1 overflow-y-auto pr-xl [&:has([data-fill])]:overflow-hidden">
             <div className="grid min-h-full grid-cols-12 items-start gap-lg pb-xl [&:has([data-fill])]:h-full [&:has([data-fill])]:pb-0">
-              <HeaderSlot value={slot}>
-                <Outlet />
-              </HeaderSlot>
+              <Outlet />
             </div>
           </div>
         </main>

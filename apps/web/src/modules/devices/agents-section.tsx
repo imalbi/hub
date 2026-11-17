@@ -68,7 +68,7 @@ function AgentRow({
   );
 }
 
-function LocalAgentRow() {
+export function LocalAgentRow() {
   const trpc = useTRPC();
   const calls = useQuery(trpc.agents.localCalls.queryOptions());
   const today = useQuery(trpc.agents.localCallsToday.queryOptions());
@@ -90,7 +90,7 @@ function LocalAgentRow() {
   );
 }
 
-function TokenAgentRow({ id, name }: { id: number; name: string }) {
+export function TokenAgentRow({ id, name }: { id: number; name: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const calls = useQuery(trpc.agents.calls.queryOptions({ id }));

@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
+import { answerQueries, pairDevice, revokeDevices } from './desktop.ts';
 
 const cell = (page: Page, widget: string) => page.locator(`[data-widget="${widget}"]`);
 // Layout changes animate in edit mode; measure once the grid has settled.
@@ -62,16 +63,22 @@ test('widgets on the same row have the same height, two small ones fill a medium
   expect(audio.x + audio.width - server.x).toBeCloseTo(pomodoro.width, 0);
 });
 
-test('Modifica floats in the top right corner and clears the first widget row', async ({ page }) => {
-  const edit = page.getByRole('button', { name: 'Modifica', exact: true });
-  const viewport = page.viewportSize();
-  const button = await edit.boundingBox();
+test('Modifica is inside the surface above the first widget', async ({ page }) => {
+  const surface = page.locator('[data-page-surface]');
+  await expect(surface).toHaveCount(1);
+  const outer = await surface.boundingBox();
+  const button = await page.getByRole('button', { name: 'Modifica', exact: true }).boundingBox();
   const first = await page.locator('[data-widget]').first().boundingBox();
-  expect(button && viewport && button.x > viewport.width / 2 && button.y < 100).toBe(true);
-  // A clear gap, not touching: at least one `lg` step (16px at the 150% root is 24).
-  expect(button && first && first.y - (button.y + button.height) >= 16).toBe(true);
-  // Panoramica stays a board: no page surface.
-  await expect(page.locator('[data-page-surface]')).toHaveCount(0);
+  expect(
+    outer &&
+      button &&
+      first &&
+      button.x >= outer.x &&
+      button.x + button.width <= outer.x + outer.width &&
+      button.y >= outer.y &&
+      button.y + button.height <= first.y,
+  ).toBe(true);
+  await expect(surface.locator('[data-panel] [data-panel]')).toHaveCount(0);
 });
 
 test('a size chosen in edit mode resizes the widget and survives a reload', async ({ page }) => {
@@ -149,7 +156,7 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
-  await expect(page.getByRole('button', { name: /^Aggiungi / })).toHaveText([
+  await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText([
     'Posta',
     'Comandi',
     'Consumo',
@@ -167,4 +174,151 @@ test('Posta shows unread count and latest sender', async ({ page }) => {
   const widget = page.getByRole('region', { name: 'Posta' });
   await expect(widget.getByText('3 non lette')).toBeVisible();
   await expect(widget.getByText('Recruiter Example')).toBeVisible();
+});
+
+test('edit mode dims and disables content, and focuses the missing list', async ({ page }) => {
+  await expect(page.getByRole('button', { name: 'Aggiungi widget', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  const pomodoro = cell(page, 'pomodoro');
+  await expect(pomodoro.locator('[inert]')).toHaveCSS('opacity', '0.3');
+  await expect(pomodoro.locator('.widget-tools').first()).toHaveCSS('opacity', '1');
+  await expect(pomodoro.locator('[inert]')).toHaveAttribute('inert', '');
+  const play = await pomodoro.getByRole('button', { name: 'Avvia', includeHidden: true }).boundingBox();
+  if (!play) throw new Error('Pomodoro play button has no box');
+  await page.mouse.click(play.x + play.width / 2, play.y + play.height / 2);
+  await page.getByRole('button', { name: 'Fine', exact: true }).click();
+  await expect(pomodoro.getByRole('button', { name: 'Avvia' })).toBeVisible();
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  await page.getByRole('button', { name: 'Aggiungi widget', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Aggiungi Posta' })).toBeFocused();
+  await page.getByRole('button', { name: 'Aggiungi Comandi' }).click();
+  await expect(cell(page, 'controls')).toHaveAttribute('data-size', 'large');
+});
+
+test('all widgets fit within the surface scroller', async ({ page, pc }) => {
+  const ids = [
+    'today',
+    'pomodoro',
+    'media',
+    'server',
+    'news',
+    'mail',
+    'controls',
+    'power',
+    'audio',
+    'devices',
+    'theme',
+    'notes',
+  ];
+  const items = ids.map((widget, index) => ({
+    widget,
+    size:
+      widget === 'today'
+        ? 'wide'
+        : widget === 'controls' || widget === 'theme'
+          ? 'large'
+          : widget === 'notes'
+            ? 'medium'
+            : 'small',
+    x: 0,
+    y: index * 2,
+  }));
+  await pc.post('/trpc/layout.save', { data: { zone: 'overview', items } });
+  await page.reload();
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Aggiungi widget', exact: true })).toBeDisabled();
+  await expect(page.getByText('quelli non ancora in Panoramica')).toHaveCount(0);
+  const dimensions = await page.evaluate(() => ({
+    html: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    body: document.querySelector('[data-page-surface] > div')?.scrollHeight ?? 0,
+    height: document.querySelector('[data-page-surface] > div')?.clientHeight ?? 0,
+  }));
+  expect(dimensions.html).toBe(0);
+  expect(dimensions.body).toBeGreaterThan(dimensions.height);
+});
+
+test('Dispositivi shows access in both sizes and revocation requires a hold', async ({ page, pc }) => {
+  await pairDevice(pc, 'Phone A');
+  await pairDevice(pc, 'Phone B');
+  try {
+    await page.reload();
+    await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+    await page.getByRole('button', { name: 'Aggiungi Dispositivi' }).click();
+    const widget = cell(page, 'devices');
+    await expect(widget).toHaveAttribute('data-size', 'small');
+    await page.getByRole('button', { name: 'Fine' }).click();
+    await expect(widget.getByText('Phone A')).toHaveCount(0);
+    await expect(widget.getByText('telefoni', { exact: true })).toBeVisible();
+    await expect(widget.getByRole('link', { name: 'Collega', exact: true })).toHaveAttribute('href', '/desk/devices');
+    await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+    await page
+      .getByRole('group', { name: 'Dimensione di Dispositivi' })
+      .locator('label', { has: page.getByRole('radio', { name: 'Grande' }) })
+      .click();
+    await page.getByRole('button', { name: 'Fine' }).click();
+    await expect(widget.getByText('Phone A', { exact: true })).toBeVisible();
+    await expect(widget.getByText('Phone B', { exact: true })).toBeVisible();
+    await expect(widget.getByText('Su questo PC')).toBeVisible();
+    await expect(widget.getByRole('button', { name: 'Chiamate di Su questo PC' })).toBeVisible();
+    await expect(widget.getByRole('button', { name: /Mostra QR|Genera codice/ })).toHaveCount(0);
+    const rows = widget.locator('section[aria-label] > ul > li');
+    const boxes = await rows.evaluateAll((elements) =>
+      elements.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom };
+      }),
+    );
+    for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.top).toBeGreaterThanOrEqual(boxes[i - 1]!.bottom);
+    const revoke = widget.getByRole('button', { name: 'Tieni premuto per revocare Phone A' });
+    await page.clock.install();
+    await revoke.click();
+    await expect(widget.getByText('Phone A', { exact: true })).toBeVisible();
+    await revoke.hover();
+    await page.mouse.down();
+    await page.clock.runFor(900);
+    await page.mouse.up();
+    await expect(widget.getByText('Phone A', { exact: true })).toHaveCount(0);
+  } finally {
+    await revokeDevices(pc, 'Phone A');
+    await revokeDevices(pc, 'Phone B');
+  }
+});
+
+test('Dispositivi counts two phones and its large rows fit without overlap', async ({ page, pc }) => {
+  const now = Date.now();
+  await answerQueries(page, {
+    'devices.list': [
+      { id: 100, name: 'Phone A', createdAt: now, lastSeenAt: now },
+      { id: 101, name: 'Phone B', createdAt: now, lastSeenAt: now },
+    ],
+  });
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'devices', size: 'small', x: 0, y: 0 }] },
+  });
+  await page.reload();
+  const widget = cell(page, 'devices');
+  await expect(widget.getByText('2', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  await page
+    .getByRole('group', { name: 'Dimensione di Dispositivi' })
+    .locator('label', { has: page.getByRole('radio', { name: 'Grande' }) })
+    .click();
+  await page.getByRole('button', { name: 'Fine', exact: true }).click();
+  await expect(widget.getByText('Su questo PC')).toBeVisible();
+  const bounds = await widget.evaluate((el) => {
+    const outer = el.getBoundingClientRect();
+    const rows = [...el.querySelectorAll('section[aria-label] > ul > li')].map((row) => {
+      const rect = row.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
+    });
+    return { top: outer.top, bottom: outer.bottom, left: outer.left, right: outer.right, rows };
+  });
+  expect(bounds.rows).toHaveLength(3);
+  for (const [index, row] of bounds.rows.entries()) {
+    expect(row.top).toBeGreaterThanOrEqual(bounds.top);
+    expect(row.bottom).toBeLessThanOrEqual(bounds.bottom);
+    expect(row.left).toBeGreaterThanOrEqual(bounds.left);
+    expect(row.right).toBeLessThanOrEqual(bounds.right);
+    if (index) expect(row.top).toBeGreaterThanOrEqual(bounds.rows[index - 1]!.bottom);
+  }
 });
