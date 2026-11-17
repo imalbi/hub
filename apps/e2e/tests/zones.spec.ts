@@ -181,10 +181,16 @@ test('audio widget keeps its output selector inside its bounds', async ({ page }
   expect(fits).toBe(true);
 });
 
-test('status line is quiet and present on every desk page', async ({ page }) => {
+test('the status line is quiet and only on Panoramica', async ({ page }) => {
   for (const [, path] of zones) {
     await page.goto(path);
     const footer = page.getByRole('contentinfo', { name: 'Stato di Hub' });
+    // The owner kept it on Panoramica only (2026-11-17): on the other pages it said nothing he used.
+    if (path !== '/desk') {
+      await expect(page.locator('[data-page-surface]').first()).toBeVisible();
+      await expect(footer).toHaveCount(0);
+      continue;
+    }
     await expect(footer).toBeVisible();
     await expect(footer).toContainText('hub');
     await expect(footer).toContainText(/\d+\s*(s|min|h|g)/);

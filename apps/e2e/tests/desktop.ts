@@ -48,10 +48,19 @@ export async function answerQueries(page: Page, answers: Record<string, unknown>
   await page.route('**/trpc/*', async (route, request) => {
     const names = decodeURIComponent(new URL(request.url()).pathname.replace('/trpc/', '')).split(',');
     if (!names.some((name) => name in answers)) return route.fallback();
-    const real: unknown = await (await route.fetch()).json();
+    let real: unknown;
+    try {
+      real = await (await route.fetch()).json();
+    } catch {
+      // The test ended with this batch in flight (the day line and the status line ask on every page since step 68):
+      // nothing waits for the answer any more.
+      return route.abort().catch(() => undefined);
+    }
     const results = Array.isArray(real) ? real : [];
-    return route.fulfill({
-      json: names.map((name, i) => (name in answers ? { result: { data: answers[name] } } : results[i])),
-    });
+    return route
+      .fulfill({
+        json: names.map((name, i) => (name in answers ? { result: { data: answers[name] } } : results[i])),
+      })
+      .catch(() => undefined);
   });
 }

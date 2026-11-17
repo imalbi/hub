@@ -15,6 +15,8 @@ test.beforeEach(async ({ page }) => {
   await answerQueries(page, {
     // Through answerQueries: Oggi's calendar query can lead the batch health travels in, which a glob on health misses.
     health: { ok: true, uptime: 42 },
+    // The day line counts today's focus sessions, which earlier specs of the same process complete.
+    'pomodoro.today': [],
     'devices.list': [
       { id: 1, name: 'iPhone', createdAt: NOW.getTime() - 3_600_000, lastSeenAt: NOW.getTime() - 300_000 },
     ],

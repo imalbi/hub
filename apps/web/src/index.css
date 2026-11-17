@@ -819,6 +819,8 @@ html {
   max-width: 25rem;
   aspect-ratio: 1;
   container-type: inline-size;
+  /* NumberRoll stacks 0 to 9 in each digit, about 5000 px tall: unclipped it made Studio scroll far past its content. */
+  overflow: clip;
 }
 /* Sized by the ring: at 1920 the Studio column narrows the dial and a fixed hero size crossed the ring. */
 .instrument-dial [role='timer'] {

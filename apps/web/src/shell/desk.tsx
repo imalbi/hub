@@ -17,8 +17,6 @@ import { useTRPC } from '../lib/trpc.ts';
 import { NoteCapture } from '../modules/notes/capture.tsx';
 import { openCapture } from '../modules/notes/store.ts';
 import { NoteUndoToast } from '../modules/notes/undo-toast.tsx';
-import { StatusLine } from './status-line.tsx';
-import { StatusLineContext } from './surface-context.ts';
 
 /** The desk frame: theme, backdrop, rail (zones, palette, status), the activity ball, the top-right page actions, keys 1-9, N for a post-it and the zone grid the child routes render into. */
 export function DeskShell() {
@@ -72,9 +70,7 @@ export function DeskShell() {
             {/* `relative`: the containing block of absolutely placed sr-only nodes, or they stretch the document past the scroller. The right padding sits inside it so the scrollbar is flush with the window edge. */}
             <div className="relative min-h-0 flex-1 overflow-y-auto pr-xl [&:has([data-fill])]:overflow-hidden">
               <div className="grid min-h-full grid-cols-12 items-start gap-lg pb-xl [&:has([data-fill])]:h-full [&:has([data-fill])]:pb-0">
-                <StatusLineContext value={<StatusLine />}>
-                  <Outlet />
-                </StatusLineContext>
+                <Outlet />
               </div>
             </div>
           </main>

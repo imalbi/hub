@@ -26,11 +26,10 @@ test('the rail opens the month: events, a post-it, the chosen day and the months
   // Today is chosen at first and the panel names it.
   const panel = page.getByRole('complementary', { name: 'domenica 15 novembre' });
   await expect(panel.getByText('16:30 · Evento')).toBeVisible();
-  // A day with more events than fit ends in "+N". At 1920 a cell holds one row since the status line (step 68), so the
-  // four events of the 19th are all in "+4"; at 4K they fit as chips.
+  // A day with more events than fit shows its first ones and ends in "+N" (at 1920 a cell holds two rows: one chip and "+3").
   const busy = month.locator('[data-day="2026-11-19"]');
-  await expect(busy.getByLabel('Altri 4 il giovedì 19 novembre')).toBeVisible();
-  await expect(busy.getByRole('button', { name: /^Modifica evento/ })).toHaveCount(0);
+  await expect(busy.getByRole('button', { name: 'Modifica evento: Visita' })).toBeVisible();
+  await expect(busy.getByLabel('Altri 3 il giovedì 19 novembre')).toBeVisible();
   // A click in the cell's corner: the middle may land on a chip, which opens the event.
   await month.getByRole('button', { name: 'giovedì 19 novembre' }).click({ position: { x: 20, y: 6 } });
   const chosen = page.getByRole('complementary', { name: 'giovedì 19 novembre' });
@@ -110,7 +109,6 @@ test('Studio days slide from today, one a day, and open Studio', async ({ page, 
   await mkdir(inbox, { recursive: true });
   await writeFile(join(inbox, 'calendar.json'), JSON.stringify(await legiblePlan()));
   expect((await pc.post('/trpc/study.activate', { data: { name: 'calendar.json' } })).ok()).toBe(true);
-  await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk/calendar');
   const month = page.getByRole('region', { name: 'novembre 2026' });
   // The current day (La foglia) is today; the next open day is tomorrow, not today.

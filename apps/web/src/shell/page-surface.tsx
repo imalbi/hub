@@ -1,5 +1,5 @@
-import { createContext, use, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { StatusLineContext, SurfaceContext } from './surface-context.ts';
+import { createContext, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { SurfaceContext } from './surface-context.ts';
 
 export const SurfaceScroller = createContext<React.RefObject<HTMLDivElement | null> | null>(null);
 
@@ -21,7 +21,6 @@ export function PageSurface({
   scrollKey?: string;
 } & ComponentProps<'div'>) {
   const scrolls = !fill && !float;
-  const defaultStatusLine = use(StatusLineContext);
   const surface = useRef<HTMLDivElement>(null);
   const band = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -77,7 +76,7 @@ export function PageSurface({
           ) : (
             content
           )}
-          {statusLine === undefined ? defaultStatusLine : statusLine}
+          {statusLine}
         </div>
       </SurfaceScroller>
     </SurfaceContext>

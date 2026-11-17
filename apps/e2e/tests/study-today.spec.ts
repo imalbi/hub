@@ -219,3 +219,21 @@ test('day ruler places completed focus and advances the present mark', async ({ 
   const after = await box(mark);
   expect(Math.abs(after.x - before.x - area.width / 18)).toBeLessThan(2);
 });
+
+test('Studio scrolls only as far as its content: the timer digits do not stretch the page', async ({ page, pc }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await openToday(page, pc);
+  await page.getByRole('button', { name: 'Avvia Pomodoro' }).click();
+  try {
+    await expect(page.getByRole('button', { name: 'Metti in pausa' })).toBeVisible();
+    const { scroll, content } = await page.locator('[data-page-scroller]').evaluate((scroller) => {
+      const panel = scroller.querySelector('[role="tabpanel"]') ?? scroller;
+      const top = scroller.getBoundingClientRect().top - scroller.scrollTop;
+      return { scroll: scroller.scrollHeight, content: panel.getBoundingClientRect().bottom - top };
+    });
+    // NumberRoll stacks every digit in a strip about 5000 px tall; the dial clips it (it once added 1600 px of scroll).
+    expect(scroll - content).toBeLessThan(200);
+  } finally {
+    await pc.post('/trpc/pomodoro.stop', { data: {} });
+  }
+});
