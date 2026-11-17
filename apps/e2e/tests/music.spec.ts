@@ -559,3 +559,19 @@ test('the ball covers no control on Musica with a radio running', async ({ page,
     expect(await underBall(page, ball), `${view.width}`).toEqual([]);
   }
 });
+
+test('Ferma stops the radio and empties the queue', async ({ page, pc }) => {
+  await page.goto('/desk/media');
+  await search(page);
+  await page.getByRole('button', { name: 'Riproduci Brano 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Ascolta', exact: true }).click();
+  const upcoming = page.getByRole('region', { name: 'Prossimi' });
+  await expect(upcoming.getByRole('button', { name: 'Salta' })).toBeVisible();
+  const stopped = page.waitForResponse((r) => r.url().includes('music.stop') && r.ok());
+  await upcoming.getByRole('button', { name: 'Ferma' }).click();
+  await stopped;
+  await expect(upcoming.getByText('Nessuna radio attiva: fai partire un brano')).toBeVisible();
+  await expect(upcoming.getByRole('button', { name: 'Ferma' })).toHaveCount(0);
+  const queue = (await (await pc.get('/trpc/music.queue')).json()).result.data;
+  expect(queue.current).toBeNull();
+});

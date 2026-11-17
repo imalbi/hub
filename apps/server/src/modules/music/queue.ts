@@ -6,11 +6,14 @@ type Action =
   | { type: 'play'; song: Song }
   | { type: 'load'; songs: Song[] }
   | { type: 'refill'; songs: Song[] }
-  | { type: 'advance'; error: boolean };
+  | { type: 'advance'; error: boolean }
+  | { type: 'stop' };
 
 export const emptyQueue: Queue = { current: null, seed: null, upcoming: [], played: [], errors: 0 };
 
 export function queueReducer(state: Queue, action: Action): Queue {
+  if (action.type === 'stop')
+    return { ...emptyQueue, played: state.current ? [...state.played, state.current.id] : state.played };
   if (action.type === 'load')
     return {
       current: action.songs[0] ?? null,

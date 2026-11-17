@@ -141,6 +141,7 @@ function build() {
   const musicEvents = new EventEmitter();
   const playlist: string[] = [];
   let position = -1;
+  let stopped = false;
   let musicVolume = 100;
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
   if (stored && typeof stored === 'object' && 'sites' in stored) {
@@ -246,12 +247,22 @@ function build() {
       ipc: {
         events: musicEvents,
         async request(command) {
+          if (command[0] === 'stop') stopped = true;
           if (command[0] === 'loadfile' && typeof command[1] === 'string') {
+            stopped = false;
             if (command[2] === 'replace') {
               playlist.splice(0, playlist.length, command[1]);
               position = 0;
             } else playlist.push(command[1]);
           }
+          if (command[0] === 'stop' || command[0] === 'playlist-clear') {
+            if (command[0] === 'stop' && playlist.length)
+              musicEvents.emit('event', { event: 'end-file', reason: 'stop' });
+            playlist.splice(0, playlist.length);
+            position = -1;
+          }
+          // mpv answers true once its playlist is empty; before the first song the fake answered null, kept as is.
+          if (command[0] === 'get_property' && command[1] === 'idle-active') return stopped || null;
           if (command[0] === 'playlist-next' && position + 1 < playlist.length) {
             position++;
             musicEvents.emit('event', { event: 'end-file', reason: 'stop' });

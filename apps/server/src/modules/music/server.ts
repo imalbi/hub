@@ -597,6 +597,25 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                 }
               });
             }),
+          stop: protectedProcedure
+            .meta({ label: 'Ferma musica', description: 'Stop the music and clear the radio or playlist queue' })
+            .mutation(async () => {
+              await schedule(async () => {
+                try {
+                  cancelHistory();
+                  // A refill or a late append of the old queue must not start the music again.
+                  generation++;
+                  appended = null;
+                  currentPos = -1;
+                  setQueue(queueReducer(queue, { type: 'stop' }));
+                  await ipc.request(['stop']);
+                  await ipc.request(['playlist-clear']);
+                  await live.notify();
+                } catch {
+                  throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Music player unavailable' });
+                }
+              });
+            }),
           search: protectedProcedure.input(z.object({ query: z.string().min(1).max(200) })).query(async ({ input }) => {
             try {
               const result = await youtube.search(input.query);

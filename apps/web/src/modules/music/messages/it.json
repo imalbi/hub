@@ -8,6 +8,7 @@
   "music_play": "Riproduci {title}",
   "music_next": "Prossimi",
   "music_skip": "Salta",
+  "music_stop": "Ferma",
   "music_radio_error": "Riproduzione interrotta dopo tre errori",
   "music_favorite": "Preferito {title}",
   "music_favorites": "Preferiti",

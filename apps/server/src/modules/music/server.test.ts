@@ -341,3 +341,23 @@ void test('the queue names the song a radio started from, and no seed after a pl
   // The fake list has one song, so radio follows it: the seed is that song.
   assert.equal((await seed()).id, 'abcdefghijk');
 });
+
+void test('stop halts mpv, empties the queue and adds nothing to history', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const app = buildServer({ dbPath: ':memory:', music: wiring, deps: { run: createFakeDesktop() } });
+  t.after(() => app.close());
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  const before = calls.commands.length;
+  const res = await app.inject({ method: 'POST', url: '/trpc/music.stop', payload: {} });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(
+    calls.commands.slice(before).map((command) => command[0]),
+    ['stop', 'playlist-clear'],
+  );
+  const queue = (await app.inject('/trpc/music.queue')).json().result.data;
+  assert.equal(queue.current, null);
+  assert.deepEqual(queue.upcoming, []);
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual((await app.inject('/trpc/music.history')).json().result.data, []);
+});

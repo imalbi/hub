@@ -4,7 +4,7 @@ import { useTRPC } from '../../lib/trpc.ts';
 import { CoverTile, pillOutline, type SongItem } from './parts.tsx';
 import { SongRow } from './songs.tsx';
 
-/** Ascolta (AltC): the last songs played as tiles, then the radio queue with its skip button. */
+/** Ascolta (AltC): the last songs played as tiles, then the radio queue with its skip and stop buttons. */
 export function Listen({
   queue,
   onPlay,
@@ -17,6 +17,7 @@ export function Listen({
   const trpc = useTRPC();
   const recent = useQuery(trpc.music.recent.queryOptions()).data ?? [];
   const skip = useMutation(trpc.music.skip.mutationOptions());
+  const stop = useMutation(trpc.music.stop.mutationOptions());
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-lg">
       {recent.length > 0 && (
@@ -51,14 +52,19 @@ export function Listen({
             </p>
           )}
           {queue?.current && (
-            <button type="button" className={pillOutline} onClick={() => skip.mutate()} disabled={skip.isPending}>
-              {m.music_skip()}
-            </button>
+            <>
+              <button type="button" className={pillOutline} onClick={() => skip.mutate()} disabled={skip.isPending}>
+                {m.music_skip()}
+              </button>
+              <button type="button" className={pillOutline} onClick={() => stop.mutate()} disabled={stop.isPending}>
+                {m.music_stop()}
+              </button>
+            </>
           )}
         </div>
         {!queue?.current && <output>{m.music_queue_empty()}</output>}
         {queue?.errors === 3 && <output>{m.music_radio_error()}</output>}
-        {skip.isError && <output>{m.music_player_error()}</output>}
+        {(skip.isError || stop.isError) && <output>{m.music_player_error()}</output>}
         <ul className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-xl overflow-y-auto overscroll-contain">
           {queue?.upcoming.map((song) => (
             <SongRow key={song.id} song={song} onPlay={onPlay} onArtist={onArtist} />
