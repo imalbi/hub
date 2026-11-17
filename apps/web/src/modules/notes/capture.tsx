@@ -2,6 +2,7 @@ import { CalendarBlankIcon } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Calendar } from '../../components/ui/calendar.tsx';
+import { Chip } from '../../components/chip.tsx';
 import { MODAL_ROOT, SCRIM, useModal } from '../../components/ui/modal.ts';
 import { useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
@@ -49,7 +50,8 @@ function CaptureForm() {
   const add = useMutation(trpc.notes.add.mutationOptions());
   const [today] = useState(() => localDay(new Date()));
   const [text, setText] = useState('');
-  const preset = useNotesUi().day;
+  const { day: preset, about: initialAbout } = useNotesUi();
+  const [about, setAbout] = useState(initialAbout);
   const [when, setWhen] = useState<When>(
     () => preset ?? (new Date().getHours() >= EVENING_HOUR ? 'tomorrow' : 'today'),
   );
@@ -75,7 +77,11 @@ function CaptureForm() {
   async function save() {
     if (!ready || add.isPending) return;
     try {
-      await add.mutateAsync({ text, forDay: day });
+      await add.mutateAsync({
+        text,
+        forDay: day,
+        about: about ? { ...about, title: about.title.slice(0, 200) } : undefined,
+      });
       closeCapture();
     } catch {
       // The error line below says it; the draft stays.
@@ -85,6 +91,11 @@ function CaptureForm() {
     `flex min-h-xl cursor-pointer items-center justify-center rounded-full px-md text-label ${active ? 'bg-foreground font-medium text-background' : 'text-foreground'}`;
   return (
     <div className="flex flex-col gap-md">
+      {about && (
+        <div className="self-start">
+          <Chip label={m.notes_about({ title: about.title })} onRemove={() => setAbout(null)} />
+        </div>
+      )}
       <label className="flex flex-col gap-xs">
         <span className="text-label text-muted-foreground">{m.notes_new()}</span>
         <textarea

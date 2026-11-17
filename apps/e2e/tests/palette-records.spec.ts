@@ -139,7 +139,8 @@ test('a source that fails leaves the other groups and the actions, with no error
   await expect(posta.getByRole('option')).toHaveCount(2);
   await expect(palette(page).getByRole('group', { name: 'Azioni' }).getByRole('option').first()).toBeVisible();
   await expect(palette(page).getByRole('group', { name: /Studio/ })).toHaveCount(0);
-  await expect(palette(page)).not.toContainText(/boom|errore|non riuscita/i);
+  // The server message and the palette's own failure line; not a bare "errore", which the action «Errore di studio» carries.
+  await expect(palette(page)).not.toContainText(/boom|non riuscita/i);
 });
 
 test('a day title found in Studio shows under Studio with its subject', async ({ page, pc }) => {

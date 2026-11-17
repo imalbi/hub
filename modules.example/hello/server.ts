@@ -112,6 +112,11 @@ export default defineModule({
             );
             return { total: found.length, rows: found.slice(0, 3) };
           }),
+        getRecord: loopbackProcedure.input(z.object({ id: z.string() })).query(({ input }) => {
+          const index = Number(input.id) - 1;
+          const title = Number.isInteger(index) && String(index + 1) === input.id ? PHRASES[index] : undefined;
+          return title ? { id: input.id, title } : null;
+        }),
         state: protectedProcedure.query(state),
         onState: protectedProcedure.subscription(({ signal }) => live.subscribe(signal)),
         greet: protectedProcedure

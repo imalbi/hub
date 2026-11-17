@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { createTRPCOptionsProxy, useSubscription } from '@trpc/tanstack-react-query';
 import { HandWavingIcon } from '@phosphor-icons/react';
 import type definition from './server.ts';
@@ -10,6 +11,8 @@ import { PageGrid } from '../../apps/web/src/components/page-grid.tsx';
 import { Panel } from '../../apps/web/src/components/panel.tsx';
 import { RegistryButton } from '../../apps/web/src/components/registry-button.tsx';
 import { Tile } from '../../apps/web/src/components/tile.tsx';
+import { RecordNotes } from '../../apps/web/src/components/record-notes.tsx';
+import { setCurrentRecord } from '../../apps/web/src/lib/current-record.ts';
 
 export const copy = {
   title: 'Esempio',
@@ -42,10 +45,16 @@ function HelloPanel() {
   );
 }
 function HelloPage() {
+  const record = { source: 'hello-greetings', id: '1', title: copy.greeting };
+  useEffect(() => {
+    setCurrentRecord({ source: 'hello-greetings', id: '1', title: copy.greeting });
+    return () => setCurrentRecord(null);
+  }, []);
   return (
     <PageGrid>
-      <div className="col-span-6">
+      <div className="col-span-6 flex flex-col gap-lg">
         <HelloPanel />
+        <RecordNotes record={record} />
       </div>
     </PageGrid>
   );
@@ -66,6 +75,10 @@ function useHelloToday(day: TodayDay): TodayLine[] | null {
 const greetings: RecordSource = {
   id: 'hello-greetings',
   label: () => 'Saluti',
+  get: async (id, signal) => {
+    const row = await client.getRecord.query({ id }, { signal });
+    return row ? { ...row, detail: copy.title, href: '/desk/hello' } : null;
+  },
   search: async (query, signal) => {
     const { total, rows } = await client.searchRecords.query({ query }, { signal });
     return { total, rows: rows.map((row) => ({ ...row, detail: copy.title, href: '/desk/hello' })) };

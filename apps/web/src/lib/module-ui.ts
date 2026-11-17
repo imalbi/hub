@@ -62,6 +62,7 @@ export type RecordSource = {
   id: string;
   label: () => string;
   search: (query: string, signal: AbortSignal) => Promise<{ total: number; rows: RecordRow[] }>;
+  get?: (id: string, signal: AbortSignal) => Promise<RecordRow | null>;
   /** Where "Vedi tutti" goes, with the query applied; absent when the page has no search of its own. */
   allHref?: (query: string) => string;
 };

@@ -22,16 +22,18 @@ export function paletteFields(schema: RegistryAction['schema'], danger: boolean)
   for (const [name, field] of Object.entries(schema.properties)) {
     if (typeof field !== 'object' || !field) return null;
     if (danger && name === 'confirmed' && field.const === true) continue;
-    if (
-      !['string', 'number', 'integer', 'boolean'].includes(String(field.type)) ||
-      field.anyOf ||
-      field.oneOf ||
-      field.allOf ||
-      field.not ||
-      field.const !== undefined
-    )
-      return null;
-    fields.push({ name, required: schema.required?.includes(name) ?? false, schema: field });
+    const required = schema.required?.includes(name) ?? false;
+    const drawable =
+      ['string', 'number', 'integer', 'boolean'].includes(String(field.type)) &&
+      !field.anyOf &&
+      !field.oneOf &&
+      !field.allOf &&
+      !field.not &&
+      field.const === undefined;
+    // An optional field the palette cannot draw is left out: the action is valid without it (`notes.add`'s `about`, step 71).
+    if (!drawable && !required) continue;
+    if (!drawable) return null;
+    fields.push({ name, required, schema: field });
   }
   return fields;
 }

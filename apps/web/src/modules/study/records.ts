@@ -9,6 +9,25 @@ import { studyClient, studySubjects } from './use-study.ts';
 export const studyDays: RecordSource = {
   id: 'study-days',
   label: m.zone_study,
+  get: async (id, signal) => {
+    const [days, headers] = await Promise.all([
+      studyClient.daysById.query({ keys: [id] }, { signal }),
+      studyClient.active.query(undefined, { signal }),
+    ]);
+    const day = days[0];
+    if (!day) return null;
+    return {
+      id: day.key,
+      title: day.g === null ? day.title : m.study_today_line({ g: day.g, title: day.title }),
+      detail: [
+        studySubjects(headers).find((subject) => subject.key === day.subject)?.label,
+        day.done ? m.study_done() : m.study_record_open(),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      href: '/desk/studio?tab=piano',
+    };
+  },
   search: async (query, signal) => {
     const found = await studyClient.searchRecords.query({ query }, { signal });
     const subjects = studySubjects(found.headers);

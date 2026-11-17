@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { m } from '../../paraglide/messages.js';
 import { agentName, laterDay, type Note } from './days.ts';
 import { useNoteActions } from './use-notes.ts';
+import { AboutLink } from './about-link.tsx';
 
 const quietButton = 'cursor-pointer rounded-full text-foreground';
 
@@ -52,6 +53,7 @@ export function NoteCard({ note, today }: { note: Note; today?: string }) {
           className="w-full resize-none bg-transparent text-body outline-none"
         />
       )}
+      {note.about && <AboutLink about={note.about} />}
       <div className="flex min-h-xl items-center justify-between gap-sm">
         <p className="text-caption text-muted-foreground">{draft === null ? label : m.notes_edit_hint()}</p>
         {draft === null && (

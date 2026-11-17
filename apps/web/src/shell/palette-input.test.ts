@@ -33,12 +33,31 @@ void test('unsupported nested, union, array and unconstrained schemas cannot run
   const schemas: RegistryAction['schema'][] = [
     { not: {} },
     {},
-    { type: 'object', properties: { items: { type: 'array' } } },
-    { type: 'object', properties: { value: { anyOf: [{ type: 'string' }, { type: 'null' }] } } },
-    { type: 'object', properties: { value: { type: 'object' } } },
+    { type: 'object', properties: { items: { type: 'array' } }, required: ['items'] },
+    {
+      type: 'object',
+      properties: { value: { anyOf: [{ type: 'string' }, { type: 'null' }] } },
+      required: ['value'],
+    },
+    { type: 'object', properties: { value: { type: 'object' } }, required: ['value'] },
     { allOf: [] },
   ];
   for (const schema of schemas) {
     assert.equal(paletteFields(schema, false), null);
   }
+});
+
+void test('an optional field the palette cannot draw is left out, so the action still runs', () => {
+  const fields = paletteFields(
+    {
+      type: 'object',
+      properties: { text: { type: 'string' }, about: { type: 'object', properties: { id: { type: 'string' } } } },
+      required: ['text'],
+    },
+    false,
+  );
+  assert.deepEqual(
+    fields?.map((field) => field.name),
+    ['text'],
+  );
 });

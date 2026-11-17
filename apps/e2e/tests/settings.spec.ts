@@ -470,6 +470,65 @@ if (example) {
 }
 
 if (example) {
+  test('post-it keeps its snapshot without a link when its module is off', async ({ page, pc }) => {
+    test.setTimeout(90_000);
+    const added = await pc.post('/trpc/notes.add', {
+      data: {
+        text: 'Saluto conservato',
+        about: { source: 'hello-greetings', id: '1', title: 'Ciao dal modulo di esempio' },
+      },
+    });
+    const note = (await added.json()).result.data;
+    const addedSecond = await pc.post('/trpc/notes.add', {
+      data: { text: 'Secondo saluto', about: { source: 'hello-greetings', id: '2', title: 'Ciao a tutti' } },
+    });
+    const secondNote = (await addedSecond.json()).result.data;
+    let releaseEnabled = () => {};
+    const enabledGate = new Promise<void>((resolve) => {
+      releaseEnabled = resolve;
+    });
+    try {
+      await pc.post('/trpc/layout.save', {
+        data: { zone: 'overview', items: [{ widget: 'notes', size: 'wide', x: 0, y: 0 }] },
+      });
+      await saveSwitch(page, 'hello');
+      await page.route('**/trpc/*modules.enabled*', async (route) => {
+        await enabledGate;
+        await route.continue();
+      });
+      const errors: string[] = [];
+      const failedResponses: string[] = [];
+      const lookups: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes('hello.getRecord')) lookups.push(request.url());
+      });
+      page.on('response', (response) => {
+        if (response.status() === 404) failedResponses.push(response.url());
+      });
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+      await page.goto('/desk', { waitUntil: 'domcontentloaded' });
+      const card = page
+        .getByRole('region', { name: 'Post-it', exact: true })
+        .locator('li')
+        .filter({ hasText: 'Saluto conservato' });
+      await expect(card.getByText('Ciao dal modulo di esempio')).toBeVisible();
+      await expect(card.getByRole('link')).toHaveCount(0);
+      const enabledResponse = page.waitForResponse((response) => response.url().includes('modules.enabled'));
+      releaseEnabled();
+      await enabledResponse;
+      expect(lookups).toEqual([]);
+      expect(errors, `404 responses: ${failedResponses.join(', ')}`).toEqual([]);
+    } finally {
+      releaseEnabled();
+      await ensureOn(pc, 'hello');
+      await pc.post('/trpc/notes.remove', { data: { id: note.id } });
+      await pc.post('/trpc/notes.remove', { data: { id: secondNote.id } });
+      await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
+    }
+  });
   test('switching the example module off hides it everywhere after the restart, and on brings it and its data back', async ({
     page,
     pc,

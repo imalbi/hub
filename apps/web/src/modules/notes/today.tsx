@@ -8,6 +8,7 @@ import { agentName, splitNotes, writtenOn, type Note } from './days.ts';
 const dayFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
 import { openCapture } from './store.ts';
 import { useNoteActions, useNotes } from './use-notes.ts';
+import { AboutLink } from './about-link.tsx';
 
 /**
  * The post-its of a day in Oggi (step 66), in the shape the widget's size asks for: a count (Medio), a titled column
@@ -78,9 +79,16 @@ function TodayNote({ note, today, first }: { note: Note; today: string; first: b
     .join(', ');
   return (
     <li className="group flex min-w-0 items-center gap-xs rounded-md bg-foreground/5 px-md py-sm">
+      {/* The record goes on the same line: a second line made two rows overflow Grande's cell (step 71 review). */}
       <p className={`min-w-0 flex-1 truncate ${first ? 'text-body font-medium' : 'text-body'}`} title={note.text}>
         {note.text}
         {label && <span className="font-normal text-muted-foreground"> · {label}</span>}
+        {note.about && (
+          <span className="font-normal">
+            {' · '}
+            <AboutLink about={note.about} />
+          </span>
+        )}
       </p>
       <button
         type="button"

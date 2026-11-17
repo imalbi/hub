@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { answerQueries } from './desktop.ts';
 import { DECK_STATE, PHONE_URL } from './hosts.ts';
 import { freezePomodoro } from './pomodoro-visual.ts';
@@ -6,6 +7,68 @@ import { freezePomodoro } from './pomodoro-visual.ts';
 const rail = (page: Page) => page.getByRole('navigation', { name: 'Zone' });
 
 if (process.env.HUB_EXAMPLE_MODULES === '1') {
+  test('a greeting captures its post-it and shows its link', async ({ page, pc }) => {
+    try {
+      await page.setViewportSize({ width: 3840, height: 2160 });
+      await pc.post('/trpc/notes.add', {
+        data: { text: 'Altro saluto', about: { source: 'hello-greetings', id: '2', title: 'Ciao a tutti' } },
+      });
+      await page.goto('/desk/hello');
+      await page.getByRole('button', { name: 'Aggiungi', exact: true }).click();
+      const capture = page.getByRole('dialog', { name: 'Nuovo post-it' });
+      await expect(capture.getByText('Riguarda: Ciao dal modulo di esempio')).toBeVisible();
+      await expect(capture.locator('[data-modal-panel]')).toHaveCSS('opacity', '1');
+      await capture.getByRole('textbox', { name: 'Testo del post-it' }).fill('Promemoria saluto');
+      await page.keyboard.press('Enter');
+      await expect(capture).toHaveCount(0);
+      await expect(page.getByText('Promemoria saluto')).toBeVisible();
+      await expect(page.getByText('Altro saluto')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Aggiungi', exact: true }).click();
+      await capture.getByRole('button', { name: /Rimuovi.*Riguarda/ }).click();
+      await capture.getByRole('textbox', { name: 'Testo del post-it' }).fill('Senza riferimento');
+      await page.keyboard.press('Enter');
+      await expect(capture).toHaveCount(0);
+      await pc.post('/trpc/layout.save', {
+        data: {
+          zone: 'overview',
+          items: [
+            { widget: 'today', size: 'wide', x: 0, y: 0 },
+            { widget: 'notes', size: 'wide', x: 0, y: 1 },
+          ],
+        },
+      });
+      await page.goto('/desk');
+      const widget = page.getByRole('region', { name: 'Post-it', exact: true });
+      const card = widget.locator('li').filter({ hasText: 'Promemoria saluto' });
+      await expect(card.getByRole('link', { name: 'Ciao dal modulo di esempio' })).toBeVisible();
+      const unrelated = widget.locator('li').filter({ hasText: 'Senza riferimento' });
+      await expect(unrelated).toBeVisible();
+      await expect(unrelated.getByRole('link')).toHaveCount(0);
+      await unrelated
+        .getByRole('button', { name: /Senza riferimento/ })
+        .last()
+        .click();
+      await expect(unrelated).toHaveCount(0);
+      // Oggi Largo with two post-its about a record: a caption on its own line overflowed the cell (step 71 review).
+      const todayPanel = page.locator('[data-widget="today"] [data-panel]').first();
+      await expect(todayPanel.getByRole('link', { name: 'Ciao a tutti' })).toBeVisible();
+      await expect(todayPanel.getByRole('link', { name: 'Ciao dal modulo di esempio', exact: true })).toBeVisible();
+      expect(
+        await todayPanel.evaluate((element) => element.scrollHeight <= element.clientHeight),
+        'Oggi fits its cell',
+      ).toBe(true);
+      await card.getByRole('link', { name: 'Ciao dal modulo di esempio' }).click();
+      await expect(page).toHaveURL(/\/desk\/hello$/);
+    } finally {
+      const result = await pc.get('/trpc/notes.open');
+      const notes: Array<{ id: string; text: string }> = (await result.json()).result.data;
+      for (const note of notes.filter((entry) =>
+        ['Promemoria saluto', 'Senza riferimento', 'Altro saluto'].includes(entry.text),
+      ))
+        await pc.post('/trpc/notes.remove', { data: { id: note.id } });
+      await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
+    }
+  });
   test('example module adds a zone page, a configurable widget and a synchronized deck tile', async ({
     page,
     browser,

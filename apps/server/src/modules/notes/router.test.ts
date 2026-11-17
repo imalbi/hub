@@ -10,7 +10,15 @@ import { isDay, localDay } from './notes.ts';
 
 process.env.NODE_ENV = 'test';
 
-const noteList = z.array(z.object({ id: z.string(), text: z.string(), forDay: z.string(), source: z.string() }));
+const noteList = z.array(
+  z.object({
+    id: z.string(),
+    text: z.string(),
+    forDay: z.string(),
+    source: z.string(),
+    about: z.object({ source: z.string(), id: z.string(), title: z.string() }).nullable(),
+  }),
+);
 const listed = z.object({ result: z.object({ data: noteList }) });
 
 function open(dbPath: string) {
@@ -67,17 +75,59 @@ void test('a note added by an agent over MCP keeps its day and its source', asyn
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',
-      params: { name: 'notes.add', arguments: { text: 'Domani ripartire dal piano', forDay: '2099-01-02' } },
+      params: {
+        name: 'notes.add',
+        arguments: {
+          text: 'Domani ripartire dal piano',
+          forDay: '2099-01-02',
+          about: { source: 'hello-greetings', id: '1', title: 'Ciao' },
+        },
+      },
     },
   });
   assert.equal(response.statusCode, 200);
   const [note] = await notes();
   assert.equal(note?.forDay, '2099-01-02');
   assert.equal(note?.source, 'agent:Locale');
+  assert.deepEqual(note?.about, { source: 'hello-greetings', id: '1', title: 'Ciao' });
+  const actions = (await app.inject('/trpc/registry.list')).json().result.data;
+  const action = actions.find((item: { path: string }) => item.path === 'notes.add');
+  assert.ok(action.schema.properties.about);
 });
 
 void test('without a day the note is for the server local today', () => {
   assert.equal(localDay(new Date(2026, 10, 4, 23, 59)), '2026-11-04');
   assert.equal(isDay('2026-11-04'), true);
   assert.equal(isDay('2026-13-04'), false);
+});
+
+void test('references round-trip, filter open notes and can be cleared', async (t) => {
+  const { app, call, notes } = open(':memory:');
+  t.after(() => app.close());
+  const about = { source: 'hello-greetings', id: '1', title: 'Ciao' };
+  for (const text of ['first', 'second', 'removed']) {
+    assert.equal((await call('notes.add', { text, about })).statusCode, 200);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+  }
+  await call('notes.add', { text: 'other', about: { ...about, id: '2' } });
+  const all = await notes();
+  assert.deepEqual(all.find((note) => note.text === 'first')?.about, about);
+  const removed = all.find((note) => note.text === 'removed');
+  assert.ok(removed);
+  await call('notes.remove', { id: removed.id });
+  const input = encodeURIComponent(JSON.stringify({ source: about.source, id: about.id }));
+  const response = await app.inject({ method: 'GET', url: `/trpc/notes.about?input=${input}` });
+  assert.deepEqual(
+    listed.parse(response.json()).result.data.map((note) => note.text),
+    ['second', 'first'],
+  );
+  const first = all.find((note) => note.text === 'first');
+  assert.ok(first);
+  await call('notes.edit', { id: first.id, text: first.text, about: null });
+  assert.equal((await notes()).find((note) => note.id === first.id)?.about, null);
+  assert.equal((await call('notes.add', { text: 'bad', about: { ...about, title: 'x'.repeat(201) } })).statusCode, 400);
+  // A Lavoro posting key is `company|title` and often runs past 64 characters: it must be accepted.
+  const longKey = `${'societa esempio consulting'.padEnd(60, 'x')}|sviluppatore front end react typescript`;
+  assert.equal((await call('notes.add', { text: 'long', about: { ...about, id: longKey } })).statusCode, 200);
+  assert.equal((await notes()).find((note) => note.text === 'long')?.about?.id, longKey);
 });

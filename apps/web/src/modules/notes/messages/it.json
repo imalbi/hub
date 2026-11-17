@@ -22,6 +22,7 @@
   "notes_empty": "Nessun post-it. Premi N per scriverne uno.",
   "notes_more": "altre {count}",
   "notes_new": "Nuovo post-it",
+  "notes_about": "Riguarda: {title}",
   "notes_save_hint": "Invio salva",
   "notes_edit_hint": "Invio salva, Esc annulla",
   "notes_pick_day": "Scegli un giorno",

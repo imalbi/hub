@@ -1,6 +1,12 @@
 import { useSyncExternalStore } from 'react';
+import { getCurrentRecord, type CurrentRecord } from '../../lib/current-record.ts';
 
-type State = { capturing: boolean; day?: 'today' | 'tomorrow'; removed: { id: string; text: string } | null };
+type State = {
+  capturing: boolean;
+  day?: 'today' | 'tomorrow';
+  about?: CurrentRecord | null;
+  removed: { id: string; text: string } | null;
+};
 
 // Capture opens from the shortcut and the widget, Annulla shows in the shell: one small store, outside React.
 let state: State = { capturing: false, removed: null };
@@ -14,7 +20,8 @@ function set(next: State) {
 }
 
 /** `day` preselects the day (Oggi's Aggiungi under Domani); without it the capture picks by the hour. */
-export const openCapture = (day?: 'today' | 'tomorrow') => set({ ...state, capturing: true, day });
+export const openCapture = (day?: 'today' | 'tomorrow', about = getCurrentRecord()) =>
+  set({ ...state, capturing: true, day, about });
 export const closeCapture = () => set({ ...state, capturing: false });
 
 /** Remember the post-it just removed so Annulla can bring it back for a few seconds. */

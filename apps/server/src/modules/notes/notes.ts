@@ -21,7 +21,8 @@ export function isDay(value: string) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
-export type Note = { id: string; text: string; forDay: string; source: string; createdAt: number };
+export type About = { source: string; id: string; title: string };
+export type Note = { id: string; text: string; forDay: string; source: string; createdAt: number; about: About | null };
 
 export function createNotes(db: Db, now: () => Date = () => new Date()) {
   function read(): Note[] {
@@ -37,6 +38,10 @@ export function createNotes(db: Db, now: () => Date = () => new Date()) {
         forDay: row.forDay,
         source: row.source,
         createdAt: row.createdAt.getTime(),
+        about:
+          row.aboutSource && row.aboutId && row.aboutTitle
+            ? { source: row.aboutSource, id: row.aboutId, title: row.aboutTitle }
+            : null,
       }));
   }
   const live = createLiveHub(async () => read(), null);
@@ -49,8 +54,10 @@ export function createNotes(db: Db, now: () => Date = () => new Date()) {
 
   return {
     open: read,
+    about: (ref: { source: string; id: string }) =>
+      read().filter((note) => note.about?.source === ref.source && note.about.id === ref.id),
     subscribe: live.subscribe,
-    async add(input: { text: string; forDay?: string | undefined }, source: string) {
+    async add(input: { text: string; forDay?: string | undefined; about?: About | undefined }, source: string) {
       const at = now();
       const id = randomUUID();
       db.insert(notes)
@@ -59,6 +66,9 @@ export function createNotes(db: Db, now: () => Date = () => new Date()) {
           text: input.text,
           forDay: input.forDay ?? localDay(at),
           source,
+          aboutSource: input.about?.source ?? null,
+          aboutId: input.about?.id ?? null,
+          aboutTitle: input.about?.title ?? null,
           createdAt: at,
           updatedAt: at,
         })
@@ -66,10 +76,21 @@ export function createNotes(db: Db, now: () => Date = () => new Date()) {
       await live.notify();
       return { id };
     },
-    async edit(input: { id: string; text: string; forDay?: string | undefined }) {
+    async edit(input: { id: string; text: string; forDay?: string | undefined; about?: About | null | undefined }) {
       const row = existing(input.id);
       db.update(notes)
-        .set({ text: input.text, forDay: input.forDay ?? row.forDay, updatedAt: now() })
+        .set({
+          text: input.text,
+          forDay: input.forDay ?? row.forDay,
+          updatedAt: now(),
+          ...(input.about === undefined
+            ? {}
+            : {
+                aboutSource: input.about?.source ?? null,
+                aboutId: input.about?.id ?? null,
+                aboutTitle: input.about?.title ?? null,
+              }),
+        })
         .where(eq(notes.id, input.id))
         .run();
       await live.notify();

@@ -43,6 +43,15 @@ test('N key opens the card on any page, Invio saves it, and typing n in a field 
   await expect(page.getByRole('region', { name: 'Oggi', exact: true }).getByText('nnn dentista')).toBeVisible();
 });
 
+test('capture on Panoramica has no current record', async ({ page }) => {
+  await page.goto('/desk');
+  await expect(page.getByRole('navigation', { name: 'Zone' })).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(
+    page.getByRole('dialog', { name: 'Nuovo post-it' }).getByText('Riguarda:', { exact: false }),
+  ).toHaveCount(0);
+});
+
 test('Esc closes the card without saving and the widget button opens it', async ({ page, pc }) => {
   await showBoard(page, pc);
   await page.getByRole('region', { name: 'Post-it', exact: true }).getByRole('button', { name: 'Aggiungi' }).click();

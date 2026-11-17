@@ -9,6 +9,7 @@ const note = (id: string, forDay: string, createdAt = new Date(2026, 10, 10, 9).
   forDay,
   source,
   createdAt,
+  about: null,
 });
 
 void test('a note for tomorrow is absent today, opens tomorrow and stays on the days after', () => {

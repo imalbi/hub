@@ -83,6 +83,9 @@ export const notes = sqliteTable('notes', {
   forDay: text('for_day').notNull(),
   // `desk` for the owner, `agent:<name>` for a note an MCP agent added.
   source: text('source').notNull(),
+  aboutSource: text('about_source'),
+  aboutId: text('about_id'),
+  aboutTitle: text('about_title'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   removedAt: integer('removed_at', { mode: 'timestamp_ms' }),

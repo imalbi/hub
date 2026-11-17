@@ -10,6 +10,7 @@ import { DayBody } from './day-body.tsx';
 import { causeLabel, ErrorForm } from './error-form.tsx';
 import { TodayNote } from './today-note.tsx';
 import { studySubjects, useStudyTRPC, type StudyDayBody, type StudyHeader, type StudyIndex } from './use-study.ts';
+import { setCurrentRecord } from '../../lib/current-record.ts';
 
 export function StudyToday() {
   const trpc = useStudyTRPC();
@@ -114,6 +115,15 @@ function TodayDay({
   const allSteps = day.blocks.flatMap((block) => block.steps);
   const subjects = studySubjects(headers);
   const current = index.days.find((item) => item.key === day.key);
+  const currentNumber = current?.g;
+  useEffect(() => {
+    setCurrentRecord({
+      source: 'study-days',
+      id: day.key,
+      title: currentNumber === undefined ? day.title : m.study_today_line({ g: currentNumber, title: day.title }),
+    });
+    return () => setCurrentRecord(null);
+  }, [day.key, day.title, currentNumber]);
   const subjectInfo = subjects.find((item) => item.key === current?.subject);
   const titles = new Map([...index.days, ...index.hiddenDays].map((item) => [item.key, item]));
   function saveStep(id: string, done: boolean) {

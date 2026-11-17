@@ -27,6 +27,12 @@ async function box(locator: Locator) {
 const intersects = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
+test('capture on Studio Oggi refers to the current study day', async ({ page, pc }) => {
+  await openToday(page, pc);
+  await page.keyboard.press('n');
+  await expect(page.getByRole('dialog', { name: 'Nuovo post-it' }).getByText('Riguarda: G1 · La foglia')).toBeVisible();
+});
+
 test('Oggi lists the files to open, day materials first, each file once, and a pill opens its page', async ({
   page,
   pc,
