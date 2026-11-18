@@ -44,7 +44,9 @@ test.afterEach(async ({ pc }) => clean(pc));
 test('every size fits its cell without scrolling or clipping', async ({ page, pc }) => {
   // With weather data, as after a spec that sets a city: Grande overflowed with two rows of post-its (step 64 review).
   const weather = { name: 'Località esempio', temperature: 19, code: 1, min: 12, max: 23, stale: false };
-  await page.route('**/trpc/weather.state*', (route) => route.fulfill({ json: { result: { data: weather } } }));
+  await page.route('**/trpc/weather.state*', (route) =>
+    route.fulfill({ json: { result: { data: { configured: true, current: weather } } } }),
+  );
   await studyOn(pc, 2);
   for (const day of ['2026-11-19', '2026-11-20'])
     for (const title of ['Dentista', 'Riunione', 'Corso', 'Visita'])
@@ -118,7 +120,9 @@ test('Esteso adds tomorrow, Largo does not; Aggiungi under tomorrow preselects D
 
 test('weather with no data says so and links to its settings', async ({ page, pc }) => {
   // `weather.state` goes over its own unbatched link (`main.tsx`): the answer is one object, not a batch array.
-  await page.route('**/trpc/weather.state*', (route) => route.fulfill({ json: { result: { data: null } } }));
+  await page.route('**/trpc/weather.state*', (route) =>
+    route.fulfill({ json: { result: { data: { configured: false, current: null } } } }),
+  );
   for (const size of ['medium', 'wide']) {
     await placeToday(pc, size);
     await open(page);
@@ -127,6 +131,18 @@ test('weather with no data says so and links to its settings', async ({ page, pc
       'href',
       '/desk/settings/weather',
     );
+  }
+});
+
+test('weather with a location but no reading has no settings link', async ({ page, pc }) => {
+  await page.route('**/trpc/weather.state*', (route) =>
+    route.fulfill({ json: { result: { data: { configured: true, current: null } } } }),
+  );
+  for (const size of ['medium', 'wide']) {
+    await placeToday(pc, size);
+    await open(page);
+    await expect(today(page).getByText('Meteo non raggiungibile')).toBeVisible();
+    await expect(today(page).getByRole('link', { name: 'Imposta la città' })).toHaveCount(0);
   }
 });
 

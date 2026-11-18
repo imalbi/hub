@@ -48,6 +48,7 @@ export function createWeather(fetcher: typeof fetch, location: z.infer<typeof lo
   let state: { name: string; temperature: number; code: number; min: number; max: number; stale: boolean } | null =
     null;
   let closed = false;
+  let retryMs = 60_000;
   let timer: ReturnType<typeof setTimeout> | undefined;
   async function refresh() {
     if (!location) return;
@@ -70,11 +71,14 @@ export function createWeather(fetcher: typeof fetch, location: z.infer<typeof lo
         max: data.daily.temperature_2m_max[0],
         stale: false,
       };
+      retryMs = 60_000;
     } catch {
       if (state) state = { ...state, stale: true };
     }
     clearTimeout(timer);
-    if (!closed) timer = setTimeout(() => void refresh(), 30 * 60 * 1000);
+    const delay = state ? 30 * 60_000 : retryMs;
+    if (!state) retryMs = Math.min(retryMs * 2, 30 * 60_000);
+    if (!closed) timer = setTimeout(() => void refresh(), delay);
   }
   const initial = refresh();
   return {

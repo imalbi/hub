@@ -501,6 +501,7 @@
   "today_lines": "Righe di oggi",
   "today_lines_tomorrow": "Righe di domani",
   "today_weather_missing": "Meteo non disponibile",
+  "today_weather_unreachable": "Meteo non raggiungibile",
   "today_weather_set": "Imposta la città",
   "calendar_tomorrow_none": "Nessun evento tuo",
   "calendar_chip": "Calendario",

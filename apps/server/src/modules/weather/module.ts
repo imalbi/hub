@@ -11,7 +11,7 @@ export const weatherModule = defineModule({
     const weather = createWeather(fetch, config);
     return {
       router: router({
-        state: protectedProcedure.query(() => weather.read()),
+        state: protectedProcedure.query(async () => ({ configured: Boolean(config), current: await weather.read() })),
         search: loopbackProcedure
           .input(z.string().trim().min(2).max(100))
           .query(({ input }) => searchLocations(fetch, input)),

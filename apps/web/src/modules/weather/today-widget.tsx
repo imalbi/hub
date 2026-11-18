@@ -177,15 +177,21 @@ function Weather({ look, align = 'start' }: { look: 'block' | 'caption'; align?:
   const trpc = useTRPC();
   const on = useIsOn()('weather');
   const weather = useQuery({ ...trpc.weather.state.queryOptions(), enabled: on, refetchInterval: 60_000 });
-  const current = weather.data;
   if (!on || !weather.isSuccess) return null;
+  const { current, configured } = weather.data;
   if (!current)
     return (
       <p className="text-caption text-muted-foreground">
-        {m.today_weather_missing()} ·{' '}
-        <Link to="/desk/settings/$module" params={{ module: 'weather' }} className="underline">
-          {m.today_weather_set()}
-        </Link>
+        {configured ? (
+          m.today_weather_unreachable()
+        ) : (
+          <>
+            {m.today_weather_missing()} ·{' '}
+            <Link to="/desk/settings/$module" params={{ module: 'weather' }} className="underline">
+              {m.today_weather_set()}
+            </Link>
+          </>
+        )}
       </p>
     );
   const stale = current.stale ? 'opacity-60' : '';
