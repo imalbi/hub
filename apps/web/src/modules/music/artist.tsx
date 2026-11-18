@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { useQuery } from '@tanstack/react-query';
 import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -32,7 +33,7 @@ export function ArtistView({
         </button>
         <h2 className="relative truncate text-hero">{artist.data?.name}</h2>
       </div>
-      {artist.isLoading && <output>{m.music_artist_loading()}</output>}
+      {artist.isLoading && <LoadingSkeleton label={m.music_artist_loading()} rows={5} />}
       {artist.isError && <output>{m.music_artist_error()}</output>}
       {artist.data && (
         <div className="grid min-h-0 flex-1 grid-cols-5 gap-xl">

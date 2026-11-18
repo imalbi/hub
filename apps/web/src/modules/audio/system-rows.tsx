@@ -52,6 +52,7 @@ export function AudioRows() {
         label={m.tile_audio_output()}
         state={audio.data ? (audio.data.muted ? m.audio_output_off() : m.audio_output_on()) : loading}
         stale={stale}
+        pending={!audio.data && !stale}
       >
         <RegistryButton
           secondary
@@ -66,6 +67,7 @@ export function AudioRows() {
         label={m.audio_microphone()}
         state={audio.data ? (audio.data.micMuted ? m.audio_muted() : m.audio_unmuted()) : loading}
         stale={stale}
+        pending={!audio.data && !stale}
       >
         <RegistryButton
           secondary

@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import {
   ArchiveIcon,
   ArrowClockwiseIcon,
@@ -92,9 +93,7 @@ export function InboxList({
           </div>
         )}
         {status.pending && <ListSkeleton />}
-        {!status.pending && !status.error && rows.length === 0 && (
-          <p className="text-body text-muted-foreground">{m.mail_empty()}</p>
-        )}
+        {!status.pending && !status.error && rows.length === 0 && <EmptyState title={m.mail_empty()} />}
         <ul className="flex flex-col">
           {rows.map((row) => (
             <li key={rowKey(row)} className="group relative border-b border-dashed border-border last:border-b-0">

@@ -98,6 +98,7 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
   - `components/chip.tsx` (`Chip`): the house removable tag, a `Badge` plus a focusable remove button named by Paraglide `chip_remove`; Backspace and Delete on it remove. No registry item fits.
 - Only `src/components/ui/` is excluded from the arbitrary-class guard, alongside generated Paraglide. That also means nothing flags a stock Tailwind step there: with `--spacing: initial`, `h-5`, `size-4` or `pt-8` compile to no CSS and lint stays green (the vendored `slider.tsx` rendered a 0px track until 2026-11-08). Map every size to a token or an explicit arbitrary rem value when vendoring. Map visible spacing/type/colors to named tokens; upstream geometry/keyframes/timings can stay. Keyframes used through inline animation names must survive Tailwind compilation. Components are ours to adapt for semantics and accessibility; no broad lint exceptions.
 - `components/registry-button.tsx` supplies Italian action labels and accessible names to ActionButton; it uses async mutations so pending/success/error represent the actual request. `data-status` exposes the current feedback state; `pressed` forwards `aria-pressed` for an icon toggle. A failure is handled by the component, not an unhandled rejection. Keep non-action navigation buttons separate.
+- Counts that change in place use `NumberRoll`; it shows in-flow digits at rest and the strip only during a roll, including reduced motion. Mount it only once the first real count is known.
 - A NumberRoll rolls when its value changes, so it must mount with the first real value: the desk timer renders its digits only once the subscription has data (an invisible `timer.time` holds the space until then). Fed a 0 placeholder, it rolled in from 00:00 on every visit to Studio. The same goes for a tab `count` (`ZoneTabs`): pass it only once it is known.
 
 ## Deck tiles
@@ -182,3 +183,5 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 ## Themes
 
 See `src/theme/AGENTS.md`.
+
+- Single-line text that changes in place uses `TextMorph`; long text crossfades as one block on a subject change. Use `FadingLine` for truncated text: its plain text run keeps the ellipsis. Preserve the accessible name and honor reduced motion.

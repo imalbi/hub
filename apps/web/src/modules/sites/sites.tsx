@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createTRPCOptionsProxy, useSubscription, type ofFeatureFlags } from '@trpc/tanstack-react-query';
 import type { sitesModule } from '../../../../server/src/modules/sites/server.ts';
@@ -49,8 +51,8 @@ const copy: StatusBarsCopy = {
 export function SitesSection() {
   const sites = useSites();
   if (sites.error) return <p>{m.sites_error()}</p>;
-  if (!sites.data) return <p>{m.tile_loading()}</p>;
-  if (!sites.data.length) return <p>{m.sites_empty()}</p>;
+  if (!sites.data) return <LoadingSkeleton label={m.tile_loading()} rows={4} />;
+  if (!sites.data.length) return <EmptyState title={m.sites_empty()} />;
   const services = sites.data.map((site) => {
     const status: DayStatus = !site.latest
       ? 'none'
@@ -76,7 +78,7 @@ export function SitesWidget() {
       {sites.error ? (
         m.sites_error()
       ) : !down ? (
-        m.tile_loading()
+        <LoadingSkeleton label={m.tile_loading()} rows={2} />
       ) : down.length ? (
         <ul>
           {down.map((site) => (

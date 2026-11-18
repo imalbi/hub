@@ -30,25 +30,28 @@ export function CoverTile({ src, className = 'size-2xl rounded-md' }: { src?: st
 export function Artists({
   artists,
   onOpen,
+  morph = false,
 }: {
   artists: { name: string; id?: string }[];
   onOpen: (id: string) => void;
+  morph?: boolean;
 }) {
   return artists.map((artist, index) => {
     const id = artist.id;
+    const name = artist.name;
     return (
-      <React.Fragment key={`${artist.name}-${index}`}>
+      <React.Fragment key={morph ? index : `${artist.name}-${index}`}>
         {index > 0 && ', '}
         {id && /^UC[A-Za-z0-9_-]{22}$/.test(id) ? (
           <button
             type="button"
-            className="relative z-10 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            className="relative z-10 max-w-full truncate align-bottom hover:underline focus-visible:outline-2 focus-visible:outline-ring"
             onClick={() => onOpen(id)}
           >
-            {artist.name}
+            {name}
           </button>
         ) : (
-          artist.name
+          name
         )}
       </React.Fragment>
     );

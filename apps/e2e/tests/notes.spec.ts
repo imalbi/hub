@@ -60,7 +60,7 @@ test('Esc closes the card without saving and the widget button opens it', async 
   await page.keyboard.press('Escape');
   await expect(card).toHaveCount(0);
   await expect(page.getByText('Da scartare')).toHaveCount(0);
-  await expect(page.getByText('Nessun post-it', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nessun post-it. Premi N per scriverne uno.' })).toBeVisible();
 });
 
 test('the palette adds a post-it, it edits in place and Stacca can be undone', async ({ page, pc }) => {

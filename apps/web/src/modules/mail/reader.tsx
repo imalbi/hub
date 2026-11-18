@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArchiveIcon, EnvelopeOpenIcon, StarIcon } from '@phosphor-icons/react';
 import { useState, type ReactNode } from 'react';
@@ -110,8 +111,10 @@ export function MailReader({
           <p className="text-body text-muted-foreground">{m.mail_error()}</p>
           <RegistryButton secondary label={m.mail_retry()} action={() => read.refetch()} />
         </div>
+      ) : read.data ? (
+        <p className="max-w-prose text-body break-words whitespace-pre-wrap">{read.data.text}</p>
       ) : (
-        <p className="max-w-prose text-body break-words whitespace-pre-wrap">{read.data?.text ?? m.tile_loading()}</p>
+        <LoadingSkeleton label={m.tile_loading()} rows={5} className="max-w-prose" />
       )}
       {!replying && read.data?.truncated && <p className="text-caption text-muted-foreground">{m.mail_truncated()}</p>}
     </Panel>

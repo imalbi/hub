@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonGroup } from '@/components/ui/button-group.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -46,7 +47,7 @@ export function SearchResults({
       ) : (
         <>
           {results.isError && <output>{m.music_search_error()}</output>}
-          {results.isSuccess && results.data.length === 0 && <output>{m.music_empty()}</output>}
+          {results.isSuccess && results.data.length === 0 && <EmptyState scene="search" title={m.music_empty()} />}
           <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {results.data?.map((song, index) => (
               <SongRow key={`${song.id}-${index}`} song={song} onPlay={onPlay} onArtist={onArtist} />

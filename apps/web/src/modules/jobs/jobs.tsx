@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { useCallback, useState } from 'react';
@@ -107,7 +108,7 @@ export function JobsPage() {
   return (
     <div className="flex min-h-0 flex-1 gap-lg pb-xl">
       <section aria-label={m.jobs_title()} className="flex w-1/3 min-w-0 flex-col gap-sm overflow-y-auto">
-        {jobs.length === 0 && <p>{m.jobs_empty()}</p>}
+        {jobs.length === 0 && <EmptyState title={m.jobs_empty()} />}
         {jobs.map((job) => (
           <button
             type="button"

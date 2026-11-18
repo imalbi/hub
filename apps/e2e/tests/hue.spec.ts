@@ -44,7 +44,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     try {
       await page.goto('/desk/devices');
       const panel = page.getByRole('group', { name: 'Luci', exact: true });
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Accesa, 80%$/ }),
+      ).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
 
       const toggle = panel.getByRole('button', { name: /^Luce:/ });
@@ -55,7 +60,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       await expect(toggle.locator('svg[data-icon="lightbulb"]')).toHaveAttribute('data-weight', 'fill');
       await toggle.click();
       await expect(phone.getByRole('button', { name: 'Luci: Spenta', exact: true })).toBeVisible();
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Spenta$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Spenta$/ }),
+      ).toBeVisible();
       await expect(toggle).toHaveAttribute('aria-pressed', 'false');
       await page.mouse.move(0, 0);
       await expect(toggle).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
@@ -64,7 +74,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       expect(await writes(request)).toEqual([{ type: 'setPower', on: false }]);
 
       await phone.getByRole('button', { name: 'Luci: Spenta', exact: true }).click();
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Accesa, 80%$/ }),
+      ).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
       await expect(toggle).toHaveAttribute('aria-pressed', 'true');
       await expect(toggle).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
@@ -131,7 +146,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     const slider = panel.getByRole('slider', { name: 'Luminosità' });
     await slider.focus();
     await slider.press('End');
-    await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 100%$/ })).toBeVisible();
+    await expect(
+      panel
+        .getByRole('paragraph')
+        .locator('.sr-only')
+        .filter({ hasText: /^Accesa, 100%$/ }),
+    ).toBeVisible();
     expect(await writes(request)).toEqual([{ type: 'setBrightness', percent: 100 }]);
 
     const box = await slider.boundingBox();
@@ -144,7 +164,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     await expect(slider).toHaveValue(String(second.percent));
 
     await change(request, { power: false });
-    await expect(panel.getByRole('paragraph').filter({ hasText: /^Spenta$/ })).toBeVisible();
+    await expect(
+      panel
+        .getByRole('paragraph')
+        .locator('.sr-only')
+        .filter({ hasText: /^Spenta$/ }),
+    ).toBeVisible();
     await expect(slider).toBeDisabled();
 
     await change(request, { power: true, capabilities: { power: true, brightness: false } });
@@ -168,19 +193,34 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       await expect(tile).toBeVisible();
 
       await change(request, { power: false, brightnessPercent: 20 });
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Spenta$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Spenta$/ }),
+      ).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Spenta', exact: true })).toBeVisible();
 
       await expect(toggle).toHaveAttribute('aria-pressed', 'false');
       await expect(tile.locator('svg[data-icon="lightbulb"]')).toHaveAttribute('data-weight', 'regular');
       await change(request, { availability: 'unavailable' });
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Senza Bluetooth$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Senza Bluetooth$/ }),
+      ).toBeVisible();
       await expect(panel.getByRole('button', { name: 'Luce: Senza Bluetooth', exact: true })).toBeDisabled();
       await expect(phone.getByRole('button', { name: 'Luci: Senza Bluetooth', exact: true })).toBeDisabled();
       expect(await writes(request)).toEqual([]);
 
       await change(request, { availability: 'ready', power: true, brightnessPercent: 55 });
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 55%$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Accesa, 55%$/ }),
+      ).toBeVisible();
       await expect(panel.getByRole('button', { name: /^Luce: Accesa/ })).toBeEnabled();
       await expect(toggle).toHaveAttribute('aria-pressed', 'true');
       await expect(tile.locator('svg[data-icon="lightbulb"]')).toHaveAttribute('data-weight', 'fill');
@@ -213,7 +253,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       await page.goto('/desk/devices');
       const panel = page.getByRole('group', { name: 'Luci', exact: true });
       const deckShot = { animations: 'disabled', scale: 'css' } as const;
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Accesa, 80%$/ }),
+      ).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Accesa, 80%', exact: true })).toBeVisible();
       await settleFonts(page);
       await settleFonts(phone);
@@ -221,7 +266,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       await expect(phone).toHaveScreenshot('deck-lights.png', deckShot);
 
       await change(request, { availability: 'unavailable' });
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Senza Bluetooth$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Senza Bluetooth$/ }),
+      ).toBeVisible();
       await expect(phone.getByRole('button', { name: 'Luci: Senza Bluetooth', exact: true })).toBeVisible();
       await expect(panel).toHaveScreenshot('desk-lights-unavailable.png', { animations: 'disabled' });
       await expect(phone).toHaveScreenshot('deck-lights-unavailable.png', deckShot);
@@ -233,7 +283,12 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       await change(request, { capabilities: { power: true, brightness: true } });
       await page.evaluate(() => localStorage.setItem('hub.theme', 'paper'));
       await page.reload();
-      await expect(panel.getByRole('paragraph').filter({ hasText: /^Accesa, 80%$/ })).toBeVisible();
+      await expect(
+        panel
+          .getByRole('paragraph')
+          .locator('.sr-only')
+          .filter({ hasText: /^Accesa, 80%$/ }),
+      ).toBeVisible();
       await settleFonts(page);
       await expect(panel).toHaveScreenshot('desk-lights-paper.png', { animations: 'disabled' });
     } finally {

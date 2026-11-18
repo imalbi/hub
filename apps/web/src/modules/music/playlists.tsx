@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDownIcon, ArrowUpIcon, CaretLeftIcon, PlayIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
@@ -30,7 +31,7 @@ export function PlaylistList({ selected, onSelect }: { selected: number | null; 
           {({ close }) => <NewPlaylist onCreated={() => close()} />}
         </Popover>
       </div>
-      {lists.data?.length === 0 && <p className="px-md text-label text-muted-foreground">{m.music_playlist_empty()}</p>}
+      {lists.data?.length === 0 && <EmptyState title={m.music_playlist_empty()} />}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {lists.data?.map((list) => (
           <li key={list.id}>
@@ -164,7 +165,7 @@ export function LocalPlaylist({
           }}
         />
       </form>
-      {list.data && songs.length === 0 && <p>{m.music_playlist_no_songs()}</p>}
+      {list.data && songs.length === 0 && <EmptyState title={m.music_playlist_no_songs()} />}
       <ol className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {songs.map((song, index) => (
           <li key={index} className="relative flex items-center gap-md border-t border-dashed border-border py-xs">
@@ -251,21 +252,24 @@ export function PublicPlaylists({
   );
   if (id === null)
     return (
-      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {results.isError && <output>{m.music_search_error()}</output>}
-        {results.data?.map((item) => (
-          <li key={item.id} className="border-t border-dashed border-border py-xs">
-            <button
-              type="button"
-              className="flex w-full items-center gap-md rounded-full text-left text-body focus-visible:outline-2 focus-visible:outline-ring"
-              onClick={() => setId(item.id)}
-            >
-              <PlaylistCover />
-              {item.title}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <>
+        {results.isSuccess && results.data.length === 0 && <EmptyState scene="search" title={m.music_empty()} />}
+        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {results.isError && <output>{m.music_search_error()}</output>}
+          {results.data?.map((item) => (
+            <li key={item.id} className="border-t border-dashed border-border py-xs">
+              <button
+                type="button"
+                className="flex w-full items-center gap-md rounded-full text-left text-body focus-visible:outline-2 focus-visible:outline-ring"
+                onClick={() => setId(item.id)}
+              >
+                <PlaylistCover />
+                {item.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
     );
   return (
     <section aria-label={list.data?.title} className="flex min-h-0 flex-1 flex-col gap-lg">
@@ -293,6 +297,7 @@ export function PublicPlaylists({
           {m.music_playlist_save()}
         </button>
       </div>
+      {list.data && list.data.songs.length === 0 && <EmptyState title={m.music_playlist_no_songs()} />}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {list.data?.songs.map((song, index) => (
           <SongRow key={`${song.id}-${index}`} song={song} onPlay={onPlaySong} onArtist={onArtist} />

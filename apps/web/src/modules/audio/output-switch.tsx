@@ -10,6 +10,13 @@ export function OutputSwitch({ className = '' }: { className?: string }) {
   const audio = useSubscription(trpc.audio.onState.subscriptionOptions());
   const setOutput = useMutation(trpc.audio.setOutput.mutationOptions());
   const stale = useConnectionLost();
+  if (!audio.data && !stale)
+    return (
+      <output
+        aria-label={m.tile_loading()}
+        className="h-2xl w-3xl rounded-md bg-muted-foreground/20 motion-safe:animate-pulse"
+      />
+    );
   if (!audio.data?.outputs.length) return null;
   const current = audio.data.current?.label;
   return (

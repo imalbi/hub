@@ -27,6 +27,15 @@ async function box(locator: Locator) {
 const intersects = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
+test('plan and review show the empty state without an active plan', async ({ page }) => {
+  const { answerQueries } = await import('./desktop.ts');
+  await answerQueries(page, { 'study.active': [], 'study.index': null });
+  await page.goto('/desk/studio?tab=piano');
+  await expect(page.getByRole('heading', { name: 'Nessun piano attivo' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Ripasso', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nessun piano attivo' })).toBeVisible();
+});
+
 test('capture on Studio Oggi refers to the current study day', async ({ page, pc }) => {
   await openToday(page, pc);
   await page.keyboard.press('n');
@@ -191,7 +200,7 @@ test('the instrument timer pauses the server and the subject selector saves its 
   const saved = page.waitForResponse((response) => response.url().includes('study.setSubject') && response.ok());
   await page.getByRole('option', { name: 'In pausa' }).click();
   await saved;
-  await expect(page.getByText('Nessun piano attivo')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nessun piano attivo' })).toBeVisible();
   await pc.post('/trpc/study.setSubject', { data: { plan: 'example', id: 'a', state: 'active' } });
 });
 

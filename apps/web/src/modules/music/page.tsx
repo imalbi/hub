@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
@@ -39,7 +40,7 @@ function SavedSongs({
     <section aria-label={label} className="flex min-h-0 flex-1 flex-col gap-md">
       <h2 className="text-heading">{label}</h2>
       {rows?.length === 0 && (
-        <output>{kind === 'favorites' ? m.music_favorites_empty() : m.music_history_empty()}</output>
+        <EmptyState title={kind === 'favorites' ? m.music_favorites_empty() : m.music_history_empty()} />
       )}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {songs.map((song, index) => (

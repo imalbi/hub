@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -165,7 +166,18 @@ function DayRow({
       </button>
       {open && (
         <div id={bodyId} className="border-t border-dashed border-border py-md">
-          {body && header ? <DayBody body={body} header={header} titles={titles} /> : <p>{m.tile_loading()}</p>}
+          {body && header ? (
+            <DayBody body={body} header={header} titles={titles} />
+          ) : (
+            <div className="flex flex-col gap-md">
+              <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-3xl" />
+              <div aria-hidden className="flex flex-col gap-sm rounded-lg border border-border p-md">
+                <span className="h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+                <span className="h-touch rounded-md bg-muted-foreground/20 motion-safe:animate-pulse" />
+                <span className="h-touch rounded-md bg-muted-foreground/20 motion-safe:animate-pulse" />
+              </div>
+            </div>
+          )}
           {!day.done && day.g !== null && (
             <div className="mt-md flex gap-sm">
               <button

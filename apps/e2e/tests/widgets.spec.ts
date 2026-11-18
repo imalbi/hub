@@ -187,15 +187,9 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
-  await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText([
-    'Server',
-    'Posta',
-    'Comandi',
-    'Consumo',
-    'Dispositivi',
-    'Aspetto',
-    'Post-it',
-  ]);
+  const missing = ['Server', 'Posta', 'Comandi', 'Consumo', 'Dispositivi', 'Aspetto', 'Post-it'];
+  if (process.env.HUB_EXAMPLE_MODULES === '1') missing.push('Esempio', 'Luci');
+  await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText(missing);
   await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Aspetto' }).click());
   await expect(cell(page, 'theme')).toBeVisible();
 });
@@ -204,7 +198,8 @@ test('Posta shows unread count and latest sender', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
   await page.getByRole('button', { name: 'Aggiungi Posta' }).click();
   const widget = page.getByRole('region', { name: 'Posta' });
-  await expect(widget.getByText('3 non lette')).toBeVisible();
+  await expect(widget.locator('[data-readout] [aria-hidden="true"]').getByText('3', { exact: true })).toBeVisible();
+  await expect(widget.getByRole('paragraph').first()).toMatchAriaSnapshot('- paragraph: 3 non lette');
   await expect(widget.getByText('Recruiter Example')).toBeVisible();
 });
 
@@ -242,6 +237,7 @@ test('all widgets fit within the surface scroller', async ({ page, pc }) => {
     'theme',
     'notes',
   ];
+  if (process.env.HUB_EXAMPLE_MODULES === '1') ids.push('hello', 'lights');
   const items = ids.map((widget, index) => ({
     widget,
     size:
@@ -249,7 +245,7 @@ test('all widgets fit within the surface scroller', async ({ page, pc }) => {
         ? 'wide'
         : widget === 'controls' || widget === 'theme'
           ? 'large'
-          : widget === 'notes'
+          : widget === 'notes' || widget === 'hello'
             ? 'medium'
             : 'small',
     x: 0,
@@ -329,7 +325,7 @@ test('Dispositivi counts two phones and its large rows fit without overlap', asy
   });
   await page.reload();
   const widget = cell(page, 'devices');
-  await expect(widget.getByText('2', { exact: true })).toBeVisible();
+  await expect(widget.locator('[aria-hidden="true"]').getByText('2', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
   await page
     .getByRole('group', { name: 'Dimensione di Dispositivi' })

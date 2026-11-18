@@ -1,3 +1,4 @@
+import { TextMorph } from '../../components/ui/text-morph.tsx';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -199,13 +200,17 @@ function Weather({ look, align = 'start' }: { look: 'block' | 'caption'; align?:
   if (look === 'caption')
     return (
       <p className={`text-caption text-muted-foreground tabular-nums ${stale}`} title={title}>
-        {Math.round(current.temperature)}° · {current.name}
+        <TextMorph animateWidth={false}>{`${Math.round(current.temperature)}° · ${current.name}`}</TextMorph>
       </p>
     );
   return (
     <div className={`flex flex-col ${align === 'end' ? 'items-end text-right' : ''} ${stale}`} title={title}>
-      <p className="text-caption text-muted-foreground">{current.name}</p>
-      <p className="text-display tabular-nums">{Math.round(current.temperature)}°</p>
+      <p className="text-caption text-muted-foreground">
+        <TextMorph animateWidth={false}>{current.name}</TextMorph>
+      </p>
+      <p className="text-display tabular-nums">
+        <TextMorph animateWidth={false}>{`${Math.round(current.temperature)}°`}</TextMorph>
+      </p>
       <p className="text-caption text-muted-foreground tabular-nums">
         {Math.round(current.min)}° / {Math.round(current.max)}°
       </p>

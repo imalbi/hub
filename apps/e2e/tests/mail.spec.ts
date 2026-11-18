@@ -61,6 +61,7 @@ test('inbox and reader scroll independently beneath the fixed toolbar', async ({
 });
 
 test('the inbox shows loading until its first list arrives', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
   let release = () => {};
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -73,8 +74,60 @@ test('the inbox shows loading until its first list arrives', async ({ page }) =>
   const inbox = page.getByRole('region', { name: 'Posta in arrivo' });
   await expect(inbox.getByRole('status', { name: 'Caricamento...' })).toBeVisible();
   await expect(inbox.getByText('Nessun messaggio')).toHaveCount(0);
+  const before = await inbox.boundingBox();
   release();
   await expect(messageRow(page, 'Offerta di colloquio')).toBeVisible();
+  const after = await inbox.boundingBox();
+  if (!before || !after) throw new Error('Inbox must remain laid out');
+  expect(Math.abs(before.y - after.y)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.x - after.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.width - after.width)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.height - after.height)).toBeLessThanOrEqual(8);
+});
+
+test('reader and reply hold their positions while their data loads', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  let releaseRead = () => {};
+  let releaseDraft = () => {};
+  const read = new Promise<void>((resolve) => {
+    releaseRead = resolve;
+  });
+  const draft = new Promise<void>((resolve) => {
+    releaseDraft = resolve;
+  });
+  await page.route('**/trpc/mail.read*', async (route) => {
+    await read;
+    await route.continue();
+  });
+  await page.route('**/trpc/mail.replyDraft*', async (route) => {
+    await draft;
+    await route.continue();
+  });
+  await page.goto('/desk/messaggi');
+  await messageRow(page, 'Offerta di colloquio').click();
+  const reader = page.getByRole('region', { name: 'Offerta di colloquio' });
+  await expect(reader.getByRole('status', { name: 'Caricamento' })).toBeVisible();
+  const before = await reader.boundingBox();
+  releaseRead();
+  await expect(reader.getByRole('status', { name: 'Caricamento' })).toHaveCount(0);
+  const after = await reader.boundingBox();
+  if (!before || !after) throw new Error('Reader must remain laid out');
+  expect(Math.abs(before.y - after.y)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.x - after.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.width - after.width)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.height - after.height)).toBeLessThanOrEqual(8);
+  await reader.getByRole('button', { name: 'Rispondi' }).click();
+  const skeleton = reader.getByRole('status', { name: 'Preparo la risposta' });
+  await expect(skeleton).toBeVisible();
+  const loading = await skeleton.boundingBox();
+  releaseDraft();
+  const form = page.getByRole('form', { name: 'Rispondi' });
+  await expect(form).toBeVisible();
+  const loaded = await form.boundingBox();
+  if (!loading || !loaded) throw new Error('Reply must remain laid out');
+  expect(Math.abs(loading.y - loaded.y)).toBeLessThanOrEqual(8);
+  expect(Math.abs(loading.x - loaded.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(loading.width - loaded.width)).toBeLessThanOrEqual(8);
 });
 
 test('refresh starts the list over without asking the accounts again', async ({ page }) => {
@@ -214,7 +267,7 @@ test('Filtri applies a sender and an unread filter as chips, and a typed day set
   await expect(page.getByRole('button', { name: 'Rimuovi Mittente: carla' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Rimuovi Solo non lette' })).toBeVisible();
   // Nothing from the fixture is both unread, from carla and after yesterday.
-  await expect(inbox.getByText('Nessun messaggio')).toBeVisible();
+  await expect(inbox.getByRole('heading', { name: 'Nessun messaggio' })).toBeVisible();
   await page.getByRole('button', { name: 'Rimuovi Mittente: carla' }).click();
   await page.getByRole('button', { name: 'Rimuovi Solo non lette' }).click();
   await page.getByRole('button', { name: /^Rimuovi Dopo il/ }).click();

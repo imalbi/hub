@@ -323,7 +323,7 @@ test('a loading registry and a failing one are announced in the list', async ({ 
     await page.keyboard.press('Control+k');
     const palette = page.getByRole('dialog', { name: 'Comandi' });
     await palette.getByRole('combobox').fill('zzzz');
-    await expect(palette.getByRole('status')).toContainText('Caricamento azioni');
+    await expect(palette.getByRole('status', { name: 'Caricamento azioni' })).toBeVisible();
     release?.();
     // The query retries with a back-off before it gives up.
     await expect(palette.getByRole('status')).toContainText('Azione non riuscita. Riprova.', { timeout: 20_000 });
@@ -331,6 +331,32 @@ test('a loading registry and a failing one are announced in the list', async ({ 
   } finally {
     release?.();
   }
+});
+
+test('the command palette holds its position while actions load', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/trpc/*registry.list*', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto('/desk');
+  await expect(pill(page)).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await palette.getByRole('combobox').fill('zzzz');
+  await expect(palette.getByRole('status', { name: 'Caricamento azioni' })).toBeVisible();
+  const before = await palette.boundingBox();
+  release();
+  await expect(palette.getByRole('status', { name: 'Caricamento azioni' })).toHaveCount(0);
+  const after = await palette.boundingBox();
+  if (!before || !after) throw new Error('Palette must remain laid out');
+  expect(Math.abs(before.x - after.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.y - after.y)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.width - after.width)).toBeLessThanOrEqual(8);
 });
 
 test('a failing action shows the generic error and keeps the palette open', async ({ page }) => {

@@ -4,6 +4,7 @@ import { SERVER_URL } from './hosts.ts';
 test('a running job streams output and stops after a hold', async ({ page, request }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk/system?tab=jobs');
+  await expect(page.getByRole('heading', { name: 'Nessun job' })).toBeVisible();
   await request.post(`${SERVER_URL}/__fake/jobs`);
   await expect(page.getByText('fake.job').first()).toBeVisible();
   await expect(page.getByText('Riga 3')).toBeVisible();

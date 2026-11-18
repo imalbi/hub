@@ -325,7 +325,7 @@ test('Ripasso lists threads, half days, open steps and errors, and ticking there
     db.prepare("DELETE FROM preferences WHERE plan_id = '*'").run();
     expect((await pc.post('/trpc/study.activate', { data: { name: 'review.json' } })).ok()).toBe(true);
     await page.goto(`${PC_URL}/desk/studio?tab=ripasso`);
-    await expect(page.getByText('Niente da riprendere')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Niente da riprendere' })).toBeVisible();
     await pc.post('/trpc/study.setAutonomy', { data: { plan: 'example', id: 'plants', value: 'red' } });
     await pc.post('/trpc/study.setAutonomy', { data: { plan: 'example', id: 'stars', value: 'yellow' } });
     await pc.post('/trpc/study.setStep', { data: { key: 'example/A01', id: 'A01.m.1', done: true } });

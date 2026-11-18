@@ -1,3 +1,4 @@
+import { FadingLine } from '../../components/ui/fading-line.tsx';
 import { m } from '../../paraglide/messages.js';
 import { Cover, Transport } from './controls.tsx';
 import { useMedia } from './media-provider.tsx';
@@ -13,8 +14,12 @@ export function DeckPlayer() {
     >
       <Cover />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-label">{media.state.title}</p>
-        <p className="truncate text-caption text-muted-foreground">{media.state.artist}</p>
+        <p className="text-label">
+          <FadingLine subject={media.state.title}>{media.state.title}</FadingLine>
+        </p>
+        <p className="text-caption text-muted-foreground">
+          <FadingLine subject={media.state.artist ?? ''}>{media.state.artist ?? ''}</FadingLine>
+        </p>
       </div>
       <Transport />
     </section>

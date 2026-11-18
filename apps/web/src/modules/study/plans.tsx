@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { Fragment, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { Link } from '@tanstack/react-router';
@@ -6,6 +6,8 @@ import { CaretRightIcon, CheckIcon, FolderIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { Badge } from '../../components/ui/badge.tsx';
+import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { m } from '../../paraglide/messages.js';
 import { studySubjects, useStudyTRPC, type StudyHeader, type StudyIndex } from './use-study.ts';
 import { StudyMix } from './mix.tsx';
@@ -61,7 +63,7 @@ export function StudyPlans() {
           ))
         ) : (
           <Panel>
-            <p className="text-body">{m.study_no_plan()}</p>
+            <EmptyState title={m.study_no_plan()} />
           </Panel>
         )}
         {inbox.data?.map((item) => (
@@ -258,12 +260,16 @@ function ActivePlan({
         <div className="flex items-center justify-between gap-md">
           <span className="text-body tabular-nums">{m.study_done_of({ done, total: all.length })}</span>
           <span className="text-caption text-muted-foreground tabular-nums">
-            {header.subjects
-              .map((item) => {
-                const days = all.filter((day) => day.subject === `${header.id}:${item.id}`);
-                return `${item.name} ${days.filter((day) => day.done).length}/${days.length}`;
-              })
-              .join(' · ')}
+            {header.subjects.map((item, index) => {
+              const days = all.filter((day) => day.subject === `${header.id}:${item.id}`);
+              return (
+                <Fragment key={item.id}>
+                  {index > 0 && ' · '}
+                  {item.name} <NumberRoll value={days.filter((day) => day.done).length} />/
+                  <NumberRoll value={days.length} />
+                </Fragment>
+              );
+            })}
           </span>
         </div>
         <div aria-hidden="true" className="h-2xs overflow-hidden rounded-full bg-muted">

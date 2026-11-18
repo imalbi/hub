@@ -20,7 +20,7 @@ export function MusicPlayer({ queue, onArtist }: { queue: Queue | undefined; onA
   return (
     <PlayerBar
       className="absolute -bottom-touch left-1/2 z-10 w-5/6 -translate-x-1/2"
-      artist={linked ? <Artists artists={current.artists} onOpen={onArtist} /> : undefined}
+      artist={linked ? <Artists artists={current.artists} onOpen={onArtist} morph /> : undefined}
       actions={
         <>
           {current && <Favorite song={current} />}

@@ -152,10 +152,33 @@ test('Medio cuts the lines by count: two rows and "e altre N"', async ({ page, p
     await pc.post('/trpc/calendar.add', { data: { title, day: '2026-11-19', start: '09:00' }, headers: json });
   await placeToday(pc, 'medium');
   await open(page);
-  // Studio, Posta and the two events: four lines.
+  // The example module contributes one additional line when enabled.
   const lines = today(page).getByRole('list', { name: 'Righe di oggi' });
   await expect(lines.getByRole('link')).toHaveCount(2);
-  await expect(lines.getByText('e altre 2')).toBeVisible();
+  await expect(lines.getByText(process.env.HUB_EXAMPLE_MODULES === '1' ? 'e altre 3' : 'e altre 2')).toBeVisible();
+});
+
+test('a long event in Medio ends in an ellipsis at 4K', async ({ page, pc }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  const title = 'Appuntamento ' + 'M'.repeat(100);
+  expect(
+    (await pc.post('/trpc/calendar.add', { data: { title, day: '2026-11-19', start: '09:00' }, headers: json })).ok(),
+  ).toBe(true);
+  await placeToday(pc, 'medium');
+  await open(page);
+  const row = today(page).getByRole('link', { name: new RegExp(title) });
+  const text = row.locator('.truncate');
+  await expect(text).toBeVisible();
+  await page.screenshot({ path: '/tmp/hub88-oggi-long.png' });
+  expect(
+    await text.evaluate((element) => ({
+      overflowing: element.scrollWidth > element.clientWidth,
+      ellipsis: getComputedStyle(element).textOverflow === 'ellipsis',
+      textRun: Array.from(element.childNodes).some(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.includes('Appuntamento'),
+      ),
+    })),
+  ).toEqual({ overflowing: true, ellipsis: true, textRun: true });
 });
 
 test('every row with a link is one link, reached once by Tab', async ({ page, pc }) => {

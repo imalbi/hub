@@ -72,6 +72,49 @@ test('audio and player show the state of the fake desktop', async ({ page }) => 
   await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
 });
 
+test('deck keeps short loading text while live tile state is delayed', async ({ page }) => {
+  await page.routeWebSocket(/\/trpc/, (socket) => {
+    const server = socket.connectToServer();
+    const ids = new Set<unknown>();
+    socket.onMessage((message) => {
+      const value: unknown = JSON.parse(message.toString());
+      const items: unknown[] = Array.isArray(value) ? value : [value];
+      for (const item of items) {
+        if (typeof item !== 'object' || item === null || !('params' in item) || !('id' in item)) continue;
+        const params: unknown = item.params;
+        if (
+          typeof params === 'object' &&
+          params !== null &&
+          'path' in params &&
+          typeof params.path === 'string' &&
+          params.path.endsWith('.onState')
+        )
+          ids.add(item.id);
+      }
+      server.send(message);
+    });
+    server.onMessage((message) => {
+      const value: unknown = JSON.parse(message.toString());
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'id' in value &&
+        ids.has(value.id) &&
+        'result' in value &&
+        typeof value.result === 'object' &&
+        value.result !== null &&
+        'type' in value.result &&
+        value.result.type === 'data'
+      )
+        return;
+      socket.send(message);
+    });
+  });
+  await page.reload();
+  await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Caricamento');
+  await page.screenshot({ path: '/tmp/hub88-deck-loading.png' });
+});
+
 test('tapping the audio tile switches to the other output and back', async ({ page }) => {
   await audioTile(page).click();
   await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Casse');

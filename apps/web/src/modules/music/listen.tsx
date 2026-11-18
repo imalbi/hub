@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { m } from '../../paraglide/messages.js';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -62,7 +63,7 @@ export function Listen({
             </>
           )}
         </div>
-        {!queue?.current && <output>{m.music_queue_empty()}</output>}
+        {!queue?.current && <EmptyState title={m.music_queue_empty()} />}
         {queue?.errors === 3 && <output>{m.music_radio_error()}</output>}
         {(skip.isError || stop.isError) && <output>{m.music_player_error()}</output>}
         <ul className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-xl overflow-y-auto overscroll-contain">

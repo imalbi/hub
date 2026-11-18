@@ -106,6 +106,7 @@ const Digit = React.memo(function Digit({
   const [start] = React.useState(() => MIDDLE + (rollIn ? 0 : digit));
   const posRef = React.useRef(start);
   const stripRef = React.useRef<HTMLSpanElement>(null);
+  const digitRef = React.useRef<HTMLSpanElement>(null);
 
   const place = React.useCallback(
     (pos: number, animate: boolean) => {
@@ -122,12 +123,16 @@ const Digit = React.memo(function Digit({
   React.useLayoutEffect(() => {
     const current = posRef.current;
     const showing = ((current % 10) + 10) % 10;
-    if (showing === digit) return undefined;
     if (reduced) {
+      if (digitRef.current) digitRef.current.style.visibility = 'visible';
+      if (stripRef.current) stripRef.current.style.visibility = 'hidden';
       posRef.current = MIDDLE + digit;
       place(posRef.current, false);
       return undefined;
     }
+    if (showing === digit) return undefined;
+    if (digitRef.current) digitRef.current.style.visibility = 'hidden';
+    if (stripRef.current) stripRef.current.style.visibility = 'visible';
     const up = trend > 0 || (trend === 0 && digit > showing);
     let target = up ? current + ((digit - showing + 10) % 10) : current - ((showing - digit + 10) % 10);
     // Values arriving faster than a roll (a progress percent) never let it re-centre, so before it runs off the strip,
@@ -156,17 +161,19 @@ const Digit = React.memo(function Digit({
   const settle = () => {
     posRef.current = MIDDLE + (((posRef.current % 10) + 10) % 10);
     place(posRef.current, false);
+    if (digitRef.current) digitRef.current.style.visibility = 'visible';
+    if (stripRef.current) stripRef.current.style.visibility = 'hidden';
   };
 
   return (
-    <span className="relative inline-block [clip-path:inset(0)]">
-      <span className="invisible">{digit}</span>
+    <span className="relative inline-block overflow-clip [clip-path:inset(0)]">
+      <span ref={digitRef}>{digit}</span>
       <span
         ref={stripRef}
         aria-hidden="true"
         onTransitionEnd={settle}
         className="absolute inset-x-0 top-0 block text-center whitespace-pre"
-        style={{ transform: `translateY(${(-start * 100) / (SETS * 10)}%)` }}
+        style={{ transform: `translateY(${(-start * 100) / (SETS * 10)}%)`, visibility: 'hidden' }}
       >
         {STRIP}
       </span>

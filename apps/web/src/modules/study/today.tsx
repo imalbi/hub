@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NumberRoll } from '../../components/ui/number-roll.tsx';
@@ -33,17 +34,37 @@ export function StudyToday() {
   const body = useQuery(trpc.daysById.queryOptions({ keys: key ? [key] : [] }, { enabled: !!key }));
   if (headers.isError || index.isError || progress.isError || body.isError) return <p>{m.study_error()}</p>;
   if (headers.isPending || index.isPending || progress.isPending || (key && body.isPending))
-    return <p>{m.tile_loading()}</p>;
+    return (
+      <section data-study-day className="col-span-6 flex min-w-0 flex-col gap-lg pr-lg">
+        <h2 className="text-hero">
+          <span
+            aria-hidden
+            className="inline-block h-xl w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse"
+          />
+        </h2>
+        <p className="flex items-center gap-sm text-caps">
+          <span aria-hidden className="h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+        </p>
+        <output aria-label={m.tile_loading()} className="flex flex-col gap-md">
+          {[0, 1, 2].map((item) => (
+            <span key={item} aria-hidden className="flex items-center gap-sm">
+              <span className="size-icon rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+              <span className="h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+            </span>
+          ))}
+        </output>
+      </section>
+    );
   if (!index.data || !key)
     return (
       <>
-        <p className="col-span-6">{m.study_no_plan()}</p>
+        <EmptyState className="col-span-6" title={m.study_no_plan()} />
         <PomodoroPanel className="col-span-6" />
       </>
     );
   const day = body.data?.[0];
   const header = headers.data.find((item) => item.id === day?.planId);
-  if (!day || !header) return <p>{m.study_empty()}</p>;
+  if (!day || !header) return <EmptyState title={m.study_empty()} />;
   return (
     <TodayDay
       key={day.key}

@@ -4,11 +4,47 @@ import { DatabaseSync } from 'node:sqlite';
 import { expect, test } from './fixtures.ts';
 import { RUN_TMP } from './hosts.ts';
 
+test('library keeps its heading, filters and first row in place while the skeleton loads', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/trpc/*study.library*', async (route) => {
+    await pending;
+    await route.continue();
+  });
+  await page.goto('/desk/studio?tab=libreria');
+  const skeleton = page.getByRole('status', { name: 'Caricamento' });
+  await expect(skeleton).toBeVisible();
+  const heading = page.getByRole('heading', { name: 'Libreria' });
+  const panel = page.locator('section').filter({ has: heading });
+  const blocks = [
+    heading,
+    page.getByRole('textbox', { name: 'Cerca materiale' }),
+    page.getByRole('button', { name: 'Cartella: Tutte' }),
+    panel.locator('li').first(),
+  ];
+  const before = await Promise.all(blocks.map((block) => block.boundingBox()));
+  release();
+  await expect(skeleton).toHaveCount(0);
+  await expect(page.getByText('dispensa.pdf', { exact: false })).toBeVisible();
+  const after = await Promise.all(blocks.map((block) => block.boundingBox()));
+  for (const [index, previous] of before.entries()) {
+    const current = after[index];
+    if (!previous || !current) throw new Error('Library block is not laid out');
+    expect(Math.abs(previous.y - current.y)).toBeLessThanOrEqual(8);
+    expect(Math.abs(previous.x - current.x)).toBeLessThanOrEqual(8);
+    expect(Math.abs(previous.width - current.width)).toBeLessThanOrEqual(8);
+  }
+});
+
 test('library searches, filters, opens and downloads material', async ({ page }) => {
   await page.goto('/desk/studio?tab=libreria');
   await expect(page.getByText('dispensa.pdf', { exact: false })).toBeVisible();
   await page.getByRole('textbox', { name: 'Cerca materiale' }).fill('mancante');
   await expect(page.getByText('dispensa.pdf', { exact: false })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nessun giorno disponibile' })).toBeVisible();
   await page.getByRole('textbox', { name: 'Cerca materiale' }).fill('dispensa');
   await page.getByRole('button', { name: 'Cartella: Tutte' }).click();
   await page.getByRole('option', { name: 'materiali' }).click();

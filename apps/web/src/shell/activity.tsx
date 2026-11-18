@@ -1,3 +1,4 @@
+import { NumberRoll } from '../components/ui/number-roll.tsx';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion } from 'motion/react';
 import { useRouter } from '@tanstack/react-router';
@@ -333,7 +334,7 @@ export function ActivityBall() {
                       aria-hidden
                       className="absolute -bottom-3xs -left-2xs grid h-lg min-w-lg place-items-center rounded-full bg-foreground px-xs text-caption font-semibold text-background"
                     >
-                      {items.length}
+                      <NumberRoll value={items.length} />
                     </span>
                   )}
                 </button>

@@ -1,3 +1,4 @@
+import { SettingsLoading } from './settings-loading.tsx';
 import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, notFound } from '@tanstack/react-router';
@@ -38,7 +39,7 @@ export function ModulePage({ name }: { name: string }) {
 
   const info = modules.data?.find((entry) => entry.name === name);
   if (modules.data && !info) throw notFound();
-  if (!info || !config.data) return <p className="text-body text-muted-foreground">{m.settings_loading()}</p>;
+  if (!info || !config.data) return <SettingsLoading title={moduleLabel(name)} module />;
 
   const { schema, value: stored, hasBackup } = config.data;
   const form = buildForm(schema);

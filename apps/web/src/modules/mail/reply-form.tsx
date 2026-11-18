@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { m } from '../../paraglide/messages.js';
@@ -24,7 +25,7 @@ export function ReplyForm({
   const trpc = useMailTRPC();
   const draft = useQuery(trpc.replyDraft.queryOptions({ account, id }, { retry: false, gcTime: 0 }));
   if (draft.isError) return <p className="text-body text-danger">{m.mail_error()}</p>;
-  if (!draft.data) return <p className="text-body text-muted-foreground">{m.mail_reply_loading()}</p>;
+  if (!draft.data) return <LoadingSkeleton label={m.mail_reply_loading()} rows={5} />;
   return (
     <ReplyFields
       draft={draft.data}

@@ -14,6 +14,18 @@ test.afterEach(async ({ pc }) => clean(pc));
 const view = (page: import('@playwright/test').Page, name: string) =>
   page.getByRole('toolbar', { name: 'Vista' }).getByRole('button', { name });
 
+test('empty days in the month and agenda use the empty state', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/calendar');
+  await page.getByRole('button', { name: 'lunedì 30 novembre' }).click();
+  await expect(page.getByRole('heading', { name: 'Niente in programma' })).toBeVisible();
+  await view(page, 'Agenda').click();
+  const mini = page.getByRole('region', { name: 'Mese per scegliere il giorno' });
+  await mini.getByRole('button', { name: 'Mese dopo' }).click();
+  await mini.getByRole('button', { name: 'giovedì 31 dicembre' }).click();
+  await expect(page.getByRole('heading', { name: 'Niente in programma' })).toBeVisible();
+});
+
 test('the view switch picks Settimana and Agenda and the choice survives a reload', async ({ page }) => {
   await page.goto('/desk/calendar');
   await expect(view(page, 'Mese')).toHaveAttribute('aria-pressed', 'true');

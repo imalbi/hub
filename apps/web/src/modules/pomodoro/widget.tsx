@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
@@ -20,7 +21,13 @@ function SmallPomodoro() {
   return (
     <Panel title={m.pomodoro_title()} className={`h-full ${timer.connectionLost ? 'opacity-60' : ''}`}>
       <p className="text-caption text-muted-foreground">
-        {timer.state ? timer.phaseLabel : timer.connectionLost ? m.tile_unavailable() : m.tile_loading()}
+        {timer.state ? (
+          timer.phaseLabel
+        ) : timer.connectionLost ? (
+          m.tile_unavailable()
+        ) : (
+          <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-2xl" />
+        )}
       </p>
       <div className="mt-auto flex items-end justify-between gap-sm">
         <p>

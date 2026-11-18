@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
@@ -22,18 +24,24 @@ export function NewsWidget({ size }: { size: WidgetSize }) {
     <Panel title={m.news_title()} className={`h-full ${stale ? 'opacity-60' : ''}`}>
       <div className="mt-auto flex items-end justify-between gap-md">
         <div className="flex min-w-0 flex-col gap-2xs">
-          <p className="text-caption text-muted-foreground">
-            {state === undefined
-              ? m.tile_loading()
-              : state === null
-                ? m.news_off()
-                : state.refreshedAt === null
-                  ? m.news_fresh()
-                  : m.news_updated({ when: when.format(state.refreshedAt) })}
-          </p>
+          {state === undefined ? (
+            <LoadingSkeleton label={m.tile_loading()} rows={2} className="w-xl" />
+          ) : (
+            <p className="text-caption text-muted-foreground">
+              {state === undefined
+                ? m.tile_loading()
+                : state === null
+                  ? m.news_off()
+                  : state.refreshedAt === null
+                    ? m.news_fresh()
+                    : m.news_updated({ when: when.format(state.refreshedAt) })}
+            </p>
+          )}
           {state && (
             <p className="flex items-baseline gap-xs">
-              <Readout>{state.items}</Readout>
+              <Readout>
+                <NumberRoll value={state.items} />
+              </Readout>
               <span className="text-caption text-muted-foreground">
                 {state.fresh ? m.news_fresh() : m.news_last_page()}
               </span>

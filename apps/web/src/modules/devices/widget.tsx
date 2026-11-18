@@ -1,3 +1,4 @@
+import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -28,7 +29,7 @@ export function DevicesWidget({ size }: { size: WidgetSize }) {
         <div className="flex flex-1 items-end justify-between">
           <div>
             <p>
-              <Readout>{pairing.devices.data?.length ?? 0}</Readout>
+              <Readout>{pairing.devices.data && <NumberRoll value={pairing.devices.data.length} />}</Readout>
             </p>
             <p className="text-caption text-muted-foreground">{m.devices_widget_phones()}</p>
           </div>
@@ -39,7 +40,8 @@ export function DevicesWidget({ size }: { size: WidgetSize }) {
       ) : (
         <>
           <p>
-            <Readout>{pairing.devices.data?.length ?? 0}</Readout> {m.devices_widget_phones()}
+            <Readout>{pairing.devices.data && <NumberRoll value={pairing.devices.data.length} />}</Readout>{' '}
+            {m.devices_widget_phones()}
           </p>
           <PhonesList pairing={pairing} />
           <section aria-label={m.agents_title()} className="flex flex-col gap-md">

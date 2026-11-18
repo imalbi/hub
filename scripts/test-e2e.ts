@@ -217,12 +217,14 @@ function planJobs(all: Variant[], reports: string, durations: Record<string, num
       });
       continue;
     }
-    const files = listFiles(v, reports).filter(([file]) => v.name !== 'public' || !devServerSpecs.includes(file));
-    if (v.name === 'public')
+    const listed = listFiles(v, reports);
+    const files = listed.filter(([file]) => !devServerSpecs.includes(file));
+    const onDev = devServerSpecs.filter((spec) => listed.some(([file]) => file === spec));
+    if (onDev.length)
       jobs.unshift({
-        label: 'public-dev 1/1',
+        label: `${v.name}-dev 1/1`,
         command: 'pnpm',
-        args: [...playwright, ...devServerSpecs.map((f) => `tests/${f}`)],
+        args: [...playwright, ...onDev.map((f) => `tests/${f}`)],
         env: { ...variantEnv(v) },
       });
     // shortcut: a file with no recorded time weighs 2 s a test; the next run records the real one.

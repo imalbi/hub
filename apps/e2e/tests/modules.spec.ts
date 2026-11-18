@@ -163,7 +163,8 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   test('the example module puts one row in the Dispositivi list of this PC', async ({ page, request }) => {
     await page.goto('/desk/devices');
     const row = page.getByRole('region', { name: 'Collegati a questo PC' }).getByRole('group', { name: 'Esempio' });
-    const count = row.getByRole('paragraph');
+    // TextMorph keeps the readable text in its own sr-only node next to the animated glyphs.
+    const count = row.getByRole('paragraph').locator('.sr-only');
     await expect(count).toHaveText(/^Saluti: \d+$/);
     // The greeting count is the module's own state and other tests raise it, so read it from the server.
     const before = (await (await request.get('/trpc/hello.state')).json()).result.data.count;

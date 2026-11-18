@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { FadingLine } from '../../components/ui/fading-line.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import type { WidgetSize } from '../../lib/widget-size.ts';
@@ -34,7 +36,13 @@ function SmallMedia() {
           icon={<PlaybackIcon />}
         />
       </div>
-      <p className="truncate text-label">{title}</p>
+      <p className="text-label">
+        {media.state === undefined && !media.connectionLost ? (
+          <LoadingSkeleton label={m.tile_loading()} rows={1} />
+        ) : (
+          <FadingLine subject={title}>{title}</FadingLine>
+        )}
+      </p>
     </Panel>
   );
 }
@@ -49,8 +57,18 @@ function LargeMedia() {
         <Cover large fill />
       </div>
       <div className="flex min-w-0 flex-col gap-2xs">
-        <p className="truncate text-title">{title}</p>
-        {media.state?.artist && <p className="truncate text-body text-muted-foreground">{media.state.artist}</p>}
+        <p className="text-title">
+          {media.state === undefined && !media.connectionLost ? (
+            <LoadingSkeleton label={m.tile_loading()} rows={1} />
+          ) : (
+            <FadingLine subject={title}>{title}</FadingLine>
+          )}
+        </p>
+        {media.state?.artist && (
+          <p className="text-body text-muted-foreground">
+            <FadingLine subject={media.state.artist}>{media.state.artist}</FadingLine>
+          </p>
+        )}
       </div>
       <Transport />
     </Panel>

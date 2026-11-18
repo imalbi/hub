@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Switch } from '../../components/ui/switch.tsx';
@@ -105,7 +106,7 @@ export function AgendaView({
           <ViewSwitch view={controls.view} onView={controls.onView} />
           <NewEventButton onNew={controls.onNew} />
         </div>
-        <ol className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+        <ol className={`flex min-h-0 flex-col overflow-y-auto overscroll-contain ${list.length ? 'flex-1' : ''}`}>
           {list.map(({ day, entries }) => (
             <li key={day} className="flex gap-md border-t border-dashed border-border py-sm">
               <div className="flex w-agenda-day shrink-0 flex-col">
@@ -124,7 +125,7 @@ export function AgendaView({
             </li>
           ))}
         </ol>
-        {list.length === 0 && <p className="text-label text-muted-foreground">{m.calendar_empty()}</p>}
+        {list.length === 0 && <EmptyState title={m.calendar_empty()} />}
       </section>
       <aside className="flex min-h-0 w-day-panel shrink-0 flex-col gap-md">
         <section aria-label={m.calendar_pick_month()} className={card}>

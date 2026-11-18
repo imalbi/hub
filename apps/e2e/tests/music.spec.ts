@@ -55,6 +55,27 @@ const listRow = (page: Page, name: string) =>
 const played = (page: Page) =>
   page.waitForResponse((response) => response.url().includes('music.play') && response.request().method() === 'POST');
 
+test('empty music search results show their title', async ({ page }) => {
+  await answerQueries(page, { 'music.search': [], 'music.searchPlaylists': [] });
+  await page.goto('/desk/media');
+  await search(page, 'nessuna corrispondenza');
+  await expect(results(page).getByRole('heading', { name: 'Nessun risultato' })).toBeVisible();
+  await page.getByRole('button', { name: 'Playlist pubbliche' }).click();
+  await expect(results(page).getByRole('heading', { name: 'Nessun risultato' })).toBeVisible();
+});
+
+test('empty favorites and playlists show their titles', async ({ page }) => {
+  await answerQueries(page, { 'music.favorites': [], 'music.playlists': [] });
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/media');
+  await expect(library(page).getByRole('heading', { name: 'Nessuna playlist' })).toBeVisible();
+  await page.getByRole('button', { name: 'Preferiti', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nessun preferito' })).toBeVisible();
+  await search(page);
+  await results(page).getByRole('button', { name: 'Aggiungi Brano 1 a playlist' }).click();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Nessuna playlist' })).toBeVisible();
+});
+
 async function holdDelete(page: Page) {
   await page.getByRole('button', { name: 'Tieni premuto per eliminare playlist' }).focus();
   await page.keyboard.down('Space');
@@ -75,6 +96,32 @@ test('artist opens from a row, plays a top song and returns to its source', asyn
   await done;
   await page.getByRole('button', { name: 'Torna indietro' }).click();
   await expect(page.getByRole('button', { name: 'Riproduci Brano 1', exact: true })).toBeVisible();
+});
+
+test('artist content keeps its position while loading', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/trpc/music.artist*', async (route) => {
+    await pending;
+    await route.continue();
+  });
+  await page.goto('/desk/media');
+  await search(page);
+  await page.getByRole('button', { name: 'Artista', exact: true }).first().click();
+  const skeleton = page.getByRole('status', { name: 'Caricamento artista' });
+  await expect(skeleton).toBeVisible();
+  const before = await skeleton.boundingBox();
+  release();
+  const songs = page.getByRole('heading', { name: 'Brani più ascoltati' });
+  await expect(songs).toBeVisible();
+  const after = await songs.locator('../..').boundingBox();
+  if (!before || !after) throw new Error('Artist content must be laid out');
+  expect(Math.abs(before.x - after.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.y - after.y)).toBeLessThanOrEqual(8);
+  expect(Math.abs(before.width - after.width)).toBeLessThanOrEqual(8);
 });
 
 test('artist opened from radio returns to radio, and from the player', async ({ page }) => {
@@ -242,7 +289,7 @@ test('favorites are available as a view and can seed the radio', async ({ page }
   await page.getByRole('button', { name: 'Ascolta', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Prossimi' })).toContainText('Brano 3');
   await page.getByRole('button', { name: 'Cronologia', exact: true }).click();
-  await expect(page.getByText('Nessun brano ascoltato')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nessun brano ascoltato' })).toBeVisible();
 });
 
 test('Ascolta shows the recent songs with their covers and a tile plays', async ({ page }) => {
@@ -309,6 +356,15 @@ test('a playlist is created from the add popover with the song in it, renamed an
   await expect(listRow(page, 'Dal popover')).toHaveCount(0);
   await holdDelete(page);
   await expect(listRow(page, 'Rinominata')).toHaveCount(0);
+});
+
+test('an empty public playlist shows its empty state', async ({ page }) => {
+  await answerQueries(page, { 'music.publicPlaylist': { title: 'Playlist pubblica', songs: [] } });
+  await page.goto('/desk/media');
+  await search(page, 'mix');
+  await page.getByRole('button', { name: 'Playlist pubbliche' }).click();
+  await page.getByRole('button', { name: 'Playlist pubblica', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nessun brano nella playlist' })).toBeVisible();
 });
 
 test('public playlist can be found, played and saved locally', async ({ page }) => {
@@ -505,6 +561,8 @@ test('playlist rows show the count and the cover mosaic, the empty one a note ti
     await expect(row('Mosaico').locator('img')).toHaveCount(4);
     await expect(row('Sola').locator('img')).toHaveCount(1);
     await expect(row('Vuota').locator('img')).toHaveCount(0);
+    await row('Vuota').click();
+    await expect(page.getByRole('heading', { name: 'Nessun brano nella playlist' })).toBeVisible();
     // Adding from the page updates the row without a reload (the count once stayed stale).
     await search(page, 'playlist-test');
     await results(page).getByRole('button', { name: 'Aggiungi Mix 1 a playlist' }).click();
@@ -570,7 +628,7 @@ test('Ferma stops the radio and empties the queue', async ({ page, pc }) => {
   const stopped = page.waitForResponse((r) => r.url().includes('music.stop') && r.ok());
   await upcoming.getByRole('button', { name: 'Ferma' }).click();
   await stopped;
-  await expect(upcoming.getByText('Nessuna radio attiva: fai partire un brano')).toBeVisible();
+  await expect(upcoming.getByRole('heading', { name: 'Nessuna radio attiva: fai partire un brano' })).toBeVisible();
   await expect(upcoming.getByRole('button', { name: 'Ferma' })).toHaveCount(0);
   const queue = (await (await pc.get('/trpc/music.queue')).json()).result.data;
   expect(queue.current).toBeNull();

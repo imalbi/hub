@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { PlusIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { useNow } from '../../lib/use-now.ts';
@@ -29,7 +30,7 @@ export function NotesWidget() {
       }
     >
       <div className="flex min-h-0 flex-1 flex-col gap-md overflow-y-auto">
-        {notes && !notes.length && <p className="text-body text-muted-foreground">{m.notes_empty()}</p>}
+        {notes && !notes.length && <EmptyState title={m.notes_empty()} />}
         {due.length > 0 && (
           <ul className="grid grid-cols-3 gap-sm">
             {due

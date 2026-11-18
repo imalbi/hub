@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { TextMorph } from '../../components/ui/text-morph.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { Link } from '@tanstack/react-router';
 import { useSubscription } from '@trpc/tanstack-react-query';
@@ -24,13 +26,19 @@ export function AudioPanel({ compact = false, className = '' }: { compact?: bool
         ) : undefined
       }
     >
-      <p className="text-title">
-        {audio.data
-          ? (audio.data.current?.label ?? m.audio_output_none())
-          : stale
-            ? m.tile_unavailable()
-            : m.tile_loading()}
-      </p>
+      {!audio.data && !stale ? (
+        <LoadingSkeleton label={m.tile_loading()} rows={2} />
+      ) : (
+        <p className="text-title">
+          <TextMorph animateWidth={false}>
+            {audio.data
+              ? (audio.data.current?.label ?? m.audio_output_none())
+              : stale
+                ? m.tile_unavailable()
+                : m.tile_loading()}
+          </TextMorph>
+        </p>
+      )}
       {audio.data && (
         <Readout>
           <NumberRoll value={Math.round(audio.data.volume * 100)} suffix="%" />

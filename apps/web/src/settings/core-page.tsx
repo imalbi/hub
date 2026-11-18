@@ -1,3 +1,4 @@
+import { SettingsLoading } from './settings-loading.tsx';
 import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -21,7 +22,7 @@ export function CoreSettings() {
   const [draft, setDraft] = useState<{ value: unknown } | null>(null);
   const [issues, setIssues] = useState<{ path: string[]; message: string }[]>([]);
   const [note, setNote] = useState(false);
-  if (!config.data) return <p className="text-body text-muted-foreground">{m.settings_loading()}</p>;
+  if (!config.data) return <SettingsLoading title={m.settings_core()} />;
   const stored = config.data.value;
   const value = draft ? draft.value : stored;
   const dirty = JSON.stringify(value) !== JSON.stringify(stored);

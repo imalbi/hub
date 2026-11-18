@@ -3,6 +3,109 @@ import { DECK_STATE, PHONE_URL } from './hosts.ts';
 import { expect, test } from './fixtures.ts';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 
+test('settled timer digits share the same text top at the desk scale', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await freezePomodoro(page, { ...pausedPomodoro, pausedRemainingMs: 45 * 60_000 });
+  await page.goto('/desk/studio');
+  const timer = page.getByRole('timer', { name: 'Tempo rimanente' });
+  await expect(timer.locator(':scope > .sr-only')).toHaveText('45:00');
+  const tops = await timer.evaluate((element) => {
+    const digits = [...element.querySelectorAll<HTMLElement>('span.relative.inline-block')].slice(0, 2);
+    return digits.map((digit) => {
+      const visible = [...digit.children].find((child) => getComputedStyle(child).visibility === 'visible');
+      if (!visible || !visible.firstChild) throw new Error('Missing visible digit');
+      const range = document.createRange();
+      const transform = getComputedStyle(visible).transform;
+      const offset =
+        transform === 'none' ? 0 : Math.round(-new DOMMatrixReadOnly(transform).m42 / (visible.clientHeight / 50));
+      range.setStart(visible.firstChild, offset * 2);
+      range.setEnd(visible.firstChild, offset * 2 + 1);
+      return { top: range.getBoundingClientRect().top, inFlow: getComputedStyle(visible).position !== 'absolute' };
+    });
+  });
+  expect(tops).toHaveLength(2);
+  expect(Math.abs(tops[0].top - tops[1].top)).toBeLessThan(0.01);
+  await timer.evaluate((element) => {
+    element.style.color = 'white';
+    element.style.background = 'black';
+  });
+  const pixels: number[] = [];
+  for (const digit of await timer.locator('span.relative.inline-block').all()) {
+    if (pixels.length === 2) break;
+    const png = await digit.screenshot();
+    pixels.push(
+      await page.evaluate(async (data) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${data}`;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas unavailable');
+        ctx.drawImage(img, 0, 0);
+        const rgba = ctx.getImageData(0, 0, img.width, img.height).data;
+        for (let y = 0; y < img.height; y++) {
+          for (let x = 0; x < img.width; x++) {
+            if (rgba[(y * img.width + x) * 4] > 128) return y;
+          }
+        }
+        throw new Error('Digit pixels missing');
+      }, png.toString('base64')),
+    );
+  }
+  expect(pixels[0]).toBe(pixels[1]);
+  expect(tops.map((digit) => digit.inFlow)).toEqual([true, true]);
+});
+
+test('a changing digit shows its strip only until the roll settles', async ({ page }) => {
+  await page.goto('/desk/studio');
+  await page.getByRole('button', { name: 'Avvia', exact: true }).click();
+  const timer = page.getByRole('timer', { name: 'Tempo rimanente' });
+  const digits = timer.locator('span.relative.inline-block');
+  await expect
+    .poll(() =>
+      digits.evaluateAll((elements) =>
+        elements.some(
+          (digit) =>
+            getComputedStyle(digit.children[1]).visibility === 'visible' &&
+            getComputedStyle(digit.children[0]).visibility === 'hidden',
+        ),
+      ),
+    )
+    .toBe(true);
+  await page.getByRole('button', { name: 'Metti in pausa', exact: true }).click();
+  await expect
+    .poll(() =>
+      digits.evaluateAll((elements) =>
+        elements.every(
+          (digit) =>
+            getComputedStyle(digit.children[1]).visibility === 'hidden' &&
+            getComputedStyle(digit.children[0]).visibility === 'visible',
+        ),
+      ),
+    )
+    .toBe(true);
+});
+
+test('reduced motion keeps the digits in flow after a value changes', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/desk/studio');
+  await page.getByRole('button', { name: 'Avvia', exact: true }).click();
+  const timer = page.getByRole('timer', { name: 'Tempo rimanente' });
+  await expect(timer.locator(':scope > .sr-only')).toHaveText('00:05');
+  const digits = timer.locator('span.relative.inline-block');
+  expect(
+    await digits.evaluateAll((elements) =>
+      elements.every(
+        (digit) =>
+          getComputedStyle(digit.children[1]).visibility === 'hidden' &&
+          getComputedStyle(digit.children[0]).visibility === 'visible',
+      ),
+    ),
+  ).toBe(true);
+});
+
 type TimerFrame = { text: string; rolling: boolean };
 
 /** Notes on every frame the desk timer's readable time and whether any of its digits is rolling (a transform transition). */
@@ -182,10 +285,12 @@ test('the settings popover switches the preset and the sound', async ({ page, pc
 /** The digits the rolling strips actually show (each strip's offset picks one character of its column). */
 function shownDigits(page: Page) {
   return page.getByRole('timer', { name: 'Tempo rimanente' }).evaluate((timer) => {
-    const strips = [
-      ...timer.querySelectorAll<HTMLElement>('[aria-hidden="true"] > span > span > span[aria-hidden="true"]'),
-    ];
-    const digits = strips.map((strip) => {
+    // Each NumberRoll digit shows its in-flow digit at rest and its strip only while rolling: read whichever is visible.
+    const digits = [...timer.querySelectorAll<HTMLElement>('span.relative.inline-block')].map((cell) => {
+      const flow = cell.querySelector<HTMLElement>(':scope > span:first-child');
+      const strip = cell.querySelector<HTMLElement>(':scope > span[aria-hidden="true"]');
+      if (!flow || !strip) return '?';
+      if (getComputedStyle(flow).visibility === 'visible') return flow.textContent ?? '?';
       const chars = (strip.textContent ?? '').replaceAll(/\s/g, '');
       const step = strip.offsetHeight / chars.length;
       const offset = -new DOMMatrixReadOnly(getComputedStyle(strip).transform).m42;

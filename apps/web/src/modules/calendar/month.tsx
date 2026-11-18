@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { m } from '../../paraglide/messages.js';
 import { dayTitle, entriesByDay, monthDays, monthOf, monthTitle, shiftMonth, type DayEntry } from './days.ts';
@@ -181,7 +182,7 @@ export function MonthView({
             );
           })}
         </ul>
-        {chosen.length === 0 && <p className="text-label text-muted-foreground">{m.calendar_empty()}</p>}
+        {chosen.length === 0 && <EmptyState title={m.calendar_empty()} />}
         <div className="flex-1" />
         <p className="text-caption text-muted-foreground">{m.calendar_note()}</p>
       </aside>

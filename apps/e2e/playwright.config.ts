@@ -59,6 +59,7 @@ export default defineConfig({
         : examples
           ? [
               'modules.spec.ts',
+              'pomodoro.spec.ts',
               'calendar.spec.ts',
               'calendar.visual.spec.ts',
               'hue.spec.ts',
@@ -67,6 +68,7 @@ export default defineConfig({
               'zone-pages.spec.ts',
               'music.spec.ts',
               'settings.spec.ts',
+              'loading.spec.ts',
             ]
           : [
               'palette.spec.ts',
@@ -105,6 +107,7 @@ export default defineConfig({
               'mail.spec.ts',
               'music.spec.ts',
               'settings.spec.ts',
+              'loading.spec.ts',
               'settings.visual.spec.ts',
             ],
       use: {

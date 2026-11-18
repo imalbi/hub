@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../../components/panel.tsx';
@@ -15,8 +16,39 @@ export function StudyPlan() {
   const [unfinished, setUnfinished] = useState(false);
   const [showPaused, setShowPaused] = useState(false);
   if (active.isError || index.isError) return <p>{m.study_error()}</p>;
-  if (active.isPending || index.isPending) return <p>{m.tile_loading()}</p>;
-  if (!active.data?.length || !index.data) return <p>{m.study_no_plan()}</p>;
+  if (active.isPending || index.isPending)
+    return (
+      <div className="flex flex-col gap-lg">
+        <Panel title={m.study_plan()}>
+          <div className="flex flex-wrap items-center gap-sm">
+            <fieldset className="flex flex-wrap items-center gap-sm">
+              <legend className="sr-only">{m.study_subjects()}</legend>
+              {[{ key: '', label: m.study_all() }, ...studySubjects(active.data ?? [])].map((item) => (
+                <Toggle
+                  key={item.key}
+                  label={item.label}
+                  pressed={subject === item.key}
+                  onChange={() => setSubject(item.key)}
+                />
+              ))}
+            </fieldset>
+            <Toggle label={m.study_unfinished()} pressed={unfinished} onChange={setUnfinished} />
+          </div>
+          <output aria-label={m.tile_loading()} className="flex flex-col gap-xs">
+            <span aria-hidden className="flex h-2xl gap-px">
+              {[0, 1, 2, 3].map((item) => (
+                <span
+                  key={item}
+                  className="min-w-0 flex-1 rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse"
+                />
+              ))}
+            </span>
+            <span aria-hidden className="h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+          </output>
+        </Panel>
+      </div>
+    );
+  if (!active.data?.length || !index.data) return <EmptyState title={m.study_no_plan()} />;
   const headers = active.data;
   const subjects = studySubjects(headers);
   // Phases belong to one plan: with several active plans the days group by week of study order (decision 15).
@@ -63,7 +95,7 @@ export function StudyPlan() {
         {visible.length > 0 && <DayStrip days={visible} subjects={subjects} currentId={currentId} />}
       </Panel>
       <section aria-label={m.study_days()} data-panel className="flex flex-col gap-lg rounded-lg bg-muted p-lg">
-        {visible.length === 0 && <p>{m.study_empty()}</p>}
+        {visible.length === 0 && <EmptyState title={m.study_empty()} />}
         {phases.map((phase) => {
           const phaseDays = single ? visible.filter((day) => (day.phase ?? '') === phase.id) : visible;
           if (!phaseDays.length) return null;

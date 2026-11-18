@@ -1,6 +1,8 @@
 import { useRouter } from '@tanstack/react-router';
 import { XIcon } from '@phosphor-icons/react';
 import type { TodayLine } from '../lib/module-ui.ts';
+import { TextMorph } from './ui/text-morph.tsx';
+import { FadingLine } from './ui/fading-line.tsx';
 import { Badge } from './ui/badge.tsx';
 import { m } from '../paraglide/messages.js';
 
@@ -14,17 +16,20 @@ export function TodayRow({ line }: { line: TodayLine }) {
           {line.chip}
         </Badge>
       )}
-      <span className={`min-w-0 flex-1 truncate ${line.chip ? '' : 'text-muted-foreground'}`}>
+      <FadingLine
+        subject={`${line.text}\n${line.muted ?? ''}`}
+        className={`flex-1 ${line.chip ? '' : 'text-muted-foreground'}`}
+      >
         {line.text}
         {line.muted && <span className="text-muted-foreground"> {line.muted}</span>}
-      </span>
+      </FadingLine>
       {(line.value ?? (line.href ? m.today_open() : undefined)) && (
         <span
           className={
             line.value ? 'shrink-0 text-caps text-muted-foreground' : 'shrink-0 text-caption text-muted-foreground'
           }
         >
-          {line.value ?? m.today_open()}
+          <TextMorph animateWidth={false}>{line.value ?? m.today_open()}</TextMorph>
         </span>
       )}
     </>

@@ -1,3 +1,4 @@
+import { FadingLine } from '../../components/ui/fading-line.tsx';
 import { useState, type ReactNode } from 'react';
 import { Slider } from '../../components/ui/slider.tsx';
 import { m } from '../../paraglide/messages.js';
@@ -58,8 +59,14 @@ export function PlayerBar({
       <Cover named className="size-2xl rounded-full" />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-baseline gap-sm">
-          <p className="truncate text-label font-semibold">{media.state?.title || m.media_nothing_playing()}</p>
-          <p className="truncate text-caption text-muted-foreground">{artist ?? media.state?.artist}</p>
+          <p className="min-w-0 text-label font-semibold">
+            <FadingLine subject={media.state?.title || m.media_nothing_playing()}>
+              {media.state?.title || m.media_nothing_playing()}
+            </FadingLine>
+          </p>
+          <p className="min-w-0 text-caption text-muted-foreground">
+            <FadingLine subject={media.state?.artist ?? ''}>{artist ?? media.state?.artist ?? ''}</FadingLine>
+          </p>
         </div>
         {seconds !== null && seconds > 0 && position !== null && position !== undefined && (
           <Position key={media.state?.title} position={Math.floor(position / 1000)} length={seconds} />

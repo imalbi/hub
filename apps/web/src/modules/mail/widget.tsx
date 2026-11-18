@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { NumberRoll } from '../../components/ui/number-roll.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
@@ -14,13 +16,16 @@ export function MailWidget() {
   return (
     <Panel title={m.module_mail()} className="h-full">
       {!summary ? (
-        m.tile_loading()
+        <LoadingSkeleton label={m.tile_loading()} rows={2} />
       ) : summary.count === null ? (
         m.mail_error()
       ) : (
         <p>
           {summary.capped && m.mail_at_least()}
-          <Readout>{summary.count}</Readout> {m.mail_widget_unread()}
+          <Readout>
+            <NumberRoll value={summary.count} />
+          </Readout>{' '}
+          {m.mail_widget_unread()}
         </p>
       )}
       {latest && (

@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -9,6 +10,32 @@ import { studySubjects, subjectShade, useStudyTRPC, type StudyDay, type StudyErr
 
 type Filter = 'all' | 'red' | 'yellow' | 'half' | 'errors';
 const THREAD_DAYS = 3;
+
+function ReviewFilters({ filter, onChange }: { filter: Filter; onChange: (value: Filter) => void }) {
+  const filters: [Filter, string][] = [
+    ['all', m.study_all()],
+    ['red', m.study_autonomy_red()],
+    ['yellow', m.study_autonomy_yellow()],
+    ['half', m.study_review_half()],
+    ['errors', m.study_errors()],
+  ];
+  return (
+    <fieldset className="flex flex-wrap items-center gap-sm">
+      <legend className="sr-only">{m.study_review_filter()}</legend>
+      {filters.map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={filter === id}
+          onClick={() => onChange(id)}
+          className="h-touch cursor-pointer rounded-full border border-border px-md text-label text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent"
+        >
+          {label}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
 
 export function StudyReview() {
   const trpc = useStudyTRPC();
@@ -23,8 +50,28 @@ export function StudyReview() {
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<string | null>(null);
   if (active.isError || index.isError || review.isError || errors.isError) return <p>{m.study_error()}</p>;
-  if (active.isPending || index.isPending || review.isPending || errors.isPending) return <p>{m.tile_loading()}</p>;
-  if (!active.data.length || !index.data) return <p>{m.study_no_plan()}</p>;
+  if (active.isPending || index.isPending || review.isPending || errors.isPending)
+    return (
+      <div className="flex flex-col gap-lg">
+        <Panel title={m.study_review()}>
+          <ReviewFilters filter={filter} onChange={setFilter} />
+          <output aria-label={m.tile_loading()} className="flex flex-col">
+            {[0, 1, 2].map((item) => (
+              <span
+                key={item}
+                aria-hidden
+                className="flex items-center gap-md border-b border-dashed border-border py-sm"
+              >
+                <span className="size-icon-sm rounded-full bg-muted-foreground/20 motion-safe:animate-pulse" />
+                <span className="h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+                <span className="ml-auto h-touch w-3xl rounded-full bg-muted-foreground/20 motion-safe:animate-pulse" />
+              </span>
+            ))}
+          </output>
+        </Panel>
+      </div>
+    );
+  if (!active.data.length || !index.data) return <EmptyState title={m.study_no_plan()} />;
   const subjects = studySubjects(active.data);
   const days = new Map([...index.data.days, ...index.data.hiddenDays].map((day) => [day.key, day]));
   const g = (key: string | null) => (key ? days.get(key)?.g : undefined);
@@ -52,29 +99,8 @@ export function StudyReview() {
           </span>
         }
       >
-        <fieldset className="flex flex-wrap items-center gap-sm">
-          <legend className="sr-only">{m.study_review_filter()}</legend>
-          {(
-            [
-              ['all', m.study_all()],
-              ['red', m.study_autonomy_red()],
-              ['yellow', m.study_autonomy_yellow()],
-              ['half', m.study_review_half()],
-              ['errors', m.study_errors()],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={filter === id}
-              onClick={() => setFilter(id)}
-              className="h-touch cursor-pointer rounded-full border border-border px-md text-label text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent"
-            >
-              {label}
-            </button>
-          ))}
-        </fieldset>
-        {total === 0 && <p className="text-caption text-muted-foreground">{m.study_review_empty()}</p>}
+        <ReviewFilters filter={filter} onChange={setFilter} />
+        {total === 0 && <EmptyState title={m.study_review_empty()} />}
         {threads.length > 0 && (
           <section aria-label={m.study_review_threads()} className="flex flex-col">
             {threads.map((thread) => {

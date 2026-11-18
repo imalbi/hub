@@ -1,3 +1,5 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { TextMorph } from '../../components/ui/text-morph.tsx';
 import { Link } from '@tanstack/react-router';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
@@ -29,9 +31,23 @@ export function MediaPanel({ className = '' }: { className?: string }) {
       <div className="flex min-w-0 items-center gap-md">
         <Cover large />
         <div className="flex min-w-0 flex-1 flex-col gap-sm">
-          <p className="text-title break-words">{title}</p>
-          {media.state?.artist && <p className="text-body text-muted-foreground">{media.state.artist}</p>}
-          {status && <p className="text-caption text-muted-foreground">{status}</p>}
+          {media.state === undefined && !media.connectionLost ? (
+            <LoadingSkeleton label={m.tile_loading()} rows={3} />
+          ) : (
+            <p className="text-title break-words">
+              <TextMorph animateWidth={false}>{title}</TextMorph>
+            </p>
+          )}
+          {media.state?.artist && (
+            <p className="text-body text-muted-foreground">
+              <TextMorph animateWidth={false}>{media.state.artist}</TextMorph>
+            </p>
+          )}
+          {status && (
+            <p className="text-caption text-muted-foreground">
+              <TextMorph animateWidth={false}>{status}</TextMorph>
+            </p>
+          )}
         </div>
         <RegistryButton
           iconOnly

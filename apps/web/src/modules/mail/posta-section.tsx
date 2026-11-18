@@ -1,3 +1,4 @@
+import { Crossfade } from '../../components/ui/crossfade.tsx';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useSearch } from '../../lib/zone-search.ts';
@@ -158,13 +159,15 @@ export function PostaSection() {
               }}
             />
           ) : selectedRow ? (
-            <MailReader
-              key={rowKey(selectedRow)}
-              message={selectedRow}
-              accountLabel={labels.get(selectedRow.account) ?? ''}
-              onArchive={() => archiveRow(selectedRow)}
-              onSent={() => void reload()}
-            />
+            <Crossfade subject={rowKey(selectedRow)} className="min-h-0 flex-1">
+              <MailReader
+                key={rowKey(selectedRow)}
+                message={selectedRow}
+                accountLabel={labels.get(selectedRow.account) ?? ''}
+                onArchive={() => archiveRow(selectedRow)}
+                onSent={() => void reload()}
+              />
+            </Crossfade>
           ) : (
             <div data-panel="" className="flex min-h-0 flex-1 items-center justify-center rounded-lg bg-muted p-lg">
               <p className="text-body text-muted-foreground">{m.mail_pick()}</p>

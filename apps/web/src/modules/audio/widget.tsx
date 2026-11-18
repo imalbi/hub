@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { NumberRoll } from '../../components/ui/number-roll.tsx';
@@ -21,13 +22,17 @@ function SmallAudio() {
   return (
     <Panel title={m.tile_audio_output()} className={`h-full ${stale ? 'opacity-60' : ''}`}>
       <div className="mt-auto flex items-end justify-between gap-xs">
-        <p className="text-heading break-words">
-          {audio.data
-            ? (audio.data.current?.label ?? m.audio_output_none())
-            : stale
-              ? m.tile_unavailable()
-              : m.tile_loading()}
-        </p>
+        {!audio.data && !stale ? (
+          <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-full" />
+        ) : (
+          <p className="text-heading break-words">
+            {audio.data
+              ? (audio.data.current?.label ?? m.audio_output_none())
+              : stale
+                ? m.tile_unavailable()
+                : m.tile_loading()}
+          </p>
+        )}
         {audio.data && (
           <Readout>
             <NumberRoll value={Math.round(audio.data.volume * 100)} suffix="%" />

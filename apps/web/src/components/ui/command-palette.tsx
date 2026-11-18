@@ -8,6 +8,7 @@ import { CaretRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { Badge } from './badge.tsx';
 import { Kbd } from './kbd.tsx';
 import { TextMorph } from './text-morph.tsx';
+import { LoadingSkeleton } from './loading-skeleton.tsx';
 
 /* ─────────────────────────────────────────────────────────
  * COMMAND PALETTE: Ctrl K, from the pill that was always there
@@ -98,6 +99,7 @@ export interface CommandPaletteProps {
   copy: CommandPaletteCopy;
   /** What the list says when nothing matches the query. */
   emptyText: (query: string) => string;
+  loading?: boolean;
   /** The letter that opens it with Ctrl. Empty string turns the hotkey off. */
   hotkey?: string;
   onOpenChange?: (open: boolean) => void;
@@ -441,6 +443,7 @@ export function CommandPalette({
   items,
   copy,
   emptyText,
+  loading = false,
   hotkey = 'k',
   onOpenChange,
   onQueryChange,
@@ -924,7 +927,8 @@ export function CommandPalette({
                     />
                   )}
                 </div>
-                {empty && (
+                {empty && loading && <LoadingSkeleton label={emptyText(query.trim())} rows={1} className="w-full" />}
+                {empty && !loading && (
                   <output
                     className="flex items-center px-sm text-label text-muted-foreground"
                     style={{ height: `${ROW}rem` }}

@@ -1,3 +1,4 @@
+import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../../components/panel.tsx';
@@ -13,9 +14,9 @@ export function StudyLibrary() {
   const [search, setSearch] = useState('');
   const [folder, setFolder] = useState('');
   if (library.isError) return <p>{m.study_error()}</p>;
-  if (library.isPending) return <p>{m.tile_loading()}</p>;
-  const folders = [...new Map(library.data.map((item) => [item.folder, item.folderName])).entries()];
-  const visible = library.data.filter(
+  const items = library.data ?? [];
+  const folders = [...new Map(items.map((item) => [item.folder, item.folderName])).entries()];
+  const visible = items.filter(
     (item) =>
       (!folder || String(item.folder) === folder) && item.path.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
   );
@@ -37,8 +38,19 @@ export function StudyLibrary() {
           />
         </div>
       </div>
-      {visible.length === 0 ? (
-        <p>{m.study_empty()}</p>
+      {library.isPending ? (
+        <output aria-label={m.tile_loading()}>
+          <ul aria-hidden="true">
+            {[0, 1, 2].map((row) => (
+              <li key={row} className="flex items-center justify-between gap-md border-b border-border py-sm">
+                <span className="h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+                <span className="h-touch w-2xl rounded-full bg-muted-foreground/20 motion-safe:animate-pulse" />
+              </li>
+            ))}
+          </ul>
+        </output>
+      ) : visible.length === 0 ? (
+        <EmptyState scene={search || folder ? 'search' : 'inbox'} title={m.study_empty()} />
       ) : (
         <ul>
           {visible.map((item) => (

@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useInWidget } from '../../shell/widget-context.ts';
@@ -57,7 +58,13 @@ export function PomodoroPanel({
         )}
         <div className="flex flex-col gap-xs">
           <p className="text-caption text-muted-foreground">
-            {timer.state ? timer.phaseLabel : timer.connectionLost ? m.tile_unavailable() : m.tile_loading()}
+            {timer.state ? (
+              timer.phaseLabel
+            ) : timer.connectionLost ? (
+              m.tile_unavailable()
+            ) : (
+              <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-2xl" />
+            )}
           </p>
           <p
             role="timer"
@@ -93,7 +100,11 @@ export function PomodoroPanel({
       </div>
       {!compact && (
         <p className="text-caption text-muted-foreground tabular-nums">
-          {timer.state ? m.pomodoro_today({ count: timer.state.completedFocusToday }) : m.tile_loading()}
+          {timer.state ? (
+            m.pomodoro_today({ count: timer.state.completedFocusToday })
+          ) : (
+            <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-2xl" />
+          )}
         </p>
       )}
       <div className="flex flex-wrap gap-xs">
@@ -209,7 +220,11 @@ function InstrumentTimer({
         />
       </div>
       <p className="text-caps text-muted-foreground">
-        {timer.state ? m.pomodoro_today({ count: timer.state.completedFocusToday }) : m.tile_loading()}
+        {timer.state ? (
+          m.pomodoro_today({ count: timer.state.completedFocusToday })
+        ) : (
+          <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-2xl" />
+        )}
       </p>
       {footer && <p className="text-caps text-muted-foreground">{footer}</p>}
       {timer.error && (

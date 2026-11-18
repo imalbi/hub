@@ -205,6 +205,7 @@ export function DeskCommandPalette() {
     <CommandPalette
       trigger="rail"
       items={items}
+      loading={registry.isPending}
       onOpenChange={setOpen}
       onQueryChange={setQuery}
       emptyGroup={
