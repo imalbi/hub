@@ -505,6 +505,7 @@
   "today_weather_set": "Imposta la città",
   "calendar_tomorrow_none": "Nessun evento tuo",
   "calendar_chip": "Calendario",
+  "calendar_today_shift": "{start}-{end} Turno {person}",
   "study_chip": "Studio",
   "study_today_line": "G{g} · {title}",
   "study_steps_done": "{done} di {total} passi",

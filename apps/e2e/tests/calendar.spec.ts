@@ -86,22 +86,80 @@ test('an end before the start is not saved', async ({ page }) => {
   await expect(card.getByRole('button', { name: 'Salva' })).toBeDisabled();
 });
 
-test("Oggi lists today's own events, not a shift", async ({ page, pc }) => {
-  // A shift of today: someone else's day, so it stays off Oggi (removed by `clean` like the other events).
-  await pc.post('/trpc/calendar.add', {
-    data: { title: 'Turno', kind: 'shift', person: 'Persona A', day: '2026-11-15', start: '06:00', end: '14:00' },
-    headers: json,
-  });
+test('Oggi orders shifts among events, after all-day events', async ({ page, pc }) => {
+  for (const data of [
+    { title: 'Tutto il giorno', day: '2026-11-15' },
+    { title: 'Visita', day: '2026-11-15', start: '08:00' },
+    { title: 'Turno', kind: 'shift', person: 'Persona A', day: '2026-11-15', start: '09:30', end: '17:00' },
+  ])
+    expect((await pc.post('/trpc/calendar.add', { data, headers: json })).ok()).toBe(true);
   await pc.post('/trpc/layout.save', {
-    data: { zone: 'overview', items: [{ widget: 'today', size: 'wide', x: 0, y: 0 }] },
+    data: { zone: 'overview', items: [{ widget: 'today', size: 'full', x: 0, y: 0 }] },
     headers: json,
   });
   await page.goto('/desk');
-  const today = page.getByRole('region', { name: 'Oggi', exact: true });
-  // Step 66: one Oggi row per own event, chip "Calendario".
-  const events = today.getByRole('link').filter({ hasText: 'Calendario' });
-  await expect(events).toHaveCount(1);
-  await expect(events).toContainText('16:30 Dentista');
+  const lines = page.getByRole('list', { name: 'Righe di oggi' }).getByRole('link').filter({ hasText: 'Calendario' });
+  await expect(lines).toHaveCount(4);
+  await expect(lines).toContainText([
+    'Tutto il giorno',
+    '08:00 Visita',
+    '09:30-17:00 Turno Persona A',
+    '16:30 Dentista',
+  ]);
+});
+
+test('Oggi shows a weekly shift except on a skipped occurrence', async ({ page, pc }) => {
+  const response = await pc.post('/trpc/calendar.addSeries', {
+    data: {
+      title: 'Turno',
+      kind: 'shift',
+      person: 'Persona A',
+      days: [{ weekday: 7, start: '09:30', end: '17:00' }],
+      fromDay: '2026-11-15',
+      untilDay: null,
+    },
+    headers: json,
+  });
+  expect(response.ok()).toBe(true);
+  const { id } = (await response.json()).result.data;
+  expect(
+    (
+      await pc.post('/trpc/calendar.editOccurrence', {
+        data: { seriesId: id, day: '2026-11-22', fields: null },
+        headers: json,
+      })
+    ).ok(),
+  ).toBe(true);
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'today', size: 'full', x: 0, y: 0 }] },
+    headers: json,
+  });
+  await page.goto('/desk');
+  await expect(page.getByRole('link', { name: /09:30-17:00 Turno Persona A/ })).toBeVisible();
+  await page.clock.setFixedTime(new Date(2026, 10, 22, 10));
+  await page.reload();
+  await expect(
+    page.getByRole('list', { name: 'Righe di oggi' }).getByRole('link', { name: /Turno Persona A/ }),
+  ).toHaveCount(0);
+});
+
+test('tomorrow with only a shift does not say there are no events', async ({ page, pc }) => {
+  expect(
+    (
+      await pc.post('/trpc/calendar.add', {
+        data: { title: 'Turno', kind: 'shift', person: 'Persona A', day: '2026-11-16', start: '09:30', end: '17:00' },
+        headers: json,
+      })
+    ).ok(),
+  ).toBe(true);
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'today', size: 'full', x: 0, y: 0 }] },
+    headers: json,
+  });
+  await page.goto('/desk');
+  const lines = page.getByRole('list', { name: 'Righe di domani' });
+  await expect(lines.getByRole('link', { name: /09:30-17:00 Turno Persona A/ })).toBeVisible();
+  await expect(lines.getByText('Nessun evento tuo')).toHaveCount(0);
 });
 
 test('Studio days slide from today, one a day, and open Studio', async ({ page, pc }) => {
