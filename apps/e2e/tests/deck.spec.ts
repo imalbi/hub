@@ -158,6 +158,13 @@ test('the dots and a swipe move between pages, and the page shown survives a rel
   }
 });
 
+test('two pages keep a gap between them while swiping', async ({ page }) => {
+  const sections = page.locator('.deck-pages > section');
+  const first = await sections.nth(0).boundingBox();
+  const second = await sections.nth(1).boundingBox();
+  expect(second!.x - (first!.x + first!.width)).toBe(32); // --spacing-xl
+});
+
 test('the Sistema page chooses the theme of this device', async ({ page }) => {
   await page.getByRole('button', { name: 'Vai a Sistema' }).click();
   try {

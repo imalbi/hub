@@ -644,6 +644,8 @@ html {
 }
 
 .deck-pages {
+  /* A gap so two pages do not touch while a swipe is between them. */
+  column-gap: var(--spacing-xl);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;

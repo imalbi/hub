@@ -14,6 +14,11 @@ import { DeckPlayer } from '../modules/media/deck-player.tsx';
 
 const storageKey = 'hub.deck.page';
 
+/** One page plus the gap after it, the distance between two snap points. */
+function pageStride(node: HTMLElement) {
+  return node.clientWidth + (parseFloat(getComputedStyle(node).columnGap) || 0);
+}
+
 function storedPage(pages: { id: string }[]) {
   try {
     const index = pages.findIndex((page) => page.id === localStorage.getItem(storageKey));
@@ -41,7 +46,7 @@ export function DeckPages() {
   // The remembered page is where the deck opens, without an animation; scroll position lives in the DOM.
   useLayoutEffect(() => {
     const node = scroller.current;
-    if (node) node.scrollLeft = active * node.clientWidth;
+    if (node) node.scrollLeft = active * pageStride(node);
     // Only on mount: later the scroll position drives `active`, not the other way round.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -49,7 +54,7 @@ export function DeckPages() {
   function onScroll() {
     const node = scroller.current;
     if (!node) return;
-    const index = Math.round(node.scrollLeft / node.clientWidth);
+    const index = Math.round(node.scrollLeft / pageStride(node));
     if (index === active || !pages[index]) return;
     setActive(index);
     try {
@@ -63,7 +68,7 @@ export function DeckPages() {
     const node = scroller.current;
     if (!node) return;
     const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    node.scrollTo({ left: index * node.clientWidth, behavior: smooth ? 'smooth' : 'instant' });
+    node.scrollTo({ left: index * pageStride(node), behavior: smooth ? 'smooth' : 'instant' });
   }
 
   return (
