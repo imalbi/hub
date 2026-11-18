@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const agents = sqliteTable('agents', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -102,8 +102,37 @@ export const calendarEvents = sqliteTable('calendar_events', {
   // `event`, or `shift` (a person's work span, shown in the week and the agenda, never in the month grid). A shift may end the next day.
   kind: text('kind').notNull().default('event'),
   person: text('person'),
+  seriesId: text('series_id'),
+  seriesDay: text('series_day'),
   source: text('source').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   removedAt: integer('removed_at', { mode: 'timestamp_ms' }),
 });
+
+export const calendarSeries = sqliteTable('calendar_series', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  kind: text('kind').notNull(),
+  person: text('person'),
+  days: text('days', { mode: 'json' })
+    .$type<{ weekday: number; start: string | null; end: string | null }[]>()
+    .notNull(),
+  fromDay: text('from_day').notNull(),
+  untilDay: text('until_day'),
+  source: text('source').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  removedAt: integer('removed_at', { mode: 'timestamp_ms' }),
+});
+
+export const calendarSeriesSkips = sqliteTable(
+  'calendar_series_skips',
+  {
+    seriesId: text('series_id')
+      .notNull()
+      .references(() => calendarSeries.id),
+    day: text('day').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.seriesId, table.day] })],
+);

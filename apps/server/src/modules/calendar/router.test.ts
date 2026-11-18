@@ -17,6 +17,8 @@ const eventList = z.array(
     kind: z.enum(['event', 'shift']),
     person: z.string().nullable(),
     source: z.string(),
+    seriesId: z.string().nullable(),
+    seriesDay: z.string().nullable(),
   }),
 );
 
@@ -222,4 +224,70 @@ void test('a paired phone reads the range but cannot write', async (t) => {
   assert.equal((await range('2026-11-20', '2026-11-20', phone)).events.length, 1);
   assert.equal((await call('calendar.add', { title: 'Nope', day: '2026-11-20' }, phone)).statusCode, 403);
   assert.equal((await range('2026-11-20', '2026-11-20', { remoteAddress: LAN })).status, 401);
+});
+
+void test('weekly series validate rules and support occurrence edits, removal and restoration', async (t) => {
+  const { app, call, range } = open();
+  t.after(() => app.close());
+  const input = {
+    title: 'Turno',
+    kind: 'shift',
+    person: 'Persona A',
+    fromDay: '2026-11-16',
+    untilDay: null,
+    days: [
+      { weekday: 1, start: '09:00', end: '13:30' },
+      { weekday: 2, start: '09:00', end: '17:00' },
+    ],
+  };
+  assert.equal(
+    (await call('calendar.addSeries', { ...input, days: [{ weekday: 1, start: '09:00', end: null }] })).statusCode,
+    400,
+  );
+  assert.equal((await call('calendar.addSeries', { ...input, days: [input.days[0], input.days[0]] })).statusCode, 400);
+  const added = await call('calendar.addSeries', input);
+  assert.equal(added.statusCode, 200);
+  const id = z.object({ result: z.object({ data: z.object({ id: z.string() }) }) }).parse(added.json()).result.data.id;
+  const fields = {
+    title: 'Altro',
+    day: '2026-11-16',
+    kind: 'shift',
+    person: 'Persona B',
+    start: '10:00',
+    end: '14:00',
+  };
+  assert.equal((await call('calendar.editOccurrence', { seriesId: id, day: fields.day, fields })).statusCode, 200);
+  let events = (await range('2026-11-16', '2026-11-17')).events;
+  assert.deepEqual(
+    events.map((event) => [event.day, event.person, event.seriesId, event.seriesDay]),
+    [
+      ['2026-11-16', 'Persona B', id, '2026-11-16'],
+      ['2026-11-17', 'Persona A', id, '2026-11-17'],
+    ],
+  );
+  assert.equal((await call('calendar.restoreOccurrence', { seriesId: id, day: fields.day })).statusCode, 200);
+  events = (await range('2026-11-16', '2026-11-17')).events;
+  assert.deepEqual(
+    events.map((event) => [event.id, event.person]),
+    [
+      [`series:${id}:2026-11-16`, 'Persona A'],
+      [`series:${id}:2026-11-17`, 'Persona A'],
+    ],
+  );
+  assert.equal((await call('calendar.editOccurrence', { seriesId: id, day: '2026-11-16', fields })).statusCode, 200);
+  assert.equal(
+    (await call('calendar.editOccurrence', { seriesId: id, day: '2026-11-17', fields: null })).statusCode,
+    200,
+  );
+  assert.equal((await range('2026-11-16', '2026-11-24')).events.length, 3);
+  assert.equal((await call('calendar.removeSeries', { id })).statusCode, 200);
+  events = (await range('2026-11-16', '2026-11-24')).events;
+  assert.deepEqual(
+    events.map((event) => [event.day, event.person, event.seriesId]),
+    [['2026-11-16', 'Persona B', null]],
+  );
+  assert.equal((await call('calendar.restoreSeries', { id })).statusCode, 200);
+  assert.equal((await range('2026-11-16', '2026-11-24')).events.length, 3);
+  assert.equal((await call('calendar.updateSeries', { id, title: 'Nuovo' })).statusCode, 200);
+  assert.equal((await range('2026-11-23', '2026-11-23')).events[0]?.title, 'Nuovo');
 });

@@ -26,6 +26,9 @@ const event = (id: string, day: string, start: string | null = null): CalendarEv
   kind: 'event',
   person: null,
   source: 'desk',
+  seriesId: null,
+  seriesDay: null,
+  series: null,
 });
 const shift = (id: string, day: string, start: string, end: string, person = 'Persona A'): CalendarEvent => ({
   ...event(id, day, start),

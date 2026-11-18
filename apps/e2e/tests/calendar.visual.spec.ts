@@ -32,3 +32,30 @@ for (const size of sizes) {
     });
   });
 }
+
+for (const size of sizes) {
+  test(`the repeat dialog at ${size.width}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto('/desk/calendar');
+    await page.getByRole('button', { name: 'Nuovo evento' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Nuovo evento' });
+    await dialog.getByRole('switch', { name: 'Turno' }).click();
+    await dialog.getByRole('textbox', { name: 'Persona' }).fill('Persona A');
+    await dialog.getByLabel('Dalle', { exact: true }).fill('09:00');
+    await dialog.getByLabel('Alle', { exact: true }).fill('13:00');
+    await dialog.getByRole('switch', { name: 'Ripeti ogni settimana' }).click();
+    await dialog.getByRole('button', { name: 'Domenica', exact: true }).click();
+    for (const name of ['Lunedì', 'Mercoledì', 'Venerdì'])
+      await dialog.getByRole('button', { name, exact: true }).click();
+    await dialog.getByLabel('Mercoledì, alle').fill('17:00');
+    await dialog.getByLabel('Venerdì, dalle').fill('10:00');
+    await dialog.getByLabel('Dal', { exact: true }).fill('2026-11-16');
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    await page.mouse.move(0, 0);
+    await expect(dialog.locator('[data-modal-panel]')).toHaveScreenshot(`calendar-repeat${size.name}.png`, {
+      animations: 'disabled',
+    });
+  });
+}

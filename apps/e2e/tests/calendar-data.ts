@@ -40,10 +40,13 @@ export async function seedShifts(pc: APIRequestContext) {
 
 export async function clean(pc: APIRequestContext) {
   const range = { from: '2026-10-01', to: '2026-12-31' };
-  const events: Array<{ id: string }> = (
+  const events: Array<{ id: string; seriesId: string | null }> = (
     await (await pc.get(`/trpc/calendar.range?input=${encodeURIComponent(JSON.stringify(range))}`)).json()
   ).result.data;
-  for (const { id } of events) await pc.post('/trpc/calendar.remove', { data: { id }, headers: json });
+  for (const id of new Set(events.flatMap((event) => (event.seriesId ? [event.seriesId] : []))))
+    await pc.post('/trpc/calendar.removeSeries', { data: { id }, headers: json });
+  for (const { id } of events.filter((event) => !event.id.startsWith('series:')))
+    await pc.post('/trpc/calendar.remove', { data: { id }, headers: json });
   const notes: Array<{ id: string }> = (await (await pc.get('/trpc/notes.open')).json()).result.data;
   for (const { id } of notes) await pc.post('/trpc/notes.remove', { data: { id }, headers: json });
   await pc.post('/trpc/layout.reset', { data: { zone: 'overview' }, headers: json });

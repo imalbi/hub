@@ -50,5 +50,20 @@
   "calendar_then": "Poi:",
   "calendar_tomorrow": "Domani",
   "calendar_show": "Mostra",
-  "calendar_pick_month": "Mese per scegliere il giorno"
+  "calendar_pick_month": "Mese per scegliere il giorno",
+  "calendar_repeat": "Ripeti ogni settimana",
+  "calendar_repeat_from": "Dal",
+  "calendar_repeat_until": "Fino al",
+  "calendar_repeat_day_start": "{day}, dalle",
+  "calendar_repeat_day_end": "{day}, alle",
+  "calendar_repeat_monday": "Lunedì",
+  "calendar_repeat_tuesday": "Martedì",
+  "calendar_repeat_wednesday": "Mercoledì",
+  "calendar_repeat_thursday": "Giovedì",
+  "calendar_repeat_friday": "Venerdì",
+  "calendar_repeat_saturday": "Sabato",
+  "calendar_repeat_sunday": "Domenica",
+  "calendar_occurrence_only": "Solo questo giorno",
+  "calendar_occurrence_series": "Tutta la serie",
+  "calendar_occurrence_choose": "Cosa vuoi modificare o eliminare?"
 }

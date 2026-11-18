@@ -55,6 +55,8 @@ export default defineConfig({
         : examples
           ? [
               'modules.spec.ts',
+              'calendar.spec.ts',
+              'calendar.visual.spec.ts',
               'hue.spec.ts',
               'airplay.spec.ts',
               'palette.spec.ts',

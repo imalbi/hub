@@ -5,7 +5,7 @@ import { useNow } from '../../lib/use-now.ts';
 import { m } from '../../paraglide/messages.js';
 import { AgendaView } from './agenda.tsx';
 import { monthOf, type DayEntry } from './days.ts';
-import { EventDialog, type EventDraft } from './event-dialog.tsx';
+import { EventDialog, type EventDraft, type RemovedEvent } from './event-dialog.tsx';
 import { MonthView } from './month.tsx';
 import { useEventActions } from './use-calendar.tsx';
 import { useViewState } from './view-state.ts';
@@ -22,7 +22,7 @@ export function CalendarPage() {
   const [selected, setSelected] = useState(today);
   const [anchor, setAnchor] = useState(today);
   const [draft, setDraft] = useState<EventDraft>(null);
-  const [removed, setRemoved] = useState<{ id: string; title: string } | null>(null);
+  const [removed, setRemoved] = useState<RemovedEvent | null>(null);
   const actions = useEventActions();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -35,7 +35,7 @@ export function CalendarPage() {
     if (entry.own) setDraft({ event: entry.own });
     else if (entry.href) router.history.push(entry.href);
   }
-  function showUndo(event: { id: string; title: string }) {
+  function showUndo(event: RemovedEvent) {
     clearTimeout(timer.current);
     setRemoved(event);
     timer.current = setTimeout(() => setRemoved(null), UNDO_MS);
@@ -65,12 +65,7 @@ export function CalendarPage() {
         <WeekView today={today} anchor={anchor} setAnchor={setAnchor} show={show} open={open} controls={controls} />
       )}
       {view === 'agenda' && <AgendaView today={today} show={show} setShow={setShow} open={open} controls={controls} />}
-      <EventDialog
-        draft={draft}
-        onClose={() => setDraft(null)}
-        onSaved={select}
-        onRemoved={(event) => showUndo({ id: event.id, title: event.title })}
-      />
+      <EventDialog draft={draft} onClose={() => setDraft(null)} onSaved={select} onRemoved={showUndo} />
       {removed && (
         <output className="fixed bottom-xl left-1/2 z-50 flex h-touch -translate-x-1/2 items-center gap-md rounded-full border border-border bg-surface-raised pr-xs pl-lg text-label">
           {m.calendar_removed()}
@@ -79,7 +74,10 @@ export function CalendarPage() {
             aria-label={m.calendar_undo_named({ title: removed.title })}
             className="min-h-xl cursor-pointer rounded-full bg-foreground px-md text-caption font-medium text-background"
             onClick={() => {
-              void actions.restore.mutateAsync({ id: removed.id });
+              if (removed.kind === 'series') void actions.restoreSeries.mutateAsync({ id: removed.id });
+              else if (removed.kind === 'occurrence')
+                void actions.restoreOccurrence.mutateAsync({ seriesId: removed.id, day: removed.day });
+              else void actions.restore.mutateAsync({ id: removed.id });
               clearTimeout(timer.current);
               setRemoved(null);
             }}

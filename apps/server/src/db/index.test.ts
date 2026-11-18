@@ -42,7 +42,9 @@ void test('the reference migration preserves old notes with null references', as
   t.after(() => rm(root, { recursive: true, force: true }));
   const core = fileURLToPath(new URL('../../drizzle', import.meta.url));
   const before = join(root, 'before');
-  for (const name of (await readdir(core)).filter((folder) => !folder.endsWith('_note_references')))
+  for (const name of (await readdir(core)).filter(
+    (folder) => !folder.endsWith('_note_references') && !folder.endsWith('_calendar_series'),
+  ))
     await cp(join(core, name), join(before, name), { recursive: true });
   const file = join(root, 'hub.db');
   const old = openDatabase(file, before);
@@ -93,5 +95,32 @@ void test('the migration that retires the zone boards deletes every layout but t
       .all()
       .map((row) => row.zone),
     ['overview'],
+  );
+});
+
+void test('the series migration preserves existing events', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'hub-calendar-migration-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const core = fileURLToPath(new URL('../../drizzle', import.meta.url));
+  const before = join(root, 'before');
+  for (const name of (await readdir(core)).filter((folder) => !folder.endsWith('_calendar_series')))
+    await cp(join(core, name), join(before, name), { recursive: true });
+  const file = join(root, 'hub.db');
+  const old = openDatabase(file, before);
+  old.$client.exec(
+    "INSERT INTO calendar_events (id, title, day, source, created_at, updated_at) VALUES ('1', 'one', '2026-01-01', 'desk', 1, 1), ('2', 'two', '2026-01-02', 'desk', 2, 2)",
+  );
+  old.$client.close();
+  const db = openDb(file);
+  t.after(() => db.$client.close());
+  assert.deepEqual(
+    db.$client
+      .prepare('SELECT id, title, series_id, series_day FROM calendar_events ORDER BY id')
+      .all()
+      .map((row) => Object.values(row)),
+    [
+      ['1', 'one', null, null],
+      ['2', 'two', null, null],
+    ],
   );
 });

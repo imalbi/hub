@@ -124,3 +124,58 @@ test('Studio days slide from today, one a day, and open Studio', async ({ page, 
     .click();
   await expect(page).toHaveURL(/\/desk\/studio$/);
 });
+
+test('weekly shifts support editing a day, editing the series and removing one occurrence', async ({ page }) => {
+  await page.goto('/desk/calendar');
+  await page.getByRole('button', { name: 'Nuovo evento' }).click();
+  const card = page.getByRole('dialog', { name: 'Nuovo evento' });
+  await card.getByRole('switch', { name: 'Turno' }).click();
+  await card.getByRole('textbox', { name: 'Persona' }).fill('Persona A');
+  await card.getByLabel('Dalle', { exact: true }).fill('09:00');
+  await card.getByLabel('Alle', { exact: true }).fill('13:00');
+  await card.getByRole('switch', { name: 'Ripeti ogni settimana' }).click();
+  await card.getByRole('button', { name: 'Domenica', exact: true }).click();
+  for (const name of ['Lunedì', 'Mercoledì', 'Venerdì']) await card.getByRole('button', { name, exact: true }).click();
+  await card.getByLabel('Mercoledì, alle').fill('17:00');
+  await card.getByLabel('Venerdì, dalle').fill('10:00');
+  await card.getByLabel('Dal', { exact: true }).fill('2026-11-16');
+  await card.getByRole('button', { name: 'Salva' }).click();
+  await expect(card).toHaveCount(0);
+  const month = page.getByRole('region', { name: 'novembre 2026' });
+  for (const day of ['16', '18', '20'])
+    await expect(month.locator(`[data-day="2026-11-${day}"]`).getByText('Persona A')).toHaveCount(0);
+  await page.getByRole('toolbar', { name: 'Vista' }).getByRole('button', { name: 'Settimana' }).click();
+  await page.getByRole('button', { name: 'Settimana successiva' }).click();
+  const monday = page.getByRole('region', { name: 'lunedì 16 novembre' });
+  const wednesday = page.getByRole('region', { name: 'mercoledì 18 novembre' });
+  const friday = page.getByRole('region', { name: 'venerdì 20 novembre' });
+  await expect(monday.getByText('Turno 9-13')).toBeVisible();
+  await expect(wednesday.getByText('Turno 9-17')).toBeVisible();
+  await expect(friday.getByText('Turno 10-13')).toBeVisible();
+  await monday.getByRole('button', { name: /Persona A/ }).click();
+  const edit = page.getByRole('dialog', { name: 'Turno' });
+  await expect(edit.getByRole('button', { name: 'Salva' })).toBeDisabled();
+  await edit.getByRole('button', { name: 'Solo questo giorno' }).click();
+  await edit.getByRole('textbox', { name: 'Persona' }).fill('Persona B');
+  await edit.getByRole('button', { name: 'Salva' }).click();
+  await expect(monday.getByText('Persona B')).toBeVisible();
+  await page.getByRole('button', { name: 'Settimana successiva' }).click();
+  await expect(page.getByRole('region', { name: 'lunedì 23 novembre' }).getByText('Persona A')).toBeVisible();
+  await page
+    .getByRole('region', { name: 'lunedì 23 novembre' })
+    .getByRole('button', { name: /Persona A/ })
+    .click();
+  await edit.getByRole('button', { name: 'Tutta la serie' }).click();
+  await edit.getByRole('textbox', { name: 'Persona' }).fill('Persona C');
+  await edit.getByRole('button', { name: 'Salva' }).click();
+  await expect(page.getByRole('region', { name: 'lunedì 23 novembre' }).getByText('Persona C')).toBeVisible();
+  await page.getByRole('button', { name: 'Settimana precedente' }).click();
+  await expect(monday.getByText('Persona B')).toBeVisible();
+  await expect(wednesday.getByText('Persona C')).toBeVisible();
+  await wednesday.getByRole('button', { name: /Persona C/ }).click();
+  await edit.getByRole('button', { name: 'Solo questo giorno' }).click();
+  await edit.getByRole('button', { name: 'Elimina' }).click();
+  await expect(wednesday.getByText('Persona C')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Settimana successiva' }).click();
+  await expect(page.getByRole('region', { name: 'mercoledì 25 novembre' }).getByText('Persona C')).toBeVisible();
+});
