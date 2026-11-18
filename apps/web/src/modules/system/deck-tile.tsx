@@ -59,7 +59,7 @@ export function PowerTile() {
   const { figure, today } = powerText(power.data);
   return (
     <div
-      className={`flex flex-col items-start gap-xs rounded-lg border border-border bg-surface p-md ${useConnectionLost() ? 'opacity-60' : ''}`}
+      className={`flex min-w-0 flex-col items-start gap-2xs rounded-lg border border-border bg-surface p-sm ${useConnectionLost() ? 'opacity-60' : ''}`}
     >
       <GaugeIcon className="size-icon" aria-hidden />
       <span className="text-label tabular-nums">
@@ -76,6 +76,7 @@ export function SuspendTile() {
   const suspend = useMutation(trpc.system.suspend.mutationOptions());
   return (
     <HoldTile
+      startRow
       icon={MoonIcon}
       label={m.system_suspend()}
       holdLabel={m.system_suspend_hold()}

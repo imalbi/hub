@@ -44,7 +44,11 @@ export default defineConfig({
     {
       name: 'deck',
       dependencies: ['setup'],
-      testMatch: privateFolder || examples ? [] : ['deck.spec.ts', 'pairing.spec.ts', 'deck.visual.spec.ts'],
+      testMatch: privateFolder
+        ? []
+        : examples
+          ? ['deck.spec.ts', 'deck.visual.spec.ts']
+          : ['deck.spec.ts', 'pairing.spec.ts', 'deck.visual.spec.ts'],
       use: { baseURL: PHONE_URL, storageState: DECK_STATE, ...deckViewport },
     },
     {

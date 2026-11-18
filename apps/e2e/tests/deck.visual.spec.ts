@@ -1,41 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 
+const examples = process.env.HUB_EXAMPLE_MODULES === '1';
+const baseline = (name: string) => (examples ? name.replace('.png', '-example.png') : name);
+
 // One baseline per screen at 375x812, default (ink) theme. The paired deck must look the same as before pairing existed.
 test.describe('the deck', () => {
   test('paired, it matches the baseline', async ({ page }) => {
     await freezePomodoro(page);
-    // The only moving part on screen is the server uptime; pin it so the pixels do not depend on when the suite runs.
-    await page.route('**/trpc/health*', (route) =>
-      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
-    );
     await page.goto('/deck');
-    await expect(page.getByText('Server attivo da 42s')).toBeVisible();
     await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
-    await expect(page).toHaveScreenshot('deck.png', { animations: 'disabled' });
-  });
-
-  test('the second Scrivania page matches the baseline', async ({ page }) => {
-    await freezePomodoro(page);
-    await page.route('**/trpc/health*', (route) =>
-      route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
-    );
-    await page.goto('/deck');
-    await page.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
-    await expect(
-      page.getByRole('region', { name: 'Scrivania 2' }).getByRole('button', { name: /^Notizie:/ }),
-    ).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-      localStorage.removeItem('hub.deck.page');
-    });
-    await expect(page).toHaveScreenshot('deck-scrivania-2.png', { animations: 'disabled' });
+    await expect(page).toHaveScreenshot(baseline('deck.png'), { animations: 'disabled' });
   });
 
   test('a paused Pomodoro remains readable on the deck', async ({ page }) => {
@@ -58,13 +37,10 @@ test.describe('the deck', () => {
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
-    await expect(page).toHaveScreenshot('deck-pomodoro-paused.png', { animations: 'disabled' });
+    await expect(page).toHaveScreenshot(baseline('deck-pomodoro-paused.png'), { animations: 'disabled' });
   });
 
-  for (const deckPage of [
-    { name: 'Studio', file: 'deck-studio.png' },
-    { name: 'Sistema', file: 'deck-system.png' },
-  ]) {
+  for (const deckPage of [{ name: 'Sistema', file: 'deck-system.png' }]) {
     test(`the ${deckPage.name} page matches the baseline`, async ({ page }) => {
       await freezePomodoro(page);
       await page.route('**/trpc/health*', (route) =>
@@ -81,7 +57,7 @@ test.describe('the deck', () => {
         await document.fonts.ready;
         localStorage.removeItem('hub.deck.page');
       });
-      await expect(page).toHaveScreenshot(deckPage.file, { animations: 'disabled' });
+      await expect(page).toHaveScreenshot(baseline(deckPage.file), { animations: 'disabled' });
     });
   }
 

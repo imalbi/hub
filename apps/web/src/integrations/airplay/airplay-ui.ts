@@ -8,6 +8,5 @@ export const airplayUI = {
   name: 'airplay',
   copy,
   deviceRows: AirPlayRow,
-  // Scrivania itself, just before Pomodoro, where the tile always sat: `at` is an index into the built-in tiles.
-  deck: { id: 'airplay', label: () => copy.title, tiles: [AirPlayTile], page: 'desk', at: 10 },
+  deck: { id: 'airplay', label: () => copy.title, tiles: [AirPlayTile], page: 'desk', at: 8 },
 } satisfies ModuleUI;

@@ -24,7 +24,7 @@ async function openDeck(browser: Browser) {
     route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
   );
   await phone.goto(`${PHONE_URL}/deck`);
-  await phone.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
+  await phone.getByRole('button', { name: 'Vai a Sistema' }).click();
   return { context, phone };
 }
 

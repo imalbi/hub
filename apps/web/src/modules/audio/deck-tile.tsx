@@ -20,7 +20,8 @@ export function AudioOutputTile() {
   return (
     <Tile
       icon={SpeakerHighIcon}
-      label={m.tile_audio_output()}
+      label={m.deck_audio_output()}
+      accessibleLabel={m.tile_audio_output()}
       state={stateText()}
       pending={cycleOutput.isPending}
       error={cycleOutput.isError}
@@ -38,7 +39,8 @@ function VolumeTile({ direction }: { direction: 'up' | 'down' }) {
   return (
     <Tile
       icon={direction === 'up' ? SpeakerHighIcon : SpeakerLowIcon}
-      label={direction === 'up' ? m.audio_volume_up() : m.audio_volume_down()}
+      label={direction === 'up' ? m.deck_volume_up() : m.deck_volume_down()}
+      accessibleLabel={direction === 'up' ? m.audio_volume_up() : m.audio_volume_down()}
       state={audio.data ? `${Math.round(audio.data.volume * 100)}%` : m.tile_loading()}
       pending={step.isPending}
       error={step.isError}

@@ -639,6 +639,10 @@ html {
 }
 
 /* Deck pages: one viewport wide each, swiped with scroll snap. The scrollbar is hidden; the dots show the position. */
+.deck-tile-grid {
+  grid-auto-rows: minmax(6.5rem, auto);
+}
+
 .deck-pages {
   overflow-x: auto;
   overflow-y: hidden;

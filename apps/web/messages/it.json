@@ -1,5 +1,8 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "deck_volume_up": "Volume +",
+  "deck_volume_down": "Volume −",
+  "deck_audio_output": "Uscita",
   "ticks_count": "{value} di {total}",
   "day_line": "Linea del giorno",
   "day_now": "adesso",
@@ -130,9 +133,6 @@
   "palette_actions": "Azioni",
   "palette_all_in": "Vedi tutti in {zone}",
   "palette_no_actions": "nessuna per “{query}”",
-  "page_desk_more": "Scrivania 2",
-  "deck_activity": "Attività",
-  "deck_badge_news": "Notizie: {count}",
   "deck_badge_pomodoro": "Pomodoro in corso",
   "settings_general": "Generale",
   "settings_modules": "Moduli",

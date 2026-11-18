@@ -6,6 +6,7 @@ type TileProps = {
   iconName?: string;
   iconWeight?: IconWeight;
   label: string;
+  accessibleLabel?: string;
   state: string;
   /** Read by screen readers after the state, not shown: for a fact the icon alone carries (playing or paused). */
   status?: string;
@@ -28,6 +29,7 @@ export function Tile({
   iconName,
   iconWeight = 'regular',
   label,
+  accessibleLabel,
   state,
   status,
   onPress,
@@ -38,8 +40,8 @@ export function Tile({
   badge,
 }: TileProps) {
   const shownState = error ? m.tile_error() : state;
-  const name = `${label}: ${shownState}${status ? `, ${status}` : ''}`;
-  const look = `relative flex flex-col items-start gap-xs rounded-lg border p-md text-left ${
+  const name = `${accessibleLabel ?? label}: ${shownState}${status ? `, ${status}` : ''}`;
+  const look = `relative flex min-w-0 flex-col items-start gap-2xs rounded-lg border p-sm text-left ${
     error ? 'border-danger' : 'border-border'
   } ${stale ? 'opacity-60' : ''} bg-surface`;
   const content = (

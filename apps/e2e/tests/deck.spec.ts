@@ -5,7 +5,8 @@ import { controlSockets } from './sockets.ts';
 import { SERVER_PORT, SERVER_URL } from './hosts.ts';
 
 const audioTile = (page: Page) => page.getByRole('button', { name: /^Uscita audio/ });
-const mediaTile = (page: Page) => page.getByRole('button', { name: /^Musica/ });
+const player = (page: Page) => page.getByRole('region', { name: 'In riproduzione' });
+const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 
 test('the deck banner confirms an agent request', async ({ page, pc }) => {
   await expect
@@ -25,7 +26,9 @@ test('the deck banner confirms an agent request', async ({ page, pc }) => {
   const banner = page.getByRole('complementary', { name: 'Richiesta di conferma' });
   await expect(banner).toBeVisible();
   await page.screenshot({ path: '/tmp/hub-step32-deck.png', fullPage: true });
-  await expect(banner).toHaveScreenshot('agent-confirmation-banner.png');
+  await expect(banner).toHaveScreenshot(
+    examples ? 'agent-confirmation-banner-example.png' : 'agent-confirmation-banner.png',
+  );
   const button = banner.getByRole('button', { name: 'Tieni premuto per confermare' });
   await button.hover();
   await page.mouse.down();
@@ -42,11 +45,31 @@ test.afterEach(async ({ pc }) => {
   await restoreDesktop(pc);
 });
 
-test('both tiles show the state of the fake desktop', async ({ page }) => {
+test('the deck has two pages and no duplicate music tiles', async ({ page }) => {
+  await expect(page.getByRole('navigation', { name: 'Pagine' }).getByRole('button')).toHaveCount(examples ? 3 : 2);
+  const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
+  await expect(desk.getByRole('button', { name: /^Musica:/ })).toHaveCount(0);
+  await expect(desk.getByRole('button', { name: /^Brano successivo:/ })).toHaveCount(0);
+});
+
+test('an obsolete saved page opens Scrivania', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('hub.deck.page', 'study'));
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Vai a Scrivania' })).toHaveAttribute('aria-current', 'page');
+  await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
+});
+
+test('the deck has no duplicate music tile', async ({ page }) => {
+  await expect(audioTile(page)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Scrivania' }).getByRole('button', { name: /^Musica:/ })).toHaveCount(
+    0,
+  );
+});
+
+test('audio and player show the state of the fake desktop', async ({ page }) => {
   await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
-  await expect(mediaTile(page)).toHaveAccessibleName('Musica: Artist - Title, in riproduzione');
-  // The icon is the action a tap performs: Pause while playing.
-  await expect(mediaTile(page).locator('svg[data-icon="pause"]')).toBeVisible();
+  await expect(player(page).getByText('Title', { exact: true })).toBeVisible();
+  await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
 });
 
 test('tapping the audio tile switches to the other output and back', async ({ page }) => {
@@ -56,22 +79,12 @@ test('tapping the audio tile switches to the other output and back', async ({ pa
   await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
 });
 
-test('tapping the media tile flips the icon and the play state', async ({ page }) => {
-  await mediaTile(page).click();
-  await expect(mediaTile(page)).toHaveAccessibleName('Musica: Artist - Title, in pausa');
-  await expect(mediaTile(page).locator('svg[data-icon="play"]')).toBeVisible();
-  await mediaTile(page).click();
-  await expect(mediaTile(page)).toHaveAccessibleName('Musica: Artist - Title, in riproduzione');
-  await expect(mediaTile(page).locator('svg[data-icon="pause"]')).toBeVisible();
-});
-
-test('a change made elsewhere reaches the open page without a reload', async ({ page, pc }) => {
-  await expect(mediaTile(page)).toHaveAccessibleName(/in riproduzione/);
-  // A second client: the same action over plain HTTP, as a media key or another device would trigger it.
+test('a change made elsewhere reaches the open player without a reload', async ({ page, pc }) => {
+  await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
   expect((await playPause(pc)).ok()).toBe(true);
-  await expect(mediaTile(page)).toHaveAccessibleName(/in pausa/);
+  await expect(player(page).getByRole('button', { name: 'Riproduci musica' })).toBeVisible();
   expect((await playPause(pc)).ok()).toBe(true);
-  await expect(mediaTile(page)).toHaveAccessibleName(/in riproduzione/);
+  await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
 });
 
 test('the connection-lost state shows when the socket drops and clears when it is back', async ({ page }) => {
@@ -135,13 +148,7 @@ test('the dots and a swipe move between pages, and the page shown survives a rel
   const dot = (name: string) => pages.getByRole('button', { name: `Vai a ${name}`, exact: true });
   try {
     await expect(dot('Scrivania')).toHaveAttribute('aria-current', 'page');
-    await dot('Studio').click();
-    await expect(dot('Studio')).toHaveAttribute('aria-current', 'page');
-    await expect(
-      page.getByRole('region', { name: 'Studio' }).getByRole('button', { name: /^Pomodoro:/ }),
-    ).toBeVisible();
-    // A swipe is a horizontal scroll of the page strip.
-    await page.locator('.deck-pages').evaluate((strip) => strip.scrollTo({ left: 3 * strip.clientWidth }));
+    await page.locator('.deck-pages').evaluate((strip) => strip.scrollTo({ left: strip.clientWidth }));
     await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
     await page.reload();
     await expect(dot('Sistema')).toHaveAttribute('aria-current', 'page');
@@ -170,11 +177,16 @@ test('the Sistema page chooses the theme of this device', async ({ page }) => {
 
 test('the player bar shows the track on every page and plays or pauses it', async ({ page }) => {
   const player = page.getByRole('region', { name: 'In riproduzione' });
-  await expect(player.getByText('Title', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Vai a Sistema' }).click();
-  await expect(player).toBeVisible();
-  await player.getByRole('button', { name: 'Metti in pausa la musica' }).click();
-  await expect(mediaTile(page)).toHaveAccessibleName(/in pausa/);
+  for (const name of ['Scrivania', 'Sistema']) {
+    await page.getByRole('button', { name: `Vai a ${name}` }).click();
+    await expect(player.getByText('Title', { exact: true })).toBeVisible();
+    await player.getByRole('button', { name: 'Metti in pausa la musica' }).click();
+    await expect(player.getByRole('button', { name: 'Riproduci musica' })).toBeVisible();
+    await player.getByRole('button', { name: 'Riproduci musica' }).click();
+    await player.getByRole('button', { name: 'Brano successivo' }).click();
+    await expect(player.getByText('Second Title', { exact: true })).toBeVisible();
+    await player.getByRole('button', { name: 'Brano precedente' }).click();
+  }
   await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
 });
 
@@ -188,17 +200,17 @@ test('the player bar is hidden when no player is running', async ({ page }) => {
     });
   });
   await page.goto('/deck');
-  await expect(mediaTile(page)).toHaveAccessibleName('Musica: Niente in riproduzione');
+  await expect(audioTile(page)).toBeVisible();
   await expect(page.getByRole('region', { name: 'In riproduzione' })).toHaveCount(0);
 });
 
-test('the Sistema page locks with a tap and powers off only after a hold', async ({ page }) => {
+test('the Sistema page powers off only after a hold', async ({ page }) => {
   await page.getByRole('button', { name: 'Vai a Sistema' }).click();
   try {
     const system = page.getByRole('region', { name: 'Sistema' });
     await expect(system.getByText('212 W')).toBeVisible();
-    await system.getByRole('button', { name: /^Blocca:/ }).click();
-    await expect(system.getByRole('button', { name: /^Blocca:/ })).toBeEnabled();
+    for (const name of [/^Blocca:/, /^Chat:/, /^Lettore:/])
+      await expect(system.getByRole('button', { name })).toHaveCount(0);
     const powerOff = system.getByRole('button', { name: 'Tieni premuto per spegnere il PC' });
     await page.clock.install();
     await powerOff.hover();
@@ -216,8 +228,7 @@ test('the Sistema page locks with a tap and powers off only after a hold', async
 });
 
 test('the Notizie tile shows the count as a badge and opens the digest on the PC', async ({ page }) => {
-  await page.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
-  const tile = page.getByRole('region', { name: 'Scrivania 2' }).getByRole('button', { name: /^Notizie:/ });
+  const tile = page.getByRole('region', { name: 'Scrivania' }).getByRole('button', { name: /^Notizie:/ });
   await expect(tile).toHaveAccessibleName('Notizie: Apri sul PC, 22 voci nuove');
   await expect(tile.getByText('22', { exact: true })).toBeVisible();
   await tile.click();
@@ -229,16 +240,12 @@ test('Posta shows only its unread count and hides the badge at zero', async ({ p
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
   try {
-    await page.getByRole('button', { name: 'Vai a Scrivania 2' }).click();
     await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
     // Content stays on the PC, so the tile shows the count and is not a button.
     await expect(page.getByRole('button', { name: 'Posta: 3 non lette' })).toHaveCount(0);
-    const badges = page.getByRole('navigation', { name: 'Attività' });
-    await expect(badges.getByRole('button', { name: 'Posta: 3' })).toBeVisible();
     await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310', '308'], seen: true } });
     await pc.post('/trpc/mail.setSeen', { data: { account: 'personal', ids: ['88'], seen: true } });
     await expect(page.getByRole('group', { name: 'Posta: 0 non lette' })).toBeVisible();
-    await expect(badges.getByRole('button', { name: /^Posta:/ })).toHaveCount(0);
     expect(requests.filter((url) => /mail\.(list|search|read|threads)/.test(url))).toEqual([]);
   } finally {
     await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310', '308'], seen: false } });
@@ -265,8 +272,7 @@ test('the Sistema page has a tile per configured monitor that shows its state an
 
 test('Scrivania presents the requested controls in order', async ({ page }) => {
   const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
-  await expect(desk.getByRole('button', { name: /^Hub:/ })).toBeVisible();
-  await expect(desk.getByRole('button')).toHaveCount(11);
+  await expect(audioTile(page)).toBeVisible();
   const names = [
     /^Hub:/,
     /^Chat:/,
@@ -275,42 +281,90 @@ test('Scrivania presents the requested controls in order', async ({ page }) => {
     /^Abbassa volume:/,
     /^Alza volume:/,
     /^Microfono:/,
-    /^Musica:/,
-    /^Brano successivo:/,
-    /^Blocca:/,
     /^Pomodoro:/,
+    ...(examples ? [/^AirPlay:/] : []),
+    /^Posta:/,
+    /^Notizie:/,
+    /^Blocca:/,
   ];
-  for (const [index, name] of names.entries())
-    await expect(desk.getByRole('button').nth(index)).toHaveAccessibleName(name);
-  // The next tile names the track it skips, not the workspace copy.
-  await expect(desk.getByRole('button', { name: /^Brano successivo:/ })).toHaveAccessibleName(
-    'Brano successivo: Artist - Title',
-  );
+  const tiles = desk.locator(':scope > div > button, :scope > div > [role="group"]');
+  await expect(tiles).toHaveCount(names.length);
+  for (const [index, name] of names.entries()) await expect(tiles.nth(index)).toHaveAccessibleName(name);
+  await expect(desk.getByText('Volume −')).toBeVisible();
+  await expect(desk.getByText('Volume +')).toBeVisible();
 });
 
-test('badges open the pages containing News and the running Pomodoro', async ({ page, pc }) => {
-  const badges = page.getByRole('navigation', { name: 'Attività' });
+test('the running Pomodoro header opens Scrivania', async ({ page, pc }) => {
   try {
-    await expect(badges.getByRole('button', { name: /Notizie/ })).toBeVisible();
-    await expect(badges.getByRole('button', { name: /Pomodoro/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+    await expect(page.getByText('Server attivo')).toHaveCount(0);
     expect((await pc.post('/trpc/pomodoro.start', { data: {} })).ok()).toBe(true);
-    await badges.getByRole('button', { name: /Pomodoro/ }).click();
-    await expect(page.getByRole('region', { name: 'Studio', exact: true })).toBeVisible();
-    await badges.getByRole('button', { name: /Notizie/ }).click();
-    await expect(page.getByRole('region', { name: 'Scrivania 2', exact: true })).toBeVisible();
-    expect((await pc.post('/trpc/pomodoro.stop', { data: {} })).ok()).toBe(true);
-    await expect(badges.getByRole('button', { name: /Pomodoro/ })).toHaveCount(0);
+    await page.getByRole('button', { name: /Pomodoro in corso/ }).click();
+    await expect(page.getByRole('region', { name: 'Scrivania', exact: true })).toBeVisible();
   } finally {
     await pc.post('/trpc/pomodoro.stop', { data: {} });
     await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
   }
 });
 
-test('all Scrivania controls and the player fit on the phone screen', async ({ page }) => {
-  await expect(page.getByRole('region', { name: 'In riproduzione' }).getByText('Title', { exact: true })).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-  await expect(page.getByRole('button', { name: /^Pomodoro:/ })).toBeInViewport({ ratio: 1 });
-  await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeInViewport({ ratio: 1 });
+test('both pages and the player fit on the phone screen', async ({ page }) => {
+  await expect(player(page).getByText('Title', { exact: true })).toBeVisible();
+  for (const name of ['Scrivania', 'Sistema']) {
+    await page.getByRole('button', { name: `Vai a ${name}` }).click();
+    const region = page.getByRole('region', { name, exact: true });
+    await expect(region).toBeInViewport({ ratio: 1 });
+    const tiles = region.locator(':scope > div > button, :scope > div > [role=group]');
+    for (const tile of await tiles.all()) {
+      await expect(tile).toBeInViewport({ ratio: 1 });
+      expect((await tile.boundingBox())?.height).toBeGreaterThanOrEqual(104);
+    }
+    await expect(player(page)).toBeInViewport({ ratio: 1 });
+    expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+  }
+});
+
+test('two monitors precede the light and the holds start a new row', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.routeWebSocket(/\/trpc/, (socket) => {
+    const server = socket.connectToServer();
+    const monitorIds = new Set<unknown>();
+    socket.onMessage((message) => {
+      for (const request of [JSON.parse(message.toString())].flat())
+        if (request?.params?.path === 'system.onMonitors') monitorIds.add(request.id);
+      server.send(message);
+    });
+    server.onMessage((message) => {
+      const reply = JSON.parse(message.toString());
+      if (monitorIds.has(reply?.id) && reply.result?.type === 'data' && Array.isArray(reply.result.data)) {
+        const second = { output: 'DP-3', label: 'Monitor TV', state: 'on' };
+        socket.send(JSON.stringify({ ...reply, result: { ...reply.result, data: [...reply.result.data, second] } }));
+      } else socket.send(message);
+    });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+  const system = page.getByRole('region', { name: 'Sistema', exact: true });
+  await expect(system.getByRole('button', { name: /^Monitor TV:/ })).toBeVisible();
+  const first = await system.getByRole('button', { name: /^Monitor verticale:/ }).boundingBox();
+  const second = await system.getByRole('button', { name: /^Monitor TV:/ }).boundingBox();
+  const hold = await system.getByRole('button', { name: 'Tieni premuto per sospendere il PC' }).boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(hold).not.toBeNull();
+  if (!first || !second || !hold) throw new Error('Missing system tile geometry');
+  expect(second.x).toBeGreaterThan(first.x);
+  if (examples) {
+    const light = await system.getByRole('button', { name: /^Luci:/ }).boundingBox();
+    expect(light).not.toBeNull();
+    if (!light) throw new Error('Missing light tile geometry');
+    expect(light.x).toBeGreaterThan(second.x);
+  }
+  expect(hold.x).toBe(first.x);
+  expect(hold.y).toBeGreaterThan(second.y);
+  await expect(player(page)).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole('button', { name: 'Vai a Sistema' })).toHaveAttribute('aria-current', 'page');
+  await page.screenshot({ path: '/tmp/hub-b1-built-system-two.png', animations: 'disabled' });
+  await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
 });
 
 test('volume and microphone controls update the fake desktop', async ({ page, pc }) => {

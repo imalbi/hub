@@ -49,14 +49,14 @@ if (examples) {
     }
   });
 
-  test('Scrivania keeps the AirPlay tile right before Pomodoro', async ({ browser }) => {
+  test('Scrivania keeps the AirPlay tile after Pomodoro', async ({ browser }) => {
     const { context, phone } = await openDeck(browser);
     try {
       const desk = phone.getByRole('region', { name: 'Scrivania', exact: true });
-      await expect(desk.getByRole('button')).toHaveCount(12);
-      await expect(desk.getByRole('button').nth(9)).toHaveAccessibleName(/^Blocca:/);
-      await expect(desk.getByRole('button').nth(10)).toHaveAccessibleName(/^AirPlay:/);
-      await expect(desk.getByRole('button').nth(11)).toHaveAccessibleName(/^Pomodoro:/);
+      await expect(desk.getByRole('button')).toHaveCount(11);
+      await expect(desk.getByRole('button').nth(7)).toHaveAccessibleName(/^Pomodoro:/);
+      await expect(desk.getByRole('button').nth(8)).toHaveAccessibleName(/^AirPlay:/);
+      await expect(desk.getByRole('button').nth(9)).toHaveAccessibleName(/^Notizie:/);
     } finally {
       await context.close();
     }
@@ -80,7 +80,7 @@ if (examples) {
 
     const { context, phone } = await openDeck(browser);
     try {
-      await expect(phone.getByRole('region', { name: 'Scrivania', exact: true }).getByRole('button')).toHaveCount(11);
+      await expect(phone.getByRole('region', { name: 'Scrivania', exact: true }).getByRole('button')).toHaveCount(10);
       await expect(phone.getByRole('button', { name: /^AirPlay:/ })).toHaveCount(0);
     } finally {
       await context.close();

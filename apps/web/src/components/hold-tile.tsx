@@ -15,12 +15,14 @@ export function HoldTile({
   label,
   holdLabel,
   onConfirm,
+  startRow = false,
 }: {
   icon: Icon;
   label: string;
   /** The accessible name, saying it needs a hold. */
   holdLabel: string;
   onConfirm: () => Promise<unknown>;
+  startRow?: boolean;
 }) {
   const reduced = useInteractionReducedMotion();
   const { status, progress, begin, cancel } = useHoldConfirm(
@@ -70,7 +72,7 @@ export function HoldTile({
           }
         }}
         onClick={(event) => event.preventDefault()}
-        className={`hold-tile flex flex-col items-start gap-xs rounded-lg border p-md text-left select-none ${
+        className={`hold-tile flex min-w-0 flex-col items-start gap-2xs rounded-lg border p-sm text-left select-none ${startRow ? 'col-start-1' : ''} ${
           status === 'error' ? 'border-danger' : 'border-border'
         } bg-surface ${INTERACTION_FOCUS}`}
       >

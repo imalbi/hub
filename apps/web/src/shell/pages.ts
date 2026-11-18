@@ -2,7 +2,6 @@ import { useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
 import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
-import { MediaTile, NextTile } from '../modules/media/deck-tile.tsx';
 import { NewsTile } from '../modules/news/deck-tile.tsx';
 import { MailTile } from '../modules/mail/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
@@ -42,19 +41,16 @@ export const pages: Page[] = [
       VolumeDownTile,
       VolumeUpTile,
       MicMuteTile,
-      MediaTile,
-      NextTile,
-      LockTile,
       PomodoroTile,
+      MailTile,
+      NewsTile,
+      LockTile,
     ],
   },
-  { id: 'desk-more', label: m.page_desk_more, tiles: [NewsTile, MailTile] },
-  { id: 'study', label: m.zone_study, tiles: [PomodoroTile] },
   {
     id: 'system',
     label: m.zone_system,
-    // Scrivania is full at 12 tiles with AirPlay, so the monitor tiles live here (plan 34, deviation from decision 3).
-    tiles: [LockTile, CommunicationTile, MusicAppTile, MonitorTiles, PowerTile, SuspendTile, RebootTile, PowerOffTile],
+    tiles: [MonitorTiles, PowerTile, SuspendTile, RebootTile, PowerOffTile],
     extra: DeckThemeList,
   },
 ];
@@ -62,7 +58,6 @@ export const pages: Page[] = [
 // The module each tile belongs to, so a module that is off takes its tiles off the deck.
 const tileOwner = new Map<ComponentType, string>([
   ...[AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
-  ...[MediaTile, NextTile].map((tile) => [tile, 'media'] as const),
   [NewsTile, 'news'],
   [MailTile, 'mail'],
   [PomodoroTile, 'pomodoro'],

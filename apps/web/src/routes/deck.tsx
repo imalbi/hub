@@ -1,17 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useToken } from '../lib/auth.ts';
-import { DeckFrame } from '../shell/deck-frame.tsx';
 import { DeckPages } from '../shell/deck-pages.tsx';
-import { DeckPlayer } from '../modules/media/deck-player.tsx';
 import { MediaProvider } from '../modules/media/media-provider.tsx';
 import { PairingScreen } from '../modules/devices/pairing-screen.tsx';
 import { usePhaseChime } from '../modules/pomodoro/use-phase-chime.ts';
-import { m } from '../paraglide/messages.js';
-import { ServerStatus } from '../modules/system/server-status.tsx';
-import { useConnectionLost } from '../lib/trpc.ts';
 import { useLayout } from '../shell/use-layout.ts';
 import { ThemeProvider } from '../theme/theme.tsx';
-import { AgentConfirmation } from '../shell/agent-confirmation.tsx';
 
 export const Route = createFileRoute('/deck')({ component: Deck });
 
@@ -24,16 +18,11 @@ function Deck() {
 }
 
 function PairedDeck() {
-  const connectionLost = useConnectionLost();
   usePhaseChime();
 
   return (
-    <DeckFrame status={connectionLost ? m.connection_lost() : <ServerStatus />}>
-      <MediaProvider>
-        <AgentConfirmation deck />
-        <DeckPages />
-        <DeckPlayer />
-      </MediaProvider>
-    </DeckFrame>
+    <MediaProvider>
+      <DeckPages />
+    </MediaProvider>
   );
 }
