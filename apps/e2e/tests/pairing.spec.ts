@@ -13,9 +13,49 @@ test('an unpaired deck shows the pairing screen and no tile', async ({ page }) =
   await expect(page.getByLabel('Codice')).toHaveAttribute('inputmode', 'numeric');
   await expect(page.getByLabel('Codice')).toHaveAttribute('autocomplete', 'one-time-code');
   await expect(page.getByLabel('Nome del dispositivo')).toHaveValue('iPhone');
-  // Not running as a Home screen app: the hint says to install first.
-  await expect(page.getByText(/schermata Home/)).toBeVisible();
+  await expect(page.getByText(/schermata Home/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Uscita audio/ })).toHaveCount(0);
+});
+
+test('Safari shows the Home instructions before a usable dimmed form', async ({ page, pc }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: false }));
+  const deviceName = 'Safari pairing test';
+  try {
+    const response = await pc.post('/trpc/pairing.createCode', { data: {} });
+    const { code } = (await response.json()).result.data;
+    await page.goto('/deck');
+    const heading = page.getByRole('heading', { name: 'Prima aggiungi Hub alla Home' });
+    const form = page.locator('form');
+    await expect(heading).toBeVisible();
+    expect(
+      await heading.evaluate(
+        (element, formElement) =>
+          Boolean(element.compareDocumentPosition(formElement) & Node.DOCUMENT_POSITION_FOLLOWING),
+        await form.elementHandle(),
+      ),
+    ).toBe(true);
+    await expect(form).toHaveCSS('opacity', '0.6');
+    await page.getByLabel('Codice').fill(code);
+    await page.getByLabel('Nome del dispositivo').fill(deviceName);
+    await page.getByRole('button', { name: 'Abbina' }).click();
+    await expect(page.getByRole('button', { name: /^Uscita audio/ })).toBeVisible();
+  } finally {
+    await revokeDevices(pc, deviceName);
+  }
+});
+
+test('the Home app has no install instruction', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+  await page.goto('/deck');
+  await expect(page.getByText(/schermata Home/)).toHaveCount(0);
+});
+
+test('the code and device name fields have equal height', async ({ page }) => {
+  await page.goto('/deck');
+  const code = await page.getByLabel('Codice').boundingBox();
+  const name = await page.getByLabel('Nome del dispositivo').boundingBox();
+  expect(code?.height).toBeDefined();
+  expect(code?.height).toBe(name?.height);
 });
 
 test('a wrong code is refused and the pairing screen stays', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { ExportIcon, PlusSquareIcon } from '@phosphor-icons/react';
 import type { FormEvent } from 'react';
 import { m } from '../../paraglide/messages.js';
 import { replaceToken, useTRPC } from '../../lib/trpc.ts';
@@ -12,7 +13,7 @@ export function PairingScreen() {
   // Storing the token is what swaps this screen for the tiles.
   const redeem = useMutation(trpc.pairing.redeem.mutationOptions({ onSuccess: ({ token }) => replaceToken(token) }));
   // The Home screen app on iOS does not share storage with Safari, so a token stored from Safari would be lost.
-  const standalone = 'standalone' in navigator && navigator.standalone === true;
+  const safari = 'standalone' in navigator && navigator.standalone === false;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,47 +31,78 @@ export function PairingScreen() {
 
   return (
     <DeckFrame>
-      <form onSubmit={submit} className="flex flex-col gap-lg">
-        <div className="flex flex-col gap-xs">
-          <h1 className="text-heading">{m.pairing_title()}</h1>
-          <p className="text-body text-muted-foreground">{m.pairing_hint()}</p>
-        </div>
-        <label className={field}>
-          {m.pairing_code()}
-          <input
-            name="code"
-            required
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]{6}"
-            maxLength={6}
-            className={`${input} text-center text-display tabular-nums`}
-          />
-        </label>
-        <label className={field}>
-          {m.pairing_name()}
-          <input
-            name="name"
-            required
-            maxLength={40}
-            defaultValue={m.pairing_default_name()}
-            className={`${input} text-body`}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={redeem.isPending}
-          className="min-h-touch rounded-full bg-primary px-lg text-label text-primary-foreground disabled:opacity-60"
-        >
-          {redeem.isPending ? m.pairing_pending() : m.pairing_submit()}
-        </button>
-        {redeem.isError && (
-          <p role="alert" className="text-caption text-danger">
-            {errorText()}
-          </p>
+      <div className="flex min-h-0 flex-col gap-lg overflow-y-auto">
+        {safari && (
+          <>
+            <section className="flex flex-col gap-md">
+              <h1 className="text-heading">{m.pairing_home_title()}</h1>
+              <ol className="flex list-none flex-col gap-sm">
+                {[m.pairing_home_share(), m.pairing_home_add(), m.pairing_home_open()].map((step, index) => (
+                  <li key={step} className="flex items-center gap-sm">
+                    <span
+                      aria-hidden
+                      className="flex size-icon-lg shrink-0 items-center justify-center rounded-full border border-border text-caption text-muted-foreground tabular-nums"
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="text-body">{step}</span>
+                    {index === 0 && (
+                      <ExportIcon aria-hidden className="ml-auto size-icon shrink-0 text-muted-foreground" />
+                    )}
+                    {index === 1 && (
+                      <PlusSquareIcon aria-hidden className="ml-auto size-icon shrink-0 text-muted-foreground" />
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+            <div className="border-t border-dashed border-border" />
+            <p className="text-caption text-muted-foreground">{m.pairing_safari_hint()}</p>
+          </>
         )}
-        {!standalone && <p className="text-caption text-muted-foreground">{m.pairing_not_standalone()}</p>}
-      </form>
+        <form onSubmit={submit} className={`flex flex-col gap-lg ${safari ? 'opacity-60' : ''}`}>
+          {!safari && (
+            <div className="flex flex-col gap-xs">
+              <h1 className="text-heading">{m.pairing_title()}</h1>
+              <p className="text-body text-muted-foreground">{m.pairing_hint()}</p>
+            </div>
+          )}
+          <label className={field}>
+            {m.pairing_code()}
+            <input
+              name="code"
+              required
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              className={`${input} text-body tracking-pairing-code tabular-nums`}
+            />
+          </label>
+          <label className={field}>
+            {m.pairing_name()}
+            <input
+              name="name"
+              required
+              maxLength={40}
+              defaultValue={m.pairing_default_name()}
+              className={`${input} text-body`}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={redeem.isPending}
+            className={`min-h-touch rounded-full px-lg text-label disabled:opacity-60 ${safari ? 'border border-foreground text-foreground' : 'bg-primary text-primary-foreground'}`}
+          >
+            {redeem.isPending ? m.pairing_pending() : m.pairing_submit()}
+          </button>
+          {redeem.isError && (
+            <p role="alert" className="text-caption text-danger">
+              {errorText()}
+            </p>
+          )}
+        </form>
+      </div>
     </DeckFrame>
   );
 }

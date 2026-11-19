@@ -72,5 +72,15 @@ test.describe('the deck', () => {
       });
       await expect(page).toHaveScreenshot('pairing.png', { animations: 'disabled' });
     });
+
+    test('the Safari pairing screen matches the baseline', async ({ page }) => {
+      await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: false }));
+      await page.goto('/deck');
+      await expect(page.getByRole('heading', { name: 'Prima aggiungi Hub alla Home' })).toBeVisible();
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
+      await expect(page).toHaveScreenshot('pairing-safari.png', { animations: 'disabled' });
+    });
   });
 });
