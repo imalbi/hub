@@ -1,94 +1,27 @@
-import { useIsOn } from '../lib/enabled-modules.ts';
-import { moduleUIs } from '../lib/modules.ts';
-import type { ComponentType } from 'react';
-import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
-import { NewsTile } from '../modules/news/deck-tile.tsx';
-import { MailTile } from '../modules/mail/deck-tile.tsx';
-import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
-import {
-  HubTile,
-  CommunicationTile,
-  LockTile,
-  MusicAppTile,
-  PowerOffTile,
-  PowerTile,
-  RebootTile,
-  SuspendTile,
-} from '../modules/system/deck-tile.tsx';
-import { MonitorTiles } from '../modules/system/monitor-rows.tsx';
-import { DeckThemeList } from '../theme/deck-theme-list.tsx';
-import { m } from '../paraglide/messages.js';
+type Page<T, L, E> = { id: string; label: L; tiles: T[]; count: number; tail?: number; extra?: E };
 
-type Page = {
-  id: string;
-  label: () => string;
-  /** At most 12: the grid is 3 columns by 4 rows and the deck never scrolls vertically. */
-  tiles: ComponentType[];
-  /** Below the tiles, for a page that needs more than buttons. */
-  extra?: ComponentType;
-};
-
-/** The deck's pages, mirroring the desk zones, in swipe order. */
-export const pages: Page[] = [
-  {
-    id: 'desk',
-    label: m.page_desk,
-    tiles: [
-      HubTile,
-      CommunicationTile,
-      MusicAppTile,
-      AudioOutputTile,
-      VolumeDownTile,
-      VolumeUpTile,
-      MicMuteTile,
-      PomodoroTile,
-      MailTile,
-      NewsTile,
-      LockTile,
-    ],
-  },
-  {
-    id: 'system',
-    label: m.zone_system,
-    tiles: [MonitorTiles, PowerTile, SuspendTile, RebootTile, PowerOffTile],
-    extra: DeckThemeList,
-  },
-];
-
-// The module each tile belongs to, so a module that is off takes its tiles off the deck.
-const tileOwner = new Map<ComponentType, string>([
-  ...[AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
-  [NewsTile, 'news'],
-  [MailTile, 'mail'],
-  [PomodoroTile, 'pomodoro'],
-  ...[
-    HubTile,
-    CommunicationTile,
-    LockTile,
-    MonitorTiles,
-    MusicAppTile,
-    PowerOffTile,
-    PowerTile,
-    RebootTile,
-    SuspendTile,
-  ].map((tile) => [tile, 'system'] as const),
-]);
-
-for (const module of moduleUIs) {
-  const { deck } = module;
-  if (!deck) continue;
-  for (const tile of deck.tiles) tileOwner.set(tile, module.name);
-  const target = pages.find(
-    (page) => page.id === (deck.page === 'desk' && deck.at === undefined ? 'desk-more' : deck.page),
+/**
+ * Places a module's unpositioned tiles together on the last page with room for all of them (12 rendered tiles a page),
+ * before that page's `tail` (Sistema's holds stay last, board D1); with no room anywhere they get a page of their own.
+ */
+export function placeDeckTiles<T, L, E>(
+  pages: Page<T, L, E>[],
+  deck: { id: string; label: L; tiles: T[] },
+): Page<T, L, E>[] {
+  const index = pages.findLastIndex((page) => page.count + deck.tiles.length <= 12);
+  if (index < 0) {
+    let id = deck.id;
+    let suffix = 2;
+    while (pages.some((page) => page.id === id)) id = `${deck.id}-${suffix++}`;
+    return [...pages, { id, label: deck.label, tiles: deck.tiles, count: deck.tiles.length }];
+  }
+  return pages.map((page, i) =>
+    i === index
+      ? {
+          ...page,
+          tiles: page.tiles.toSpliced(page.tiles.length - (page.tail ?? 0), 0, ...deck.tiles),
+          count: page.count + deck.tiles.length,
+        }
+      : page,
   );
-  if (target) target.tiles.splice(deck.at ?? target.tiles.length, 0, ...deck.tiles);
-  else pages.push(deck);
-}
-
-/** The deck's pages with the tiles of modules that are off left out; a page left with nothing to show is dropped. */
-export function useDeckPages() {
-  const isOn = useIsOn();
-  return pages
-    .map((page) => ({ ...page, tiles: page.tiles.filter((tile) => isOn(tileOwner.get(tile) ?? '')) }))
-    .filter((page) => page.tiles.length > 0 || page.extra);
 }

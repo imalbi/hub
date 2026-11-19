@@ -5,7 +5,7 @@ import { useTRPC } from '../lib/trpc.ts';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m } from '../paraglide/messages.js';
-import { useDeckPages } from './pages.ts';
+import { useDeckPages } from './deck-page-config.ts';
 import { useJobs } from '../modules/jobs/jobs.tsx';
 import { useConnectionLost } from '../lib/trpc.ts';
 import { DeckFrame } from './deck-frame.tsx';

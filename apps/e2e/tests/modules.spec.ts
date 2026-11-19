@@ -115,7 +115,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
         route.fulfill({ json: [{ result: { data: { ok: true, uptime: 42 } } }] }),
       );
       await phone.goto(`${PHONE_URL}/deck`);
-      await phone.getByRole('button', { name: 'Vai a Esempio' }).click();
+      await phone.getByRole('button', { name: 'Vai a Sistema' }).click();
       const tile = phone.getByRole('button', { name: 'Esempio: Saluti: 0', exact: true });
       await expect(tile).toBeVisible();
       await phone.evaluate(async () => {

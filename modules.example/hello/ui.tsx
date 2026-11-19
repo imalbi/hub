@@ -126,5 +126,6 @@ export default {
     { zone: 'work', id: 'hello', label: () => copy.title, component: HelloPage },
     { zone: 'devices', id: 'hello', label: () => copy.title, component: HelloPage },
   ],
+  // Without `at`, the tile joins the last deck page with room.
   deck: { id: 'hello', label: () => copy.title, tiles: [HelloTile] },
 } satisfies ModuleUI;
