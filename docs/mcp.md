@@ -2,6 +2,8 @@
 
 Hub espone gli strumenti del registro e le risorse di stato su `http://127.0.0.1:4180/mcp` con Streamable HTTP. Il server deve essere avviato; `mcp.enabled` è attivo per impostazione predefinita.
 
+Scegli Claude Code o Codex in **Impostazioni > Sistema e agenti > MCP** (Claude Code è il valore predefinito), poi salva e riavvia Hub. In **Dispositivi**, copia il comando mostrato per registrare Hub nel client scelto. La selezione non registra il server da sola.
+
 Per collegare Claude Code sul computer che esegue Hub:
 
 ```sh

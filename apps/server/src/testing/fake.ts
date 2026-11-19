@@ -291,7 +291,11 @@ function build() {
     isLoopback,
     settings: { configPath, onRestart: () => void restart() },
   });
-  app.get('/__fake/core', () => ({ mcp: effectiveConfig.mcp.enabled, jobs: effectiveConfig.jobs.maxConcurrent }));
+  app.get('/__fake/core', () => ({
+    mcp: effectiveConfig.mcp.enabled,
+    mcpClient: effectiveConfig.mcp.client,
+    jobs: effectiveConfig.jobs.maxConcurrent,
+  }));
   app.post('/__fake/assistant', (request, reply) => {
     const parsed = z.object({ enabled: z.boolean() }).safeParse(request.body);
     if (!parsed.success) return reply.code(400).send();

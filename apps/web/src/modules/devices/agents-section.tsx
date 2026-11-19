@@ -10,8 +10,11 @@ import { m } from '../../paraglide/messages.js';
 import { lastSeen } from './last-seen.ts';
 
 // What a local agent needs: Hub always listens on loopback, whatever origin the page was opened from.
-// User scope: the default local scope binds the server to the folder the command ran in (2026-11-14, it landed on ~).
-const COMMAND = 'claude mcp add --scope user --transport http hub http://127.0.0.1:4180/mcp';
+function mcpCommand(client: 'claude' | 'codex') {
+  return client === 'codex'
+    ? 'codex mcp add hub --url http://127.0.0.1:4180/mcp'
+    : 'claude mcp add --scope user --transport http hub http://127.0.0.1:4180/mcp';
+}
 
 type Call = { id: number; action: string; createdAt: string };
 
@@ -174,19 +177,23 @@ function TokenForm() {
 export function AgentsSection({ enabled }: { enabled: boolean }) {
   const trpc = useTRPC();
   const agents = useQuery({ ...trpc.agents.list.queryOptions(), enabled });
+  const core = useQuery(trpc.settings.core.queryOptions());
+  const command = core.data && mcpCommand(core.data.value.mcp.client);
   return (
     <section className="flex flex-col gap-md" aria-label={m.agents_title()}>
       <h3 className="text-label text-muted-foreground">{m.agents_title()}</h3>
-      <div className="flex items-center gap-md">
-        <code aria-label={m.agents_command_label()} className="min-w-0 flex-1 truncate text-code text-label">
-          {COMMAND}
-        </code>
-        <RegistryButton
-          label={m.agents_copy()}
-          icon={<CopyIcon className="size-icon" aria-hidden />}
-          action={() => navigator.clipboard.writeText(COMMAND)}
-        />
-      </div>
+      {command && (
+        <div className="flex items-center gap-md">
+          <code aria-label={m.agents_command_label()} className="min-w-0 flex-1 truncate text-code text-label">
+            {command}
+          </code>
+          <RegistryButton
+            label={m.agents_copy()}
+            icon={<CopyIcon className="size-icon" aria-hidden />}
+            action={() => navigator.clipboard.writeText(command)}
+          />
+        </div>
+      )}
       <ul className="flex flex-col">
         <LocalAgentRow />
         {agents.data?.map((agent) => (

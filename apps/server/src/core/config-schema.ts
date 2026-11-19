@@ -26,8 +26,16 @@ export const coreConfigSchema = z.object({
         .boolean()
         .default(true)
         .meta({ title: 'Attivo', description: 'Consente agli agenti di collegarsi a Hub.' }),
+      client: z
+        .enum(['claude', 'codex'])
+        .default('claude')
+        .meta({
+          title: 'Client',
+          description: 'Quale agente usare per collegarsi a Hub e avviare le skill.',
+          optionLabels: { claude: 'Claude Code', codex: 'Codex' },
+        }),
     })
-    .default({ enabled: true })
+    .default({ enabled: true, client: 'claude' })
     .meta({ title: 'MCP', description: 'Collegamento degli agenti a Hub.' }),
   jobs: z
     .object({

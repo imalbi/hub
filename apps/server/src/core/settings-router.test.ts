@@ -113,12 +113,13 @@ void test('core settings save only for loopback and preserve unrelated config', 
     sockets: createDeviceSockets(),
     restart: () => false,
   };
-  const input = { mcp: { enabled: false }, jobs: { maxConcurrent: 3 } };
+  const input = { mcp: { enabled: false, client: 'codex' as const }, jobs: { maxConcurrent: 3 } };
   const agent = settings.createCaller({ ...context, client: { kind: 'agent', agentId: 1, name: 'Test' } });
   await assert.rejects(agent.core());
   await assert.rejects(agent.saveCore(input));
   const human = settings.createCaller({ ...context, client: { kind: 'loopback' } });
   assert.equal((await human.core()).value.mcp.enabled, true);
+  assert.equal((await human.core()).value.mcp.client, 'claude');
   assert.equal((await human.saveCore(input)).ok, true);
   assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), {
     server: { host: '127.0.0.1' },

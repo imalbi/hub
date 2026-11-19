@@ -93,22 +93,35 @@ async function ensureOn(pc: APIRequestContext, name: string) {
 }
 
 if (!example) {
-  test('core settings apply MCP and job limits after restart', async ({ page, pc }) => {
+  test('core settings apply the MCP client and job limits after restart', async ({ page, pc, context }) => {
     const server = `http://localhost:${SERVER_PORT}`;
     const core = async () => await (await pc.get(`${server}/__fake/core`)).json();
     const original = await core();
     try {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
       await page.goto('/desk/settings');
       await page.getByRole('link', { name: 'Sistema e agenti' }).click();
-      await page.getByRole('region', { name: 'MCP' }).getByRole('switch', { name: 'Attivo' }).uncheck();
+      const mcp = page.getByRole('region', { name: 'MCP' });
+      await mcp.getByRole('switch', { name: 'Attivo' }).uncheck();
+      await mcp.getByLabel('Client').click();
+      await page.getByRole('option', { name: 'Codex' }).click();
       await page.getByRole('button', { name: 'Aumenta Job simultanei' }).click();
       await page.getByRole('button', { name: 'Salva e riavvia' }).click();
       await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
-      await expect.poll(async () => core(), RESTARTED).toEqual({ mcp: false, jobs: original.jobs + 1 });
+      await expect
+        .poll(async () => core(), RESTARTED)
+        .toEqual({ mcp: false, mcpClient: 'codex', jobs: original.jobs + 1 });
+      await page.goto('/desk/devices');
+      const command = page.getByText('codex mcp add hub --url http://127.0.0.1:4180/mcp', { exact: true });
+      await expect(command).toBeVisible();
+      await page.getByRole('button', { name: 'Copia comando' }).click();
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+        'codex mcp add hub --url http://127.0.0.1:4180/mcp',
+      );
       expect((await pc.get(`${server}/mcp`)).status()).toBe(404);
     } finally {
       await pc.post('/trpc/settings.saveCore', {
-        data: { mcp: { enabled: original.mcp }, jobs: { maxConcurrent: original.jobs } },
+        data: { mcp: { enabled: original.mcp, client: original.mcpClient }, jobs: { maxConcurrent: original.jobs } },
       });
       await expect.poll(async () => core().catch(() => null), RESTARTED).toEqual(original);
     }
@@ -124,7 +137,11 @@ if (!example) {
     await expect(keep.getByRole('status')).toHaveText('14');
     // The stepper stops at 1; the server refuses 0 on its own, so a hand-made request cannot slip it in.
     const refused = await pc.post('/trpc/settings.saveCore', {
-      data: { mcp: { enabled: true }, jobs: { maxConcurrent: 2 }, backup: { enabled: true, keep: 0 } },
+      data: {
+        mcp: { enabled: true, client: 'claude' },
+        jobs: { maxConcurrent: 2 },
+        backup: { enabled: true, keep: 0 },
+      },
     });
     expect(refused.status()).toBe(400);
     expect(await refused.text()).toMatch(/too small/i);
