@@ -1,4 +1,5 @@
 import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
+import { FadeImage } from '../../components/fade-image.tsx';
 import { useQuery } from '@tanstack/react-query';
 import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -24,7 +25,7 @@ export function ArtistView({
     <section aria-label={artist.data?.name} className="flex min-h-0 flex-1 flex-col gap-lg">
       <div className="relative flex h-artist-banner shrink-0 flex-col justify-between overflow-hidden rounded-lg bg-muted p-lg">
         {artist.data?.banner && (
-          <img src={artist.data.banner} alt="" className="absolute inset-0 size-full object-cover" />
+          <FadeImage src={artist.data.banner} alt="" className="absolute inset-0 size-full object-cover" />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-background to-transparent" aria-hidden />
         <button type="button" className={`${pillOutline} desk-glass relative self-start`} onClick={onBack}>
@@ -55,7 +56,7 @@ export function ArtistView({
               {artist.data.albums.map((album, index) => (
                 <li key={`${album.title}-${index}`} className="flex flex-col gap-xs">
                   <div className="aspect-square overflow-hidden rounded-lg bg-muted">
-                    {album.cover && <img src={album.cover} alt="" className="size-full object-cover" />}
+                    {album.cover && <FadeImage src={album.cover} alt="" className="size-full object-cover" />}
                   </div>
                   <p className="text-label">{album.title}</p>
                 </li>

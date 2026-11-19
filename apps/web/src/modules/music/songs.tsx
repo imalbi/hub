@@ -2,6 +2,7 @@ import { Favorite } from './favorite.tsx';
 import { AddToPlaylist } from './add-to-playlist.tsx';
 import { Artists, CoverTile, Duration, type SongItem } from './parts.tsx';
 import { m } from '../../paraglide/messages.js';
+import { AnimatedRow } from '../../components/animated-list.tsx';
 
 /**
  * One song as a row: the title button plays and stretches over the whole row (`after:inset-0`), so the cover and the
@@ -19,7 +20,7 @@ export function SongRow({
   position?: number;
 }) {
   return (
-    <li className="relative flex items-center gap-md border-t border-dashed border-border py-xs">
+    <AnimatedRow className="relative flex items-center gap-md border-t border-dashed border-border py-xs">
       {position !== undefined && <span className="w-md text-label text-muted-foreground tabular-nums">{position}</span>}
       <CoverTile src={song.cover} />
       <div className="min-w-0 flex-1">
@@ -40,6 +41,6 @@ export function SongRow({
         <Favorite song={song} />
         <AddToPlaylist song={song} />
       </div>
-    </li>
+    </AnimatedRow>
   );
 }

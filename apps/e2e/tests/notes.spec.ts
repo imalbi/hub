@@ -63,6 +63,91 @@ test('Esc closes the card without saving and the widget button opens it', async 
   await expect(page.getByRole('heading', { name: 'Nessun post-it. Premi N per scriverne uno.' })).toBeVisible();
 });
 
+test('removing the last due note animates it out in Oggi and Post-it', async ({ page, pc }) => {
+  await showBoard(page, pc);
+  const widget = page.getByRole('region', { name: 'Post-it', exact: true });
+  await expect(widget).toBeVisible();
+  await widget.getByRole('button', { name: 'Aggiungi' }).click();
+  const card = page.getByRole('dialog', { name: 'Nuovo post-it' });
+  await card.getByRole('textbox', { name: 'Testo del post-it' }).fill('Da togliere');
+  await page.evaluate(() => {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (!(mutation.target instanceof HTMLElement)) continue;
+        const row = mutation.target.closest('li');
+        const opacity = mutation.oldValue?.match(/(?:^|;)\s*opacity:\s*([\d.]+)/)?.[1];
+        if (row?.textContent?.includes('Da togliere') && opacity !== undefined && Number(opacity) < 1) {
+          document.documentElement.dataset.noteEntryAnimated = 'true';
+        }
+      }
+    });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style'],
+      attributeOldValue: true,
+      subtree: true,
+    });
+  });
+  await page.keyboard.press('Enter');
+
+  const oggi = page.getByRole('region', { name: 'Oggi', exact: true });
+  const todayRow = oggi.locator('li').filter({ hasText: 'Da togliere' });
+  const widgetRow = widget.locator('li').filter({ hasText: 'Da togliere' });
+  await oggi.evaluate((element) => (element.dataset.notesTodayTest = ''));
+  await widget.evaluate((element) => (element.dataset.notesWidgetTest = ''));
+  await expect(todayRow).toBeVisible();
+  await expect(widgetRow).toBeVisible();
+  await expect.poll(() => page.locator('html').getAttribute('data-note-entry-animated')).toBe('true');
+
+  await page.evaluate(() => {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (!(mutation.target instanceof HTMLElement) || mutation.target.getAttribute('aria-hidden') !== 'true')
+          continue;
+        const row = mutation.target.closest('li');
+        if (!row?.textContent?.includes('Da togliere')) continue;
+        const location = row.closest('[data-notes-today-test]')
+          ? 'today'
+          : row.closest('[data-notes-widget-test]')
+            ? 'widget'
+            : null;
+        if (location)
+          document.documentElement.dataset[`${location}RowExit`] = row.hasAttribute('inert') ? 'inert' : 'focusable';
+      }
+    });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['aria-hidden'],
+      subtree: true,
+    });
+  });
+  await widgetRow.getByRole('button', { name: 'Stacca post-it: Da togliere' }).click();
+
+  const html = page.locator('html');
+  await expect.poll(() => html.getAttribute('data-today-row-exit')).toBe('inert');
+  await expect.poll(() => html.getAttribute('data-widget-row-exit')).toBe('inert');
+  await expect(todayRow).toHaveCount(0);
+  await expect(widgetRow).toHaveCount(0);
+});
+
+test('reduced motion shows and removes a post-it at rest', async ({ page, pc }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await showBoard(page, pc);
+  const widget = page.getByRole('region', { name: 'Post-it', exact: true });
+  await widget.getByRole('button', { name: 'Aggiungi' }).click();
+  const card = page.getByRole('dialog', { name: 'Nuovo post-it' });
+  await card.getByRole('textbox', { name: 'Testo del post-it' }).fill('Senza movimento');
+  await page.keyboard.press('Enter');
+  const row = widget.locator('li').filter({ hasText: 'Senza movimento' });
+  await expect(row).toBeVisible();
+  await expect(row).toHaveCSS('opacity', '1');
+  const box = await row.boundingBox();
+  expect(box?.width).toBeGreaterThan(0);
+  expect(box?.height).toBeGreaterThan(0);
+  await row.getByRole('button', { name: 'Stacca post-it: Senza movimento' }).click();
+  await expect(row).toHaveCount(0);
+});
+
 test('the palette adds a post-it, it edits in place and Stacca can be undone', async ({ page, pc }) => {
   await showBoard(page, pc);
   await expect(page.getByRole('region', { name: 'Post-it', exact: true })).toBeVisible();
@@ -100,6 +185,7 @@ test('a note an agent leaves for tomorrow opens Oggi when the day changes, and s
   });
   expect(await sent.text()).toContain('"id"');
   expect(sent.ok()).toBe(true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await showBoard(page, pc);
   const oggi = page.getByRole('region', { name: 'Oggi', exact: true });
   const widget = page.getByRole('region', { name: 'Post-it', exact: true });
@@ -109,7 +195,7 @@ test('a note an agent leaves for tomorrow opens Oggi when the day changes, and s
   await page.clock.fastForward('24:00:00');
   await expect(oggi.getByText('Oggi facciamo lo step 40')).toBeVisible();
   await expect(oggi.getByText('da agente Locale')).toBeVisible();
-  await expect(widget.getByRole('heading', { name: 'In arrivo' })).toHaveCount(0);
+  await expect(widget.getByRole('heading', { name: 'In arrivo' })).toBeHidden();
   await page.clock.fastForward('24:00:00');
   await expect(oggi.getByText('Oggi facciamo lo step 40')).toBeVisible();
 });

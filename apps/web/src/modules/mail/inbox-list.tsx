@@ -1,4 +1,5 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { AnimatedRow, AnimatedRows } from '../../components/animated-list.tsx';
 import {
   ArchiveIcon,
   ArrowClockwiseIcon,
@@ -95,50 +96,57 @@ export function InboxList({
         {status.pending && <ListSkeleton />}
         {!status.pending && !status.error && rows.length === 0 && <EmptyState title={m.mail_empty()} />}
         <ul className="flex flex-col">
-          {rows.map((row) => (
-            <li key={rowKey(row)} className="group relative border-b border-dashed border-border last:border-b-0">
-              <button
-                type="button"
-                aria-pressed={selected === rowKey(row)}
-                onClick={() => onSelect(row)}
-                className={`my-3xs flex w-full items-start gap-sm rounded-lg p-sm text-left ${selected === rowKey(row) ? 'bg-foreground/10' : 'hover:bg-foreground/5'}`}
+          <AnimatedRows>
+            {rows.map((row) => (
+              <AnimatedRow
+                key={rowKey(row)}
+                className="group relative border-b border-dashed border-border last:border-b-0"
               >
-                <span aria-hidden className={`mt-xs size-xs shrink-0 rounded-full ${row.seen ? '' : 'bg-primary'}`} />
-                <span className="flex min-w-0 flex-1 flex-col gap-3xs">
-                  <span className="flex items-baseline justify-between gap-sm">
-                    <span className={`truncate text-label ${row.seen ? 'text-muted-foreground' : ''}`}>
-                      {row.from?.name || row.from?.email}
+                <button
+                  type="button"
+                  aria-pressed={selected === rowKey(row)}
+                  onClick={() => onSelect(row)}
+                  className={`my-3xs flex w-full items-start gap-sm rounded-lg p-sm text-left ${selected === rowKey(row) ? 'bg-foreground/10' : 'hover:bg-foreground/5'}`}
+                >
+                  <span aria-hidden className={`mt-xs size-xs shrink-0 rounded-full ${row.seen ? '' : 'bg-primary'}`} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-3xs">
+                    <span className="flex items-baseline justify-between gap-sm">
+                      <span className={`truncate text-label ${row.seen ? 'text-muted-foreground' : ''}`}>
+                        {row.from?.name || row.from?.email}
+                      </span>
+                      <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
+                        {mailDate(row.date)}
+                      </span>
                     </span>
-                    <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
-                      {mailDate(row.date)}
+                    <span className={`flex items-center gap-xs text-body ${row.seen ? 'text-muted-foreground' : ''}`}>
+                      <span className="truncate">{row.subject}</span>
+                      {row.flagged && (
+                        <>
+                          <StarIcon aria-hidden weight="fill" className="size-icon-sm shrink-0" />
+                          <span className="sr-only"> {m.mail_starred()}</span>
+                        </>
+                      )}
                     </span>
-                  </span>
-                  <span className={`flex items-center gap-xs text-body ${row.seen ? 'text-muted-foreground' : ''}`}>
-                    <span className="truncate">{row.subject}</span>
-                    {row.flagged && (
-                      <>
-                        <StarIcon aria-hidden weight="fill" className="size-icon-sm shrink-0" />
-                        <span className="sr-only"> {m.mail_starred()}</span>
-                      </>
+                    {showAccount && (
+                      <span className="text-caption text-muted-foreground">{labels.get(row.account)}</span>
                     )}
                   </span>
-                  {showAccount && <span className="text-caption text-muted-foreground">{labels.get(row.account)}</span>}
-                </span>
-                {!row.seen && <span className="sr-only"> {m.mail_unread()}</span>}
-              </button>
-              <div className="absolute right-sm bottom-sm hidden gap-3xs group-focus-within:flex group-hover:flex">
-                <RowAction
-                  label={(row.seen ? m.mail_mark_unread_named : m.mail_mark_read_named)({ subject: row.subject })}
-                  onClick={() => onToggleSeen(row)}
-                >
-                  <EnvelopeOpenIcon aria-hidden weight={row.seen ? 'fill' : 'regular'} className="size-icon-sm" />
-                </RowAction>
-                <RowAction label={m.mail_archive_named({ subject: row.subject })} onClick={() => onArchive(row)}>
-                  <ArchiveIcon aria-hidden className="size-icon-sm" />
-                </RowAction>
-              </div>
-            </li>
-          ))}
+                  {!row.seen && <span className="sr-only"> {m.mail_unread()}</span>}
+                </button>
+                <div className="absolute right-sm bottom-sm hidden gap-3xs group-focus-within:flex group-hover:flex">
+                  <RowAction
+                    label={(row.seen ? m.mail_mark_unread_named : m.mail_mark_read_named)({ subject: row.subject })}
+                    onClick={() => onToggleSeen(row)}
+                  >
+                    <EnvelopeOpenIcon aria-hidden weight={row.seen ? 'fill' : 'regular'} className="size-icon-sm" />
+                  </RowAction>
+                  <RowAction label={m.mail_archive_named({ subject: row.subject })} onClick={() => onArchive(row)}>
+                    <ArchiveIcon aria-hidden className="size-icon-sm" />
+                  </RowAction>
+                </div>
+              </AnimatedRow>
+            ))}
+          </AnimatedRows>
         </ul>
         {!status.pending && rows.length > 0 && <ListEnd status={status} />}
       </div>

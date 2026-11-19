@@ -1,4 +1,5 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { AnimatedRows } from '../../components/animated-list.tsx';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { m } from '../../paraglide/messages.js';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -67,9 +68,11 @@ export function Listen({
         {queue?.errors === 3 && <output>{m.music_radio_error()}</output>}
         {(skip.isError || stop.isError) && <output>{m.music_player_error()}</output>}
         <ul className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-xl overflow-y-auto overscroll-contain">
-          {queue?.upcoming.map((song) => (
-            <SongRow key={song.id} song={song} onPlay={onPlay} onArtist={onArtist} />
-          ))}
+          <AnimatedRows>
+            {queue?.upcoming.map((song) => (
+              <SongRow key={song.id} song={song} onPlay={onPlay} onArtist={onArtist} />
+            ))}
+          </AnimatedRows>
         </ul>
       </section>
     </div>

@@ -1,4 +1,5 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { AnimatedRows } from '../../components/animated-list.tsx';
 import { PlusIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { useNow } from '../../lib/use-now.ts';
@@ -31,25 +32,25 @@ export function NotesWidget() {
     >
       <div className="flex min-h-0 flex-1 flex-col gap-md overflow-y-auto">
         {notes && !notes.length && <EmptyState title={m.notes_empty()} />}
-        {due.length > 0 && (
-          <ul className="grid grid-cols-3 gap-sm">
+        <ul className="notes-presence-list grid grid-cols-3 gap-sm">
+          <AnimatedRows>
             {due
               .toSorted((a, b) => b.createdAt - a.createdAt)
               .map((note) => (
                 <NoteCard key={note.id} note={note} />
               ))}
-          </ul>
-        )}
-        {upcoming.length > 0 && (
-          <section aria-label={m.notes_upcoming()} className="flex flex-col gap-xs">
-            <h3 className="text-label text-muted-foreground">{m.notes_upcoming()}</h3>
-            <ul className="grid grid-cols-3 gap-sm">
+          </AnimatedRows>
+        </ul>
+        <section aria-label={m.notes_upcoming()} className="notes-presence-section flex flex-col gap-xs">
+          <h3 className="text-label text-muted-foreground">{m.notes_upcoming()}</h3>
+          <ul className="grid grid-cols-3 gap-sm">
+            <AnimatedRows>
               {upcoming.map((note) => (
                 <NoteCard key={note.id} note={note} today={today} />
               ))}
-            </ul>
-          </section>
-        )}
+            </AnimatedRows>
+          </ul>
+        </section>
       </div>
     </Panel>
   );

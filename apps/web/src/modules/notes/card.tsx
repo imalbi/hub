@@ -3,6 +3,7 @@ import { m } from '../../paraglide/messages.js';
 import { agentName, laterDay, type Note } from './days.ts';
 import { useNoteActions } from './use-notes.ts';
 import { AboutLink } from './about-link.tsx';
+import { AnimatedRow } from '../../components/animated-list.tsx';
 
 const quietButton = 'cursor-pointer rounded-full text-foreground';
 
@@ -20,7 +21,7 @@ export function NoteCard({ note, today }: { note: Note; today?: string }) {
     if (next && next !== note.text) await actions.edit(note, next);
   }
   return (
-    <li
+    <AnimatedRow
       className={`group flex min-h-note min-w-0 flex-col justify-between gap-sm rounded-md px-md py-sm ${today ? 'border border-dashed border-border' : 'bg-muted'} ${draft === null ? '' : 'ring-2 ring-accent'}`}
     >
       {draft === null ? (
@@ -67,6 +68,6 @@ export function NoteCard({ note, today }: { note: Note; today?: string }) {
           </button>
         )}
       </div>
-    </li>
+    </AnimatedRow>
   );
 }

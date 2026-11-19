@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { MusicNoteIcon, MusicNotesIcon } from '@phosphor-icons/react';
+import { FadeImage } from '../../components/fade-image.tsx';
 
 export type SongItem = {
   id: string;
@@ -22,7 +23,11 @@ export const iconButton =
 export function CoverTile({ src, className = 'size-2xl rounded-md' }: { src?: string | null; className?: string }) {
   return (
     <span aria-hidden className={`flex shrink-0 items-center justify-center overflow-hidden bg-muted ${className}`}>
-      {src ? <img src={src} alt="" className="size-full object-cover" /> : <MusicNoteIcon className="size-icon" />}
+      {src ? (
+        <FadeImage src={src} alt="" className="size-full object-cover" />
+      ) : (
+        <MusicNoteIcon className="size-icon" />
+      )}
     </span>
   );
 }
@@ -90,7 +95,7 @@ export function PlaylistMosaic({
   return (
     <span aria-hidden className={`grid shrink-0 grid-cols-2 overflow-hidden bg-muted ${className}`}>
       {covers.map((src, index) => (
-        <img key={index} src={src} alt="" className="size-full object-cover" />
+        <FadeImage key={index} src={src} alt="" className="size-full object-cover" />
       ))}
     </span>
   );

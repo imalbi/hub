@@ -1,4 +1,6 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { AnimatedRows } from '../../components/animated-list.tsx';
+import { FadeImage } from '../../components/fade-image.tsx';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
@@ -31,10 +33,13 @@ function SavedSongs({
   const history = useQuery(trpc.music.history.queryOptions());
   const rows = (kind === 'favorites' ? favorites : history).data;
   const label = kind === 'favorites' ? m.music_favorites() : m.music_history();
-  const songs: SongItem[] = (rows ?? []).map((row) => ({
-    id: row.id,
-    title: row.title,
-    artists: row.artist ? [{ name: row.artist }] : [],
+  const songs = (rows ?? []).map((row) => ({
+    key: kind === 'history' && 'playedAt' in row ? `${row.id}-${row.playedAt}` : row.id,
+    song: {
+      id: row.id,
+      title: row.title,
+      artists: row.artist ? [{ name: row.artist }] : [],
+    } satisfies SongItem,
   }));
   return (
     <section aria-label={label} className="flex min-h-0 flex-1 flex-col gap-md">
@@ -43,9 +48,11 @@ function SavedSongs({
         <EmptyState title={kind === 'favorites' ? m.music_favorites_empty() : m.music_history_empty()} />
       )}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {songs.map((song, index) => (
-          <SongRow key={`${song.id}-${index}`} song={song} onPlay={onPlay} onArtist={onArtist} />
-        ))}
+        <AnimatedRows>
+          {songs.map(({ key, song }) => (
+            <SongRow key={key} song={song} onPlay={onPlay} onArtist={onArtist} />
+          ))}
+        </AnimatedRows>
       </ul>
     </section>
   );
@@ -80,7 +87,7 @@ function CoverBackdrop() {
   if (!art) return null;
   return (
     <div aria-hidden data-music-backdrop className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
-      <img src={art.dataUrl} alt="" className="size-full scale-125 object-cover opacity-10 blur-art" />
+      <FadeImage src={art.dataUrl} alt="" opacity={0.1} className="size-full scale-125 object-cover blur-art" />
     </div>
   );
 }

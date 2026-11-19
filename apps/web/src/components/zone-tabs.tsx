@@ -5,6 +5,7 @@ import { m } from '../paraglide/messages.js';
 import { TabBarRowSlot, TabBarSlot } from '../shell/header-slot.tsx';
 import { PageSurface } from '../shell/page-surface.tsx';
 import { LiquidTabs } from './ui/liquid-tabs.tsx';
+import { Crossfade } from './ui/crossfade.tsx';
 
 export type ZoneTab = { id: string; label: string; count?: number; content: ReactNode };
 
@@ -87,7 +88,11 @@ export function ZoneTabs({
       }
     >
       <TabBarSlot value={slot}>
-        <TabBarRowSlot value={row}>{active.content}</TabBarRowSlot>
+        <TabBarRowSlot value={row}>
+          <Crossfade subject={active.id} className="min-h-0 flex-1">
+            {active.content}
+          </Crossfade>
+        </TabBarRowSlot>
       </TabBarSlot>
     </PageSurface>
   );

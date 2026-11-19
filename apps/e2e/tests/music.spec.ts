@@ -310,6 +310,114 @@ test('Ascolta shows the recent songs with their covers and a tile plays', async 
   expect((await request).postData()).toContain('recent00001');
 });
 
+test('cover artwork fades in after load and keeps the broken-image fallback', async ({ page }) => {
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/delayed-cover.gif', async (route) => {
+    await pending;
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/gif',
+      body: Buffer.from('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', 'base64'),
+    });
+  });
+  await page.route('**/broken-cover.gif', (route) => route.fulfill({ status: 404, body: '' }));
+  await answerQueries(page, {
+    'music.recent': [
+      {
+        id: 'recent00003',
+        title: 'Copertina lenta',
+        artist: 'Artista',
+        cover: 'http://fake.invalid/delayed-cover.gif',
+      },
+      {
+        id: 'recent00004',
+        title: 'Copertina assente',
+        artist: 'Artista',
+        cover: 'http://fake.invalid/broken-cover.gif',
+      },
+    ],
+  });
+  await page.goto('/desk/media');
+  const recent = page.getByRole('region', { name: 'Ascoltati di recente' });
+  const loaded = recent.getByRole('listitem').first().locator('[data-fade-image]');
+  const loadedImage = loaded.locator('img');
+  const broken = recent.getByRole('listitem').nth(1).locator('img');
+  await expect(loadedImage).toHaveAttribute('src', 'http://fake.invalid/delayed-cover.gif');
+  await expect.poll(() => loaded.evaluate((element) => getComputedStyle(element).opacity)).toBe('0');
+  release();
+  await expect(loadedImage).toHaveAttribute('data-image-loaded', 'true');
+  await expect.poll(() => loaded.evaluate((element) => getComputedStyle(element).opacity)).toBe('1');
+  await expect(broken).toHaveAttribute('data-image-loaded', 'true');
+  expect(await broken.evaluate((image) => (image instanceof HTMLImageElement ? image.naturalWidth : -1))).toBe(0);
+});
+
+test('changing the artist keeps the new banner transparent until its image loads', async ({ page }) => {
+  const releases = new Map<string, () => void>();
+  for (const name of ['first', 'second']) {
+    let release = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    releases.set(name, release);
+    await page.route(`**/${name}-banner.gif`, async (route) => {
+      await pending;
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/gif',
+        body: Buffer.from('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', 'base64'),
+      });
+    });
+  }
+  const answers: Record<string, unknown> = {
+    'music.search': [
+      {
+        id: 'artist-song-1',
+        title: 'Brano Primo',
+        artists: [{ name: 'Artista Primo', id: 'UCaaaaaaaaaaaaaaaaaaaaaa' }],
+      },
+      {
+        id: 'artist-song-2',
+        title: 'Brano Secondo',
+        artists: [{ name: 'Artista Secondo', id: 'UCbbbbbbbbbbbbbbbbbbbbbb' }],
+      },
+    ],
+    'music.artist': {
+      name: 'Artista Primo',
+      banner: 'http://fake.invalid/first-banner.gif',
+      songs: [],
+      albums: [],
+    },
+  };
+  await answerQueries(page, answers);
+  await page.goto('/desk/media');
+  await search(page);
+  await page.getByRole('button', { name: 'Artista Primo', exact: true }).first().click();
+  const first = page.getByRole('region', { name: 'Artista Primo' }).locator('[data-fade-image]');
+  const firstImage = first.locator('img');
+  await expect(firstImage).toHaveAttribute('src', 'http://fake.invalid/first-banner.gif');
+  releases.get('first')?.();
+  await expect(firstImage).toHaveAttribute('data-image-loaded', 'true');
+
+  answers['music.artist'] = {
+    name: 'Artista Secondo',
+    banner: 'http://fake.invalid/second-banner.gif',
+    songs: [],
+    albums: [],
+  };
+  await page.getByRole('button', { name: 'Torna indietro' }).click();
+  await page.getByRole('button', { name: 'Artista Secondo', exact: true }).first().click();
+  const second = page.getByRole('region', { name: 'Artista Secondo' }).locator('[data-fade-image]');
+  const secondImage = second.locator('img');
+  await expect(secondImage).toHaveAttribute('src', 'http://fake.invalid/second-banner.gif');
+  await expect.poll(() => second.evaluate((element) => getComputedStyle(element).opacity)).toBe('0');
+  releases.get('second')?.();
+  await expect(secondImage).toHaveAttribute('data-image-loaded', 'true');
+  await expect.poll(() => second.evaluate((element) => getComputedStyle(element).opacity)).toBe('1');
+});
+
 test('playlist can be created, populated, reordered, played and deleted with a hold', async ({ page }) => {
   await page.goto('/desk/media');
   await page.getByRole('button', { name: 'Crea playlist' }).click();
@@ -439,7 +547,8 @@ async function paintWorstCover(page: Page) {
     const img = document.querySelector<HTMLElement>('[data-music-backdrop] img');
     const surface = document.querySelector<HTMLElement>('[data-page-surface]');
     if (!img || !surface) throw new Error('no backdrop');
-    const alpha = Number(getComputedStyle(img).opacity);
+    const fade = img.closest<HTMLElement>('[data-fade-image]');
+    const alpha = Number(getComputedStyle(img).opacity) * Number(fade ? getComputedStyle(fade).opacity : 1);
     const canvas = document.createElement('canvas');
     canvas.width = 1;
     canvas.height = 1;
@@ -474,7 +583,10 @@ for (const theme of ['Scuro', 'Chiaro']) {
       await chooseTheme(page, theme);
     }
     await playRadio(page);
-    await expect(page.locator('[data-music-backdrop] img')).toBeVisible();
+    const cover = page.locator('[data-music-backdrop] img');
+    const fade = cover.locator('xpath=..');
+    await expect(cover).toBeVisible();
+    await expect.poll(() => fade.evaluate((element) => getComputedStyle(element).opacity)).toBe('0.1');
     await page.mouse.move(0, 0);
     const next = page.getByRole('region', { name: 'Prossimi' });
     const texts = [

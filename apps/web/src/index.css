@@ -625,6 +625,9 @@ html {
   transition-duration: var(--motion-standard);
   transition-timing-function: var(--ease-out);
 }
+.split-pill-extra button:focus-visible {
+  outline-offset: -2px;
+}
 .split-pill[data-open] .split-pill-extra {
   /* Any width above the extra button's: max-width transitions where width: auto cannot. */
   max-width: 16rem;
@@ -637,6 +640,14 @@ html {
   .split-pill-extra {
     transition: none;
   }
+}
+
+/* Empty note sections collapse at rest; a departing row keeps its section visible through the exit. */
+.notes-presence-list:empty {
+  display: none;
+}
+.notes-presence-section:not(:has(li)) {
+  display: none;
 }
 
 /* Deck pages: one viewport wide each, swiped with scroll snap. The scrollbar is hidden; the dots show the position. */

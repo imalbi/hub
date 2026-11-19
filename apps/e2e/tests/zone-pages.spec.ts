@@ -203,8 +203,20 @@ if (examples) {
     const tabs = page.getByRole('tablist', { name: 'Sezioni' });
     const devices = tabs.getByRole('tab', { name: 'Dispositivi' });
     const hello = tabs.getByRole('tab', { name: 'Esempio' });
+    const indicator = tabs.locator('svg path').first();
+    async function indicatorDistance(tab: typeof devices) {
+      const tabBox = await tab.boundingBox();
+      if (!tabBox) throw new Error('tab has no box');
+      const indicatorX = await indicator.evaluate((element) => {
+        if (!(element instanceof SVGPathElement)) return Number.NaN;
+        const svg = element.ownerSVGElement;
+        return element.getBBox().x + (svg?.getBoundingClientRect().x ?? 0);
+      });
+      return Math.abs(indicatorX - tabBox.x);
+    }
     await expect(tabs.getByRole('tab')).toHaveText(['Dispositivi', 'Esempio']);
     await expect(devices).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(() => indicatorDistance(devices)).toBeLessThan(4);
     await expect(page.getByRole('tabpanel')).toContainText('Genera codice');
     await expect(page).toHaveURL(/\/desk\/devices$/);
     const entries = await page.evaluate(() => history.length);
@@ -212,6 +224,7 @@ if (examples) {
     await hello.click();
     await expect(hello).toHaveAttribute('aria-selected', 'true');
     await expect(page).toHaveURL(/\/desk\/devices\?tab=hello$/);
+    await expect.poll(() => indicatorDistance(hello)).toBeLessThan(4);
     await expect(page.getByRole('tabpanel').getByRole('region', { name: 'Esempio', exact: true })).toBeVisible();
     await expect(hello).toBeFocused();
     await page.keyboard.press('ArrowLeft');

@@ -222,6 +222,25 @@ test('edit mode dims and disables content, and focuses the missing list', async 
   await expect(cell(page, 'controls')).toHaveAttribute('data-size', 'large');
 });
 
+test('edit actions share one split pill', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  const pill = page.locator('.split-pill');
+  const add = pill.getByRole('button', { name: 'Aggiungi widget', exact: true });
+  await expect(add).toBeVisible();
+  await expect(pill.getByRole('button', { name: 'Ripristina', exact: true })).toBeVisible();
+  await expect(pill.getByRole('button', { name: 'Fine', exact: true })).toBeVisible();
+  await pill.getByRole('button', { name: 'Fine', exact: true }).focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(add).toBeFocused();
+  await expect(add).toHaveCSS('outline-offset', '-2px');
+  await expect(add.locator('..')).toHaveCSS('filter', 'none');
+  await page.screenshot({ path: testInfo.outputPath('split-pill-focus-4k.png') });
+  await add.click();
+  await expect(page.getByRole('button', { name: 'Aggiungi Server' })).toBeFocused();
+});
+
 test('all widgets fit within the surface scroller', async ({ page, pc }) => {
   const ids = [
     'today',

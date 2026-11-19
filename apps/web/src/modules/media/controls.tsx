@@ -1,5 +1,6 @@
 import { MusicNoteIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon } from '@phosphor-icons/react';
 import { IconMorph } from '../../components/ui/icon-morph.tsx';
+import { FadeImage } from '../../components/fade-image.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useMedia } from './media-provider.tsx';
@@ -37,7 +38,7 @@ export function Cover({
     (large ? (fill ? 'aspect-square h-full max-w-full rounded-xl' : 'size-4xl rounded-lg') : 'size-3xl rounded-xl');
   const art = className ?? (large ? box : 'size-3xl rounded-md');
   return media.art ? (
-    <img
+    <FadeImage
       src={media.art.dataUrl}
       alt={large || named ? m.media_cover({ title: media.state?.title ?? '' }) : ''}
       className={`${large && fill ? '' : 'shrink-0'} object-cover ${art}`}

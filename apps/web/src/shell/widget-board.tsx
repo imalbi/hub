@@ -95,25 +95,24 @@ export function WidgetBoard() {
         heading
         actions={
           <div className="flex items-center justify-end gap-sm">
-            {editing && (
-              <button
-                type="button"
-                disabled={missing.length === 0}
-                onClick={() => {
-                  missingRef.current?.scrollIntoView({ block: 'nearest' });
-                  missingRef.current?.querySelector('button')?.focus();
-                }}
-                className="min-h-touch rounded-full border border-border px-lg text-label disabled:opacity-40"
-              >
-                {m.widget_add()}
-              </button>
-            )}
             <SplitPill
               open={editing}
               label={editing ? m.widget_done() : m.widget_edit()}
               onClick={() => setEditing((value) => !value)}
-              extraLabel={m.widget_reset()}
-              onExtra={() => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) })}
+              actions={[
+                {
+                  label: m.widget_add(),
+                  disabled: missing.length === 0,
+                  onClick: () => {
+                    missingRef.current?.scrollIntoView({ block: 'nearest' });
+                    missingRef.current?.querySelector('button')?.focus();
+                  },
+                },
+                {
+                  label: m.widget_reset(),
+                  onClick: () => reset.mutate({ zone }, { onSuccess: () => queryClient.setQueryData(queryKey, null) }),
+                },
+              ]}
             />
           </div>
         }

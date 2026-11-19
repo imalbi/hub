@@ -9,6 +9,7 @@ const dayFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'lon
 import { openCapture } from './store.ts';
 import { useNoteActions, useNotes } from './use-notes.ts';
 import { AboutLink } from './about-link.tsx';
+import { AnimatedRow, AnimatedRows } from '../../components/animated-list.tsx';
 
 /**
  * The post-its of a day in Oggi (step 66), in the shape the widget's size asks for: a count (Medio), a titled column
@@ -24,12 +25,11 @@ export function NotesColumn({ day, variant, max }: { day: TodayDay; variant: Tod
   const count =
     day === 'today' ? m.notes_count_today({ count: shown.length }) : m.notes_count_tomorrow({ count: shown.length });
   if (variant === 'count') return shown.length ? <p className="text-caption text-muted-foreground">{count}</p> : null;
-  if (!shown.length && day === 'today') return null;
   const titled = variant !== 'stack';
   return (
     <section
       aria-label={day === 'today' ? m.notes_today_region() : m.notes_tomorrow_region()}
-      className={`flex min-h-0 min-w-0 flex-col gap-xs ${titled ? '' : 'mt-auto'}`}
+      className={`${day === 'today' ? 'notes-presence-section' : ''} flex min-h-0 min-w-0 flex-col gap-xs ${titled ? '' : 'mt-auto'}`}
     >
       {titled && (
         <div className="flex items-center justify-between gap-sm">
@@ -37,10 +37,12 @@ export function NotesColumn({ day, variant, max }: { day: TodayDay; variant: Tod
           <Kbd>N</Kbd>
         </div>
       )}
-      <ul className={variant === 'grid' ? 'grid grid-cols-2 gap-xs' : 'flex flex-col gap-xs'}>
-        {shown.slice(0, max).map((note, index) => (
-          <TodayNote key={note.id} note={note} today={today} first={index === 0} />
-        ))}
+      <ul className={`notes-presence-list ${variant === 'grid' ? 'grid grid-cols-2 gap-xs' : 'flex flex-col gap-xs'}`}>
+        <AnimatedRows>
+          {shown.slice(0, max).map((note, index) => (
+            <TodayNote key={note.id} note={note} today={today} first={index === 0} />
+          ))}
+        </AnimatedRows>
       </ul>
       {shown.length > max && (
         <p className="text-caption text-muted-foreground">{m.today_more({ count: shown.length - max })}</p>
@@ -78,7 +80,7 @@ function TodayNote({ note, today, first }: { note: Note; today: string; first: b
     .filter(Boolean)
     .join(', ');
   return (
-    <li className="group flex min-w-0 items-center gap-xs rounded-md bg-foreground/5 px-md py-sm">
+    <AnimatedRow className="group flex min-w-0 items-center gap-xs rounded-md bg-foreground/5 px-md py-sm">
       {/* The record goes on the same line: a second line made two rows overflow Grande's cell (step 71 review). */}
       <p className={`min-w-0 flex-1 truncate ${first ? 'text-body font-medium' : 'text-body'}`} title={note.text}>
         {note.text}
@@ -98,6 +100,6 @@ function TodayNote({ note, today, first }: { note: Note; today: string; first: b
       >
         {m.notes_remove()}
       </button>
-    </li>
+    </AnimatedRow>
   );
 }
