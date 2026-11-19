@@ -20,7 +20,7 @@
 
 - `shell/command-palette.tsx` queries `assistant.state` once on open and appends the assistant for two-word queries when enabled. Its result page lists the action outcomes; the existing agent hold dialog handles danger actions.
 
-- `PageSurface` accepts `dayLine` and `statusLine`; its default quiet `StatusLine` footer appears on desk pages through `StatusLineContext` supplied by `DeskShell`; the context keeps module imports of `PageSurface` independent of the shell module registry. `DayLine` on Studio Oggi and Panoramica renders completed focus and enabled modules' `dayMarks` probes; the Panoramica heading also calls each `daySummary` once. `statusItems` are optional module components and leave no gap on null. Widget context gives `Panel` titles and actions the mono label role; figures use `Readout` and discrete counts use `Ticks`.
+- `PageSurface` accepts `dayLine`. `DayLine` on Studio Oggi and Panoramica reads calendar events and enabled modules' `calendarItems`, as well as completed focus; the Panoramica heading also calls each `daySummary` once. Widget context gives `Panel` titles and actions the mono label role; figures use `Readout` and discrete counts use `Ticks`.
 
-- The status line (`shell/status-line.tsx`, step 68) is on Panoramica only (owner, 2026-11-17: on the other pages it said nothing he used): `routes/desk.index.tsx` passes it to `PageSurface` as `statusLine`; no other page sets it.
+- Desk surfaces have no status line (step 91). `day-line-math.ts` packs measured captions in two rows, including adesso; shortened captions retain their full title.
 - NumberRoll stacks every digit 0 to 9 in an absolutely placed strip (about 5000 px at hero size): its container must clip (`.instrument-dial` has `overflow: clip`) or a page scroller grows to the strip's height.

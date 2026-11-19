@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
     'agents.localCallsToday': 0,
   });
   await page.goto('/desk');
-  await expect(page.getByText('42 s', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-day-ruler]')).toBeVisible();
   const playback = page.getByRole('button', { name: 'Metti in pausa la musica', exact: true });
   await expect(playback).toBeVisible();
   await expect

@@ -8,7 +8,6 @@ export function PageSurface({
   float = false,
   bar,
   dayLine,
-  statusLine,
   scrollKey,
   className = '',
   ...rest
@@ -17,7 +16,6 @@ export function PageSurface({
   float?: boolean;
   bar?: ReactNode;
   dayLine?: ReactNode;
-  statusLine?: ReactNode;
   scrollKey?: string;
 } & ComponentProps<'div'>) {
   const scrolls = !fill && !float;
@@ -76,7 +74,6 @@ export function PageSurface({
           ) : (
             content
           )}
-          {statusLine}
         </div>
       </SurfaceScroller>
     </SurfaceContext>

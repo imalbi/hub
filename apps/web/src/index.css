@@ -794,6 +794,13 @@ html {
   height: 0.75rem;
   background: var(--foreground);
 }
+.day-event {
+  position: absolute;
+  bottom: 0;
+  height: 0.75rem;
+  border: 1px solid var(--muted-foreground);
+  background: var(--muted);
+}
 .day-mark {
   position: absolute;
   bottom: 0;
@@ -812,6 +819,11 @@ html {
   position: absolute;
   top: 3.5rem;
   left: 0.25rem;
+  white-space: nowrap;
+}
+.day-caption-measure {
+  position: absolute;
+  visibility: hidden;
   white-space: nowrap;
 }
 .study-step {

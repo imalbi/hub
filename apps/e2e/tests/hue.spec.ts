@@ -315,7 +315,7 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
     ).toBeVisible();
     await settleFonts(page);
     await expect(page).toHaveScreenshot('desk-lights-4k.png', { animations: 'disabled' });
-    // Panoramica asks for `health` too since the status line (step 68): drop the stub so no answer is in flight at the end.
+    // Drop the stub so no answer is in flight at the end.
     await page.unrouteAll({ behavior: 'ignoreErrors' });
     await page.goto('/desk');
     await expect(page.getByRole('region', { name: 'Pomodoro' }).first()).toBeVisible();

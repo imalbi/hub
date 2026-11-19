@@ -3,6 +3,8 @@ import { SERVER_URL } from './hosts.ts';
 
 test('a running job streams output and stops after a hold', async ({ page, request }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
+  // Jobs other specs of this process started stay in the history: clear it so the empty state is shown.
+  await request.post(`${SERVER_URL}/__fake/jobs`, { data: { clear: true } });
   await page.goto('/desk/system?tab=jobs');
   await expect(page.getByRole('heading', { name: 'Nessun job' })).toBeVisible();
   await request.post(`${SERVER_URL}/__fake/jobs`);

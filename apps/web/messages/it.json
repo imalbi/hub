@@ -7,8 +7,6 @@
   "day_line": "Linea del giorno",
   "day_now": "adesso",
   "day_focus_summary": "{count} sessioni · {minutes} min di focus",
-  "status_line": "Stato di Hub",
-  "status_search": "Ctrl K per cercare o eseguire",
   "jobs_title": "Job",
   "jobs_empty": "Nessun job",
   "jobs_duration": "Durata: {seconds} s",

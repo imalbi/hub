@@ -52,7 +52,7 @@ export async function answerQueries(page: Page, answers: Record<string, unknown>
     try {
       real = await (await route.fetch()).json();
     } catch {
-      // The test ended with this batch in flight (the day line and the status line ask on every page since step 68):
+      // The test ended with this batch in flight:
       // nothing waits for the answer any more.
       return route.abort().catch(() => undefined);
     }

@@ -319,7 +319,14 @@ const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HU
 
 function hooks(server: typeof app) {
   server.get('/__fake/system', () => ({ calls: systemCalls }));
-  server.post('/__fake/jobs', () => ({ jobId: jobs?.start('fake.job', 'fake-job', []) }));
+  server.post('/__fake/jobs', (request) => {
+    // `{ clear: true }` empties the finished history, which otherwise carries over between specs of a process.
+    if (z.object({ clear: z.literal(true) }).safeParse(request.body).success) {
+      jobs?.clearHistory();
+      return { cleared: true };
+    }
+    return { jobId: jobs?.start('fake.job', 'fake-job', []) };
+  });
   // No player at all (as when nothing was ever started), or back to the first track: the activity ball follows it.
   server.post('/__fake/player', (request, reply) => {
     const body = z.object({ gone: z.boolean() }).safeParse(request.body);

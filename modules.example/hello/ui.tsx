@@ -4,7 +4,7 @@ import { createTRPCOptionsProxy, useSubscription } from '@trpc/tanstack-react-qu
 import { HandWavingIcon } from '@phosphor-icons/react';
 import type definition from './server.ts';
 import { createModuleClient } from '../../apps/web/src/lib/module-client.ts';
-import type { ModuleUI, RecordSource, TodayDay, TodayLine } from '../../apps/web/src/lib/module-ui.ts';
+import type { CalendarItem, ModuleUI, RecordSource, TodayDay, TodayLine } from '../../apps/web/src/lib/module-ui.ts';
 import { useConnectionLost } from '../../apps/web/src/lib/trpc.ts';
 import { DeviceRow } from '../../apps/web/src/components/device-row.tsx';
 import { PageGrid } from '../../apps/web/src/components/page-grid.tsx';
@@ -14,6 +14,7 @@ import { RegistryButton } from '../../apps/web/src/components/registry-button.ts
 import { Tile } from '../../apps/web/src/components/tile.tsx';
 import { RecordNotes } from '../../apps/web/src/components/record-notes.tsx';
 import { useNow } from '../../apps/web/src/lib/use-now.ts';
+import { addDays, localDay } from '../../apps/web/src/lib/day.ts';
 import { setCurrentRecord } from '../../apps/web/src/lib/current-record.ts';
 
 export const copy = {
@@ -88,11 +89,15 @@ const greetings: RecordSource = {
     return { total, rows: rows.map((row) => ({ ...row, detail: copy.title, href: '/desk/hello' })) };
   },
 };
-function useHelloMarks() {
+function useHelloCalendar(range: { from: string; to: string }): CalendarItem[] {
   const now = useNow('clock');
-  const at = new Date(now);
-  at.setHours(12, 45, 0, 0);
-  return [{ id: 'hello', at: at.getTime(), label: copy.greeting }];
+  const day = localDay(new Date(now));
+  const items: CalendarItem[] = [
+    { id: 'hello', day, time: '12:45', title: copy.greeting, kind: 'event' },
+    { id: 'untimed', day, title: 'Senza orario esempio', kind: 'event' },
+    { id: 'tomorrow', day: addDays(day, 1), time: '12:45', title: 'Domani esempio', kind: 'event' },
+  ];
+  return items.filter((item) => item.day >= range.from && item.day <= range.to);
 }
 function HelloTile() {
   const { state, greet } = useHello();
@@ -113,7 +118,7 @@ export default {
   name: 'hello',
   copy,
   todayItems: useHelloToday,
-  dayMarks: useHelloMarks,
+  calendarItems: useHelloCalendar,
   records: greetings,
   deviceRows: HelloRow,
   // The same row again in Sistema, after Webcam and the monitors, so the slot has an example.

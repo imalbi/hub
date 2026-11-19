@@ -66,8 +66,6 @@ export type RecordSource = {
   /** Where "Vedi tutti" goes, with the query applied; absent when the page has no search of its own. */
   allHref?: (query: string) => string;
 };
-export type DayMark = { id: string; at: number; label: string };
-export type DayMarksHook = () => DayMark[];
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
@@ -92,10 +90,7 @@ export type ModuleUI = {
    * A hook is called from a component of its own, so its list may change when a module is switched on or off.
    */
   activities?: ModuleActivityHook | ModuleActivityHook[];
-  /** Dated events on the day ruler. Hooks run in headless components while the module is on. */
-  dayMarks?: DayMarksHook | DayMarksHook[];
   daySummary?: () => string | null;
-  statusItems?: ComponentType | ComponentType[];
   /**
    * One row in the Dispositivi list of this PC's external devices (AirPlay, a light, a monitor), rendered in module
    * order while the module is on. Each component is one row (`DeviceRow`) and may return null until it has data.

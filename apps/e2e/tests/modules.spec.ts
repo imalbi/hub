@@ -9,7 +9,14 @@ const rail = (page: Page) => page.getByRole('navigation', { name: 'Zone' });
 if (process.env.HUB_EXAMPLE_MODULES === '1') {
   test('example mark follows module availability', async ({ page }) => {
     await page.goto('/desk');
-    await expect(page.locator('[data-day-ruler]').getByText(/12:45.*Ciao dal modulo di esempio/)).toHaveCount(1);
+    await expect(
+      page.locator('[data-day-caption]').filter({ hasText: /12:45.*Ciao dal modulo di esempio/ }),
+    ).toHaveCount(1);
+    await expect(page.locator('[data-day-ruler]').getByText('Senza orario esempio')).toHaveCount(0);
+    await expect(page.locator('[data-day-ruler]').getByText('Domani esempio')).toHaveCount(0);
+    await page.goto('/desk/calendar');
+    await expect(page.getByText('Domani esempio', { exact: false }).first()).toBeVisible();
+    await page.goto('/desk');
     await answerQueries(page, { 'modules.enabled': [] });
     await page.reload();
     await expect(page.locator('[data-day-ruler]').getByText(/12:45.*Ciao dal modulo di esempio/)).toHaveCount(0);

@@ -37,10 +37,10 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 - `airplay.spec.ts` runs in both passes. Example pass: the Dispositivi row (`group` AirPlay in the region "Collegati a questo PC", toggle named `AirPlay: <state>`) and the deck tile drive one receiver and follow each other live; Scrivania has 12 controls with AirPlay after Pomodoro. Public pass: no row, no tile (11 controls), no `airplay.*` action in the registry or the palette, `airplay.state` is 404. The test puts the receiver back with `airplay.stop`.
 - `zone-pages.spec.ts` runs in both passes: every page has no "Modifica", no `Widget` region and no `[data-widget]` (each waits for a landmark of its page first, so "nothing here" cannot pass on an empty screen); Impostazioni shows Aspetto and a chosen theme applies; the last row of a page is fully visible with the same gutter below as above (a 500px-high viewport on Media, scrolled to the end: no clearance for a floating layer, step 20). First pass: one tab, no bar, `?tab=hello` changes nothing.
 - `modules.spec.ts`: example pass has the example zone as a page, the example widget offered in Panoramica (adding and resizing each save the board, so wait for each save, not one) and Lavoro in the rail with the example section as its only tab; first pass has no Lavoro or Messaggi entry and `/desk/lavoro`, `/desk/messaggi` say "Pagina non trovata".
-- The tabpanel is the body inside the surface frame (`[data-page-surface]`): measure the right gutter and bottom gap on the frame, scroll the tabpanel. `widgets.spec.ts` checks Panoramica has no surface and at least 16px between Modifica and the first widget; the drag test scrolls the audio widget into view first (it starts below the fold).
+- The tabpanel is the body inside the surface frame (`[data-page-surface]`): measure the right gutter and bottom gap on the frame, scroll the tabpanel. `widgets.spec.ts` checks Panoramica's surface and at least 16px between Modifica and the first widget; the drag test scrolls the audio widget into view first (it starts below the fold).
 - Musica (step 48): `music.spec.ts` covers every flow of the page; recent tiles come from history, which the fake cannot seed (30 s of playback), so that spec fulfils `music.history` through `answerQueries` (it intercepts every `/trpc/*` URL: a glob on the first procedure missed batches led by another one, and the devices 5/7 test flaked under load).
 - The surface-bottom-gap check exempts Media (`float`: `mb-3xl`).
-- Since step 68 every desk surface ends with the status line (`contentinfo` "Stato di Hub"): measure a column's bottom to its top, not to the surface's; the uptime is read there (the Server widget left the default layout). Panoramica's widget cells keep a hairline (board I1), so `zone-pages.spec.ts` checks borders only on panels outside `[data-widget]`.
+- Desk surfaces have no status line (step 91); measure columns against the surface. Panoramica's widget cells keep a hairline (board I1), so `zone-pages.spec.ts` checks borders only on panels outside `[data-widget]`.
 - Stubs that answer `agents.localCalls` must also answer `agents.localCallsToday` (0), or the Su questo PC line depends on calls other specs made.
 - The core settings sticky check scrolls the surface's section (`[data-page-surface] section.overflow-y-auto`, inside the surface body), not the desk scroller.
 - Private Lavoro specs: the tab bar is inside the surface since 47c (it was above it in 47b, `ownTabs`).
@@ -79,7 +79,7 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 - `hue.spec.ts`: `/__fake/hue` patches fake light state; `{ reset: true }` resets it.
 - `activity.spec.ts`: `/__fake/player` sets `{ gone: true }`; `restoreDesktop` posts `{ gone: false }`.
-- `jobs.spec.ts`: `/__fake/jobs` starts a fake job; cancel it after the test.
+- `jobs.spec.ts`: `/__fake/jobs` starts a fake job; cancel it after the test. `{ clear: true }` empties the finished history, which is per process: a spec that asserts the empty list clears it first.
 - `system.spec.ts`: GET `/__fake/system` reads recorded fake system calls; it does not change state.
 - `system.spec.ts`: `/__fake/monitor` sets the fake output state; restore it in `finally`.
 - `mail.spec.ts`: `/__fake/mail` sets `{ fail: true }`; reset with `{ fail: false }` in `finally`.

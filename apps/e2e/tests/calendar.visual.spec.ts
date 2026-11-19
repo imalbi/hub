@@ -4,6 +4,8 @@ import { clean, seed } from './calendar-data.ts';
 
 // Sunday 15 November 2026, fixed, so the grid, today's pill and every label are the same on each run.
 const NOW = new Date(2026, 10, 15, 10, 0);
+// The example module adds its own calendar items (step 91), so that pass keeps its own month baselines.
+const suffix = process.env.HUB_EXAMPLE_MODULES === '1' ? '-example' : '';
 
 test.beforeEach(async ({ page, pc }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -27,7 +29,7 @@ for (const size of sizes) {
       await document.fonts.ready;
     });
     await page.mouse.move(0, 0);
-    await expect(page.locator('[data-page-surface]')).toHaveScreenshot(`calendar-month${size.name}.png`, {
+    await expect(page.locator('[data-page-surface]')).toHaveScreenshot(`calendar-month${size.name}${suffix}.png`, {
       animations: 'disabled',
     });
   });

@@ -135,3 +135,18 @@ void test('the job list carries no output, which is read per job, also from hist
   runner.close();
   db.$client.close();
 });
+
+void test('clearHistory drops finished jobs and keeps the running ones', () => {
+  const { db, runner, processes } = setup();
+  const done = runner.start('fake.done', 'fake', []);
+  processes[0]?.end(0);
+  const running = runner.start('fake.running', 'fake', []);
+  runner.clearHistory();
+  assert.deepEqual(
+    runner.list().map((job) => job.id),
+    [running],
+  );
+  assert.deepEqual(runner.output(done), []);
+  runner.close();
+  db.$client.close();
+});

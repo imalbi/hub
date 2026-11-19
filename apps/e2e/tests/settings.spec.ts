@@ -50,7 +50,7 @@ async function moduleStates(pc: APIRequestContext) {
 
 /** Rewrites `settings.modules` answers: the weather row carries its note whatever an earlier spec saved. */
 async function withModuleNotes(page: Page, change: (module: Record<string, unknown>) => void = () => {}) {
-  // Batched with other queries since the status line reads `health` on every page (step 68): change only the
+  // Batched with other queries: change only the
   // `settings.modules` result, found by its place in the batch.
   await page.route('**/trpc/*settings.modules*', async (route) => {
     const paths = decodeURIComponent(new URL(route.request().url()).pathname.split('/trpc/')[1] ?? '').split(',');

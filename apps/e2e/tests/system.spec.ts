@@ -41,13 +41,9 @@ test('without a powerstat directory Consumo is gone and Server takes the whole b
   if (!audio || !figure) throw new Error('missing box');
   // Alone in its row: about the whole panel width, not half of it.
   expect(figure.width).toBeGreaterThan(audio.width * 0.8);
-  // The status line (Panoramica only) drops the power item too, leaving no empty slot.
+  // Panoramica remains free of a status line when power readings are unavailable.
   await page.goto('/desk');
-  const footer = page.getByRole('contentinfo', { name: 'Stato di Hub' });
-  await expect(footer).toContainText('hub');
-  await expect(footer).not.toContainText(' W');
-  await expect(footer).not.toContainText('kWh');
-  await expect(footer.locator('span:empty')).toHaveCount(0);
+  await expect(page.getByRole('contentinfo')).toHaveCount(0);
 });
 
 test('lock and the workspaces run with a tap, power actions only after a hold', async ({ page }) => {

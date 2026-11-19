@@ -153,7 +153,13 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
   async function* lines(id: string, signal?: AbortSignal): AsyncGenerator<JobLine> {
     for await (const [line] of on(events, `output:${id}`, { signal })) yield line;
   }
-  return { start, list, output: readOutput, cancel, close, updates, lines };
+  // For the e2e fake: history is per process, so a spec that needs an empty list clears it first.
+  function clearHistory() {
+    db.$client.exec("DELETE FROM jobs WHERE status NOT IN ('queued', 'running')");
+    for (const id of output.keys()) if (!active.has(id) && !queue.some((item) => item.job.id === id)) output.delete(id);
+    events.emit('update');
+  }
+  return { start, list, output: readOutput, cancel, close, updates, lines, clearHistory };
 }
 
 function parseStatus(value: unknown): Status {

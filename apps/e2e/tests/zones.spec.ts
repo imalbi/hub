@@ -17,6 +17,7 @@ const zones = [
 ];
 
 test('the rail navigates every zone and marks exactly the active destination', async ({ page }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk');
   const rail = page.getByRole('navigation', { name: 'Zone' });
   for (const [name, path] of zones) {
@@ -181,20 +182,10 @@ test('audio widget keeps its output selector inside its bounds', async ({ page }
   expect(fits).toBe(true);
 });
 
-test('the status line is quiet and only on Panoramica', async ({ page }) => {
+test('desk pages have no status line', async ({ page }) => {
   for (const [, path] of zones) {
     await page.goto(path);
-    const footer = page.getByRole('contentinfo', { name: 'Stato di Hub' });
-    // The owner kept it on Panoramica only (2026-11-17): on the other pages it said nothing he used.
-    if (path !== '/desk') {
-      await expect(page.locator('[data-page-surface]').first()).toBeVisible();
-      await expect(footer).toHaveCount(0);
-      continue;
-    }
-    await expect(footer).toBeVisible();
-    await expect(footer).toContainText('hub');
-    await expect(footer).toContainText(/\d+\s*(s|min|h|g)/);
-    await expect(footer).not.toHaveAttribute('aria-live');
-    await expect(footer.locator('[role="status"]')).toHaveCount(0);
+    await expect(page.locator('[data-page-surface]').first()).toBeVisible();
+    await expect(page.getByRole('contentinfo')).toHaveCount(0);
   }
 });
