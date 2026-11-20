@@ -61,6 +61,9 @@ test('Esc closes the card without saving and the widget button opens it', async 
   await expect(card).toHaveCount(0);
   await expect(page.getByText('Da scartare')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Nessun post-it. Premi N per scriverne uno.' })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Post-it', exact: true }).locator('[data-empty-variant="compact"]'),
+  ).toBeVisible();
 });
 
 test('removing the last due note animates it out in Oggi and Post-it', async ({ page, pc }) => {

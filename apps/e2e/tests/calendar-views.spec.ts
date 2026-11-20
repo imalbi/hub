@@ -19,11 +19,13 @@ test('empty days in the month and agenda use the empty state', async ({ page }) 
   await page.goto('/desk/calendar');
   await page.getByRole('button', { name: 'lunedì 30 novembre' }).click();
   await expect(page.getByRole('heading', { name: 'Niente in programma' })).toBeVisible();
+  await expect(page.locator('[data-empty-scene="calendar"]')).toBeVisible();
   await view(page, 'Agenda').click();
   const mini = page.getByRole('region', { name: 'Mese per scegliere il giorno' });
   await mini.getByRole('button', { name: 'Mese dopo' }).click();
   await mini.getByRole('button', { name: 'giovedì 31 dicembre' }).click();
   await expect(page.getByRole('heading', { name: 'Niente in programma' })).toBeVisible();
+  await expect(page.locator('[data-empty-scene="calendar"]')).toBeVisible();
 });
 
 test('the view switch picks Settimana and Agenda and the choice survives a reload', async ({ page }) => {

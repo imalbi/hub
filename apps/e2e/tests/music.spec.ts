@@ -69,11 +69,14 @@ test('empty favorites and playlists show their titles', async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk/media');
   await expect(library(page).getByRole('heading', { name: 'Nessuna playlist' })).toBeVisible();
+  await expect(library(page).locator('[data-empty-variant="compact"]')).toBeVisible();
   await page.getByRole('button', { name: 'Preferiti', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Nessun preferito' })).toBeVisible();
+  await expect(page.locator('[data-empty-scene="music"]')).toBeVisible();
   await search(page);
   await results(page).getByRole('button', { name: 'Aggiungi Brano 1 a playlist' }).click();
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Nessuna playlist' })).toBeVisible();
+  await expect(page.getByRole('dialog').locator('[data-empty-variant="compact"]')).toBeVisible();
 });
 
 async function holdDelete(page: Page) {
@@ -845,7 +848,9 @@ test('Ascolta hides Per te on empty history and omits empty suggestion rows', as
   const loaded = page.waitForResponse((response) => response.url().includes('music.suggestions') && response.ok());
   await page.goto('/desk/media');
   await loaded;
-  await expect(page.getByRole('heading', { name: 'Prossimi' })).toBeVisible();
+  const upcoming = page.getByRole('region', { name: 'Prossimi' });
+  await expect(upcoming.getByRole('heading', { name: 'Prossimi' })).toBeVisible();
+  await expect(upcoming.locator('[data-empty-scene="music"]')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Per te' })).toHaveCount(0);
 
   await answerQueries(page, {
@@ -865,4 +870,5 @@ test('Ascolta hides Per te on empty history and omits empty suggestion rows', as
   await expect(page.getByRole('heading', { name: 'Radio da' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Riascolta' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /^Simili a / })).toHaveCount(0);
+  await expect(upcoming.locator('[data-empty-variant="inline"]')).toBeVisible();
 });

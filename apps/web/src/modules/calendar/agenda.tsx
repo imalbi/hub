@@ -125,7 +125,7 @@ export function AgendaView({
             </li>
           ))}
         </ol>
-        {list.length === 0 && <EmptyState title={m.calendar_empty()} />}
+        {list.length === 0 && <EmptyState scene="calendar" title={m.calendar_empty()} />}
       </section>
       <aside className="flex min-h-0 w-day-panel shrink-0 flex-col gap-md">
         <section aria-label={m.calendar_pick_month()} className={card}>

@@ -1,7 +1,15 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownIcon, ArrowUpIcon, CaretLeftIcon, PlayIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CaretLeftIcon,
+  MusicNotesIcon,
+  PlayIcon,
+  PlusIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 import { Popover } from '@/components/ui/popover.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import { HoldButton } from '@/components/hold-button.tsx';
@@ -31,7 +39,13 @@ export function PlaylistList({ selected, onSelect }: { selected: number | null; 
           {({ close }) => <NewPlaylist onCreated={() => close()} />}
         </Popover>
       </div>
-      {lists.data?.length === 0 && <EmptyState title={m.music_playlist_empty()} />}
+      {lists.data?.length === 0 && (
+        <EmptyState
+          variant="compact"
+          icon={<MusicNotesIcon className="size-icon-lg" aria-hidden="true" />}
+          title={m.music_playlist_empty()}
+        />
+      )}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {lists.data?.map((list) => (
           <li key={list.id}>
@@ -165,7 +179,7 @@ export function LocalPlaylist({
           }}
         />
       </form>
-      {list.data && songs.length === 0 && <EmptyState title={m.music_playlist_no_songs()} />}
+      {list.data && songs.length === 0 && <EmptyState scene="music" title={m.music_playlist_no_songs()} />}
       <ol className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {songs.map((song, index) => (
           <li key={index} className="relative flex items-center gap-md border-t border-dashed border-border py-xs">
@@ -297,7 +311,7 @@ export function PublicPlaylists({
           {m.music_playlist_save()}
         </button>
       </div>
-      {list.data && list.data.songs.length === 0 && <EmptyState title={m.music_playlist_no_songs()} />}
+      {list.data && list.data.songs.length === 0 && <EmptyState scene="music" title={m.music_playlist_no_songs()} />}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {list.data?.songs.map((song, index) => (
           <SongRow key={`${song.id}-${index}`} song={song} onPlay={onPlaySong} onArtist={onArtist} />

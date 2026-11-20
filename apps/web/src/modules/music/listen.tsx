@@ -1,3 +1,4 @@
+import { QueueIcon } from '@phosphor-icons/react';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { AnimatedRows } from '../../components/animated-list.tsx';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -157,7 +158,16 @@ export function Listen({
             </>
           )}
         </div>
-        {!queue?.current && <EmptyState title={m.music_queue_empty()} />}
+        {!queue?.current &&
+          (hasSuggestions || recent.length > 0 ? (
+            <EmptyState
+              variant="inline"
+              icon={<QueueIcon className="size-icon" aria-hidden="true" />}
+              title={m.music_queue_empty()}
+            />
+          ) : (
+            <EmptyState scene="music" title={m.music_queue_empty()} />
+          ))}
         {queue?.errors === 3 && <output>{m.music_radio_error()}</output>}
         {(skip.isError || stop.isError) && <output>{m.music_player_error()}</output>}
         <ul className="grid grid-cols-2 content-start gap-x-xl">

@@ -62,8 +62,12 @@ export interface EmptyStateSecondaryAction {
 }
 
 export interface EmptyStateProps {
-  /** Which drawing: nothing yet (inbox), no results (search), all done, can't connect (offline) or no data (chart). */
+  /** Which drawing: nothing yet (inbox), no results (search), all done, can't connect (offline), no data (chart), music, calendar or notes. */
   scene?: EmptyStateScene;
+  /** Presentation variant: full isometric illustration (default), vertical compact icon + text, or horizontal inline row. */
+  variant?: 'default' | 'compact' | 'inline';
+  /** Icon shown in compact and inline variants. */
+  icon?: React.ReactNode;
   /** Your own art in place of the drawing. */
   illustration?: React.ReactNode;
   title: string;
@@ -309,7 +313,7 @@ function Swap({ swapKey, reduced, children }: { swapKey: string; reduced: boolea
   );
 }
 
-export function EmptyState({
+function DefaultEmptyState({
   scene = 'inbox',
   illustration,
   title,
@@ -411,7 +415,12 @@ export function EmptyState({
   const secondaryClass = `inline-flex h-touch cursor-pointer items-center rounded-full px-md text-label font-medium text-muted-foreground hover:bg-muted hover:text-foreground ${INTERACTION_PRESS} ${INTERACTION_FOCUS}`;
 
   return (
-    <div ref={rootRef} className={`@container w-full ${className}`}>
+    <div
+      ref={rootRef}
+      data-empty-variant="default"
+      data-empty-scene={illustration ? undefined : scene}
+      className={`@container w-full ${className}`}
+    >
       <div className="flex flex-col items-center px-lg py-touch text-center @max-[22rem]:px-md @max-[22rem]:py-lg">
         <div
           className="mb-md flex h-[140px] w-[168px] items-center justify-center @max-[22rem]:mb-md @max-[22rem]:h-[110px] @max-[22rem]:w-[132px]"
@@ -509,6 +518,69 @@ export function EmptyState({
       </div>
     </div>
   );
+}
+
+function CompactEmptyState({
+  variant,
+  icon,
+  title,
+  description,
+  children,
+  className = '',
+}: Pick<EmptyStateProps, 'icon' | 'title' | 'description' | 'children' | 'className'> & {
+  variant: 'compact' | 'inline';
+}) {
+  if (variant === 'inline') {
+    return (
+      <div
+        data-empty-variant="inline"
+        className={`flex w-full items-center gap-xs px-sm py-sm text-muted-foreground ${className}`}
+      >
+        {icon && (
+          <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+            {icon}
+          </span>
+        )}
+        <h3 className="text-label text-muted-foreground">{title}</h3>
+        {description !== undefined && <span className="text-caption text-muted-foreground">{description}</span>}
+        {children}
+      </div>
+    );
+  }
+  return (
+    <div
+      data-empty-variant="compact"
+      className={`flex w-full flex-col items-center justify-center gap-xs px-md py-lg text-center ${className}`}
+    >
+      {icon && (
+        <span className="text-muted-foreground" aria-hidden="true">
+          {icon}
+        </span>
+      )}
+      <h3 className="max-w-full text-label text-muted-foreground">{title}</h3>
+      {description !== undefined && (
+        <div className="w-full max-w-[36ch] text-caption text-muted-foreground">{description}</div>
+      )}
+      {children && <div className="mt-xs flex w-full flex-wrap items-center justify-center gap-xs">{children}</div>}
+    </div>
+  );
+}
+
+export function EmptyState(props: EmptyStateProps) {
+  if (props.variant === 'compact' || props.variant === 'inline') {
+    return (
+      <CompactEmptyState
+        variant={props.variant}
+        icon={props.icon}
+        title={props.title}
+        description={props.description}
+        className={props.className}
+      >
+        {props.children}
+      </CompactEmptyState>
+    );
+  }
+  return <DefaultEmptyState {...props} />;
 }
 
 export default EmptyState;

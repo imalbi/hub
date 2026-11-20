@@ -182,7 +182,7 @@ export function MonthView({
             );
           })}
         </ul>
-        {chosen.length === 0 && <EmptyState title={m.calendar_empty()} />}
+        {chosen.length === 0 && <EmptyState scene="calendar" title={m.calendar_empty()} />}
         <div className="flex-1" />
         <p className="text-caption text-muted-foreground">{m.calendar_note()}</p>
       </aside>

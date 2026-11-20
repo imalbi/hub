@@ -1,6 +1,6 @@
 // Hairline UI components, MIT License. Copyright (c) 2026 Hairline UI.
 // https://hairlineui.com/license#components
-export type EmptyStateScene = 'inbox' | 'search' | 'done' | 'offline' | 'chart';
+export type EmptyStateScene = 'inbox' | 'search' | 'done' | 'offline' | 'chart' | 'music' | 'calendar' | 'notes';
 
 /** What a face is filled with; the component maps these to theme tokens. */
 export type SceneFill = 'top' | 'left' | 'right' | 'hole' | 'glass' | 'accent' | 'accent-side' | 'none';
@@ -354,7 +354,165 @@ function chart(): SceneDef {
   };
 }
 
-export const SCENES: Record<EmptyStateScene, () => SceneDef> = { inbox, search, done, offline, chart };
+const flatCircle = (cx: number, cy: number, z: number, r: number, steps = 48): Vec3[] =>
+  Array.from({ length: steps }, (_, i) => {
+    const a = (i / steps) * Math.PI * 2;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a), z];
+  });
+
+type DiscStyle = { top?: SceneFill; side?: SceneFill; stroke?: SceneStroke; hero?: boolean };
+
+function disc(cx: number, cy: number, z: number, r: number, h: number, style: DiscStyle = {}): SceneShape[] {
+  const steps = 28;
+  const a0 = -Math.PI / 4;
+  const a1 = (3 * Math.PI) / 4;
+  const bottom: Vec3[] = [];
+  const top: Vec3[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const a = a0 + ((a1 - a0) * i) / steps;
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    bottom.push([x, y, z]);
+    top.push([x, y, z + h]);
+  }
+  const side: SceneShape = {
+    d: path([...bottom, ...top.toReversed()]),
+    fill: style.side ?? 'right',
+    stroke: style.stroke ?? 'line',
+    hero: style.hero,
+  };
+  const lid: SceneShape = {
+    d: path(flatCircle(cx, cy, z + h, r)),
+    fill: style.top ?? 'top',
+    stroke: style.stroke ?? 'line',
+    hero: style.hero,
+  };
+  return h > 0 ? [side, lid] : [lid];
+}
+
+/** Nothing playing: a minimal turntable with a vinyl platter, accent label and hovering tonearm. */
+function music(): SceneDef {
+  const px = 2.65;
+  const py = 3.05;
+  const pz = 0.48;
+  const grooveArc = (r: number, aStart: number, aEnd: number): Vec3[] =>
+    Array.from({ length: 24 }, (_, i) => {
+      const a = aStart + ((aEnd - aStart) * i) / 23;
+      return [px + r * Math.cos(a), py + r * Math.sin(a), pz + 0.19];
+    });
+  return {
+    shapes: [
+      ...box(0.85, 0.85, 0, 4.3, 4.3, pz),
+      ...disc(px, py, pz, 1.5, 0.18, { top: 'hole', side: 'right', stroke: 'line' }),
+      { d: path(grooveArc(1.22, -0.4, 2.2), false), fill: 'none', stroke: 'faint' },
+      { d: path(grooveArc(0.9, 1.6, 4.3), false), fill: 'none', stroke: 'faint' },
+      { d: path(flatCircle(px, py, pz + 0.19, 0.46)), fill: 'accent', stroke: 'accent' },
+      { d: path(flatCircle(px, py, pz + 0.2, 0.12)), fill: 'hole', stroke: 'line' },
+      ...disc(4.55, 1.45, pz, 0.34, 0.14, { top: 'top', side: 'right', stroke: 'line' }),
+      ...disc(4.55, 1.45, pz + 0.14, 0.13, 0.28, { top: 'top', side: 'right', stroke: 'line' }),
+      ...box(1.15, 4.45, pz, 0.42, 0.42, 0.08, { fills: ['left', 'right', 'top'], stroke: 'faint' }),
+      line(
+        [
+          [4.65, 1.25, pz + 0.56],
+          [4.55, 1.45, pz + 0.52],
+          [4.05, 3.35, pz + 0.44],
+          [3.65, 3.62, pz + 0.4],
+        ],
+        'accent',
+        true,
+      ),
+      ...box(3.52, 3.55, pz + 0.33, 0.24, 0.16, 0.14, {
+        fills: ['accent-side', 'accent-side', 'accent'],
+        stroke: 'accent',
+        hero: true,
+      }),
+    ],
+    poses: { pending: [0, 0, -0.1], success: [-0.22, 0.08, -0.18] },
+  };
+}
+
+/** Nothing scheduled: an isometric month card with binder tabs and a hovering empty day slot. */
+function calendar(): SceneDef {
+  const [x0, y0, w, d, h] = [1.0, 1.25, 4.0, 3.6, 0.44];
+  return {
+    shapes: [
+      ...box(x0, y0, 0, w, d, h),
+      ...box(x0, y0, h, w, 0.72, 0.06, { fills: ['accent-side', 'accent-side', 'accent'], stroke: 'accent' }),
+      ...box(1.85, y0 + 0.14, h + 0.06, 0.28, 0.42, 0.26, { fills: ['left', 'right', 'top'], stroke: 'line' }),
+      ...box(3.85, y0 + 0.14, h + 0.06, 0.28, 0.42, 0.26, { fills: ['left', 'right', 'top'], stroke: 'line' }),
+      ...[2.0, 3.0, 4.0].map((gx) =>
+        line(
+          [
+            [gx, y0 + 0.85, h + 0.01],
+            [gx, y0 + d - 0.15, h + 0.01],
+          ],
+          'faint',
+        ),
+      ),
+      ...[2.9, 3.85].map((gy) =>
+        line(
+          [
+            [x0 + 0.2, gy, h + 0.01],
+            [x0 + w - 0.2, gy, h + 0.01],
+          ],
+          'faint',
+        ),
+      ),
+      ...box(2.9, 3.45, h + 0.38, 0.9, 0.88, 0.14, {
+        fills: ['accent-side', 'accent-side', 'glass'],
+        stroke: 'accent',
+        dashed: true,
+        hero: true,
+      }),
+    ],
+    poses: { pending: [0, 0, -0.18], success: [0, 0, -0.37] },
+  };
+}
+
+/** No notes yet: a stack of sticky notes with a lifted angled sheet waiting on top. */
+function notes(): SceneDef {
+  const [x0, y0, w, h] = [1.35, 1.35, 3.2, 0.4];
+  const lift = 0.62;
+  return {
+    shapes: [
+      ...box(x0, y0, 0, w, w, h),
+      ...box(x0 + 0.06, y0 + 0.06, h, w, w, 0.08, { fills: ['left', 'right', 'top'], stroke: 'faint' }),
+      {
+        d: path([
+          [x0 + 0.18, y0 - 0.08, h + lift],
+          [x0 + w + 0.22, y0 + 0.18, h + lift + 0.08],
+          [x0 + w + 0.05, y0 + w + 0.16, h + lift + 0.36],
+          [x0 - 0.04, y0 + w - 0.08, h + lift + 0.14],
+        ]),
+        fill: 'glass',
+        stroke: 'line',
+        hero: true,
+      },
+      ...[0, 1].map((i) =>
+        line(
+          [
+            [x0 + 0.55 - i * 0.04, y0 + 0.85 + i * 0.75, h + lift + 0.1 + i * 0.06],
+            [x0 + w - 0.45 - i * 0.6, y0 + 0.98 + i * 0.75, h + lift + 0.15 + i * 0.06],
+          ],
+          'accent',
+          true,
+        ),
+      ),
+    ],
+    poses: { pending: [0, 0, -0.3], success: [0, 0, -lift] },
+  };
+}
+
+export const SCENES: Record<EmptyStateScene, () => SceneDef> = {
+  inbox,
+  search,
+  done,
+  offline,
+  chart,
+  music,
+  calendar,
+  notes,
+};
 
 /** A pose in tile units, as a screen offset in px. */
 export const poseOffset = ([x, y, z]: Vec3): [number, number] => [(x - y) * C * UNIT, (x + y) * 0.5 * UNIT - z * UNIT];

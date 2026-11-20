@@ -1,6 +1,6 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { AnimatedRows } from '../../components/animated-list.tsx';
-import { PlusIcon } from '@phosphor-icons/react';
+import { NoteIcon, PlusIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { useNow } from '../../lib/use-now.ts';
 import { m } from '../../paraglide/messages.js';
@@ -31,7 +31,13 @@ export function NotesWidget() {
       }
     >
       <div className="flex min-h-0 flex-1 flex-col gap-md overflow-y-auto">
-        {notes && !notes.length && <EmptyState title={m.notes_empty()} />}
+        {notes && !notes.length && (
+          <EmptyState
+            variant="compact"
+            icon={<NoteIcon className="size-icon-lg" aria-hidden="true" />}
+            title={m.notes_empty()}
+          />
+        )}
         <ul className="notes-presence-list grid grid-cols-3 gap-sm">
           <AnimatedRows>
             {due

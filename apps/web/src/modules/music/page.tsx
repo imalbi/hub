@@ -46,7 +46,7 @@ function SavedSongs({
     <section aria-label={label} className="flex min-h-0 flex-1 flex-col gap-md">
       <h2 className="text-heading">{label}</h2>
       {rows?.length === 0 && (
-        <EmptyState title={kind === 'favorites' ? m.music_favorites_empty() : m.music_history_empty()} />
+        <EmptyState scene="music" title={kind === 'favorites' ? m.music_favorites_empty() : m.music_history_empty()} />
       )}
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <AnimatedRows>

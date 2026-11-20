@@ -1,7 +1,7 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon } from '@phosphor-icons/react';
+import { MusicNotesIcon, PlusIcon } from '@phosphor-icons/react';
 import { Popover } from '@/components/ui/popover.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
@@ -80,7 +80,13 @@ export function AddToPlaylist({ song }: { song: Track }) {
       {({ close }) => (
         <div className="flex flex-col gap-2xs">
           <p className="px-sm py-xs text-label text-muted-foreground">{m.music_playlist_add({ title: song.title })}</p>
-          {lists.data?.length === 0 && <EmptyState title={m.music_playlist_empty()} />}
+          {lists.data?.length === 0 && (
+            <EmptyState
+              variant="compact"
+              icon={<MusicNotesIcon className="size-icon-lg" aria-hidden="true" />}
+              title={m.music_playlist_empty()}
+            />
+          )}
           {lists.data?.map((list) => (
             <button
               type="button"
