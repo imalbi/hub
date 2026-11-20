@@ -89,6 +89,7 @@ export default defineConfig({
               'activity.spec.ts',
               'themes.spec.ts',
               'widgets.spec.ts',
+              'widgets-align.spec.ts',
               'study-widget.spec.ts',
               'calendar-widget.spec.ts',
               'notes.spec.ts',

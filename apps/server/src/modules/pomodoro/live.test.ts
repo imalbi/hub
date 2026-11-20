@@ -221,3 +221,41 @@ void test('a subscriber that joins later gets the server time of now, not of the
   await early.return();
   await late.return();
 });
+
+void test('startTagged exposes the active tag to state and subscribers and preserves it on failed start', async (t) => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: new Date(2026, 10, 4, 10) });
+  const db = openDb(':memory:');
+  const timer = createPomodoro(db, createFakeDesktop(), { ...emptyConfig.pomodoro, focusMinutes: 0.05 });
+  t.after(() => {
+    timer.close();
+    db.$client.close();
+  });
+  assert.equal(timer.state().tag, null);
+  const abort = new AbortController();
+  const sub = timer.subscribe(abort.signal);
+  assert.equal((await sub.next()).value?.tag, null);
+  const started = sub.next();
+  timer.act('start', 'study/g1');
+  assert.equal(timer.state().tag, 'study/g1');
+  assert.equal((await started).value?.tag, 'study/g1');
+
+  assert.throws(() => timer.act('start', 'study/other'), /Invalid Pomodoro transition/);
+  assert.equal(timer.state().tag, 'study/g1');
+
+  timer.act('pause');
+  assert.equal(timer.state().tag, 'study/g1');
+  timer.act('resume');
+  assert.equal(timer.state().tag, 'study/g1');
+
+  timer.act('stop');
+  assert.equal(timer.state().tag, null);
+
+  timer.act('start', 'study/g2');
+  assert.equal(timer.state().tag, 'study/g2');
+  mock.timers.tick(3000);
+  assert.equal(timer.state().phase, 'break');
+  assert.equal(timer.state().tag, null);
+
+  abort.abort();
+  await sub.return();
+});

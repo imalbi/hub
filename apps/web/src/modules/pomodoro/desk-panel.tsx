@@ -66,36 +66,7 @@ export function PomodoroPanel({
               <LoadingSkeleton label={m.tile_loading()} rows={1} className="w-2xl" />
             )}
           </p>
-          <p
-            role="timer"
-            aria-label={m.pomodoro_remaining()}
-            data-readout={widget ? '' : undefined}
-            className={widget ? 'text-readout' : 'text-display tabular-nums'}
-          >
-            <span className="sr-only">{timer.time}</span>
-            <span aria-hidden className="select-none">
-              {/* Digits mount with the first real value, so arriving at the page is not a change they roll for. */}
-              {timer.state ? (
-                <>
-                  <NumberRoll
-                    value={timer.minutes}
-                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
-                    locales="it"
-                    direction="down"
-                  />
-                  :
-                  <NumberRoll
-                    value={timer.seconds}
-                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
-                    locales="it"
-                    direction="down"
-                  />
-                </>
-              ) : (
-                <span className="invisible">{timer.time}</span>
-              )}
-            </span>
-          </p>
+          <TimerDigits timer={timer} readout={widget} dataReadout={widget} />
         </div>
       </div>
       {!compact && (
@@ -175,30 +146,7 @@ function InstrumentTimer({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-xs">
-          <p role="timer" aria-label={m.pomodoro_remaining()} className="text-readout">
-            <span className="sr-only">{timer.time}</span>
-            <span aria-hidden className="select-none">
-              {timer.state ? (
-                <>
-                  <NumberRoll
-                    value={timer.minutes}
-                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
-                    locales="it"
-                    direction="down"
-                  />
-                  :
-                  <NumberRoll
-                    value={timer.seconds}
-                    format={{ minimumIntegerDigits: 2, useGrouping: false }}
-                    locales="it"
-                    direction="down"
-                  />
-                </>
-              ) : (
-                <span className="invisible">{timer.time}</span>
-              )}
-            </span>
-          </p>
+          <TimerDigits timer={timer} readout />
           <span className="text-caps text-muted-foreground">
             {m.pomodoro_instrument_remaining({
               duration: clock(timer.state?.durationMs || (timer.state?.settings.focusMinutes ?? 0) * 60_000),
@@ -233,5 +181,49 @@ function InstrumentTimer({
         </p>
       )}
     </section>
+  );
+}
+
+/** Accessible rolling `MM:SS` readout shared across full, instrument, and Medio Pomodoro views. */
+export function TimerDigits({
+  timer,
+  readout = false,
+  dataReadout = false,
+}: {
+  timer: ReturnType<typeof usePomodoro>;
+  readout?: boolean;
+  dataReadout?: boolean;
+}) {
+  return (
+    <p
+      role="timer"
+      aria-label={m.pomodoro_remaining()}
+      data-readout={dataReadout ? '' : undefined}
+      className={readout ? 'text-readout' : 'text-display tabular-nums'}
+    >
+      <span className="sr-only">{timer.time}</span>
+      <span aria-hidden className="select-none">
+        {/* Digits mount with the first real value, so arriving at the page is not a change they roll for. */}
+        {timer.state ? (
+          <>
+            <NumberRoll
+              value={timer.minutes}
+              format={{ minimumIntegerDigits: 2, useGrouping: false }}
+              locales="it"
+              direction="down"
+            />
+            :
+            <NumberRoll
+              value={timer.seconds}
+              format={{ minimumIntegerDigits: 2, useGrouping: false }}
+              locales="it"
+              direction="down"
+            />
+          </>
+        ) : (
+          <span className="invisible">{timer.time}</span>
+        )}
+      </span>
+    </p>
   );
 }

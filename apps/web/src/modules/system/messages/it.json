@@ -65,5 +65,8 @@
   "system_backup_yesterday": "ieri, {time}",
   "system_backup_day": "{day}, {time}",
   "system_backup_copies_one": "{when} · 1 copia",
-  "system_backup_copies_many": "{when} · {count} copie"
+  "system_backup_copies_many": "{when} · {count} copie",
+  "power_now": "adesso",
+  "server_active": "attivo",
+  "server_since_start": "dall'ultimo avvio"
 }

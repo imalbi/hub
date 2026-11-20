@@ -10,4 +10,5 @@ export const copy = {
   unknown: 'Stato sconosciuto',
   loading: 'Caricamento',
   hubUnavailable: 'Non disponibile',
+  openDevices: 'Apri Dispositivi',
 };

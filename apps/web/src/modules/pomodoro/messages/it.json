@@ -31,5 +31,18 @@
   "pomodoro_save": "Salva",
   "pomodoro_sound": "Suono a fine fase",
   "pomodoro_settings_note": "Le modifiche valgono dalla prossima fase.",
-  "pomodoro_tile_idle": "Pronto {preset}"
+  "pomodoro_tile_idle": "Pronto {preset}",
+  "pomodoro_sessions_today": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "{count} sessione oggi",
+        "plural=*": "{count} sessioni oggi"
+      }
+    }
+  ],
+  "pomodoro_on_what": "Su cosa",
+  "pomodoro_untagged": "Sessione libera",
+  "pomodoro_study_today": "Studio oggi: {minutes} min"
 }

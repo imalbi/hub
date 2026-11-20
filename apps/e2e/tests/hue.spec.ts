@@ -338,10 +338,37 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
       const brightness = widget.getByRole('img', { name: '4 di 5' });
       await expect(brightness.locator('i')).toHaveCount(5);
       await expect(brightness.locator('i[data-filled]')).toHaveCount(4);
+      expect(await widget.getByRole('button').count()).toBeLessThanOrEqual(1);
+      for (const viewport of [
+        { width: 3840, height: 2160 },
+        { width: 1920, height: 1080 },
+      ]) {
+        await page.setViewportSize(viewport);
+        const layout = await widget.evaluate((cellEl) => {
+          const section = cellEl.querySelector('section');
+          if (!(section instanceof HTMLElement)) return null;
+          return {
+            fits: section.scrollHeight <= section.clientHeight && section.scrollWidth <= section.clientWidth,
+            position: getComputedStyle(section).position,
+            heightDiff: Math.abs(section.getBoundingClientRect().height - cellEl.getBoundingClientRect().height),
+          };
+        });
+        expect(layout, `Luci Piccolo at ${viewport.width}x${viewport.height}`).not.toBeNull();
+        expect(layout?.fits, `Luci Piccolo fits at ${viewport.width}x${viewport.height}`).toBe(true);
+        expect(layout?.position, `Luci Piccolo position at ${viewport.width}x${viewport.height}`).toBe('relative');
+        expect(
+          layout?.heightDiff,
+          `Luci Piccolo height fill at ${viewport.width}x${viewport.height}`,
+        ).toBeLessThanOrEqual(2);
+      }
       await widget.getByRole('button', { name: /^Luce:/ }).click();
       await expect(widget.getByText('Spenta', { exact: true })).toBeVisible();
       expect(await writes(request)).toEqual([{ type: 'setPower', on: false }]);
+      await widget.getByRole('link', { name: 'Apri Dispositivi', exact: true }).click();
+      await expect(page).toHaveURL(/\/desk\/devices$/);
     } finally {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto('/desk');
       await page.getByRole('button', { name: 'Modifica' }).click();
       await page.getByRole('button', { name: 'Rimuovi Luci' }).click();
       await page.getByRole('button', { name: 'Fine' }).click();

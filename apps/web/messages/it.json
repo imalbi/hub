@@ -238,6 +238,8 @@
   "mail_count_capped": "Almeno {count} non lette",
   "mail_starred": "Contrassegnato",
   "mail_pick": "Scegli un messaggio da leggere",
+  "mail_widget_latest": "ultima: {sender}, {time}",
+  "mail_widget_latest_notime": "ultima: {sender}",
   "settings_default": "Predefinito: {value}",
   "settings_unset": "Non impostato",
   "settings_yes": "Sì",

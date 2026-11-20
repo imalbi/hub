@@ -375,10 +375,11 @@ test('W1 & W3: every size fits at 4K and 1080p and Grande caps 8 notes to 6 with
         );
         expect(hasScroller, `${size} has no inner scroller`).toBe(false);
       }
-      const fits = await widget.evaluate(
-        (el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth,
-      );
-      expect(fits, `${size} at ${viewport.width}x${viewport.height}`).toBe(true);
+      await expect
+        .poll(() => widget.evaluate((el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth), {
+          message: `${size} at ${viewport.width}x${viewport.height}`,
+        })
+        .toBe(true);
     }
   }
 
@@ -402,8 +403,9 @@ test('W1 & W3: every size fits at 4K and 1080p and Grande caps 8 notes to 6 with
   await page.goto('/desk');
   await expect(widget.getByRole('listitem')).toHaveCount(3);
   await expect(widget.getByText('altri 5 post-it', { exact: true })).toBeVisible();
-  const singleColFits = await widget.evaluate(
-    (el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth,
-  );
-  expect(singleColFits, 'single-column 8 later notes at 1920x1080').toBe(true);
+  await expect
+    .poll(() => widget.evaluate((el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth), {
+      message: 'single-column 8 later notes at 1920x1080',
+    })
+    .toBe(true);
 });

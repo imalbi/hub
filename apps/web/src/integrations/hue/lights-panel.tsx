@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { Readout } from '../../components/readout.tsx';
 import { Ticks } from '../../components/ticks.tsx';
 import { LightbulbIcon } from '@phosphor-icons/react';
@@ -81,28 +82,57 @@ export function LightsPanel({ size }: { size: WidgetSize }) {
       title={copy.title}
       // The state in the header and the figure once below (board I1): "Accesa, 100%" above "100%" said it twice.
       action={light?.power === true ? copy.on : describeLight(light, connectionLost)}
-      className={`h-full ${connectionLost || light?.availability === 'unavailable' ? 'opacity-60' : ''}`}
+      className={`${size === 'small' ? 'relative h-full' : 'h-full'} ${connectionLost || light?.availability === 'unavailable' ? 'opacity-60' : ''}`}
     >
-      {light?.power === true && light.brightnessPercent !== null ? (
-        <p className="mt-auto flex items-end justify-between gap-md">
-          <Readout>{light.brightnessPercent}%</Readout>
-          <Ticks value={Math.round(light.brightnessPercent / 20)} total={5} />
-        </p>
-      ) : (
-        <span className="mt-auto" />
+      {size === 'small' && (
+        <Link
+          to="/desk/devices"
+          aria-label={copy.openDevices}
+          className="absolute inset-0 rounded-lg focus-visible:outline focus-visible:outline-accent"
+        />
       )}
-      <div className={size === 'small' ? 'flex flex-col gap-sm' : 'flex items-center gap-md'}>
-        {light?.capabilities.power && (
-          <div className="min-w-0 flex-1">
-            <PowerToggle {...controls} />
+      {size === 'small' ? (
+        <div className="mt-auto flex min-w-0 items-end justify-between gap-sm">
+          {light?.power === true && light.brightnessPercent !== null ? (
+            <div className="flex min-w-0 flex-1 flex-col gap-2xs">
+              <p>
+                <Readout>{light.brightnessPercent}%</Readout>
+              </p>
+              <Ticks value={Math.round(light.brightnessPercent / 20)} total={5} />
+            </div>
+          ) : (
+            <span />
+          )}
+          {light?.capabilities.power && (
+            <div className="relative z-10 shrink-0">
+              <PowerToggle {...controls} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {light?.power === true && light.brightnessPercent !== null ? (
+            <p className="mt-auto flex items-end justify-between gap-md">
+              <Readout>{light.brightnessPercent}%</Readout>
+              <Ticks value={Math.round(light.brightnessPercent / 20)} total={5} />
+            </p>
+          ) : (
+            <span className="mt-auto" />
+          )}
+          <div className="flex items-center gap-md">
+            {light?.capabilities.power && (
+              <div className="min-w-0 flex-1">
+                <PowerToggle {...controls} />
+              </div>
+            )}
+            {light?.capabilities.brightness && (
+              <div className="min-w-0 flex-1">
+                <BrightnessSlider {...controls} />
+              </div>
+            )}
           </div>
-        )}
-        {size !== 'small' && light?.capabilities.brightness && (
-          <div className="min-w-0 flex-1">
-            <BrightnessSlider {...controls} />
-          </div>
-        )}
-      </div>
+        </>
+      )}
       {failed ? (
         <p role="alert" className="text-caption text-danger">
           {copy.unknown}

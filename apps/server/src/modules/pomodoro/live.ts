@@ -122,7 +122,7 @@ export function createPomodoro(
 
   function state() {
     settle();
-    return { ...timerState(timer, Date.now()), settings, lastCompletedAt };
+    return { ...timerState(timer, Date.now()), tag: tag ?? null, settings, lastCompletedAt };
   }
 
   function today() {
@@ -147,8 +147,14 @@ export function createPomodoro(
 
   function act(action: Exclude<TimerAction, 'complete'>, nextTag?: string) {
     settle();
-    apply(action);
+    const previous = tag;
     if (action === 'start') tag = nextTag;
+    try {
+      apply(action);
+    } catch (error) {
+      tag = previous;
+      throw error;
+    }
   }
 
   /** Applies from the next phase: the running one keeps the duration it started with. */
