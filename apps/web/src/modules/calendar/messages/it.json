@@ -65,5 +65,16 @@
   "calendar_repeat_sunday": "Domenica",
   "calendar_occurrence_only": "Solo questo giorno",
   "calendar_occurrence_series": "Tutta la serie",
-  "calendar_occurrence_choose": "Cosa vuoi modificare o eliminare?"
+  "calendar_occurrence_choose": "Cosa vuoi modificare o eliminare?",
+  "calendar_widget_next": "Prossimo",
+  "calendar_more_entries": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "altro {count} impegno",
+        "plural=*": "altri {count} impegni"
+      }
+    }
+  ]
 }

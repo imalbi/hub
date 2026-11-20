@@ -8,12 +8,15 @@ import {
   entriesByDay,
   filterEntries,
   monthDays,
+  nextCalendarEntry,
   shiftMonth,
   shiftSpan,
   shortSpan,
   SHOW_ALL,
+  upcomingEntries,
   weekDays,
   weekTitle,
+  widgetDayLabel,
   type CalendarEvent,
 } from './days.ts';
 
@@ -156,4 +159,61 @@ void test('Mostra hides a kind in the week and the agenda; own events stay', () 
     filterEntries(all, { work: false, study: false, shift: false, note: false }).map(({ kind }) => kind),
     ['event'],
   );
+});
+
+void test('upcomingEntries excludes shifts and keeps 14 days of events and module items in order', () => {
+  const entries = upcomingEntries(
+    [
+      event('ieri', '2026-11-18', '10:00'),
+      shift('turno', '2026-11-19', '06:00', '14:00'),
+      event('riunione', '2026-11-19', '15:00'),
+      event('oltre', '2026-12-03', '09:00'),
+    ],
+    [
+      item('colloquio', '2026-11-20', 'work', '10:00'),
+      item('nota', '2026-11-19', 'note'),
+      item('studio', '2026-12-02', 'study'),
+    ],
+    '2026-11-19',
+  );
+  assert.deepEqual(
+    entries.map(({ id }) => id),
+    ['nota', 'event-riunione', 'colloquio', 'studio'],
+  );
+});
+
+void test('nextCalendarEntry picks the next timed entry ahead and falls back to the first dated entry', () => {
+  const entries = upcomingEntries(
+    [event('mattina', '2026-11-19', '09:00'), event('pomeriggio', '2026-11-21', '15:00')],
+    [item('nota', '2026-11-19', 'note')],
+    '2026-11-19',
+  );
+  assert.deepEqual(nextCalendarEntry(entries, '2026-11-19', '12:00'), {
+    kind: 'timed',
+    entry: entries[2],
+  });
+  const untimedOnly = upcomingEntries([], [item('nota', '2026-11-20', 'note')], '2026-11-19');
+  assert.deepEqual(nextCalendarEntry(untimedOnly, '2026-11-19', '12:00'), {
+    kind: 'dated',
+    entry: untimedOnly[0],
+  });
+  const passedAndTomorrow = upcomingEntries(
+    [event('passato', '2026-11-19', '09:00')],
+    [item('domani', '2026-11-20', 'note')],
+    '2026-11-19',
+  );
+  assert.deepEqual(nextCalendarEntry(passedAndTomorrow, '2026-11-19', '12:00'), {
+    kind: 'dated',
+    entry: passedAndTomorrow[1],
+  });
+  const passedOnly = upcomingEntries([event('passato', '2026-11-19', '09:00')], [], '2026-11-19');
+  assert.equal(nextCalendarEntry(passedOnly, '2026-11-19', '12:00'), null);
+  assert.equal(nextCalendarEntry([], '2026-11-19', '12:00'), null);
+});
+
+void test('widgetDayLabel formats Oggi, Domani, and short day names', () => {
+  const words = { today: 'Oggi', tomorrow: 'Domani' };
+  assert.equal(widgetDayLabel('2026-11-19', '2026-11-19', words), 'Oggi');
+  assert.equal(widgetDayLabel('2026-11-20', '2026-11-19', words), 'Domani');
+  assert.equal(widgetDayLabel('2026-11-21', '2026-11-19', words), 'sab 21');
 });

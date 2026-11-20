@@ -3,7 +3,7 @@ import type { ModuleUI } from './module-ui.ts';
 import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
 import { CalendarDotsIcon } from '@phosphor-icons/react';
-import { CalendarZone } from '../modules/calendar/zone.tsx';
+import { CalendarWidgetSlot, CalendarZone } from '../modules/calendar/zone.tsx';
 import { useCalendarTodayLines } from '../modules/calendar/today.tsx';
 import { mailMessages } from '../modules/mail/records.ts';
 import { useMailTodayLines } from '../modules/mail/today-line.ts';
@@ -68,6 +68,9 @@ export const moduleUIs: ModuleUI[] = [
     copy: {},
     todayItems: useCalendarTodayLines,
     zone: { id: 'calendar', label: m.calendar_title, icon: CalendarDotsIcon, page: CalendarZone, fill: true },
+    widgets: [
+      { id: 'calendar', label: m.calendar_title, sizes: ['small', 'medium', 'large'], component: CalendarWidgetSlot },
+    ],
   },
   ...[...Object.values(local), ...Object.values(examples)].map((module) => module.default),
 ];

@@ -131,3 +131,37 @@ const agendaDate = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'nu
 /** "dom 15 nov" for Oggi and Domani, "17 nov" for the rest (the name already says the weekday). */
 export const agendaDateText = (day: string, today: string) =>
   day === today || day === addDays(today, 1) ? agendaDate.format(dayDate(day)) : dayShortMonth.format(dayDate(day));
+
+export const WIDGET_DAYS = 14;
+
+/** "Oggi", "Domani", or "gio 19" for Calendario's Panoramica widgets. */
+export const widgetDayLabel = (day: string, today: string, words: { today: string; tomorrow: string }) =>
+  day === today ? words.today : day === addDays(today, 1) ? words.tomorrow : shortDay(day);
+
+/** Upcoming calendar entries across the widget window in date/time order, excluding shifts (plan 55 decision 2). */
+export function upcomingEntries(
+  events: readonly CalendarEvent[],
+  items: readonly CalendarItem[],
+  today: string,
+  days = WIDGET_DAYS,
+): DayEntry[] {
+  const byDay = new Map(
+    [...entriesByDay(events, items)].map(([day, list]) => [day, filterEntries(list, { ...SHOW_ALL, shift: false })]),
+  );
+  return agendaDays(byDay, today, days).flatMap(({ entries }) => entries);
+}
+
+export type NextCalendarEntry = { kind: 'timed' | 'dated'; entry: DayEntry };
+
+/** Next timed entry from now on, falling back to the first upcoming dated entry when none has a time ahead. */
+export function nextCalendarEntry(
+  entries: readonly DayEntry[],
+  today: string,
+  nowTime: string,
+): NextCalendarEntry | null {
+  const ahead = entries.filter((entry) => entry.day > today || entry.time === undefined || entry.time >= nowTime);
+  const timed = ahead.find((entry) => entry.time !== undefined);
+  if (timed) return { kind: 'timed', entry: timed };
+  const dated = ahead[0];
+  return dated ? { kind: 'dated', entry: dated } : null;
+}

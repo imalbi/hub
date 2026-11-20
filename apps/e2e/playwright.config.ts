@@ -90,6 +90,7 @@ export default defineConfig({
               'themes.spec.ts',
               'widgets.spec.ts',
               'study-widget.spec.ts',
+              'calendar-widget.spec.ts',
               'notes.spec.ts',
               'notes.visual.spec.ts',
               'calendar.spec.ts',
