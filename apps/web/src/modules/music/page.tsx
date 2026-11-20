@@ -39,6 +39,7 @@ function SavedSongs({
       id: row.id,
       title: row.title,
       artists: row.artist ? [{ name: row.artist }] : [],
+      cover: `/music/cover/${encodeURIComponent(row.id)}`,
     } satisfies SongItem,
   }));
   return (
@@ -50,7 +51,7 @@ function SavedSongs({
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <AnimatedRows>
           {songs.map(({ key, song }) => (
-            <SongRow key={key} song={song} onPlay={onPlay} onArtist={onArtist} />
+            <SongRow key={key} song={song} onPlay={onPlay} onArtist={onArtist} lazy />
           ))}
         </AnimatedRows>
       </ul>

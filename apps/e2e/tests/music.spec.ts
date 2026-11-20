@@ -104,7 +104,7 @@ test('artist content keeps its position while loading', async ({ page }) => {
   const pending = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/trpc/music.artist*', async (route) => {
+  await page.route('**/trpc/*music.artist*', async (route) => {
     await pending;
     await route.continue();
   });
@@ -744,4 +744,125 @@ test('Ferma stops the radio and empties the queue', async ({ page, pc }) => {
   await expect(upcoming.getByRole('button', { name: 'Ferma' })).toHaveCount(0);
   const queue = (await (await pc.get('/trpc/music.queue')).json()).result.data;
   expect(queue.current).toBeNull();
+});
+
+test('Preferiti and Cronologia load covers lazily via /music/cover/:id and fall back on 404', async ({ page }) => {
+  await page.route('**/music/cover/missing0001', (route) => route.fulfill({ status: 404, body: '' }));
+  await answerQueries(page, {
+    'music.favorites': [
+      { id: '00000000000', title: 'Preferito con copertina', artist: 'Artista', addedAt: 1000 },
+      { id: 'missing0001', title: 'Preferito senza copertina', artist: 'Artista', addedAt: 900 },
+    ],
+    'music.history': [
+      { id: '00000000000', title: 'Ascoltato con copertina', artist: 'Artista', cover: null, playedAt: 2000 },
+    ],
+  });
+  await page.goto('/desk/media');
+
+  await page.getByRole('button', { name: 'Preferiti', exact: true }).click();
+  const favoritesRegion = page.getByRole('region', { name: 'Preferiti' });
+  const favImage = favoritesRegion.getByRole('listitem').first().locator('img');
+  await expect(favImage).toHaveAttribute('loading', 'lazy');
+  await expect(favImage).toHaveAttribute('src', '/music/cover/00000000000');
+  await expect(favImage).toHaveAttribute('data-image-loaded', 'true');
+  expect(
+    await favImage.evaluate((image) => (image instanceof HTMLImageElement ? image.naturalWidth : 0)),
+  ).toBeGreaterThan(0);
+  await expect(favoritesRegion.getByRole('listitem').nth(1).locator('img')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Cronologia', exact: true }).click();
+  const historyRegion = page.getByRole('region', { name: 'Cronologia' });
+  const histImage = historyRegion.getByRole('listitem').first().locator('img');
+  await expect(histImage).toHaveAttribute('loading', 'lazy');
+  await expect(histImage).toHaveAttribute('src', '/music/cover/00000000000');
+  await expect(histImage).toHaveAttribute('data-image-loaded', 'true');
+  expect(
+    await histImage.evaluate((image) => (image instanceof HTMLImageElement ? image.naturalWidth : 0)),
+  ).toBeGreaterThan(0);
+});
+
+test('Ascolta shows Per te with its three rows and a radio tile starts the radio', async ({ page, pc }) => {
+  const cover = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  await answerQueries(page, {
+    'music.suggestions': {
+      again: [
+        { id: 'again000001', title: 'Riascolto 1', artist: 'Artista', cover },
+        { id: 'again000002', title: 'Riascolto 2', artist: 'Secondo artista', cover: null },
+      ],
+      radios: [
+        {
+          artist: 'Artista',
+          seed: { id: '00000000000', title: 'Brano 1', artist: 'Artista', cover },
+        },
+        {
+          artist: 'Secondo artista',
+          seed: { id: '00000000004', title: 'Brano 5', artist: 'Secondo artista', cover: null },
+        },
+      ],
+      similar: {
+        of: 'Artista',
+        artists: [
+          { id: 'UCabcdefghijklmnopqrstuv', name: 'Artista simile 1', cover },
+          { id: 'UC0000000000000000000002', name: 'Artista simile 2', cover: null },
+        ],
+      },
+    },
+  });
+  try {
+    await page.goto('/desk/media');
+    const forYou = page.getByRole('region', { name: 'Per te' });
+    await expect(forYou).toBeVisible();
+    const again = forYou.getByRole('region', { name: 'Riascolta' });
+    const radios = forYou.getByRole('region', { name: 'Radio da' });
+    const similar = forYou.getByRole('region', { name: 'Simili a Artista' });
+    await expect(again.getByRole('listitem')).toHaveCount(2);
+    await expect(radios.getByRole('listitem')).toHaveCount(2);
+    await expect(similar.getByRole('listitem')).toHaveCount(2);
+    await expect(radios.getByText('Radio da Artista', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+
+    const started = played(page);
+    await radios.getByRole('button', { name: 'Avvia radio da Artista' }).click();
+    await started;
+
+    const queue = (await (await pc.get('/trpc/music.queue')).json()).result.data;
+    expect(queue.current?.id).toBe('00000000000');
+    expect(queue.upcoming.length).toBeGreaterThan(0);
+    const upcoming = page.getByRole('region', { name: 'Prossimi' });
+    await expect(upcoming.getByRole('button', { name: 'Salta' })).toBeVisible();
+    expect(await upcoming.getByRole('listitem').count()).toBeGreaterThan(0);
+
+    await similar.getByRole('button', { name: 'Artista simile 1' }).click();
+    await expect(page.getByRole('heading', { name: 'Artista', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Torna indietro' }).click();
+    await expect(forYou).toBeVisible();
+  } finally {
+    await pc.post('/trpc/music.stop', { data: {}, headers: { 'content-type': 'application/json' } });
+  }
+});
+
+test('Ascolta hides Per te on empty history and omits empty suggestion rows', async ({ page }) => {
+  const loaded = page.waitForResponse((response) => response.url().includes('music.suggestions') && response.ok());
+  await page.goto('/desk/media');
+  await loaded;
+  await expect(page.getByRole('heading', { name: 'Prossimi' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Per te' })).toHaveCount(0);
+
+  await answerQueries(page, {
+    'music.suggestions': {
+      again: [],
+      radios: [
+        {
+          artist: 'Artista',
+          seed: { id: '00000000000', title: 'Brano 1', artist: 'Artista', cover: null },
+        },
+      ],
+      similar: null,
+    },
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Per te' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Radio da' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Riascolta' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /^Simili a / })).toHaveCount(0);
 });

@@ -18,8 +18,34 @@ export type Song = {
   cover?: string;
 };
 
+export type RelatedArtist = {
+  id: string;
+  name: string;
+  cover?: string;
+};
+
+const channelId = /^UC[A-Za-z0-9_-]{22}$/;
+
 type ArtistSource = Awaited<ReturnType<Innertube['music']['getArtist']>>;
 type PlaylistSource = Awaited<ReturnType<Innertube['music']['getPlaylist']>>;
+
+export function mapRelated(artist: { sections: ArtistSource['sections'][number][] }): RelatedArtist[] {
+  const seen = new Set<string>();
+  const related: RelatedArtist[] = [];
+  for (const section of artist.sections) {
+    if (!section.is(YTNodes.MusicCarouselShelf)) continue;
+    for (const item of section.contents) {
+      if (!item.is(YTNodes.MusicTwoRowItem) || item.item_type !== 'artist') continue;
+      const id = item.id;
+      const name = item.title.toString().trim();
+      if (!id || !channelId.test(id) || !name || seen.has(id)) continue;
+      seen.add(id);
+      const cover = item.thumbnail[0]?.url;
+      related.push({ id, name, ...(cover ? { cover } : {}) });
+    }
+  }
+  return related;
+}
 
 export function mapPlaylist(playlist: { header?: PlaylistSource['header']; items: PlaylistSource['items'][number][] }) {
   const header = playlist.header;
@@ -103,6 +129,30 @@ export function createYouTube() {
     async artist(id: string) {
       const yt = await client();
       return mapArtist(await yt.music.getArtist(id));
+    },
+    async searchArtists(query: string) {
+      const yt = await client();
+      const result = await yt.music.search(query, { type: 'artist' });
+      const shelf =
+        result.artists ??
+        result.contents
+          ?.filterType(YTNodes.MusicShelf)
+          .find((section) =>
+            section.contents.some((item) => item.is(YTNodes.MusicResponsiveListItem) && item.item_type === 'artist'),
+          );
+      return (shelf?.contents ?? []).flatMap((item) =>
+        item.is(YTNodes.MusicResponsiveListItem) &&
+        item.item_type === 'artist' &&
+        item.id &&
+        channelId.test(item.id) &&
+        item.name
+          ? [{ id: item.id, name: item.name }]
+          : [],
+      );
+    },
+    async relatedArtists(id: string) {
+      const yt = await client();
+      return mapRelated(await yt.music.getArtist(id));
     },
     async search(query: string) {
       const yt = await client();

@@ -36,6 +36,9 @@ void test('the API is not shadowed by the fallback', async () => {
   const unknown = await app.inject({ method: 'GET', url: '/trpc/nope' });
   assert.equal(unknown.statusCode, 404);
   assert.doesNotMatch(unknown.body, /Hub app/);
+  const missingCover = await app.inject({ method: 'GET', url: '/music/nope' });
+  assert.equal(missingCover.statusCode, 404);
+  assert.doesNotMatch(missingCover.body, /Hub app/);
 });
 
 void test('without a web root nothing but the API answers', async () => {

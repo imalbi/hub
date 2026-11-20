@@ -1,13 +1,15 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { asc, count, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull } from 'drizzle-orm';
 import { favorites, history, playlists, playlistSongs, queueState, settings } from './schema.ts';
 import { createLiveHub } from '../../core/live.ts';
 import { emptyQueue, queueReducer } from './queue.ts';
 import { defineModule, TRPCError, z } from '../../core/module.ts';
 import { protectedProcedure, router } from '../../core/trpc.ts';
+import type { CoverImage } from './cover-route.ts';
 import { createMpvIpc } from './mpv-ipc.ts';
-import { createYouTube, type Song } from './youtube.ts';
+import { computeSuggestions, matchArtist, normalizeArtistName } from './suggestions.ts';
+import { createYouTube, type RelatedArtist, type Song } from './youtube.ts';
 
 type YouTube = ReturnType<typeof createYouTube>;
 
@@ -29,7 +31,9 @@ const storedQueue = z.object({
 });
 type Ipc = Pick<ReturnType<typeof createMpvIpc>, 'request' | 'close' | 'events'>;
 
-export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}) {
+export function createMusicModule(
+  options: { youtube?: YouTube; ipc?: Ipc; onCover?: (read: (id: string) => Promise<CoverImage | null>) => void } = {},
+) {
   return defineModule({
     name: 'music',
     migrations: fileURLToPath(new URL('./drizzle', import.meta.url)),
@@ -39,49 +43,80 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
         options.ipc ??
         createMpvIpc(join(process.env.XDG_RUNTIME_DIR ?? `/run/user/${process.getuid?.() ?? 0}`, 'hub-music.sock'));
       const songs = new Map<string, Song>();
-      const covers = new Map<string, string | null>();
-      async function cover(source?: string) {
+      const covers = new Map<string, CoverImage | null>();
+      async function coverImage(source?: string): Promise<CoverImage | null> {
         if (!source) return null;
         if (covers.has(source)) return covers.get(source) ?? null;
-        let result: string | null = null;
+        let url: URL;
         try {
-          const url = new URL(source);
-          if (url.protocol !== 'https:' || !/(^|\.)(ytimg\.com|googleusercontent\.com)$/.test(url.hostname))
-            return null;
-          const response = await fetch(url, { signal: AbortSignal.timeout(3000), redirect: 'error' });
-          if (!response.ok || Number(response.headers.get('content-length')) > 2 * 1024 * 1024 || !response.body)
-            return null;
-          const reader = response.body.getReader();
-          const chunks: Uint8Array[] = [];
-          let size = 0;
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            size += value.byteLength;
-            if (size > 2 * 1024 * 1024) {
-              await reader.cancel();
-              return null;
-            }
-            chunks.push(value);
-          }
-          const bytes = Buffer.concat(chunks);
-          const format = bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
-            ? 'png'
-            : bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
-              ? 'jpeg'
-              : bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP'
-                ? 'webp'
-                : null;
-          // Search thumbnails are already small (60x60), so the checked bytes pass through unchanged.
-          if (format && bytes.length <= 256 * 1024) result = `data:image/${format};base64,${bytes.toString('base64')}`;
+          url = new URL(source);
         } catch {
-          /* An unavailable cover does not prevent playback. */
+          return null;
         }
-        // A cover is about 10 KB as a data URL; keep the cache bounded on a server that runs for weeks.
-        if (covers.size >= 500) covers.delete(covers.keys().next().value!);
+        if (url.protocol !== 'https:' || !/(^|\.)(ytimg\.com|googleusercontent\.com)$/.test(url.hostname)) return null;
+        let result: CoverImage | null = null;
+        try {
+          const response = await fetch(url, { signal: AbortSignal.timeout(3000), redirect: 'error' });
+          if (response.ok && !(Number(response.headers.get('content-length')) > 2 * 1024 * 1024) && response.body) {
+            const reader = response.body.getReader();
+            const chunks: Uint8Array[] = [];
+            let size = 0;
+            let tooLarge = false;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              size += value.byteLength;
+              if (size > 2 * 1024 * 1024) {
+                await reader.cancel();
+                tooLarge = true;
+                break;
+              }
+              chunks.push(value);
+            }
+            if (!tooLarge) {
+              const bytes = Buffer.concat(chunks);
+              const mime = bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
+                ? 'image/png'
+                : bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+                  ? 'image/jpeg'
+                  : bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP'
+                    ? 'image/webp'
+                    : null;
+              // Search thumbnails are already small (60x60), so the checked bytes pass through unchanged.
+              if (mime && bytes.length <= 256 * 1024) result = { mime, bytes };
+            }
+          }
+        } catch {
+          /* Transient network/timeout failure: do not cache null so later requests can recover. */
+          return null;
+        }
+        // A cover is about 10 KB; keep the cache bounded on a server that runs for weeks.
+        if (covers.size >= 500) {
+          const oldest = covers.keys().next().value;
+          if (oldest !== undefined) covers.delete(oldest);
+        }
         covers.set(source, result);
         return result;
       }
+      async function cover(source?: string) {
+        const image = await coverImage(source);
+        return image ? `data:${image.mime};base64,${image.bytes.toString('base64')}` : null;
+      }
+      async function readCoverById(id: string): Promise<CoverImage | null> {
+        const stored = db
+          .select({ cover: history.cover })
+          .from(history)
+          .where(and(eq(history.id, id), isNotNull(history.cover)))
+          .orderBy(desc(history.playedAt))
+          .limit(1)
+          .get()?.cover;
+        if (stored) {
+          const fromHistory = await coverImage(stored.replace(/=w\d+-h\d+/, '=w226-h226'));
+          if (fromHistory) return fromHistory;
+        }
+        return coverImage(`https://i.ytimg.com/vi/${id}/mqdefault.jpg`);
+      }
+      options.onCover?.(readCoverById);
       async function artworkOf(id: string) {
         try {
           return await youtube.cover(id);
@@ -92,6 +127,46 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
       }
       async function publicSong(song: Song) {
         return { ...song, cover: await cover(song.cover) };
+      }
+      function tileCover(id: string, source: string | null | undefined) {
+        // The tile is large: ask Google's artwork at 544 px instead of the 60 px search size; the video thumbnail
+        // is the last resort, as for playlists.
+        return cover(source?.replace(/=w\d+-h\d+/, '=w544-h544') ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`);
+      }
+      const SIMILAR_TTL_MS = 6 * 60 * 60 * 1000;
+      const SIMILAR_CACHE_MAX = 50;
+      const similarCache = new Map<string, { at: number; artists: RelatedArtist[] }>();
+      async function similarFor(artistName: string) {
+        const key = normalizeArtistName(artistName);
+        if (!key) return null;
+        const now = Date.now();
+        const cached = similarCache.get(key);
+        let related: RelatedArtist[];
+        if (cached && now - cached.at < SIMILAR_TTL_MS) {
+          related = cached.artists;
+        } else {
+          try {
+            const found = matchArtist(await youtube.searchArtists(artistName), artistName);
+            related = found ? (await youtube.relatedArtists(found.id)).slice(0, 6) : [];
+            if (!similarCache.has(key) && similarCache.size >= SIMILAR_CACHE_MAX) {
+              const oldest = similarCache.keys().next().value;
+              if (oldest !== undefined) similarCache.delete(oldest);
+            }
+            similarCache.set(key, { at: now, artists: related });
+          } catch {
+            // Transient YouTube failures do not poison the cache and still return the local suggestions.
+            return null;
+          }
+        }
+        if (related.length === 0) return null;
+        const artists = await Promise.all(
+          related.map(async (artist) => ({
+            id: artist.id,
+            name: artist.name,
+            cover: await cover(artist.cover),
+          })),
+        );
+        return { of: artistName, artists };
       }
       let queue = emptyQueue;
       function setQueue(next: typeof queue) {
@@ -538,14 +613,34 @@ export function createMusicModule(options: { youtube?: YouTube; ipc?: Ipc } = {}
                   id,
                   title,
                   artist,
-                  // The tile is large: ask Google's artwork at 544 px instead of the 60 px search size; the video
-                  // thumbnail is the last resort, as for playlists.
-                  cover: await cover(
-                    source?.replace(/=w\d+-h\d+/, '=w544-h544') ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-                  ),
+                  cover: await tileCover(id, source),
                 };
               }),
             );
+          }),
+          suggestions: protectedProcedure.query(async () => {
+            const allFavorites = db.select().from(favorites).all();
+            const allHistory = db.select().from(history).all();
+            const computed = computeSuggestions(allFavorites, allHistory, Date.now());
+            const [again, radios, similar] = await Promise.all([
+              Promise.all(
+                computed.again.map(async (song) => ({
+                  ...song,
+                  cover: await tileCover(song.id, song.cover),
+                })),
+              ),
+              Promise.all(
+                computed.radios.map(async ({ artist, seed }) => ({
+                  artist,
+                  seed: {
+                    ...seed,
+                    cover: await tileCover(seed.id, seed.cover),
+                  },
+                })),
+              ),
+              computed.topArtist ? similarFor(computed.topArtist) : Promise.resolve(null),
+            ]);
+            return { again, radios, similar };
           }),
           toggleFavorite: protectedProcedure
             .meta({ label: 'Preferito', description: 'Toggle a favorite track' })

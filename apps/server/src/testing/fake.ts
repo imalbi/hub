@@ -208,6 +208,15 @@ function build() {
             albums: [{ title: 'Disco esempio', cover: 'https://i.ytimg.com/album' }],
           };
         },
+        async searchArtists() {
+          return [{ id: 'UCabcdefghijklmnopqrstuv', name: 'Artista' }];
+        },
+        async relatedArtists() {
+          return [
+            { id: 'UC0000000000000000000001', name: 'Artista simile 1', cover: 'https://i.ytimg.com/similar-1' },
+            { id: 'UC0000000000000000000002', name: 'Artista simile 2', cover: 'https://i.ytimg.com/similar-2' },
+          ];
+        },
         // No network in e2e: a recent song with no stored cover falls back to its video thumbnail.
         async cover(): Promise<string | undefined> {
           return undefined;

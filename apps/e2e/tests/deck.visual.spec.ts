@@ -1,8 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 const baseline = (name: string) => (examples ? name.replace('.png', '-example.png') : name);
+
+async function waitForDeckCover(page: Page) {
+  const player = page.getByRole('region', { name: 'In riproduzione' });
+  await expect(player.locator('[data-fade-image] img')).toHaveAttribute('data-image-loaded', 'true');
+  await expect.poll(() => player.locator('[data-fade-image]').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+}
 
 // One baseline per screen at 375x812, default (ink) theme. The paired deck must look the same as before pairing existed.
 test.describe('the deck', () => {
@@ -13,6 +19,7 @@ test.describe('the deck', () => {
     await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Notizie: Apri sul PC, 22 voci nuove' })).toBeVisible();
+    await waitForDeckCover(page);
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
@@ -36,6 +43,7 @@ test.describe('the deck', () => {
       );
     });
     expect(fits).toBe(true);
+    await waitForDeckCover(page);
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
@@ -55,6 +63,7 @@ test.describe('the deck', () => {
         'page',
       );
       await expect(page.getByRole('region', { name: deckPage.name })).toBeInViewport({ ratio: 1 });
+      await waitForDeckCover(page);
       await page.evaluate(async () => {
         await document.fonts.ready;
         localStorage.removeItem('hub.deck.page');

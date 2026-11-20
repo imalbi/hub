@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { emptyConfig } from '../../core/config.ts';
 import { buildServer } from '../../server.ts';
 import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 import { calls, wiring } from './test-wiring.ts';
@@ -360,4 +361,299 @@ void test('stop halts mpv, empties the queue and adds nothing to history', async
   t.mock.timers.tick(30000);
   await new Promise<void>((resolve) => setImmediate(resolve));
   assert.deepEqual((await app.inject('/trpc/music.history')).json().result.data, []);
+});
+
+void test('suggestions returns empty when history is empty and enforces auth', async (t) => {
+  let searchCalls = 0;
+  let relatedCalls = 0;
+  const youtube = {
+    ...wiring.youtube,
+    async searchArtists() {
+      searchCalls++;
+      return wiring.youtube.searchArtists();
+    },
+    async relatedArtists() {
+      relatedCalls++;
+      return wiring.youtube.relatedArtists();
+    },
+  };
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: { ...wiring, youtube },
+    deps: { run: createFakeDesktop() },
+    isLoopback: () => false,
+  });
+  t.after(() => app.close());
+  assert.equal((await app.inject('/trpc/music.suggestions')).statusCode, 401);
+
+  const loopbackApp = buildServer({
+    dbPath: ':memory:',
+    music: { ...wiring, youtube },
+    deps: { run: createFakeDesktop() },
+  });
+  t.after(() => loopbackApp.close());
+  await loopbackApp.inject({
+    method: 'POST',
+    url: '/trpc/music.toggleFavorite',
+    payload: { id: 'FAV00000001', title: 'Fav', artist: 'Artist' },
+  });
+  const response = await loopbackApp.inject('/trpc/music.suggestions');
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json().result.data, { again: [], radios: [], similar: null });
+  assert.equal(searchCalls, 0);
+  assert.equal(relatedCalls, 0);
+});
+
+void test('M5: suggestions returns similar null on failing getArtist, search failure, or non-matching artist', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 10, 20, 12, 0, 0) });
+  let mode: 'throw-related' | 'throw-search' | 'no-match' = 'throw-related';
+  let searchCalls = 0;
+  let relatedCalls = 0;
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return 30;
+      return wiring.ipc.request(command);
+    },
+  };
+  const youtube = {
+    ...wiring.youtube,
+    async searchArtists() {
+      searchCalls++;
+      if (mode === 'throw-search') throw new Error('search failed');
+      if (mode === 'no-match') return [{ id: 'UC0000000000000000000099', name: 'Different Artist' }];
+      return [{ id: 'UCabcdefghijklmnopqrstuv', name: 'Artist' }];
+    },
+    async relatedArtists() {
+      relatedCalls++;
+      throw new Error('getArtist failed');
+    },
+  };
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: { youtube, ipc },
+    deps: { run: createFakeDesktop(), fetch: async () => new Response(Buffer.from('524946460400000057454250', 'hex')) },
+  });
+  t.after(() => app.close());
+
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'song' })));
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  await app.inject({
+    method: 'POST',
+    url: '/trpc/music.toggleFavorite',
+    payload: { id: 'FAV00000001', title: 'Fav Song', artist: 'Other Artist' },
+  });
+
+  const modes: Array<'throw-related' | 'throw-search' | 'no-match'> = ['throw-related', 'throw-search', 'no-match'];
+  for (const nextMode of modes) {
+    mode = nextMode;
+    searchCalls = 0;
+    relatedCalls = 0;
+    const response = await app.inject('/trpc/music.suggestions');
+    assert.equal(response.statusCode, 200, nextMode);
+    const data = response.json().result.data;
+    assert.equal(data.similar, null, nextMode);
+    assert.equal(data.again.length, 1, nextMode);
+    assert.equal(data.radios.length, 1, nextMode);
+    assert.equal(data.radios[0].artist, 'Artist', nextMode);
+    assert.equal(searchCalls, 1, nextMode);
+    if (nextMode !== 'throw-related') assert.equal(relatedCalls, 0, nextMode);
+  }
+});
+
+void test('M6: suggestions caches related artists for 6 hours, caps at 6 and proxies covers', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 10, 20, 12, 0, 0) });
+  let searchCalls = 0;
+  let relatedCalls = 0;
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return 30;
+      return wiring.ipc.request(command);
+    },
+  };
+  const youtube = {
+    ...wiring.youtube,
+    async searchArtists() {
+      searchCalls++;
+      return [{ id: 'UCabcdefghijklmnopqrstuv', name: 'Artist' }];
+    },
+    async relatedArtists() {
+      relatedCalls++;
+      return Array.from({ length: 8 }, (_, index) => ({
+        id: `UC000000000000000000000${index}`,
+        name: `Similar ${index}`,
+        cover: `https://lh3.googleusercontent.com/similar-${index}`,
+      }));
+    },
+  };
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: { youtube, ipc },
+    deps: {
+      run: createFakeDesktop(),
+      fetch: async () => new Response(Buffer.from('524946460400000057454250', 'hex')),
+    },
+  });
+  t.after(() => app.close());
+
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'song' })));
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  await app.inject({
+    method: 'POST',
+    url: '/trpc/music.toggleFavorite',
+    payload: { id: 'FAV00000001', title: 'Fav Song', artist: 'Other Artist' },
+  });
+
+  const first = await app.inject('/trpc/music.suggestions');
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.body.includes('googleusercontent.com'), false);
+  assert.equal(first.body.includes('ytimg.com'), false);
+  const firstData = first.json().result.data;
+  assert.equal(firstData.similar.of, 'Artist');
+  assert.equal(firstData.similar.artists.length, 6);
+  const artists: { cover: string | null }[] = firstData.similar.artists;
+  for (const artist of artists) {
+    assert.match(artist.cover ?? '', /^data:image\/webp;base64,/);
+  }
+  assert.equal(searchCalls, 1);
+  assert.equal(relatedCalls, 1);
+
+  t.mock.timers.tick(5 * 60 * 60 * 1000);
+  const second = await app.inject('/trpc/music.suggestions');
+  assert.equal(second.statusCode, 200);
+  assert.deepEqual(second.json().result.data.similar, firstData.similar);
+  assert.equal(searchCalls, 1);
+  assert.equal(relatedCalls, 1);
+
+  t.mock.timers.tick(2 * 60 * 60 * 1000);
+  const third = await app.inject('/trpc/music.suggestions');
+  assert.equal(third.statusCode, 200);
+  assert.equal(searchCalls, 2);
+  assert.equal(relatedCalls, 2);
+});
+
+void test('GET /music/cover/:id enforces auth/origin, caches binary covers, falls back and returns 404 when off', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.UTC(2026, 10, 20, 12, 0, 0) });
+  const webpBytes = Buffer.from('524946460400000057454250', 'hex');
+  const fetched: string[] = [];
+  const ipc = {
+    ...wiring.ipc,
+    async request(command: (string | number | boolean)[]) {
+      if (command[1] === 'playback-time') return 30;
+      return wiring.ipc.request(command);
+    },
+  };
+  const youtube = {
+    ...wiring.youtube,
+    async search(query: string) {
+      if (query === 'stored404') {
+        return {
+          songs: [
+            {
+              id: 'stored40401',
+              title: 'Stored 404',
+              artists: [{ name: 'Artist' }],
+              cover: 'https://lh3.googleusercontent.com/missing-stored=w60-h60-l90-rj',
+            },
+          ],
+          dropped: 0,
+        };
+      }
+      return {
+        songs: [
+          {
+            id: 'abcdefghijk',
+            title: 'Song',
+            artists: [{ name: 'Artist' }],
+            cover: 'https://lh3.googleusercontent.com/art=w60-h60-l90-rj',
+          },
+        ],
+        dropped: 0,
+      };
+    },
+  };
+  const app = buildServer({
+    dbPath: ':memory:',
+    music: { youtube, ipc },
+    deps: {
+      run: createFakeDesktop(),
+      fetch: async (input) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+        fetched.push(url);
+        if (url.includes('missing-stored') || url.includes('missing0001')) return new Response(null, { status: 404 });
+        return new Response(webpBytes);
+      },
+    },
+  });
+  t.after(() => app.close());
+
+  assert.equal((await app.inject('/music/cover/bad')).statusCode, 400);
+  assert.equal((await app.inject({ url: '/music/cover/abcdefghijk', remoteAddress: '192.0.2.2' })).statusCode, 401);
+  assert.equal(
+    (await app.inject({ url: '/music/cover/abcdefghijk', headers: { origin: 'https://evil.example' } })).statusCode,
+    403,
+  );
+  assert.equal(
+    (await app.inject({ url: '/music/cover/abcdefghijk', headers: { 'sec-fetch-site': 'cross-site' } })).statusCode,
+    403,
+  );
+
+  // Record two tracks in history: one with working stored cover, one with 404 stored cover.
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'song' })));
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  await app.inject('/trpc/music.search?input=' + encodeURIComponent(JSON.stringify({ query: 'stored404' })));
+  await app.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'stored40401' } });
+  t.mock.timers.tick(30000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  fetched.length = 0;
+
+  const hit = await app.inject('/music/cover/abcdefghijk');
+  assert.equal(hit.statusCode, 200);
+  assert.match(hit.headers['content-type'] ?? '', /^image\/webp/);
+  assert.equal(hit.headers['x-content-type-options'], 'nosniff');
+  assert.equal(hit.headers['cross-origin-resource-policy'], 'same-origin');
+  assert.equal(hit.headers['cache-control'], 'private, max-age=86400');
+  assert.deepEqual(hit.rawPayload, webpBytes);
+  assert.deepEqual(fetched, ['https://lh3.googleusercontent.com/art=w226-h226-l90-rj']);
+
+  // Cached on second request.
+  const cached = await app.inject('/music/cover/abcdefghijk');
+  assert.equal(cached.statusCode, 200);
+  assert.deepEqual(cached.rawPayload, webpBytes);
+  assert.equal(fetched.length, 1);
+
+  // Track with no history falls back to mqdefault.jpg.
+  const noHistory = await app.inject('/music/cover/nohist00001');
+  assert.equal(noHistory.statusCode, 200);
+  assert.equal(fetched.at(-1), 'https://i.ytimg.com/vi/nohist00001/mqdefault.jpg');
+
+  // Track whose stored history cover returns 404 falls back to mqdefault.jpg.
+  const storedFallback = await app.inject('/music/cover/stored40401');
+  assert.equal(storedFallback.statusCode, 200);
+  assert.deepEqual(fetched.slice(-2), [
+    'https://lh3.googleusercontent.com/missing-stored=w226-h226-l90-rj',
+    'https://i.ytimg.com/vi/stored40401/mqdefault.jpg',
+  ]);
+
+  // Unavailable upstream cover returns 404 without long-lived cache.
+  const unavailable = await app.inject('/music/cover/missing0001');
+  assert.equal(unavailable.statusCode, 404);
+  assert.equal(unavailable.headers['cache-control'], 'no-store');
+
+  // Disabled music module returns 404.
+  const offApp = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, modulesOff: ['music'] },
+  });
+  t.after(() => offApp.close());
+  assert.equal((await offApp.inject('/music/cover/abcdefghijk')).statusCode, 404);
 });

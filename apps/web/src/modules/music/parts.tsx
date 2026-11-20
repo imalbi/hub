@@ -19,12 +19,28 @@ export const pillPrimary = `${pill} bg-primary text-primary-foreground disabled:
 export const iconButton =
   'flex size-touch shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring';
 
-/** A cover, or a note on a muted tile when the source has none (a song saved before covers were kept). */
-export function CoverTile({ src, className = 'size-2xl rounded-md' }: { src?: string | null; className?: string }) {
+/** A cover, or a note on a muted tile when the source has none (or fails lazily). */
+export function CoverTile({
+  src,
+  className = 'size-2xl rounded-md',
+  lazy = false,
+}: {
+  src?: string | null;
+  className?: string;
+  lazy?: boolean;
+}) {
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+  const showImage = Boolean(src) && (!lazy || failedSrc !== src);
   return (
     <span aria-hidden className={`flex shrink-0 items-center justify-center overflow-hidden bg-muted ${className}`}>
-      {src ? (
-        <FadeImage src={src} alt="" className="size-full object-cover" />
+      {showImage && src ? (
+        <FadeImage
+          src={src}
+          alt=""
+          className="size-full object-cover"
+          loading={lazy ? 'lazy' : undefined}
+          onError={lazy ? () => setFailedSrc(src) : undefined}
+        />
       ) : (
         <MusicNoteIcon className="size-icon" />
       )}

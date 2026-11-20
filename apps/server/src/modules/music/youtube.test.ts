@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { YTNodes } from 'youtubei.js';
-import { mapArtist, mapPlaylist, mapSongs } from './youtube.ts';
+import { Parser, YTNodes } from 'youtubei.js';
+import { mapArtist, mapPlaylist, mapRelated, mapSongs } from './youtube.ts';
 
 void test('maps playlist header and songs from youtubei nodes', () => {
   const header = new YTNodes.MusicResponsiveHeader({
@@ -92,4 +93,32 @@ void test('maps song fields and counts missing identifiers', () => {
     },
   ]);
   assert.equal(dropped, 1);
+});
+
+void test('M4: mapRelated reads related artists from a localized fixture ignoring shelf title and non-artist rows', () => {
+  const raw: Parameters<typeof Parser.parseResponse>[0] = JSON.parse(
+    readFileSync(new URL('./fixtures/artist.json', import.meta.url), 'utf8'),
+  );
+  const page = Parser.parseResponse(raw);
+  const sections = [
+    ...(page.contents_memo?.getType(YTNodes.MusicShelf) ?? []),
+    ...(page.contents_memo?.getType(YTNodes.MusicCarouselShelf) ?? []),
+  ];
+  assert.deepEqual(mapRelated({ sections }), [
+    {
+      id: 'UC0000000000000000000001',
+      name: 'Simile Uno',
+      cover: 'https://lh3.googleusercontent.com/example-artist-1-544',
+    },
+    {
+      id: 'UC0000000000000000000002',
+      name: 'Simile Due',
+      cover: 'https://lh3.googleusercontent.com/example-artist-2-544',
+    },
+    {
+      id: 'UC0000000000000000000003',
+      name: 'Simile Tre',
+      cover: 'https://lh3.googleusercontent.com/example-artist-3-544',
+    },
+  ]);
 });

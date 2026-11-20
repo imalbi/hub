@@ -22,6 +22,18 @@ export const wiring = {
         albums: [{ title: 'Album', cover: 'https://i.ytimg.com/album' }],
       };
     },
+    async searchArtists() {
+      return [{ id: 'UCabcdefghijklmnopqrstuv', name: 'Artist' }];
+    },
+    async relatedArtists() {
+      return [
+        {
+          id: 'UC0000000000000000000001',
+          name: 'Similar Artist',
+          cover: 'https://lh3.googleusercontent.com/similar-artist',
+        },
+      ];
+    },
     async cover(id: string): Promise<string | undefined> {
       calls.covers.push(id);
       return 'https://i.ytimg.com/art';

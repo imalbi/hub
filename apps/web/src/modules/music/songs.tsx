@@ -13,16 +13,18 @@ export function SongRow({
   onPlay,
   onArtist,
   position,
+  lazy,
 }: {
   song: SongItem;
   onPlay: (id: string) => void;
   onArtist: (id: string) => void;
   position?: number;
+  lazy?: boolean;
 }) {
   return (
     <AnimatedRow className="relative flex items-center gap-md border-t border-dashed border-border py-xs">
       {position !== undefined && <span className="w-md text-label text-muted-foreground tabular-nums">{position}</span>}
-      <CoverTile src={song.cover} />
+      <CoverTile src={song.cover} lazy={lazy} />
       <div className="min-w-0 flex-1">
         <button
           type="button"

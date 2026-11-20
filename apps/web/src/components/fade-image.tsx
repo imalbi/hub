@@ -6,19 +6,23 @@ export function FadeImage({
   alt,
   className,
   opacity = 1,
+  loading,
+  onError,
 }: {
   src: string;
   alt: string;
   className: string;
   opacity?: number;
+  loading?: 'eager' | 'lazy';
+  onError?: () => void;
 }) {
   const image = useRef<HTMLImageElement>(null);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const loaded = loadedSrc === src;
   const reduced = useReducedMotion();
   useEffect(() => {
-    if (image.current?.complete) setLoadedSrc(src);
-  }, [src]);
+    if (image.current?.complete && (loading !== 'lazy' || image.current.naturalWidth > 0)) setLoadedSrc(src);
+  }, [loading, src]);
   return (
     <motion.span
       key={src}
@@ -32,10 +36,14 @@ export function FadeImage({
         ref={image}
         src={src}
         alt={alt}
+        loading={loading}
         className="size-full object-cover"
         data-image-loaded={loaded || undefined}
         onLoad={() => setLoadedSrc(src)}
-        onError={() => setLoadedSrc(src)}
+        onError={() => {
+          setLoadedSrc(src);
+          onError?.();
+        }}
       />
     </motion.span>
   );

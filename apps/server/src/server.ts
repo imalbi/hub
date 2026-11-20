@@ -27,6 +27,7 @@ import { openDb } from './db/index.ts';
 import { run as realRun, streamSpawn, type Run, type StreamSpawn } from './core/exec.ts';
 import { createJobRunner } from './core/jobs.ts';
 import { publicModules } from './modules.ts';
+import { registerMusicCoverRoute, type CoverImage } from './modules/music/cover-route.ts';
 import { createMusicModule } from './modules/music/server.ts';
 import { discoverModules } from './core/discovery.ts';
 import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
@@ -160,9 +161,17 @@ export function buildServer({
       off: config.modulesOff,
       onDb: backup.add,
     });
-    const modules = music
-      ? publicModules.map((module) => (module.name === 'music' ? createMusicModule(music) : module))
-      : publicModules;
+    let readMusicCover: ((id: string) => Promise<CoverImage | null>) | undefined;
+    const modules = publicModules.map((module) =>
+      module.name === 'music'
+        ? createMusicModule({
+            ...music,
+            onCover: (read) => {
+              readMusicCover = read;
+            },
+          })
+        : module,
+    );
     const appRouter = createAppRouter(
       modules,
       moduleDeps,
@@ -178,6 +187,14 @@ export function buildServer({
         confirmations,
         backup,
       },
+    );
+    scope.register(async (musicScope) =>
+      registerMusicCoverRoute(musicScope, {
+        db,
+        isLoopback,
+        origins: allowlist,
+        readCover: (id) => readMusicCover?.(id) ?? Promise.resolve(null),
+      }),
     );
     if (autoBackup) onClose(startDailyCheck(backup).stop);
     // Last hook of the scope, so it runs first: a copy in progress finishes before any module or core handle closes.
@@ -238,7 +255,11 @@ export function buildServer({
     // /deck and /desk are client-side routes with no file behind them; a missing file with an extension stays a 404.
     app.setNotFoundHandler((req, reply) => {
       const path = req.url.split('?')[0] ?? '';
-      return req.method === 'GET' && !path.startsWith('/trpc') && !path.startsWith('/files') && !extname(path)
+      return req.method === 'GET' &&
+        !path.startsWith('/trpc') &&
+        !path.startsWith('/files') &&
+        !path.startsWith('/music/') &&
+        !extname(path)
         ? reply.sendFile('index.html')
         : reply.code(404).send({ error: 'Not found' });
     });
