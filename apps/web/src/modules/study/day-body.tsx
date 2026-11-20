@@ -181,7 +181,7 @@ export function DayBody({
 }
 
 /** One compact link: "Apri p. 34", named after the file for assistive tech. */
-function StepFile({ file }: { file: StepFileData }) {
+export function StepFile({ file }: { file: StepFileData }) {
   const label = file.page ? m.study_open_page({ page: file.page }) : m.study_open_material();
   return (
     <MaterialAction

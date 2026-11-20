@@ -11,29 +11,34 @@ import { m } from '../../paraglide/messages.js';
 import { DayBody } from './day-body.tsx';
 import { causeLabel, ErrorForm } from './error-form.tsx';
 import { TodayNote } from './today-note.tsx';
-import { studySubjects, useStudyTRPC, type StudyDayBody, type StudyHeader, type StudyIndex } from './use-study.ts';
+import {
+  studySubjects,
+  useCurrentStudyDay,
+  useStudySteps,
+  useStudyTRPC,
+  type StudyDayBody,
+  type StudyHeader,
+  type StudyIndex,
+  type StudyProgressRow,
+} from './use-study.ts';
 import { setCurrentRecord } from '../../lib/current-record.ts';
 
 export function StudyToday() {
   const trpc = useStudyTRPC();
   const queries = useQueryClient();
-  const headers = useQuery(trpc.active.queryOptions());
-  const index = useQuery(trpc.index.queryOptions());
-  const progress = useQuery(trpc.progress.queryOptions());
+  const study = useCurrentStudyDay();
   const open = useMutation(
     trpc.openToday.mutationOptions({ onSuccess: () => queries.invalidateQueries({ queryKey: trpc.index.queryKey() }) }),
   );
   const opened = useRef(false);
   useEffect(() => {
-    if (!opened.current && index.data) {
+    if (!opened.current && study.index) {
       opened.current = true;
       open.mutate();
     }
-  }, [index.data, open]);
-  const key = index.data?.current;
-  const body = useQuery(trpc.daysById.queryOptions({ keys: key ? [key] : [] }, { enabled: !!key }));
-  if (headers.isError || index.isError || progress.isError || body.isError) return <p>{m.study_error()}</p>;
-  if (headers.isPending || index.isPending || progress.isPending || (key && body.isPending))
+  }, [study.index, open]);
+  if (study.isError) return <p>{m.study_error()}</p>;
+  if (study.isPending)
     return (
       <section data-study-day className="col-span-6 flex min-w-0 flex-col gap-lg pr-lg">
         <h2 className="text-hero">
@@ -55,46 +60,26 @@ export function StudyToday() {
         </output>
       </section>
     );
-  if (!index.data || !key)
+  if (!study.index || !study.index.current)
     return (
       <>
         <EmptyState className="col-span-6" title={m.study_no_plan()} />
         <PomodoroPanel className="col-span-6" />
       </>
     );
-  const day = body.data?.[0];
-  const header = headers.data.find((item) => item.id === day?.planId);
-  if (!day || !header) return <EmptyState title={m.study_empty()} />;
+  if (!study.day || !study.header) return <EmptyState title={m.study_empty()} />;
   return (
     <TodayDay
-      key={day.key}
-      day={day}
-      header={header}
-      index={index.data}
-      records={progress.data}
-      headers={headers.data}
+      key={study.day.key}
+      day={study.day}
+      header={study.header}
+      index={study.index}
+      records={study.records ?? []}
+      headers={study.headers ?? []}
     />
   );
 }
 
-type RecordRow = { planId: string; kind: string; id: string; value: string };
-type StepDraft = { values: Record<string, boolean>; failed: Record<string, boolean>; pending: Set<string> };
-const stepDrafts = new Map<string, StepDraft>();
-function getStepDraft(key: string) {
-  const value = stepDrafts.get(key) ?? { values: {}, failed: {}, pending: new Set<string>() };
-  stepDrafts.set(key, value);
-  return value;
-}
-function startStep(draft: StepDraft, id: string, done: boolean) {
-  draft.pending.add(id);
-  draft.values[id] = done;
-}
-function failStep(draft: StepDraft, id: string, done: boolean) {
-  draft.failed[id] = done;
-}
-function clearStep(draft: StepDraft, id: string, done: boolean) {
-  if (draft.values[id] === done) delete draft.values[id];
-}
 function TodayDay({
   day,
   header,
@@ -105,18 +90,16 @@ function TodayDay({
   day: StudyDayBody;
   header: StudyHeader;
   index: StudyIndex;
-  records: RecordRow[];
+  records: StudyProgressRow[];
   headers: StudyHeader[];
 }) {
   const trpc = useStudyTRPC();
   const queries = useQueryClient();
-  const draft = getStepDraft(day.key);
-  const [, refresh] = useState(0);
+  const { allSteps, checked, failed, saveStep } = useStudySteps(day, records);
   // shortcut: polls while Oggi is open because a focus ends on the server; a study push would replace it.
   const minutes = useQuery(trpc.focusMinutes.queryOptions(undefined, { refetchInterval: 3000 }));
   const errors = useQuery(trpc.errors.queryOptions());
   const [errorDraft, setErrorDraft] = useState<{ reference: string } | null>(null);
-  const step = useMutation(trpc.setStep.mutationOptions());
   const autonomy = useMutation(
     trpc.setAutonomy.mutationOptions({
       onSuccess: () => queries.invalidateQueries({ queryKey: trpc.progress.queryKey() }),
@@ -125,16 +108,6 @@ function TodayDay({
   const subject = useMutation(trpc.setSubject.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
   const open = useMutation(trpc.openToday.mutationOptions({ onSuccess: () => queries.invalidateQueries() }));
   const own = records.filter((item) => item.planId === day.planId);
-  const checked = new Set(
-    day.blocks
-      .flatMap((block) => block.steps)
-      .filter(
-        (item) =>
-          draft.values[item.id] ?? own.some((row) => row.kind === 'step' && row.id === item.id && row.value === 'done'),
-      )
-      .map((item) => item.id),
-  );
-  const allSteps = day.blocks.flatMap((block) => block.steps);
   const subjects = studySubjects(headers);
   const current = index.days.find((item) => item.key === day.key);
   const currentNumber = current?.g;
@@ -148,27 +121,6 @@ function TodayDay({
   }, [day.key, day.title, currentNumber]);
   const subjectInfo = subjects.find((item) => item.key === current?.subject);
   const titles = new Map([...index.days, ...index.hiddenDays].map((item) => [item.key, item]));
-  function saveStep(id: string, done: boolean) {
-    if (draft.pending.has(id)) return;
-    startStep(draft, id, done);
-    refresh((value) => value + 1);
-    void step
-      .mutateAsync({ key: day.key, id, done })
-      .then(
-        async () => {
-          delete draft.failed[id];
-          await queries.invalidateQueries();
-          clearStep(draft, id, done);
-        },
-        () => {
-          failStep(draft, id, done);
-        },
-      )
-      .finally(() => {
-        draft.pending.delete(id);
-        refresh((value) => value + 1);
-      });
-  }
   return (
     <div className="col-span-12 grid grid-cols-12 items-start gap-lg">
       <TabBarActions>
@@ -255,7 +207,7 @@ function TodayDay({
               {m.study_errors()}: {entry.reference} · {causeLabel(entry.cause)}
             </p>
           ))}
-        {Object.entries(draft.failed).map(([id, done]) => (
+        {Object.entries(failed).map(([id, done]) => (
           <div role="alert" key={id}>
             {m.study_save_failed()}{' '}
             <button type="button" className="underline" onClick={() => saveStep(id, done)}>

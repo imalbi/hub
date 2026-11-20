@@ -1,6 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createTRPCOptionsProxy, type ofFeatureFlags } from '@trpc/tanstack-react-query';
 import type { AnyRouter, inferRouterOutputs } from '@trpc/server';
+import { useState } from 'react';
 import type { studyModule } from '../../../../server/src/modules/study/server.ts';
 import { createModuleClient } from '../../lib/module-client.ts';
 
@@ -8,6 +9,7 @@ type StudyRouter = Extract<ReturnType<typeof studyModule.create>['router'], AnyR
 export type StudyIndex = NonNullable<inferRouterOutputs<StudyRouter>['index']>;
 export type StudyHeader = inferRouterOutputs<StudyRouter>['active'][number];
 export type StudyDayBody = inferRouterOutputs<StudyRouter>['daysById'][number];
+export type StudyProgressRow = inferRouterOutputs<StudyRouter>['progress'][number];
 export type StudyError = inferRouterOutputs<StudyRouter>['errors'][number];
 export type StudyReview = inferRouterOutputs<StudyRouter>['review'];
 export type StudyDay = StudyIndex['days'][number] | StudyIndex['hiddenDays'][number];
@@ -51,4 +53,103 @@ export function useStudyTRPC() {
     queryClient,
     keyPrefix: 'study',
   });
+}
+
+type StepDraft = { values: Record<string, boolean>; failed: Record<string, boolean>; pending: Set<string> };
+const stepDrafts = new Map<string, StepDraft>();
+function getStepDraft(key: string) {
+  const value = stepDrafts.get(key) ?? { values: {}, failed: {}, pending: new Set<string>() };
+  stepDrafts.set(key, value);
+  return value;
+}
+function startStep(draft: StepDraft, id: string, done: boolean) {
+  draft.pending.add(id);
+  draft.values = { ...draft.values, [id]: done };
+}
+function failStep(draft: StepDraft, id: string, done: boolean) {
+  draft.failed = { ...draft.failed, [id]: done };
+}
+function clearFailedStep(draft: StepDraft, id: string) {
+  const next = { ...draft.failed };
+  delete next[id];
+  draft.failed = next;
+}
+function clearStep(draft: StepDraft, id: string, done: boolean) {
+  if (draft.values[id] === done) {
+    const next = { ...draft.values };
+    delete next[id];
+    draft.values = next;
+  }
+}
+
+export function useCurrentStudyDay() {
+  const trpc = useStudyTRPC();
+  const headers = useQuery(trpc.active.queryOptions());
+  const index = useQuery(trpc.index.queryOptions());
+  const progress = useQuery(trpc.progress.queryOptions());
+  const key = index.data?.current;
+  const body = useQuery(trpc.daysById.queryOptions({ keys: key ? [key] : [] }, { enabled: !!key }));
+  const isError = headers.isError || index.isError || progress.isError || body.isError;
+  const isPending = headers.isPending || index.isPending || progress.isPending || Boolean(key && body.isPending);
+  const day = body.data?.[0];
+  const header = headers.data?.find((item) => item.id === day?.planId);
+  const current = index.data?.days.find((item) => item.key === day?.key);
+  const subjects = headers.data ? studySubjects(headers.data) : [];
+  const subjectInfo = subjects.find((item) => item.key === current?.subject);
+  return {
+    isPending,
+    isError,
+    headers: headers.data,
+    index: index.data,
+    records: progress.data,
+    day,
+    header,
+    current,
+    subjects,
+    subjectInfo,
+  };
+}
+
+export function useStudySteps(day: StudyDayBody, records: StudyProgressRow[]) {
+  const trpc = useStudyTRPC();
+  const queries = useQueryClient();
+  const draft = getStepDraft(day.key);
+  const [, refresh] = useState(0);
+  const step = useMutation(trpc.setStep.mutationOptions());
+  const own = records.filter((item) => item.planId === day.planId);
+  const allSteps = day.blocks.flatMap((block) => block.steps);
+  const checked = new Set(
+    allSteps
+      .filter(
+        (item) =>
+          draft.values[item.id] ?? own.some((row) => row.kind === 'step' && row.id === item.id && row.value === 'done'),
+      )
+      .map((item) => item.id),
+  );
+  return {
+    allSteps,
+    checked,
+    failed: draft.failed,
+    saveStep: (id: string, done: boolean) => {
+      if (draft.pending.has(id)) return;
+      startStep(draft, id, done);
+      refresh((value) => value + 1);
+      void step
+        .mutateAsync({ key: day.key, id, done })
+        .then(
+          async () => {
+            clearFailedStep(draft, id);
+            await queries.invalidateQueries();
+            clearStep(draft, id, done);
+          },
+          () => {
+            failStep(draft, id, done);
+          },
+        )
+        .finally(() => {
+          draft.pending.delete(id);
+          refresh((value) => value + 1);
+        });
+    },
+  };
 }

@@ -507,6 +507,20 @@
   "study_chip": "Studio",
   "study_today_line": "G{g} · {title}",
   "study_steps_done": "{done} di {total} passi",
+  "study_next_step": "Prossimo passo",
+  "study_open_pdf": "Apri il PDF",
+  "study_all_steps_done": "Tutti i passi completati",
+  "study_widget_state": "G{g} · {subject}",
+  "study_more_steps": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "altro {count} passo",
+        "plural=*": "altri {count} passi"
+      }
+    }
+  ],
   "study_steps_total": [
     {
       "declarations": ["input total", "local plural = total: plural"],

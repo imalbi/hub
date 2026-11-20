@@ -17,6 +17,7 @@ import { useStudyCalendarItems } from '../modules/study/calendar.ts';
 import { StudyPlan } from '../modules/study/plan.tsx';
 import { StudyPlans } from '../modules/study/plans.tsx';
 import { StudyReview } from '../modules/study/review.tsx';
+import { StudyWidget } from '../modules/study/widget.tsx';
 
 // The only web import point for private source; Vite resolves a disposable root during tests.
 const local = import.meta.glob<{ default: ModuleUI }>('@hub-private-modules/*/ui.tsx', { eager: true });
@@ -38,6 +39,7 @@ export const moduleUIs: ModuleUI[] = [
       { zone: 'study', id: 'libreria', label: m.study_library, component: StudyLibrary },
       { zone: 'study', id: 'piani', label: m.study_plans, component: StudyPlans },
     ],
+    widgets: [{ id: 'study', label: m.zone_study, sizes: ['small', 'medium', 'large'], component: StudyWidget }],
   },
   {
     name: 'sites',
