@@ -38,13 +38,16 @@ export const widgets: Array<{
   { id: 'theme', label: m.theme_title, sizes: ['large', 'full'], component: ThemeWidget },
 ];
 
-/** What Panoramica shows until the owner rearranges it. */
+/** What Panoramica shows until the owner rearranges it (board P1, public widgets only). */
 export const defaultLayout: WidgetItem[] = [
   { widget: 'today', size: 'wide', x: 0, y: 0 },
-  { widget: 'pomodoro', size: 'medium', x: 0, y: 1 },
-  { widget: 'media', size: 'medium', x: 6, y: 1 },
-  { widget: 'audio', size: 'medium', x: 0, y: 2 },
-  { widget: 'news', size: 'medium', x: 6, y: 2 },
+  { widget: 'study', size: 'medium', x: 0, y: 1 },
+  { widget: 'pomodoro', size: 'small', x: 6, y: 1 },
+  { widget: 'audio', size: 'small', x: 9, y: 1 },
+  { widget: 'media', size: 'medium', x: 0, y: 2 },
+  { widget: 'mail', size: 'small', x: 6, y: 2 },
+  { widget: 'calendar', size: 'large', x: 0, y: 3 },
+  { widget: 'devices', size: 'large', x: 6, y: 3 },
 ];
 
 // The module each widget belongs to, so a module that is off takes its widgets out of the offer and the board.

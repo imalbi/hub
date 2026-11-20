@@ -65,6 +65,36 @@ test('Oggi leads the default board; the Italian date is said once, in the day li
   await expect(today.getByText('Località esempio')).toBeVisible();
 });
 
+test('C3: the default board of a fresh layout is P1 public widgets in P1 order', async ({ page, pc }) => {
+  await pc.post('/trpc/layout.reset', {
+    data: { zone: 'overview' },
+    headers: { 'content-type': 'application/json' },
+  });
+  await page.reload();
+  const items = page.locator('[data-widget]');
+  await expect(items).toHaveCount(8);
+  expect(await items.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-widget')))).toEqual([
+    'today',
+    'study',
+    'pomodoro',
+    'audio',
+    'media',
+    'mail',
+    'calendar',
+    'devices',
+  ]);
+  expect(await items.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-size')))).toEqual([
+    'wide',
+    'medium',
+    'small',
+    'small',
+    'medium',
+    'small',
+    'large',
+    'large',
+  ]);
+});
+
 test('widgets on the same row have the same height, two small ones fill a medium width', async ({ page, pc }) => {
   await pc.post('/trpc/layout.save', {
     data: {
@@ -154,16 +184,16 @@ test('Sposta dopo moves a widget without dragging, for the keyboard', async ({ p
   await page.getByRole('button', { name: 'Modifica' }).click();
   await page.getByRole('button', { name: 'Sposta dopo Pomodoro' }).focus();
   await andSaved(page, () => page.keyboard.press('Enter'));
-  await expect.poll(async () => (await box(page, 'media')).x < (await box(page, 'pomodoro')).x).toBe(true);
+  await expect.poll(async () => (await box(page, 'audio')).x < (await box(page, 'pomodoro')).x).toBe(true);
   await page.reload();
-  await expect.poll(async () => (await box(page, 'media')).x < (await box(page, 'pomodoro')).x).toBe(true);
+  await expect.poll(async () => (await box(page, 'audio')).x < (await box(page, 'pomodoro')).x).toBe(true);
 });
 
 test('dragging a widget in edit mode rearranges the board and is saved', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.getByRole('button', { name: 'Modifica' }).click();
   const from = await box(page, 'pomodoro');
-  const to = await box(page, 'media');
+  const to = await box(page, 'audio');
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(to.x + (to.width * 3) / 4, to.y + to.height / 2, { steps: 20 });
@@ -187,17 +217,7 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
-  const missing = [
-    'Server',
-    'Posta',
-    'Comandi',
-    'Consumo',
-    'Dispositivi',
-    'Aspetto',
-    'Studio',
-    'Post-it',
-    'Calendario',
-  ];
+  const missing = ['Server', 'Notizie', 'Comandi', 'Consumo', 'Aspetto', 'Post-it'];
   if (process.env.HUB_EXAMPLE_MODULES === '1') missing.push('Esempio', 'Luci');
   await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText(missing);
   await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Aspetto' }).click());
@@ -205,8 +225,6 @@ test('Panoramica offers every widget, the ones that also have a page included', 
 });
 
 test('Posta shows unread count and latest sender', async ({ page }) => {
-  await page.getByRole('button', { name: 'Modifica' }).click();
-  await page.getByRole('button', { name: 'Aggiungi Posta' }).click();
   const widget = page.getByRole('region', { name: 'Posta' });
   await expect(widget.locator('[data-readout] [aria-hidden="true"]').getByText('3', { exact: true })).toBeVisible();
   await expect(widget.getByRole('paragraph').first()).toMatchAriaSnapshot('- paragraph: 3 non lette');
@@ -301,19 +319,27 @@ test('Dispositivi shows access in both sizes and revocation requires a hold', as
   await pairDevice(pc, 'Phone B');
   try {
     await page.reload();
-    await page.getByRole('button', { name: 'Modifica', exact: true }).click();
-    await page.getByRole('button', { name: 'Aggiungi Dispositivi' }).click();
     const widget = cell(page, 'devices');
+    await expect(widget).toHaveAttribute('data-size', 'large');
+    await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+    await andSaved(page, () =>
+      page
+        .getByRole('group', { name: 'Dimensione di Dispositivi' })
+        .locator('label', { has: page.getByRole('radio', { name: 'Piccolo' }) })
+        .click(),
+    );
     await expect(widget).toHaveAttribute('data-size', 'small');
     await page.getByRole('button', { name: 'Fine' }).click();
     await expect(widget.getByText('Phone A')).toHaveCount(0);
     await expect(widget.getByText('telefoni', { exact: true })).toBeVisible();
     await expect(widget.getByRole('link', { name: 'Collega', exact: true })).toHaveAttribute('href', '/desk/devices');
     await page.getByRole('button', { name: 'Modifica', exact: true }).click();
-    await page
-      .getByRole('group', { name: 'Dimensione di Dispositivi' })
-      .locator('label', { has: page.getByRole('radio', { name: 'Grande' }) })
-      .click();
+    await andSaved(page, () =>
+      page
+        .getByRole('group', { name: 'Dimensione di Dispositivi' })
+        .locator('label', { has: page.getByRole('radio', { name: 'Grande' }) })
+        .click(),
+    );
     await page.getByRole('button', { name: 'Fine' }).click();
     await expect(widget.getByText('Phone A', { exact: true })).toBeVisible();
     await expect(widget.getByText('Phone B', { exact: true })).toBeVisible();

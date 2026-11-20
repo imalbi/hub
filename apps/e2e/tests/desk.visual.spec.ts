@@ -36,6 +36,9 @@ test.beforeEach(async ({ page }) => {
       ),
     )
     .toBe(0);
+  await expect(page.getByRole('region', { name: 'Chi ha accesso' }).getByText('iPhone', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Posta' }).getByText('Recruiter Example')).toBeVisible();
+  await expect(page.getByRole('status', { name: 'Caricamento' })).toHaveCount(0);
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
