@@ -243,3 +243,167 @@ test('a day can be written in Italian in the card, and an unknown one is refused
   await day.press('Enter');
   await expect(card.getByRole('button', { name: 'ven 20' })).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('C1: Medio shows 3 nearest notes with day labels and Grande groups Oggi, Domani, and Più avanti', async ({
+  page,
+  pc,
+}) => {
+  await pc.post('/trpc/notes.add', {
+    data: { text: 'Chiedere conferma sede', forDay: '2026-11-14' },
+    headers: json,
+  });
+  await pc.post('/trpc/notes.add', {
+    data: { text: 'Stampare esercizi chimica', forDay: '2026-11-14' },
+    headers: json,
+  });
+  await pc.post('/trpc/notes.add', {
+    data: { text: 'Portare il libretto', forDay: '2026-11-15' },
+    headers: json,
+  });
+  await pc.post('/trpc/notes.add', {
+    data: { text: 'Ripassare domande Hub', forDay: '2026-11-19' },
+    headers: json,
+  });
+
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'notes', size: 'medium', x: 0, y: 0 }] },
+    headers: json,
+  });
+  await page.goto('/desk');
+
+  const widget = page.getByRole('region', { name: 'Post-it', exact: true });
+  await expect(widget.locator('kbd')).toHaveText('N');
+  const addButton = widget.getByRole('button', { name: 'Aggiungi', exact: true });
+  await expect(addButton).toBeVisible();
+  await addButton.click();
+  await expect(page.getByRole('dialog', { name: 'Nuovo post-it' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Nuovo post-it' })).toHaveCount(0);
+
+  const mediumCards = widget.getByRole('listitem');
+  await expect(mediumCards).toHaveCount(3);
+  await expect(mediumCards.nth(0)).toContainText('Oggi');
+  await expect(mediumCards.nth(1)).toContainText('Oggi');
+  await expect(mediumCards.nth(2)).toContainText('Domani');
+  await expect(mediumCards.nth(2)).toContainText('Portare il libretto');
+  await expect(widget.getByText('Chiedere conferma sede')).toBeVisible();
+  await expect(widget.getByText('Stampare esercizi chimica')).toBeVisible();
+  await expect(widget.getByText('Ripassare domande Hub')).toHaveCount(0);
+
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'notes', size: 'large', x: 0, y: 0 }] },
+    headers: json,
+  });
+  await page.reload();
+
+  const todayRegion = widget.getByRole('region', { name: 'Oggi', exact: true });
+  const tomorrowRegion = widget.getByRole('region', { name: 'Domani', exact: true });
+  const laterRegion = widget.getByRole('region', { name: 'Più avanti', exact: true });
+  await expect(todayRegion.getByRole('listitem')).toHaveCount(2);
+  await expect(todayRegion.getByText('Chiedere conferma sede')).toBeVisible();
+  await expect(todayRegion.getByText('Stampare esercizi chimica')).toBeVisible();
+  await expect(todayRegion.locator('li').getByText('Oggi', { exact: true })).toHaveCount(0);
+  await expect(tomorrowRegion.getByRole('listitem')).toHaveCount(1);
+  await expect(tomorrowRegion.getByText('Portare il libretto')).toBeVisible();
+  await expect(laterRegion.getByRole('listitem')).toHaveCount(1);
+  await expect(laterRegion.getByText('gio 19', { exact: true })).toBeVisible();
+  await expect(laterRegion.getByText('Ripassare domande Hub')).toBeVisible();
+
+  await tomorrowRegion.getByRole('button', { name: 'Stacca post-it: Portare il libretto' }).click();
+  await expect(tomorrowRegion.getByText('Portare il libretto')).toHaveCount(0);
+  await page.getByRole('button', { name: /^Annulla/ }).click();
+  await expect(tomorrowRegion.getByText('Portare il libretto')).toBeVisible();
+
+  const open: Array<{ id: string }> = (await (await pc.get('/trpc/notes.open')).json()).result.data;
+  for (const { id } of open) await pc.post('/trpc/notes.remove', { data: { id }, headers: json });
+
+  for (const size of ['large', 'medium'] as const) {
+    await pc.post('/trpc/layout.save', {
+      data: { zone: 'overview', items: [{ widget: 'notes', size, x: 0, y: 0 }] },
+      headers: json,
+    });
+    await page.reload();
+    await expect(widget.locator('[data-empty-variant="compact"]')).toBeVisible();
+    await expect(widget.getByRole('heading', { name: 'Nessun post-it. Premi N per scriverne uno.' })).toBeVisible();
+    const fits = await widget.evaluate((el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth);
+    expect(fits, `empty ${size}`).toBe(true);
+  }
+});
+
+test('W1 & W3: every size fits at 4K and 1080p and Grande caps 8 notes to 6 with altri 2 post-it', async ({
+  page,
+  pc,
+}) => {
+  const seed = [
+    { text: 'Chiedere la RAL a BEST Computing prima di candidarmi al ruolo backend', forDay: '2026-11-14' },
+    { text: 'Stampare errata corrige e verificare gli esempi del foglio due', forDay: '2026-11-14' },
+    { text: 'Controllare orario ricevimento per firmare il piano studi', forDay: '2026-11-14' },
+    { text: 'Portare il libretto universitario in segreteria didattica', forDay: '2026-11-15' },
+    { text: 'Preparare elenco domande tecniche per la prossima call', forDay: '2026-11-15' },
+    { text: 'Ripassare gli appunti di chimica organica sul progetto', forDay: '2026-11-19' },
+    { text: 'Prenotare laboratorio per misura di conduttività settimanale', forDay: '2026-11-20' },
+    { text: 'Inviare documentazione aggiornata per rinnovo contratto locale', forDay: '2026-11-21' },
+  ];
+  for (const entry of seed) await pc.post('/trpc/notes.add', { data: entry, headers: json });
+
+  const widget = page.getByRole('region', { name: 'Post-it', exact: true });
+  for (const size of ['medium', 'large', 'wide', 'full'] as const) {
+    await pc.post('/trpc/layout.save', {
+      data: { zone: 'overview', items: [{ widget: 'notes', size, x: 0, y: 0 }] },
+      headers: json,
+    });
+    for (const viewport of [
+      { width: 3840, height: 2160 },
+      { width: 1920, height: 1080 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto('/desk');
+      await expect(widget.getByRole('listitem').first()).toBeVisible();
+      if (size === 'medium') {
+        await expect(widget.getByRole('listitem')).toHaveCount(3);
+      }
+      if (size === 'large') {
+        await expect(widget.getByRole('listitem')).toHaveCount(6);
+        await expect(widget.getByText('altri 2 post-it', { exact: true })).toBeVisible();
+      }
+      if (size === 'medium' || size === 'large') {
+        const hasScroller = await widget.evaluate((el) =>
+          [...el.querySelectorAll('*')].some((node) => {
+            const overflow = getComputedStyle(node).overflowY;
+            return overflow === 'auto' || overflow === 'scroll';
+          }),
+        );
+        expect(hasScroller, `${size} has no inner scroller`).toBe(false);
+      }
+      const fits = await widget.evaluate(
+        (el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth,
+      );
+      expect(fits, `${size} at ${viewport.width}x${viewport.height}`).toBe(true);
+    }
+  }
+
+  const open: Array<{ id: string }> = (await (await pc.get('/trpc/notes.open')).json()).result.data;
+  for (const { id } of open) await pc.post('/trpc/notes.remove', { data: { id }, headers: json });
+
+  for (let index = 1; index <= 8; index++) {
+    await pc.post('/trpc/notes.add', {
+      data: {
+        text: `Nota molto lunga numero ${index} per verificare chiusura colonne senza sforare la cella grande`,
+        forDay: '2026-11-19',
+      },
+      headers: json,
+    });
+  }
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'notes', size: 'large', x: 0, y: 0 }] },
+    headers: json,
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/desk');
+  await expect(widget.getByRole('listitem')).toHaveCount(3);
+  await expect(widget.getByText('altri 5 post-it', { exact: true })).toBeVisible();
+  const singleColFits = await widget.evaluate(
+    (el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth,
+  );
+  expect(singleColFits, 'single-column 8 later notes at 1920x1080').toBe(true);
+});

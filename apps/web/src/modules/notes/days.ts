@@ -34,8 +34,54 @@ export function agentName(note: Note) {
 const dayName = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric' });
 const dayShort = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric' });
 
+export const MEDIUM_NOTES_MAX = 3;
+export const LARGE_NOTES_MAX = 6;
+export const LARGE_COLUMN_MAX = 3;
+
 /** A later day as the widget says it: "Domani", else the weekday and the date ("giovedì 19"). */
 export function laterDay(day: string, today: string, short = false) {
   if (day === addDays(today, 1) && !short) return 'domani';
   return (short ? dayShort : dayName).format(dayDate(day));
+}
+
+/** Day caption for the compact Medio and Grande note cards: today/overdue, tomorrow, or short weekday + date. */
+export function noteDayLabel(day: string, today: string, words: { today: string; tomorrow: string }): string {
+  if (day <= today) return words.today;
+  if (day === addDays(today, 1)) return words.tomorrow;
+  return laterDay(day, today, true);
+}
+
+/** Up to `max` notes in display order (today first, overdue, then soonest upcoming). */
+export function nearestNotes(notes: readonly Note[], today: string, max = MEDIUM_NOTES_MAX): Note[] {
+  const { due, upcoming } = splitNotes(notes, today);
+  return [...due, ...upcoming].slice(0, max);
+}
+
+/** Groups notes into Oggi, Domani, and Più avanti columns with chronological allocation under total/column caps. */
+export function groupBoardNotes(
+  notes: readonly Note[],
+  today: string,
+  maxTotal = LARGE_NOTES_MAX,
+  maxPerColumn = LARGE_COLUMN_MAX,
+) {
+  const { due, upcoming } = splitNotes(notes, today);
+  const tomorrowDay = addDays(today, 1);
+  const allToday = due;
+  const allTomorrow = upcoming.filter((note) => note.forDay === tomorrowDay);
+  const allLater = upcoming.filter((note) => note.forDay > tomorrowDay);
+
+  let budget = maxTotal;
+  const todayNotes = allToday.slice(0, Math.min(maxPerColumn, budget));
+  budget -= todayNotes.length;
+  const tomorrowNotes = allTomorrow.slice(0, Math.min(maxPerColumn, budget));
+  budget -= tomorrowNotes.length;
+  const laterNotes = allLater.slice(0, Math.min(maxPerColumn, budget));
+  const shown = todayNotes.length + tomorrowNotes.length + laterNotes.length;
+
+  return {
+    today: todayNotes,
+    tomorrow: tomorrowNotes,
+    later: laterNotes,
+    remaining: notes.length - shown,
+  };
 }

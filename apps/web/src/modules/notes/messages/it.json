@@ -55,5 +55,16 @@
   ],
   "notes_tomorrow_region": "Post-it per domani",
   "notes_today_heading": "Post-it di oggi",
-  "notes_add_tomorrow": "Aggiungi un post-it per domani"
+  "notes_add_tomorrow": "Aggiungi un post-it per domani",
+  "notes_later": "Più avanti",
+  "notes_more_items": [
+    {
+      "declarations": ["input count", "local plural = count: plural"],
+      "selectors": ["plural"],
+      "match": {
+        "plural=one": "altro {count} post-it",
+        "plural=*": "altri {count} post-it"
+      }
+    }
+  ]
 }
