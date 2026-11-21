@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod-csp.ts';
 
 export { useNavigate, useSearch } from '@tanstack/react-router';
 

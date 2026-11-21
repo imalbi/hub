@@ -1,10 +1,9 @@
 import { createTRPCClient, httpBatchLink, splitLink, wsLink } from '@trpc/client';
 import type { AnyRouter } from '@trpc/server';
 import type { ModuleDefinition } from '../../../server/src/core/module.ts';
-import { authLink } from './auth-link.ts';
 import { getToken } from './auth.ts';
 import { moduleLink } from './module-link.ts';
-import { wsClient } from './trpc.ts';
+import { authLink, wsClient } from './trpc.ts';
 
 type ModuleRouter<M extends ModuleDefinition> = Extract<ReturnType<M['create']>['router'], AnyRouter>;
 

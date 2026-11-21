@@ -123,12 +123,14 @@ void test('a module with a broken migration, a missing folder, a relative folder
   await writeModule(root, 'nofolder', `migrations: ${JSON.stringify(join(root, 'nowhere'))},`);
   await writeModule(root, 'relative', "migrations: 'drizzle',", createMemo);
   await writeModule(root, 'greedy', 'coreDb: true,');
+  await writeModule(root, 'jobs', '');
   const app = buildServer({ dbPath: ':memory:', moduleRoots: [root], deps: { run: createFakeDesktop() } });
   t.after(() => app.close());
   assert.equal((await add(app, 'still works')).statusCode, 200);
   assert.deepEqual(data(await get(app, 'memo.list')), ['still works']);
   for (const name of ['badsql', 'nofolder', 'relative', 'greedy'])
     assert.equal((await get(app, `${name}.tables`)).statusCode, 404, name);
+  assert.equal((await get(app, 'jobs.hasDb')).statusCode, 404);
   assert.equal((await get(app, 'audio.state')).statusCode, 200);
 });
 

@@ -51,3 +51,23 @@ void test('five failures lock the address out for the rest of the minute, even f
   mock.timers.tick(60_000);
   assert.equal(codes.redeem(ADDRESS, code), 'ok');
 });
+
+void test('ten wrong attempts across distinct addresses burn the active code', () => {
+  const codes = createPairingCodes();
+  const { code } = codes.create();
+  const wrong = code === '000000' ? '111111' : '000000';
+  for (let i = 1; i <= 10; i++) assert.equal(codes.redeem(`192.0.2.${i}`, wrong), 'wrong');
+  assert.equal(codes.redeem('192.0.2.99', code), 'wrong');
+});
+
+void test('IPv6 hosts share a /64 rate-limit bucket and IPv4-mapped IPv6 shares its IPv4 bucket', () => {
+  const codes = createPairingCodes();
+  const { code } = codes.create();
+  const wrong = code === '000000' ? '111111' : '000000';
+  for (let i = 1; i <= 5; i++) assert.equal(codes.redeem(`2001:db8:1:2::${i}`, wrong), 'wrong');
+  assert.equal(codes.redeem('2001:db8:1:2::6', code), 'limited');
+  assert.equal(codes.redeem('2001:db8:1:3::1', wrong), 'wrong');
+
+  for (let i = 0; i < 5; i++) assert.equal(codes.redeem('::ffff:192.0.2.50', wrong), 'wrong');
+  assert.equal(codes.redeem('192.0.2.50', code), 'limited');
+});

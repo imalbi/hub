@@ -16,12 +16,17 @@ const metadata = z.object({
   mime: z.string().regex(/^[\w.+-]+\/[\w.+-]+$/),
 });
 const lifetime = 60 * 60 * 1000;
+const defaultMaxEntries = 50;
+const defaultMaxTotalBytes = 100 * 1024 * 1024;
 
-export function createFiles() {
+export function createFiles({
+  maxEntries = defaultMaxEntries,
+  maxTotalBytes = defaultMaxTotalBytes,
+}: { maxEntries?: number; maxTotalBytes?: number } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'hub-files-'));
   const entries = new Map<
     string,
-    { name: string; mime: string; path: string; expires: number; timer: NodeJS.Timeout }
+    { name: string; mime: string; path: string; size: number; expires: number; timer: NodeJS.Timeout }
   >();
   async function remove(id: string) {
     const entry = entries.get(id);
@@ -29,6 +34,10 @@ export function createFiles() {
     entries.delete(id);
     clearTimeout(entry.timer);
     await rm(entry.path, { force: true });
+  }
+  async function pruneExpired(now: number) {
+    const expired = [...entries.entries()].filter(([, entry]) => entry.expires <= now).map(([id]) => id);
+    for (const id of expired) await remove(id);
   }
   async function get(fileId: string) {
     const entry = entries.get(fileId);
@@ -40,6 +49,13 @@ export function createFiles() {
   }
   async function put(data: Uint8Array, details: z.infer<typeof metadata>) {
     const { name, mime } = metadata.parse(details);
+    const now = Date.now();
+    await pruneExpired(now);
+    let totalBytes = 0;
+    for (const entry of entries.values()) totalBytes += entry.size;
+    if (entries.size >= maxEntries || totalBytes + data.byteLength > maxTotalBytes) {
+      throw new TRPCError({ code: 'PAYLOAD_TOO_LARGE', message: 'Temporary file storage quota exceeded' });
+    }
     const fileId = randomUUID();
     const path = join(root, fileId);
     await writeFile(path, data, { flag: 'wx', mode: 0o600 });
@@ -47,7 +63,7 @@ export function createFiles() {
       void remove(fileId).catch(() => {});
     }, lifetime);
     timer.unref();
-    entries.set(fileId, { name, mime, path, expires: Date.now() + lifetime, timer });
+    entries.set(fileId, { name, mime, path, size: data.byteLength, expires: now + lifetime, timer });
     return { fileId, name, mime };
   }
   async function read(fileId: string) {

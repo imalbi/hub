@@ -35,7 +35,19 @@ export type Context = {
   restart: () => boolean;
 };
 
-const t = initTRPC.context<Context>().meta<ActionMeta>().create({ isDev: false });
+const t = initTRPC
+  .context<Context>()
+  .meta<ActionMeta>()
+  .create({
+    isDev: false,
+    errorFormatter({ shape, error }) {
+      // Mask unexpected uncaught causes while keeping explicit domain TRPCError messages (no cause) intact.
+      if (error.code === 'INTERNAL_SERVER_ERROR' && error.cause !== undefined) {
+        return { ...shape, message: 'Internal server error' };
+      }
+      return shape;
+    },
+  });
 
 export const router = t.router;
 

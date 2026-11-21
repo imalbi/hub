@@ -1,7 +1,7 @@
 import { XIcon } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { z } from 'zod';
+import { z } from '../../lib/zod-csp.ts';
 import { HoldButton } from '../../components/hold-button.tsx';
 import { Input } from '../../components/ui/input.tsx';
 import { Select } from '../../components/ui/select.tsx';

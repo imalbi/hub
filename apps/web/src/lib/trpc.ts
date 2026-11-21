@@ -2,6 +2,7 @@ import { createWSClient } from '@trpc/client';
 import { createTRPCContext } from '@trpc/tanstack-react-query';
 import { useSyncExternalStore } from 'react';
 import type { AppRouter } from '@hub/server';
+import { createAuthLink } from './auth-link.ts';
 import { getToken, setToken } from './auth.ts';
 
 export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
@@ -23,6 +24,8 @@ export async function replaceToken(token: string | null) {
   await wsClient.close();
   setToken(token);
 }
+
+export const authLink = createAuthLink(getToken, () => replaceToken(null));
 
 // `connecting` with an error means the socket closed or failed and the client is retrying; without one it is the first attempt.
 const isConnectionLost = () => {

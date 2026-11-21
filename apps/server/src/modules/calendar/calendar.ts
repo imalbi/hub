@@ -28,6 +28,12 @@ type Fields = {
   person?: string | null | undefined;
 };
 
+export const MAX_RANGE_DAYS = 400;
+
+export function daysBetween(from: string, to: string) {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
 /** True when the event has no end, or ends after it starts (an end with no start is refused by the router). */
 export const endsAfterStart = (start: string | null | undefined, end: string | null | undefined) =>
   !end || (!!start && end > start);

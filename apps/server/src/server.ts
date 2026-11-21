@@ -6,6 +6,7 @@ import { registerFiles } from './core/file-routes.ts';
 import type { IncomingMessage } from 'node:http';
 import type { AnyRouter } from '@trpc/server';
 import { extname } from 'node:path';
+import fastifyHelmet from '@fastify/helmet';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import fastify from 'fastify';
@@ -30,10 +31,35 @@ import { publicModules } from './modules.ts';
 import { registerMusicCoverRoute, type CoverImage } from './modules/music/cover-route.ts';
 import { createMusicModule } from './modules/music/server.ts';
 import { discoverModules } from './core/discovery.ts';
-import { allowedOrigins, isAllowedOrigin } from './core/origin.ts';
+import { allowedOrigins, isAllowedHost, isAllowedOrigin } from './core/origin.ts';
 import { createModuleStates } from './core/module-states.ts';
 import { createBackup, startDailyCheck } from './core/backup.ts';
 import { createAppRouter, type AppRouter } from './router.ts';
+
+const stripQuery = (url: string | undefined) => (url ?? '').split('?')[0] ?? '';
+
+/** Fastify request log serializer that removes query strings so input payloads never reach journal logs. */
+export function serializeRequest(req: {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  host?: string;
+  hostname?: string;
+  ip?: string;
+  remoteAddress?: string;
+  remotePort?: number;
+  socket?: { remotePort?: number };
+}) {
+  const acceptVersion = req.headers?.['accept-version'];
+  return {
+    method: req.method ?? '',
+    url: stripQuery(req.url),
+    version: typeof acceptVersion === 'string' ? acceptVersion : undefined,
+    host: req.host ?? req.hostname,
+    remoteAddress: req.ip ?? req.remoteAddress,
+    remotePort: req.socket?.remotePort ?? req.remotePort,
+  };
+}
 
 // `run` and `config` default to the real system and an empty config so tests never touch the desktop or personal files.
 // `isLoopback` decides which peer is "the PC"; only `fake.ts` and tests replace it, `index.ts` never does.
@@ -88,10 +114,41 @@ export function buildServer({
   });
   const jobs = createJobRunner(db, deps.spawn ?? streamSpawn, config.jobs.maxConcurrent);
   deps.onJobs?.(jobs);
+  const allowlist = allowedOrigins(config);
   const app = fastify({
-    logger: process.env.NODE_ENV !== 'test',
+    logger: process.env.NODE_ENV === 'test' ? false : { serializers: { req: serializeRequest } },
     // A tRPC HTTP batch puts every procedure in one path parameter; the default 100 refused a page's batch with 414.
     routerOptions: { maxParamLength: 5000 },
+  });
+  app.register(fastifyHelmet, {
+    global: true,
+    hsts: false,
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false,
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'no-referrer' },
+    noSniff: true,
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        fontSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'none'"],
+        formAction: ["'self'"],
+      },
+    },
+  });
+  app.addHook('onRequest', async (req, reply) => {
+    if (!isAllowedHost(req.headers.host, allowlist))
+      return reply.header('connection', 'close').code(421).send({ error: 'Host not allowed' });
+    return undefined;
   });
   app.addHook('onClose', () => db.$client.close());
   app.addHook('onClose', () => jobs.close());
@@ -103,25 +160,32 @@ export function buildServer({
       files,
       isLoopback,
       maxUploadMb: config.files?.maxUploadMb ?? 25,
-      origins: allowedOrigins(config),
+      origins: allowlist,
     }),
   );
   const sockets = createDeviceSockets();
   const confirmations = createConfirmations();
   deps.onConfirmations?.(confirmations);
-  const allowlist = allowedOrigins(config);
   // CORS does not cover WebSockets, so any page open in the browser could otherwise drive the desktop through
   // localhost. `verifyClient` runs inside the upgrade, before the connection is bound.
   app.register(fastifyWebsocket, {
     options: {
+      maxPayload: 1 << 20,
       // The 2-argument form is the one that can answer 403; `origin` is undefined when the header is missing.
       verifyClient: (
         { origin, req }: { origin: string | undefined; req: IncomingMessage },
         done: (verified: boolean, code?: number, message?: string) => void,
       ) => {
+        if (!isAllowedHost(req.headers.host, allowlist)) {
+          app.log.warn({ url: stripQuery(req.url) }, 'WebSocket upgrade refused: host not allowed');
+          return done(false, 421, 'Host not allowed');
+        }
         if (isAllowedOrigin(origin, allowlist)) return done(true);
-        app.log.warn({ origin, url: req.url }, 'WebSocket upgrade refused: origin not allowed');
-        done(false, 403, 'Origin not allowed');
+        app.log.warn(
+          { originPresent: origin !== undefined, url: stripQuery(req.url) },
+          'WebSocket upgrade refused: origin not allowed',
+        );
+        return done(false, 403, 'Origin not allowed');
       },
     },
   });
@@ -152,6 +216,7 @@ export function buildServer({
         'confirmations',
         'backup',
         'assistant',
+        'jobs',
       ],
       deps: discoveredDeps,
       dbPath,
@@ -213,42 +278,71 @@ export function buildServer({
           return true;
         },
       });
-    scope.register(fastifyTRPCPlugin, {
-      prefix: '/trpc',
-      useWSS: true,
-      trpcOptions: {
-        router: appRouter,
-        createContext: async ({ req, res, info }: CreateFastifyContextOptions) => {
-          const client = await resolveClient(
-            db,
-            isLoopback,
-            req,
-            extractToken(req.headers.authorization, info.connectionParams),
-          );
-          // For a WebSocket `res` is the socket, whatever the typings say.
-          if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res);
-          return {
-            db,
-            run,
-            jobs,
-            config,
-            files,
-            client,
-            remoteAddress: req.socket.remoteAddress ?? '',
-            sockets,
-            restart: () => {
-              const exit = settings?.onRestart;
-              if (!exit) return false;
-              // A WebSocket reply is the socket itself and has no `finish`; HTTP is the one real path.
-              if (isSocket(res)) setTimeout(exit, 200);
-              else res.raw.once('finish', exit);
-              return true;
-            },
-          };
-        },
-        keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
-      } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
-    });
+    scope.register(
+      (trpcScope, _opts, done) => {
+        trpcScope.addHook('onRequest', async (req, reply) => {
+          const { origin } = req.headers;
+          if (origin !== undefined && !isAllowedOrigin(origin, allowlist))
+            return reply.header('connection', 'close').code(403).send({ error: 'Origin not allowed' });
+          if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+            const contentType = req.headers['content-type'];
+            const mediaType = typeof contentType === 'string' ? contentType.split(';')[0]?.trim().toLowerCase() : '';
+            if (mediaType !== 'application/json')
+              return reply.code(415).send({ error: 'Content-Type must be application/json' });
+          }
+          return undefined;
+        });
+        fastifyTRPCPlugin(
+          trpcScope,
+          {
+            useWSS: true,
+            trpcOptions: {
+              router: appRouter,
+              createContext: async ({ req, res, info }: CreateFastifyContextOptions) => {
+                const client = await resolveClient(
+                  db,
+                  isLoopback,
+                  req,
+                  extractToken(req.headers.authorization, info.connectionParams),
+                );
+                // For a WebSocket `res` is the socket, whatever the typings say.
+                if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res);
+                return {
+                  db,
+                  run,
+                  jobs,
+                  config,
+                  files,
+                  client,
+                  remoteAddress: req.socket.remoteAddress ?? '',
+                  sockets,
+                  restart: () => {
+                    const exit = settings?.onRestart;
+                    if (!exit) return false;
+                    // A WebSocket reply is the socket itself and has no `finish`; HTTP is the one real path.
+                    if (isSocket(res)) setTimeout(exit, 200);
+                    else res.raw.once('finish', exit);
+                    return true;
+                  },
+                };
+              },
+              onError: ({ error, path }) => {
+                if (error.code === 'INTERNAL_SERVER_ERROR')
+                  app.log.error({ path, err: error.cause ?? error }, 'tRPC internal error');
+              },
+              keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
+            } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
+          },
+          (err) => {
+            if (err) return done(err);
+            // Defense in depth: onRequest rejects non-JSON first, and this scope accepts no multipart bodies.
+            trpcScope.removeContentTypeParser('multipart/form-data');
+            done();
+          },
+        );
+      },
+      { prefix: '/trpc' },
+    );
   });
   if (webRoot) {
     app.register(fastifyStatic, { root: webRoot });
@@ -259,6 +353,8 @@ export function buildServer({
         !path.startsWith('/trpc') &&
         !path.startsWith('/files') &&
         !path.startsWith('/music/') &&
+        path !== '/mcp' &&
+        !path.startsWith('/mcp/') &&
         !extname(path)
         ? reply.sendFile('index.html')
         : reply.code(404).send({ error: 'Not found' });

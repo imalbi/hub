@@ -4,10 +4,9 @@ import type { AppRouter } from '@hub/server';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { authLink } from './lib/auth-link.ts';
 import { getToken } from './lib/auth.ts';
 import { routeTree } from './routeTree.gen.ts';
-import { TRPCProvider, wsClient } from './lib/trpc.ts';
+import { TRPCProvider, authLink, wsClient } from './lib/trpc.ts';
 import './index.css';
 
 const queryClient = new QueryClient();

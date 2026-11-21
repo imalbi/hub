@@ -1,5 +1,5 @@
 /* oxlint-disable no-control-regex -- File names must reject HTTP header control characters. */
-import { createReadStream } from 'node:fs';
+import { open } from 'node:fs/promises';
 import multipart from '@fastify/multipart';
 import type { FastifyInstance } from 'fastify';
 import { TRPCError } from '@trpc/server';
@@ -45,24 +45,32 @@ export async function registerFiles(
         .at(-1)
         ?.replace(/[\x00-\x1f\x7f]/g, '')
         .slice(0, 255) || 'file';
-    return files.put(uploaded.data, {
-      name,
-      mime: /^[\w.+-]+\/[\w.+-]+$/.test(uploaded.mime) ? uploaded.mime : 'application/octet-stream',
-    });
+    try {
+      return await files.put(uploaded.data, {
+        name,
+        mime: /^[\w.+-]+\/[\w.+-]+$/.test(uploaded.mime) ? uploaded.mime : 'application/octet-stream',
+      });
+    } catch (error) {
+      if (error instanceof TRPCError && error.code === 'PAYLOAD_TOO_LARGE')
+        return reply.code(413).send({ error: 'Temporary file storage quota exceeded' });
+      throw error;
+    }
   });
   app.get<{ Params: { id: string }; Querystring: { inline?: string } }>('/files/:id', async (req, reply) => {
     try {
       const file = await files.get(req.params.id);
+      const handle = await open(file.path, 'r');
       const disposition = req.query.inline === '1' && file.mime === 'application/pdf' ? 'inline' : 'attachment';
       return reply
         .header('content-disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(file.name)}`)
         .header('x-content-type-options', 'nosniff')
         .type(file.mime)
-        .send(createReadStream(file.path));
+        .send(handle.createReadStream());
     } catch (error) {
       if (error instanceof TRPCError && error.code === 'NOT_FOUND')
         return reply.code(404).send({ error: 'File not found or expired' });
-      throw error;
+      req.log.error(error, 'Failed to serve temporary file');
+      return reply.code(500).send({ error: 'Internal server error' });
     }
   });
 }

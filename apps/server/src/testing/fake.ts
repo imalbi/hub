@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { copyFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,10 @@ import type { Run } from '../core/exec.ts';
 // Fixtures live in the run's own folder (`apps/e2e/tests/hosts.ts` makes one per run), so two runs never share a file.
 const runDir = process.env.HUB_E2E_TMP ?? tmpdir();
 const webPort = process.env.HUB_E2E_WEB_PORT ?? '5190';
+const serverPort = process.env.HUB_PORT ?? '4190';
+const defaultDist = fileURLToPath(new URL('../../../web/dist', import.meta.url));
+const candidateWebRoot = process.env.HUB_E2E_DIST ?? defaultDist;
+const webRoot = existsSync(join(candidateWebRoot, 'index.html')) ? candidateWebRoot : undefined;
 
 // A copy of the fixture scheme, so e2e can rewrite it to check that the Caelestia theme follows live.
 // `apps/e2e/tests/themes.ts` writes the same path.
@@ -66,7 +70,15 @@ const config: Config = {
       { label: 'Casse', match: 'HDMI Monitor' },
     ],
   },
-  server: { host: '127.0.0.1', allowedOrigins: [`http://localhost:${webPort}`, `http://127.0.0.1:${webPort}`] },
+  server: {
+    host: '127.0.0.1',
+    allowedOrigins: [
+      `http://localhost:${webPort}`,
+      `http://127.0.0.1:${webPort}`,
+      `http://localhost:${serverPort}`,
+      `http://127.0.0.1:${serverPort}`,
+    ],
+  },
   theme: { caelestiaScheme },
   system: {
     powerstatDir,
@@ -298,6 +310,7 @@ function build() {
     },
     config: effectiveConfig,
     isLoopback,
+    webRoot,
     settings: { configPath, onRestart: () => void restart() },
   });
   app.get('/__fake/core', () => ({
@@ -328,7 +341,7 @@ function restart() {
   })();
   return restarting;
 }
-const listen = () => app.listen({ host: '127.0.0.1', port: Number(process.env.HUB_PORT ?? 4190) });
+const listen = () => app.listen({ host: '127.0.0.1', port: Number(serverPort) });
 
 function hooks(server: typeof app) {
   server.get('/__fake/system', () => ({ calls: systemCalls }));

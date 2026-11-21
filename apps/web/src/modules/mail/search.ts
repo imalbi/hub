@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '../../lib/zod-csp.ts';
 import { zoneSearch } from '../../lib/zone-search.ts';
 
 /**

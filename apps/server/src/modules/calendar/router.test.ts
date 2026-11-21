@@ -291,3 +291,17 @@ void test('weekly series validate rules and support occurrence edits, removal an
   assert.equal((await call('calendar.updateSeries', { id, title: 'Nuovo' })).statusCode, 200);
   assert.equal((await range('2026-11-23', '2026-11-23')).events[0]?.title, 'Nuovo');
 });
+
+void test('range bounds reject huge spans quickly while allowing a full year', async (t) => {
+  const { app, call, range } = open();
+  t.after(() => app.close());
+  await call('calendar.add', { title: 'Capodanno', day: '2026-01-01' });
+  const ok = await range('2026-01-01', '2026-12-31');
+  assert.equal(ok.status, 200);
+  assert.equal(ok.events.length, 1);
+
+  const started = performance.now();
+  const huge = await range('0100-01-01', '9999-12-31');
+  assert.ok(performance.now() - started < 20);
+  assert.equal(huge.status, 400);
+});

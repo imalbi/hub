@@ -6,7 +6,7 @@ import type { createConfirmations } from './confirmations.ts';
 import { llmGate } from './llm-gate.ts';
 import { ollamaChat } from './ollama.ts';
 import { listActions } from './registry.ts';
-import { loopbackProcedure, publicProcedure, router } from './trpc.ts';
+import { loopbackProcedure, router } from './trpc.ts';
 
 // These actions change access or setup, which a sentence must never change.
 export const deniedPrefixes = ['settings', 'agents', 'pairing', 'devices', 'confirmations'];
@@ -28,10 +28,9 @@ export function createAssistantRouter(
   return router({
     state: loopbackProcedure.query(({ ctx }) => ({ enabled: ctx.config.assistant.enabled })),
     // Opening the palette loads the model while the sentence is typed: an empty `messages` list only loads it.
-    warm: publicProcedure
+    warm: loopbackProcedure
       .meta({ label: 'Prepara assistente', description: 'Load the local assistant model', pageOnly: true })
       .mutation(({ ctx }) => {
-        if (ctx.client.kind !== 'loopback') throw new TRPCError({ code: 'UNAUTHORIZED' });
         const config = ctx.config.assistant;
         if (!config.enabled) return { loading: false };
         // Not awaited: a failed load only makes the first question slower, and `ask` reports it then.
@@ -40,11 +39,10 @@ export function createAssistantRouter(
         );
         return { loading: true };
       }),
-    ask: publicProcedure
+    ask: loopbackProcedure
       .meta({ label: 'Chiedi a Hub', description: 'Ask the local assistant', pageOnly: true })
       .input(z.object({ text: z.string().trim().min(1).max(300) }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.client.kind !== 'loopback') throw new TRPCError({ code: 'UNAUTHORIZED' });
         const config = ctx.config.assistant;
         if (!config.enabled) throw new TRPCError({ code: 'PRECONDITION_FAILED' });
         const actions = assistantActions(app());

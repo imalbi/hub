@@ -20,7 +20,7 @@ export async function controlSockets(page: Page) {
       constructor(url: string | URL, protocols?: string | string[]) {
         const api = new URL(url, location.href).pathname === '/trpc';
         // Nothing listens on port 1, so the connection is refused before it opens.
-        super(control.offline && api ? 'ws://127.0.0.1:1/' : url, protocols);
+        super(control.offline && api ? 'ws://127.0.0.1:1/trpc' : url, protocols);
         // Vite's socket must stay open, otherwise it reloads the page during an API outage.
         if (api) control.open.push(this);
       }

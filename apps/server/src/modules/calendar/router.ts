@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { agentOrLoopbackProcedure, protectedProcedure, router } from '../../core/trpc.ts';
-import { fitsKind, isDay, KIND_RULE, validateSeries, type CalendarStore } from './calendar.ts';
+import {
+  daysBetween,
+  fitsKind,
+  isDay,
+  KIND_RULE,
+  MAX_RANGE_DAYS,
+  validateSeries,
+  type CalendarStore,
+} from './calendar.ts';
 
 const day = z
   .string()
@@ -23,7 +31,10 @@ const fields = z.object({
     ),
   person: z.string().trim().min(1).max(60).nullish().describe('Who works the shift, 1 to 60 characters; shifts only'),
 });
-const range = z.object({ from: day, to: day }).refine((value) => value.from <= value.to, 'from is after to');
+const range = z
+  .object({ from: day, to: day })
+  .refine((value) => value.from <= value.to, 'from is after to')
+  .refine((value) => daysBetween(value.from, value.to) <= MAX_RANGE_DAYS, 'Range cannot exceed 400 days');
 
 const seriesFields = z.object({
   title: z.string().trim().min(1).max(120),

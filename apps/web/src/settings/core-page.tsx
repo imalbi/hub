@@ -3,7 +3,7 @@ import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { z } from 'zod';
+import { z } from '../lib/zod-csp.ts';
 import { ActionButton } from '../components/ui/action-button.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';

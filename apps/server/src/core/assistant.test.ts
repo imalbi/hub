@@ -71,15 +71,28 @@ void test('paired devices and agent tokens cannot ask the assistant', async () =
       payload: { code: created.json().result.data.code, deviceName: 'Phone' },
     });
     const agent = await app.inject({ method: 'POST', url: '/trpc/agents.create', payload: { name: 'Test agent' } });
-    for (const token of [redeemed.json().result.data.token, agent.json().result.data.token]) {
-      const res = await app.inject({
+    const deviceToken = redeemed.json().result.data.token;
+    const agentToken = agent.json().result.data.token;
+    for (const path of ['assistant.warm', 'assistant.ask'] as const) {
+      const deviceRes = await app.inject({
         method: 'POST',
-        url: '/trpc/assistant.ask',
+        url: `/trpc/${path}`,
         remoteAddress: '192.0.2.20',
-        headers: { authorization: `Bearer ${token}` },
-        payload: { text: 'metti cuffie' },
+        headers: { authorization: `Bearer ${deviceToken}` },
+        payload: path === 'assistant.ask' ? { text: 'metti cuffie' } : {},
       });
-      assert.equal(res.json().error.data.code, 'UNAUTHORIZED');
+      assert.equal(deviceRes.statusCode, 403, path);
+      assert.equal(deviceRes.json().error.data.code, 'FORBIDDEN', path);
+
+      const agentRes = await app.inject({
+        method: 'POST',
+        url: `/trpc/${path}`,
+        remoteAddress: '192.0.2.20',
+        headers: { authorization: `Bearer ${agentToken}` },
+        payload: path === 'assistant.ask' ? { text: 'metti cuffie' } : {},
+      });
+      assert.equal(agentRes.statusCode, 401, path);
+      assert.equal(agentRes.json().error.data.code, 'UNAUTHORIZED', path);
     }
     assert.equal(requests, 0);
   } finally {
