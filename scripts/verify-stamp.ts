@@ -1,5 +1,6 @@
 // Remembers the tree a green `pnpm verify` tested, so the pre-commit hook can skip a second full run on the same code.
-// `write` (end of verify): the worktree as a git tree, tracked and untracked files, ignored ones excluded.
+// `tree`: prints the worktree tree hash (`git write-tree` in a scratch index).
+// `write [expectedTree]`: stores the verified tree hash, refusing if the worktree changed since `expectedTree`.
 // `check` (in the hook): exit 0 only if the index being committed is exactly that tree.
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -25,12 +26,20 @@ function worktreeTree() {
 }
 
 const mode = process.argv[2];
-if (mode === 'write') {
-  writeFileSync(stampPath, `${worktreeTree()}\n`);
+if (mode === 'tree') {
+  process.stdout.write(`${worktreeTree()}\n`);
+} else if (mode === 'write') {
+  const expectedTree = process.argv[3];
+  const currentTree = worktreeTree();
+  if (expectedTree && currentTree !== expectedTree) {
+    process.stderr.write('verify-stamp: worktree changed during verify; refusing to write stamp\n');
+    process.exit(1);
+  }
+  writeFileSync(stampPath, `${currentTree}\n`);
 } else if (mode === 'check') {
   const verified = existsSync(stampPath) ? readFileSync(stampPath, 'utf8').trim() : '';
   process.exit(verified !== '' && verified === git(['write-tree']) ? 0 : 1);
 } else {
-  console.error('usage: verify-stamp.ts write|check');
+  console.error('usage: verify-stamp.ts tree|write [expectedTree]|check');
   process.exit(2);
 }

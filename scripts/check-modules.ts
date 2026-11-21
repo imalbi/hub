@@ -9,6 +9,8 @@ import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 // output of a failing run is the one thing shown in full, because it is what the author needs to fix it.
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const tsc = join(repo, 'node_modules/.bin/tsc');
+const oxlint = join(repo, 'node_modules/.bin/oxlint');
+const oxlintConfig = join(repo, '.oxlintrc.json');
 const prettier = join(repo, 'node_modules/.bin/prettier');
 const baseConfig = join(repo, 'scripts/tsconfig.modules.json');
 
@@ -23,7 +25,7 @@ function findModules(root: string) {
 
 function testFiles(folder: string) {
   return readdirSync(folder, { recursive: true, encoding: 'utf8' })
-    .filter((file) => file.endsWith('.test.ts') && !file.split('/').includes('node_modules'))
+    .filter((file) => file.endsWith('.test.ts') && !file.split(/[\\/]/).includes('node_modules'))
     .map((file) => join(folder, file));
 }
 
@@ -58,8 +60,14 @@ function checkModule(root: string, name: string, scratch: string) {
   );
   const types = spawnSync(tsc, ['-p', config], { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (types.status !== 0) return `${types.stdout}${types.stderr}`;
+  const lint = spawnSync(
+    oxlint,
+    ['--type-aware', '--deny-warnings', '--config', oxlintConfig, '--tsconfig', config, folder],
+    { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  );
+  if (lint.status !== 0) return `${lint.stdout}${lint.stderr}`;
   process.stdout.write(
-    `check-modules: ${name}: ${tests} tests passed in ${files.length} files, typecheck and format ok\n`,
+    `check-modules: ${name}: ${tests} tests passed in ${files.length} files, typecheck, lint and format ok\n`,
   );
   return null;
 }

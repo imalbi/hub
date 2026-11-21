@@ -182,6 +182,7 @@ function SummaryProbe({
   useSummary: () => string | null;
   report: (id: string, value: Report | null) => void;
 }) {
+  // oxlint-disable-next-line react/hooks -- key={module.name} binds each instance to one fixed module hook.
   const summary = useSummary();
   useEffect(() => {
     report(id, { summary });

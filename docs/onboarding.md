@@ -22,7 +22,7 @@ The two nested folders must keep these exact names: the server discovers `module
 Node 24 or later and pnpm 11 (`corepack enable` gives the version pinned in `package.json`).
 
 ```sh
-pnpm install          # also points git at .githooks (pre-commit runs the guard and pnpm verify)
+pnpm install          # also points git at .githooks (pre-commit, commit-msg, pre-push)
 pnpm check            # about 15 s; must be green before you change anything
 pnpm dev              # server on 127.0.0.1:4180, web app through Vite
 ```

@@ -15,7 +15,7 @@ export function moduleImportViolation(file: string, content: string) {
 export function ignoresModules(content: string) {
   const lines = content.split(/\r?\n/).map((line) => line.trim());
   return (
-    lines.some((line) => /^\/?modules(?:\[\.\]|\.)local\/$/.test(line)) &&
+    lines.some((line) => /^\/?modules(?:\[\.\]|\.)local\/?$/.test(line)) &&
     !lines.some((line) => line.startsWith('!') && /modules(?:\[\.\]|\.)local/.test(line))
   );
 }

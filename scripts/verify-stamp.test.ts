@@ -22,8 +22,8 @@ function repository(t: { after: (fn: () => void) => void }) {
   writeFileSync(join(directory, 'a.txt'), 'one\n');
   git('add', '-A');
   // `check` runs inside the pre-commit hook, where git points GIT_INDEX_FILE at the index being committed.
-  const stamp = (mode: 'write' | 'check') =>
-    spawnSync(process.execPath, [script, mode], {
+  const stamp = (mode: 'tree' | 'write' | 'check', ...extra: string[]) =>
+    spawnSync(process.execPath, [script, mode, ...extra], {
       cwd: directory,
       encoding: 'utf8',
       env: { ...cleanEnv(), ...(mode === 'check' ? { GIT_INDEX_FILE: join(directory, '.git', 'index') } : {}) },
@@ -75,4 +75,18 @@ void test('writing the stamp leaves the real index untouched', (t) => {
   repo.stamp('write');
   assert.equal(repo.git('status', '--porcelain'), before);
   assert.match(before, /\?\? b\.txt/);
+});
+
+void test('G4: write refuses to write stamp when worktree drifted after start tree snapshot', (t) => {
+  const repo = repository(t);
+  const startTree = repo.stamp('tree');
+  assert.equal(startTree.status, 0);
+  const expected = startTree.stdout.trim();
+  assert.ok(expected.length > 0);
+
+  writeFileSync(join(repo.directory, 'a.txt'), 'edited mid-verify\n');
+  const refused = repo.stamp('write', expected);
+  assert.equal(refused.status, 1);
+  assert.match(refused.stderr, /worktree changed during verify/);
+  assert.equal(repo.stamp('check').status, 1);
 });

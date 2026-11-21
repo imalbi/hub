@@ -11,6 +11,10 @@ export function guardModules(cwd: string, staged: boolean) {
   if (!files.includes('.gitignore') || !ignoresModules(read('.gitignore')))
     findings.push('Private module directory must be ignored');
   for (const file of files) {
+    if (file.startsWith('apps/e2e/__screenshots__/private/')) {
+      findings.push(`Private snapshot under tracked directory: ${file}`);
+      continue;
+    }
     if (!/\.(?:[cm]?[jt]sx?|json|css)$/.test(file)) continue;
     if (moduleImportViolation(file, read(file))) findings.push(`Private source path outside discovery: ${file}`);
   }

@@ -32,7 +32,7 @@ void test('the built app is served, with index.html for the client-side routes',
     assert.equal(res.headers['x-content-type-options'], 'nosniff', url);
     assert.equal(res.headers['cross-origin-resource-policy'], 'same-origin', url);
     assert.equal(res.headers['strict-transport-security'], undefined, url);
-    const csp = String(res.headers['content-security-policy'] ?? '');
+    const csp = res.headers['content-security-policy'] ?? '';
     assert.match(csp, /frame-ancestors 'none'/, url);
     assert.match(csp, /object-src 'none'/, url);
     assert.match(csp, /base-uri 'none'/, url);

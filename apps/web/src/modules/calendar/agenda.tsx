@@ -78,9 +78,12 @@ export function AgendaView({
   const cells = monthDays(mini);
   // Six rows only when the month needs them.
   const miniDays = monthOf(cells[35] ?? mini) === mini ? cells : cells.slice(0, 35);
+  const miniStart = miniDays[0] ?? start;
+  const miniEnd = miniDays[miniDays.length - 1] ?? start;
+  const agendaEnd = addDays(start, AGENDA_DAYS);
   const range = {
-    from: [start, miniDays[0] ?? start].sort()[0] ?? start,
-    to: [addDays(start, AGENDA_DAYS), miniDays[miniDays.length - 1] ?? start].sort().reverse()[0] ?? start,
+    from: start <= miniStart ? start : miniStart,
+    to: agendaEnd >= miniEnd ? agendaEnd : miniEnd,
   };
   const events = useEvents(range).data ?? [];
   const { items, sources } = useContributions(range);

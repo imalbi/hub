@@ -322,7 +322,7 @@ void test('several active plans interleave by the global mix, and a paused plan 
   // A third plan the mix does not name: the stored mix is set aside and the three share equally.
   savePlan(db, course('r', 3));
   assert.equal(readIndex(db)?.mixSet, false);
-  assert.deepEqual(order().slice(0, 3).sort(), ['p', 'q', 'r']);
+  assert.deepEqual(order().slice(0, 3).toSorted(), ['p', 'q', 'r']);
   // Pausing a plan takes its days out; resuming brings them back with the same mix.
   db.$client.prepare('UPDATE plans SET active = 0 WHERE id = ?').run('r');
   assert.equal(readIndex(db)?.mixSet, true);

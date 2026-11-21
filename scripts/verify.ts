@@ -1,20 +1,28 @@
 // `pnpm verify`: check, e2e, web build, stamp. Always ends with one `EXIT <code>` line (also on a failed step or a signal),
 // so a waiter never needs to poll a log for a line that may never come.
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+
+function finish(code: number): never {
+  process.stdout.write(`EXIT ${code}\n`);
+  process.exit(code);
+}
+
+let startTree: string;
+try {
+  startTree = execFileSync(process.execPath, ['scripts/verify-stamp.ts', 'tree'], { encoding: 'utf8' }).trim();
+  if (!startTree) throw new Error('empty tree hash');
+} catch {
+  finish(1);
+}
 
 const steps = [
   ['pnpm', 'check'],
   ['node', 'scripts/test-e2e.ts'],
   ['pnpm', '--filter', '@hub/web', 'build'],
-  ['node', 'scripts/verify-stamp.ts', 'write'],
+  ['node', 'scripts/verify-stamp.ts', 'write', startTree],
 ];
 
 let current: ReturnType<typeof spawn> | undefined;
-
-function finish(code: number) {
-  process.stdout.write(`EXIT ${code}\n`);
-  process.exit(code);
-}
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.on(signal, () => {

@@ -97,18 +97,18 @@ async function main() {
     return { results, refused };
   };
   const current = await score(original);
-  console.log(
-    `Current: ${current.results.filter(Boolean).length}/${assistantCases.length}; refused unknown calls: ${current.refused}`,
+  process.stdout.write(
+    `Current: ${current.results.filter(Boolean).length}/${assistantCases.length}; refused unknown calls: ${current.refused}\n`,
   );
   let failed = current.results.filter(Boolean).length < 19;
   if (candidate !== undefined) {
     const next = await score(candidate);
-    console.log(
-      `Candidate: ${next.results.filter(Boolean).length}/${assistantCases.length}; refused unknown calls: ${next.refused}`,
+    process.stdout.write(
+      `Candidate: ${next.results.filter(Boolean).length}/${assistantCases.length}; refused unknown calls: ${next.refused}\n`,
     );
     for (const [index, test] of assistantCases.entries())
       if (current.results[index] !== next.results[index])
-        console.log(`${current.results[index] ? 'regression' : 'improvement'}: ${test.sentence}`);
+        process.stdout.write(`${current.results[index] ? 'regression' : 'improvement'}: ${test.sentence}\n`);
     failed ||=
       next.results.filter(Boolean).length < 19 || current.results.some((right, index) => right && !next.results[index]);
   }

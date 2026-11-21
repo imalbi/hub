@@ -23,7 +23,9 @@ void test('the root ignore covers private modules without negating their content
   // Built at runtime: the literal path in a tracked file is what the guards refuse.
   const dir = ['modules', 'local'].join('.');
   assert.equal(ignoresModules('modules[.]local/\n'), true);
+  assert.equal(ignoresModules('modules[.]local\n'), true);
   assert.equal(ignoresModules(`${dir}/\n`), true);
+  assert.equal(ignoresModules(`${dir}\n`), true);
   assert.equal(ignoresModules('node_modules/\n'), false);
   assert.equal(ignoresModules(`${dir}/\n!${dir}/keep.ts\n`), false);
 });

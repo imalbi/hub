@@ -75,7 +75,8 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
     }
   }
   function drain() {
-    while (!closing && active.size < maxConcurrent && queue.length) {
+    while (active.size < maxConcurrent && queue.length) {
+      if (closing) break;
       const item = queue.shift();
       if (!item) break;
       active.set(item.job.id, item);

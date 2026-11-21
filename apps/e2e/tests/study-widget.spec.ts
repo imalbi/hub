@@ -39,9 +39,9 @@ async function seedStudy(
           })),
         })),
         {
-          ...legibleDay.blocks[2]!,
+          ...legibleDay.blocks[2],
           steps: [
-            ...legibleDay.blocks[2]!.steps.map((step) => ({
+            ...legibleDay.blocks[2].steps.map((step) => ({
               file: { path: 'dispensa.pdf', page: 2 },
               ...step,
             })),

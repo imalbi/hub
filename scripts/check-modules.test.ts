@@ -40,7 +40,7 @@ void test('a module whose tests pass and whose types are sound is reported with 
   await addModule(root, 'good', { 'a.test.ts': passing });
   const result = check(root);
   assert.equal(result.code, 0);
-  assert.equal(result.out, 'check-modules: good: 1 tests passed in 1 files, typecheck and format ok\n');
+  assert.equal(result.out, 'check-modules: good: 1 tests passed in 1 files, typecheck, lint and format ok\n');
 });
 
 void test('a failing private test fails the script and shows the failure', async (t) => {
@@ -87,6 +87,21 @@ void test('formatting is checked and can be fixed for a selected module', async 
   assert.equal(check(root, 'good').code, 1);
   assert.equal(check(root, '--write', 'good').code, 0);
   assert.equal(check(root, 'good').code, 0);
+});
+
+void test('lint errors and unannotated dangerouslySetInnerHTML fail private module checks', async (t) => {
+  const root = await scratch(t);
+  await addModule(root, 'linty', { 'a.ts': 'export function f(x: number) {\n  return x == 1;\n}\n' });
+  const badEq = check(root, 'linty');
+  assert.equal(badEq.code, 1);
+  assert.match(badEq.err, /linty: FAILED[\s\S]*eqeqeq/);
+
+  await addModule(root, 'unsafe', {
+    'ui.tsx': "export function View() {\n  return <div dangerouslySetInnerHTML={{ __html: '<p>hi</p>' }} />;\n}\n",
+  });
+  const badHtml = check(root, 'unsafe');
+  assert.equal(badHtml.code, 1);
+  assert.match(badHtml.err, /unsafe: FAILED[\s\S]*react\(no-danger\)/);
 });
 
 void test('the script reaches the private root only through discovery, so it needs no exemption from the guard', async () => {

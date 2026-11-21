@@ -35,6 +35,7 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: true,
+  testIgnore: process.env.HUB_E2E_SKIP_VISUAL === '1' ? '**/*.visual.spec.ts' : undefined,
   snapshotPathTemplate: '__screenshots__{/projectName}/{arg}{ext}',
   // Chromium for all: Safari is the deck's real browser, but layout and logic regressions show up here too.
   use: { browserName: 'chromium' },
@@ -128,6 +129,7 @@ export default defineConfig({
             dependencies: ['setup'],
             testDir: privateFolder,
             testMatch: '*.spec.ts',
+            snapshotPathTemplate: join(privateFolder, '__screenshots__{/projectName}/{arg}{ext}'),
             use: { baseURL: PC_URL, viewport: { width: 1920, height: 1080 } },
           },
         ]

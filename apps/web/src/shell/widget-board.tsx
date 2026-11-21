@@ -118,7 +118,7 @@ export function WidgetBoard() {
         }
       />
       {editing && <p className="text-caption text-muted-foreground">{m.widget_drag_hint()}</p>}
-      <div ref={containerRef} className={`${editing ? 'widget-board editing' : 'widget-board'}`}>
+      <div ref={containerRef} className={editing ? 'widget-board editing' : 'widget-board'}>
         {mounted && (
           <ReactGridLayout
             layout={layout}

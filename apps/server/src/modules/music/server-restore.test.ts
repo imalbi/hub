@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { z } from 'zod';
 import { buildServer } from '../../server.ts';
 import { createFakeDesktop } from '../../testing/fake-desktop.ts';
 import { wiring } from './test-wiring.ts';
@@ -22,11 +23,17 @@ function fakeMpv(mpv: Record<string, unknown>) {
   };
 }
 
+const queueResponseSchema = z.object({
+  result: z.object({
+    data: z.object({
+      current: z.object({ id: z.string() }).nullable(),
+      upcoming: z.array(z.object({ id: z.string() })),
+    }),
+  }),
+});
+
 const queueOf = async (app: ReturnType<typeof buildServer>) =>
-  (await app.inject('/trpc/music.queue')).json().result.data as {
-    current: { id: string } | null;
-    upcoming: { id: string }[];
-  };
+  queueResponseSchema.parse((await app.inject('/trpc/music.queue')).json()).result.data;
 
 void test('a restart of Hub takes back the queue mpv is still playing, and drops it when mpv moved on', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'hub-music-restore-'));
@@ -41,7 +48,7 @@ void test('a restart of Hub takes back the queue mpv is still playing, and drops
   await first.inject({ method: 'POST', url: '/trpc/music.play', payload: { id: 'abcdefghijk' } });
   const before = await queueOf(first);
   assert.equal(before.current?.id, 'abcdefghijk');
-  assert.ok(before.upcoming.length > 0);
+  assert.ok(before.upcoming[0]);
   await first.close();
 
   // mpv still plays the same song, with the next one already appended.
@@ -49,7 +56,7 @@ void test('a restart of Hub takes back the queue mpv is still playing, and drops
     path: url('abcdefghijk'),
     'playlist-pos': 0,
     'playlist-count': 2,
-    'playlist/1/filename': url(before.upcoming[0]!.id),
+    'playlist/1/filename': url(before.upcoming[0].id),
   });
   const ipc = fakeMpv(mpv);
   const second = buildServer({ dbPath, music: { ...wiring, ipc }, deps: { run: createFakeDesktop() } });

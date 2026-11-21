@@ -4,9 +4,16 @@ dist/
 config.local.json
 config.[l]ocal*.bak
 # Bracket syntax keeps the literal directory name distinct from a LAN hostname in the privacy scan.
-modules[.]local/
+modules[.]local
 .private-words
 *.db
+*.db-*
+*.sqlite*
+backups/
+CLAUDE.local.md
+.claude/*
+*.log
+.DS_Store
 apps/web/src/paraglide/
 
 # Planning artifacts and local agent state: never committed
@@ -17,6 +24,7 @@ plans/
 .opencode/
 apps/web/project.inlang/cache/
 
-# Playwright output (baselines in apps/e2e/__screenshots__ are tracked)
+# Playwright output (baselines in apps/e2e/__screenshots__ are tracked; private snapshots stay untracked)
 apps/e2e/test-results/
 apps/e2e/playwright-report/
+apps/e2e/__screenshots__/private/

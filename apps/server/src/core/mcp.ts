@@ -43,6 +43,7 @@ export function registerMcp(
       const field = path.slice(separator + 1);
       const subscription = procedures[`${parent}.on${field.charAt(0).toUpperCase()}${field.slice(1)}`];
       if (!subscription || typeof procedure !== 'function' || !('_def' in procedure)) return [];
+      // oxlint-disable-next-line no-underscore-dangle
       const definition = procedure._def;
       if (
         typeof definition !== 'object' ||

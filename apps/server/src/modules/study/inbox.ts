@@ -40,7 +40,7 @@ export async function readPlan(path: string) {
   if (!stat.isDirectory()) throw new Error('Invalid plan');
   const header = z.record(z.string(), z.unknown()).safeParse(await readChunk(path, 'plan.json'));
   if (!header.success) throw new InvalidPlan([{ file: 'plan.json', path: '', message: 'Expected a plan object' }]);
-  const names = (await readdir(path)).filter((name) => /^days-.*\.json$/.test(name)).sort();
+  const names = (await readdir(path)).filter((name) => /^days-.*\.json$/.test(name)).toSorted();
   const days = [];
   const chunks: { name: string; start: number; end: number }[] = [];
   for (const name of names) {

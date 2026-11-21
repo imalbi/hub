@@ -514,7 +514,7 @@ test('the player floats centred over the bottom edge of the surface, narrower th
   expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
   // Nothing clips it: the part below the surface is hit-testable as the player's own.
   const below = await page.evaluate(
-    ([x, y]) => document.elementFromPoint(x!, y!)?.closest('[aria-label="Player musicale"]') !== null,
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('[aria-label="Player musicale"]') !== null,
     [box.x + box.width / 2, surface.y + surface.height + (box.y + box.height - surface.y - surface.height) / 2],
   );
   expect(below).toBe(true);

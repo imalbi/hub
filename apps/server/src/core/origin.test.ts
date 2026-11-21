@@ -43,12 +43,19 @@ void test('allowedOrigins merges the configured origins with the dev origins', (
 });
 
 void test('isAllowedHost accepts loopback and configured hosts and rejects foreign or malformed values', () => {
-  const allowed = ['http://hub.example:4180', 'https://[fd00::10]:4180'];
+  const allowed = ['http://hub.example:4180', 'https://[2001:db8::10]:4180'];
   assert.deepEqual(
     allowedHostnames(allowed),
-    new Set(['localhost', '127.0.0.1', '[::1]', 'hub.example', '[fd00::10]']),
+    new Set(['localhost', '127.0.0.1', '[::1]', 'hub.example', '[2001:db8::10]']),
   );
-  for (const valid of ['127.0.0.1:4180', 'localhost:4180', 'LOCALHOST', '[::1]:4180', 'hub.example:4180', '[fd00::10]'])
+  for (const valid of [
+    '127.0.0.1:4180',
+    'localhost:4180',
+    'LOCALHOST',
+    '[::1]:4180',
+    'hub.example:4180',
+    '[2001:db8::10]',
+  ])
     assert.equal(isAllowedHost(valid, allowed), true, valid);
   for (const bad of [
     undefined,
@@ -61,7 +68,7 @@ void test('isAllowedHost accepts loopback and configured hosts and rejects forei
     '2130706433',
     '127.1:4180',
     'localhost:99999',
-    `${'a'.repeat(257)}`,
+    'a'.repeat(257),
   ])
     assert.equal(isAllowedHost(bad, allowed), false, String(bad));
 });

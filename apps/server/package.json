@@ -9,7 +9,7 @@
     "dev": "node --watch src/index.ts",
     "start": "node src/index.ts",
     "typecheck": "tsc -p .",
-    "test": "node --test 'src/**/*.test.ts'",
+    "test": "node ../../scripts/run-tests.ts \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "smoke": "node src/smoke.ts"

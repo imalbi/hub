@@ -353,7 +353,7 @@ test('Dispositivi shows access in both sizes and revocation requires a hold', as
         return { top: r.top, bottom: r.bottom };
       }),
     );
-    for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.top).toBeGreaterThanOrEqual(boxes[i - 1]!.bottom);
+    for (let i = 1; i < boxes.length; i++) expect(boxes[i].top).toBeGreaterThanOrEqual(boxes[i - 1].bottom);
     const revoke = widget.getByRole('button', { name: 'Tieni premuto per revocare Phone A' });
     await page.clock.install();
     await revoke.click();
@@ -404,6 +404,6 @@ test('Dispositivi counts two phones and its large rows fit without overlap', asy
     expect(row.bottom).toBeLessThanOrEqual(bounds.bottom);
     expect(row.left).toBeGreaterThanOrEqual(bounds.left);
     expect(row.right).toBeLessThanOrEqual(bounds.right);
-    if (index) expect(row.top).toBeGreaterThanOrEqual(bounds.rows[index - 1]!.bottom);
+    if (index) expect(row.top).toBeGreaterThanOrEqual(bounds.rows[index - 1].bottom);
   }
 });

@@ -179,6 +179,7 @@ export function DeskCommandPalette() {
               answer.current = await client.assistant.ask.mutate({ text: query.trim() });
               await queryClient.invalidateQueries();
             },
+            // oxlint-disable-next-line react/no-unstable-nested-components -- `view` is called as a function by the palette, never mounted as a component.
             view: () => (
               <div className="flex flex-col gap-sm">
                 {answer.current?.steps.map((step, index) => (
