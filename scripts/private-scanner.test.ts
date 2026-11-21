@@ -297,3 +297,20 @@ void test('private words treat regex metacharacters literally and use Unicode wo
   assert.equal(scanContent('fixture.txt', 'Un CAFFÈ.', ['caffè']).length, 1);
   assert.deepEqual(scanContent('fixture.txt', 'caffèlatte', ['caffè']), []);
 });
+
+void test('email allowlist permits public GitHub bot and noreply addresses without waiving generic github.com addresses', () => {
+  for (const allowed of [
+    'Signed-off-by: dependabot[bot] <support@github.com>',
+    'noreply@github.com',
+    '12345+octocat@users.noreply.github.com',
+    'bot@noreply.github.com',
+  ]) {
+    assert.deepEqual(scanContent('commit-msg', allowed), [], allowed);
+  }
+  for (const blocked of [
+    ['person', 'github.com'].join('@'),
+    ['person', 'users.noreply.github.com.invalid'].join('@'),
+  ]) {
+    assert.equal(scanContent('fixture.txt', blocked)[0]?.rule, 'email', blocked);
+  }
+});

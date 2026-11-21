@@ -8,6 +8,7 @@ import { DECK_STATE, PC_URL, PHONE_URL, SERVER_PORT, SERVER_URL, WEB_PORT } from
 // false` makes a collision a hard error instead of a test run against the wrong stack.
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 const privateFolder = process.env.HUB_E2E_PRIVATE;
+const skipVisual = process.env.HUB_E2E_SKIP_VISUAL === '1';
 // Example mode loads modules.example through the private-module root, the same path a private module takes
 // (a root the web glob never reached once went unnoticed because only the example-only branch was exercised).
 const moduleRoot =
@@ -35,7 +36,9 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: true,
-  testIgnore: process.env.HUB_E2E_SKIP_VISUAL === '1' ? '**/*.visual.spec.ts' : undefined,
+  // Functional specs also hold inline `toHaveScreenshot` assertions that differ slightly across Linux distros on CI.
+  testIgnore: skipVisual ? '**/*.visual.spec.ts' : undefined,
+  ignoreSnapshots: skipVisual,
   snapshotPathTemplate: '__screenshots__{/projectName}/{arg}{ext}',
   // Chromium for all: Safari is the deck's real browser, but layout and logic regressions show up here too.
   use: { browserName: 'chromium' },

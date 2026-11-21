@@ -21,7 +21,15 @@ const PHONE_IT = /(?<![\w+])\+39[\s.-]?3\d{2}[\s.-]?\d{3}[\s.-]?\d{3,4}(?!\d)/g;
 const IBAN_IT = /(?<![A-Za-z0-9])IT\d{2}[\s-]?[A-Za-z](?:[\s-]?[A-Za-z0-9]){22}(?![A-Za-z0-9])/g;
 const CODICE_FISCALE =
   /(?<![A-Za-z0-9])[A-Za-z]{6}\d{2}[ABCDEHLMPRSTabcdehlmprst]\d{2}[A-Za-z]\d{3}[A-Za-z](?![A-Za-z0-9])/g;
-const EXAMPLE_EMAIL_DOMAINS = new Set(['example.com', 'example.org', 'example.net', 'test']);
+const EXAMPLE_EMAIL_DOMAINS = new Set([
+  'example.com',
+  'example.org',
+  'example.net',
+  'test',
+  'noreply.github.com',
+  'users.noreply.github.com',
+]);
+const PUBLIC_EMAIL_ADDRESSES = new Set(['support@github.com', 'noreply@github.com']);
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const MAX_PNG_TEXT_BYTES = 4 * 1024 * 1024;
 
@@ -63,7 +71,9 @@ function isPrivateIpv6(value: string) {
 }
 
 function isPrivateEmail(value: string) {
-  const domain = value.slice(value.lastIndexOf('@') + 1).toLowerCase();
+  const lower = value.toLowerCase();
+  if (PUBLIC_EMAIL_ADDRESSES.has(lower)) return false;
+  const domain = lower.slice(lower.lastIndexOf('@') + 1);
   return !EXAMPLE_EMAIL_DOMAINS.has(domain) && !domain.endsWith('.test');
 }
 

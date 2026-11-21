@@ -9,8 +9,10 @@ import { createPowerLive, parsePowerStatus, parseTodayKwh } from './power.ts';
 const fixtures = new URL('fixtures/powerstat/', import.meta.url);
 const status = readFileSync(new URL('status.json', fixtures), 'utf8');
 const samples = readFileSync(new URL('samples.csv', fixtures), 'utf8');
-// The fixture status was written at 10:00 local time on 2026-11-04.
-const statusAt = new Date(2026, 10, 4, 10).getTime();
+// Fixed epoch in fixtures/powerstat/status.json (2026-11-04T09:00:00Z).
+const statusAt = 1793782800 * 1000;
+// samples.csv stores local wall-clock timestamps without an offset.
+const samplesAt = new Date(2026, 10, 4, 10).getTime();
 const pad = (n: number) => String(n).padStart(2, '0');
 
 void test('the status gives the watts now, and nothing when stale or malformed', () => {
@@ -22,9 +24,9 @@ void test('the status gives the watts now, and nothing when stale or malformed',
 
 void test("today's kWh counts from local midnight, skips gaps and bad rows", () => {
   // 30 s at 100 W after midnight, two minutes at 200 W, one minute at 300 W after a gap: 45 000 J = 12.5 Wh.
-  assert.equal(parseTodayKwh(samples, statusAt), 0.0125);
-  assert.equal(parseTodayKwh('when,watts\n2026-11-04T09:00:00,1', statusAt), null);
-  assert.equal(parseTodayKwh('iso,total_w\n', statusAt), 0);
+  assert.equal(parseTodayKwh(samples, samplesAt), 0.0125);
+  assert.equal(parseTodayKwh('when,watts\n2026-11-04T09:00:00,1', samplesAt), null);
+  assert.equal(parseTodayKwh('iso,total_w\n', samplesAt), 0);
 });
 
 void test('the hub reads a directory, and a missing one or no directory is null', async (t) => {

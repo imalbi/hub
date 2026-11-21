@@ -12,6 +12,13 @@ import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 // critical path) bounds the wall time anyway, and with a fourth process the timing-sensitive Pomodoro specs failed under load.
 export const WORKERS = 4;
 
+/** Caps concurrent e2e processes via `HUB_E2E_WORKERS` (clamped to `1..WORKERS`) for constrained CI runners. */
+export function resolveWorkers(raw = process.env.HUB_E2E_WORKERS): number {
+  if (!raw || !/^\d+$/.test(raw.trim())) return WORKERS;
+  const parsed = Number.parseInt(raw.trim(), 10);
+  return Math.min(WORKERS, Math.max(1, parsed));
+}
+
 export interface Job {
   label: string;
   command: string;
@@ -302,9 +309,10 @@ async function main() {
     const builds = await Promise.all(all.filter((v) => !v.privateFolder).map((v) => run(buildJob(v), true)));
     if (builds.some((code) => code !== 0)) return 1;
     const { jobs, reportOf } = planJobs(all, reports, readDurations(durationsPath));
-    process.stdout.write(`e2e: ${jobs.length} jobs, ${WORKERS} slots: ${jobs.map((j) => j.label).join(', ')}\n`);
+    const workers = resolveWorkers();
+    process.stdout.write(`e2e: ${jobs.length} jobs, ${workers} slots: ${jobs.map((j) => j.label).join(', ')}\n`);
     const started = Date.now();
-    const code = await runQueue(jobs, WORKERS, async (job) => {
+    const code = await runQueue(jobs, workers, async (job) => {
       const t = Date.now();
       const result = await run(job);
       process.stdout.write(`e2e: ${job.label} exit ${result} after ${Math.round((Date.now() - t) / 1000)}s\n`);

@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,6 +16,7 @@ concurrency:
 jobs:
   guard:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +47,7 @@ jobs:
 
   check:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,7 +64,9 @@ jobs:
       - run: pnpm test
 
   e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -75,4 +81,5 @@ jobs:
       - name: Run functional e2e tests
         env:
           HUB_E2E_SKIP_VISUAL: '1'
-        run: pnpm --filter @hub/e2e e2e
+          HUB_E2E_WORKERS: '2'
+        run: pnpm test:e2e

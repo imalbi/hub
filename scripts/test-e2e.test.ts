@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { acquireLock, balance, fileStats, runQueue, type Job, WORKERS } from './test-e2e.ts';
+import { acquireLock, balance, fileStats, resolveWorkers, runQueue, type Job, WORKERS } from './test-e2e.ts';
 
 const job = (label: string): Job => ({ label, command: 'x', args: [], env: {} });
 const tick = () => new Promise<void>((done) => setImmediate(done));
@@ -95,4 +95,12 @@ void test('the lock waits for a live holder, says so once, and takes over a stal
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+void test('resolveWorkers clamps valid integers to 1..WORKERS and falls back to WORKERS otherwise', () => {
+  assert.equal(resolveWorkers(undefined), WORKERS);
+  assert.equal(resolveWorkers('2'), 2);
+  assert.equal(resolveWorkers('0'), 1);
+  assert.equal(resolveWorkers('99'), WORKERS);
+  assert.equal(resolveWorkers('2x'), WORKERS);
 });
