@@ -82,4 +82,5 @@ export function moduleConfigShape<const T extends readonly ModuleDefinition[]>(m
 
 // A private module cannot resolve `zod` or `@trpc/server` from its own folder: both come from here.
 export { TRPCError } from '@trpc/server';
+export { PinnedHttpError, pinnedRequest, type PinnedResponse, type PinnedTarget } from './pinned-http.ts';
 export { z };

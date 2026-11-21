@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { protectedProcedure, router } from '../../core/trpc.ts';
-import { isDay, type NotesStore } from './notes.ts';
+import { isDay, type Note, type NotesStore } from './notes.ts';
 
 const text = z.string().trim().min(1).max(280);
 const forDay = z
@@ -11,12 +11,19 @@ const id = z.string().min(1).max(64);
 // A record id is the module's own key: Lavoro's is `company|title`, often past 64 characters.
 const ref = z.object({ source: z.string().trim().min(1).max(80), id: z.string().trim().min(1).max(300) });
 const about = ref.extend({ title: z.string().trim().min(1).max(200) });
+const stripAbout = (list: Note[]): Note[] => list.map((note) => ({ ...note, about: null }));
 
 export function createNotesRouter(store: NotesStore) {
   return router({
-    open: protectedProcedure.query(() => store.open()),
-    about: protectedProcedure.input(ref).query(({ input }) => store.about(input)),
-    onOpen: protectedProcedure.subscription(({ signal }) => store.subscribe(signal)),
+    open: protectedProcedure.query(({ ctx }) =>
+      ctx.client.kind === 'device' ? stripAbout(store.open()) : store.open(),
+    ),
+    about: protectedProcedure
+      .input(ref)
+      .query(({ ctx, input }) => (ctx.client.kind === 'device' ? [] : store.about(input))),
+    onOpen: protectedProcedure.subscription(async function* ({ ctx, signal }) {
+      for await (const list of store.subscribe(signal)) yield ctx.client.kind === 'device' ? stripAbout(list) : list;
+    }),
     add: protectedProcedure
       .meta({
         label: 'Aggiungi post-it',

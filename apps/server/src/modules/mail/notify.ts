@@ -8,6 +8,7 @@ const SUBJECT_CHARS = 80;
 
 const cut = (text: string) => (text.length > SUBJECT_CHARS ? `${text.slice(0, SUBJECT_CHARS - 3)}...` : text);
 const sender = (message: MailMessage) => message.from?.name || message.from?.email || 'Mittente sconosciuto';
+const escapeMarkup = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
 /**
  * Turns each state of the inboxes into desktop notifications for the unread messages not seen before. The first good
@@ -40,11 +41,17 @@ export function createNewMailNotifier(run: Run) {
       }
     }
     if (fresh.length > NOTIFY_EACH_MAX) {
-      void run('notify-send', ['--app-name', 'Hub', 'Nuova mail', `${fresh.length} nuove mail`]);
+      void run('notify-send', ['--app-name', 'Hub', '--', 'Nuova mail', `${fresh.length} nuove mail`]);
       return;
     }
     for (const message of fresh) {
-      void run('notify-send', ['--app-name', 'Hub', 'Nuova mail', `${sender(message)}: ${cut(message.subject)}`]);
+      void run('notify-send', [
+        '--app-name',
+        'Hub',
+        '--',
+        'Nuova mail',
+        escapeMarkup(`${sender(message)}: ${cut(message.subject)}`),
+      ]);
     }
   };
 }

@@ -75,7 +75,13 @@ export function createFakeDesktop({
       return Promise.resolve(himalaya(args));
     }
     const [command, target] = args;
-    if (bin === 'notify-send' && args.length === 4 && command === '--app-name' && target === 'Hub') {
+    if (
+      bin === 'notify-send' &&
+      args.length === 5 &&
+      command === '--app-name' &&
+      target === 'Hub' &&
+      args[2] === '--'
+    ) {
       notifications.push([...args]);
       return Promise.resolve(ok());
     }

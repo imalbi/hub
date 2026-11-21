@@ -36,12 +36,20 @@ void test('a timeout completes, persists, notifies and pushes without a polling 
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.completed, true);
   assert.equal(rows[0]?.endedAt?.getTime(), Date.now());
-  assert.deepEqual(notifications, [['--app-name', 'Hub', 'Concentrazione completata', 'È il momento di una pausa.']]);
+  assert.deepEqual(notifications, [
+    ['--app-name', 'Hub', '--', 'Concentrazione completata', 'È il momento di una pausa.'],
+  ]);
   const idle = sub.next();
   mock.timers.tick(300_000);
   await flush();
   assert.equal((await idle).value?.phase, 'idle');
-  assert.deepEqual(notifications.at(-1), ['--app-name', 'Hub', 'Pausa terminata', 'Puoi iniziare una nuova sessione.']);
+  assert.deepEqual(notifications.at(-1), [
+    '--app-name',
+    'Hub',
+    '--',
+    'Pausa terminata',
+    'Puoi iniziare una nuova sessione.',
+  ]);
   assert.deepEqual(
     db
       .select()

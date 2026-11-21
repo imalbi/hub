@@ -11,7 +11,7 @@ export const sitesModule = defineModule({
     .array(
       z.object({
         name: z.string().trim().min(1).meta({ title: 'Nome', description: 'Nome mostrato per il sito.' }),
-        url: z.url().meta({ title: 'Indirizzo', description: 'Indirizzo del sito da controllare.' }),
+        url: z.url().meta({ manual: true, title: 'Indirizzo', description: 'Indirizzo del sito da controllare.' }),
       }),
     )
     .default([])

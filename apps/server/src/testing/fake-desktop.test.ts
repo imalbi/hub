@@ -67,9 +67,10 @@ void test('next/previous move the fake track and preserve play status and fixtur
 void test('Hub notifications are accepted and recorded without invoking a binary', async () => {
   const notifications: string[][] = [];
   const run = createFakeDesktop({ notifications });
-  const args = ['--app-name', 'Hub', 'Pausa terminata', 'Puoi iniziare una nuova sessione.'];
+  const args = ['--app-name', 'Hub', '--', 'Pausa terminata', 'Puoi iniziare una nuova sessione.'];
   assert.equal((await run('notify-send', args)).code, 0);
   assert.deepEqual(notifications, [args]);
+  assert.notEqual((await run('notify-send', ['--app-name', 'Hub', 'Pausa terminata', 'Senza separatore'])).code, 0);
   assert.notEqual((await run('notify-send', ['--wait', 'unrecognized'])).code, 0);
 });
 

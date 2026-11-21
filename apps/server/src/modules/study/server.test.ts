@@ -639,3 +639,50 @@ void test('searchRecords is for the PC only: a paired phone is refused', async (
   });
   assert.equal(phone.statusCode, 403);
 });
+
+void test('paired device still reads study and calendar endpoints per Step 45', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'hub-study-device-'));
+  await mkdir(join(dir, 'in-arrivo'));
+  await writeFile(
+    join(dir, 'in-arrivo', 'example.json'),
+    await readFile(new URL('./fixtures/example.json', import.meta.url)),
+  );
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, study: { plansDir: dir, materialDirs: [] } },
+  });
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+  assert.equal(
+    (await app.inject({ method: 'POST', url: '/trpc/study.activate', payload: { name: 'example.json' } })).statusCode,
+    200,
+  );
+
+  const LAN = '192.0.2.31';
+  const code = (await app.inject({ method: 'POST', url: '/trpc/pairing.createCode', payload: {} })).json().result.data
+    .code;
+  const redeemed = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.redeem',
+    remoteAddress: LAN,
+    headers: { 'content-type': 'application/json' },
+    payload: JSON.stringify({ code, deviceName: 'Tablet' }),
+  });
+  const token: string = redeemed.json().result.data.token;
+
+  for (const url of [
+    '/trpc/study.active',
+    '/trpc/study.index',
+    `/trpc/calendar.range?input=${encodeURIComponent(JSON.stringify({ from: '2026-11-01', to: '2026-11-30' }))}`,
+  ]) {
+    const res = await app.inject({
+      url,
+      remoteAddress: LAN,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(res.statusCode, 200, url);
+  }
+});

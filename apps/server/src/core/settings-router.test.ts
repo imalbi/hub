@@ -5,13 +5,18 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { z } from 'zod';
 import { openDb } from '../db/index.ts';
+import { airplayConfigSchema } from '../integrations/airplay/config.ts';
+import { hueConfigSchema } from '../integrations/hue/module.ts';
+import { publicModules } from '../modules.ts';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { createDeviceSockets } from './auth.ts';
+import { coreConfigSchema } from './config-schema.ts';
 import { emptyConfig } from './config.ts';
 import { streamSpawn } from './exec.ts';
 import { createFiles } from './files.ts';
 import { createJobRunner } from './jobs.ts';
 import { createModuleStates } from './module-states.ts';
+import { formSchema, isObject } from './settings-config.ts';
 import { createSettingsRouter } from './settings-router.ts';
 
 void test('agent settings save refuses an entire change containing a secret', async (t) => {
@@ -254,4 +259,140 @@ void test('modules lists a setup note only while the module is on and its slice 
     plain: undefined,
     throws: undefined,
   });
+});
+
+void test('agent settings save refuses changes to public command, path and URL fields while allowing labels', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'hub-agent-manual-public-'));
+  const path = join(dir, 'config.json');
+  const initial = {
+    modules: { airplay: { command: '/usr/bin/airplay-fixture' } },
+    system: {
+      powerstatDir: '/var/lib/powerstat',
+      monitors: [{ output: 'DP-1', label: 'Primary', command: '/usr/bin/monitor-toggle' }],
+    },
+    news: { page: '/var/tmp/news.html', stateFile: '/var/tmp/news.json', command: '/usr/bin/news-fetch' },
+    theme: { caelestiaScheme: '/var/tmp/scheme.json' },
+    study: { plansDir: '/var/tmp/plans', materialDirs: ['/var/tmp/materials'] },
+    sites: [{ name: 'Status', url: 'https://status.example.org' }],
+  };
+  const original = `${JSON.stringify(initial, null, 2)}\n`;
+  await writeFile(path, original);
+  const db = openDb(':memory:');
+  const files = createFiles();
+  const jobs = createJobRunner(db, streamSpawn, 2);
+  t.after(async () => {
+    jobs.close();
+    await files.close();
+    db.$client.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const states = createModuleStates();
+  for (const mod of publicModules) {
+    const schema = mod.settingsSchema ?? mod.config;
+    if (schema) {
+      states.set({
+        name: mod.name,
+        kind: 'public',
+        status: 'on',
+        configPath: [mod.name],
+        schema,
+      });
+    }
+  }
+  states.set({
+    name: 'airplay',
+    kind: 'private',
+    status: 'on',
+    configPath: ['modules', 'airplay'],
+    schema: airplayConfigSchema,
+  });
+
+  const caller = createSettingsRouter({ states, configPath: path }).createCaller({
+    db,
+    files,
+    jobs,
+    run: createFakeDesktop(),
+    config: emptyConfig,
+    client: { kind: 'agent', agentId: 1, name: 'Test' },
+    remoteAddress: '',
+    sockets: createDeviceSockets(),
+    restart: () => false,
+  });
+
+  const refused: Array<{ module: string; value: Record<string, unknown> | unknown[] }> = [
+    {
+      module: 'system',
+      value: {
+        ...initial.system,
+        monitors: [{ output: 'DP-1', label: 'Primary', command: '/usr/bin/poweroff' }],
+      },
+    },
+    { module: 'system', value: { ...initial.system, monitors: [] } },
+    { module: 'system', value: { ...initial.system, powerstatDir: '/etc' } },
+    { module: 'news', value: { ...initial.news, command: '/usr/bin/evil' } },
+    { module: 'news', value: { ...initial.news, page: '/tmp/evil.desktop' } },
+    { module: 'news', value: { ...initial.news, stateFile: '/etc/passwd' } },
+    { module: 'airplay', value: { command: '/usr/bin/evil' } },
+    { module: 'theme', value: { caelestiaScheme: '/etc/shadow' } },
+    { module: 'study', value: { ...initial.study, plansDir: '/tmp/other' } },
+    { module: 'study', value: { ...initial.study, materialDirs: ['/tmp/other'] } },
+    { module: 'sites', value: [{ name: 'Status', url: 'https://127.0.0.1/admin' }] },
+  ];
+
+  for (const entry of refused) {
+    await assert.rejects(
+      caller.save({ module: entry.module, enabled: true, value: entry.value }),
+      (error: unknown) => error instanceof Error && error.message.includes('manual change'),
+      entry.module,
+    );
+    assert.equal(await readFile(path, 'utf8'), original);
+  }
+
+  // Non-manual fields in the same object (monitor label) remain writable by agents.
+  const allowed = await caller.save({
+    module: 'system',
+    enabled: true,
+    value: {
+      ...initial.system,
+      monitors: [{ output: 'DP-1', label: 'Desk Display', command: '/usr/bin/monitor-toggle' }],
+    },
+  });
+  assert.equal(allowed.ok, true);
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).system.monitors[0].label, 'Desk Display');
+});
+
+void test('every public and integration config field matching command/path/host/url is marked manual', () => {
+  const sensitiveName = /command|page|terminal|file|dir|dirs|scheme|host|url/i;
+  // Core `files` is an object section wrapping only `maxUploadMb`, not a file path.
+  const allowedNonManual = new Set(['core.files']);
+  const missing: string[] = [];
+
+  function walk(scope: string, node: unknown, path: string[]) {
+    if (!isObject(node)) return;
+    const key = path.at(-1) ?? '';
+    const fullPath = `${scope}.${path.join('.')}`;
+    if (key && sensitiveName.test(key) && node.manual !== true && !allowedNonManual.has(fullPath)) {
+      missing.push(fullPath);
+    }
+    for (const branchKey of ['anyOf', 'oneOf', 'allOf'] as const) {
+      const branches = node[branchKey];
+      if (Array.isArray(branches)) for (const branch of branches) walk(scope, branch, path);
+    }
+    if (isObject(node.properties)) {
+      for (const [prop, child] of Object.entries(node.properties)) walk(scope, child, [...path, prop]);
+    }
+    if (node.items !== undefined) walk(scope, node.items, [...path, '[]']);
+    if (isObject(node.additionalProperties)) walk(scope, node.additionalProperties, [...path, '*']);
+  }
+
+  walk('core', formSchema(coreConfigSchema), []);
+  for (const mod of publicModules) {
+    const schema = mod.settingsSchema ?? mod.config;
+    if (schema) walk(`public:${mod.name}`, formSchema(schema), []);
+  }
+  walk('integration:airplay', formSchema(airplayConfigSchema), []);
+  walk('integration:hue', formSchema(hueConfigSchema), []);
+
+  assert.deepEqual(missing, []);
 });

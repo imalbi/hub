@@ -4,9 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { z } from 'zod';
+import { createDeviceSockets } from '../../core/auth.ts';
+import { emptyConfig } from '../../core/config.ts';
+import { createFiles } from '../../core/files.ts';
+import { createJobRunner } from '../../core/jobs.ts';
+import { streamSpawn } from '../../core/exec.ts';
+import { openDb } from '../../db/index.ts';
 import { buildServer } from '../../server.ts';
 import { createFakeDesktop } from '../../testing/fake-desktop.ts';
-import { isDay, localDay } from './notes.ts';
+import { createNotes, isDay, localDay } from './notes.ts';
+import { createNotesRouter } from './router.ts';
 
 process.env.NODE_ENV = 'test';
 
@@ -130,4 +137,92 @@ void test('references round-trip, filter open notes and can be cleared', async (
   const longKey = `${'societa esempio consulting'.padEnd(60, 'x')}|sviluppatore front end react typescript`;
   assert.equal((await call('notes.add', { text: 'long', about: { ...about, id: longKey } })).statusCode, 200);
   assert.equal((await notes()).find((note) => note.text === 'long')?.about?.id, longKey);
+});
+
+void test('paired device receives about: null on open/onOpen and empty results on about, while loopback keeps full about', async (t) => {
+  const { app, call } = open(':memory:');
+  t.after(() => app.close());
+
+  const LAN = '192.0.2.25';
+  const ref = { source: 'lavoro-postings', id: 'example-co|frontend', title: 'Private Company Title' };
+  assert.equal((await call('notes.add', { text: 'Nota con riferimento', about: ref })).statusCode, 200);
+
+  const codeRes = await app.inject({ method: 'POST', url: '/trpc/pairing.createCode', payload: {} });
+  const code = codeRes.json().result.data.code;
+  const pairRes = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.redeem',
+    remoteAddress: LAN,
+    headers: { 'content-type': 'application/json' },
+    payload: JSON.stringify({ code, deviceName: 'Phone' }),
+  });
+  const deviceToken: string = pairRes.json().result.data.token;
+
+  const loopbackOpen = listed.parse((await app.inject('/trpc/notes.open')).json()).result.data;
+  assert.deepEqual(loopbackOpen[0]?.about, ref);
+
+  const deviceOpenRes = await app.inject({
+    url: '/trpc/notes.open',
+    remoteAddress: LAN,
+    headers: { authorization: `Bearer ${deviceToken}` },
+  });
+  assert.equal(deviceOpenRes.statusCode, 200);
+  const deviceOpen = listed.parse(deviceOpenRes.json()).result.data;
+  assert.equal(deviceOpen.length, 1);
+  assert.equal(deviceOpen[0]?.about, null);
+  assert.ok(!deviceOpenRes.body.includes('Private Company Title'));
+
+  const refInput = encodeURIComponent(JSON.stringify({ source: ref.source, id: ref.id }));
+  const loopbackAbout = listed.parse((await app.inject(`/trpc/notes.about?input=${refInput}`)).json()).result.data;
+  assert.equal(loopbackAbout.length, 1);
+
+  const deviceAboutRes = await app.inject({
+    url: `/trpc/notes.about?input=${refInput}`,
+    remoteAddress: LAN,
+    headers: { authorization: `Bearer ${deviceToken}` },
+  });
+  assert.equal(deviceAboutRes.statusCode, 200);
+  assert.deepEqual(listed.parse(deviceAboutRes.json()).result.data, []);
+
+  // Verify live subscription filtering per subscriber context on onOpen.
+  const db = openDb(':memory:');
+  const files = createFiles();
+  const jobs = createJobRunner(db, streamSpawn, 2);
+  t.after(async () => {
+    jobs.close();
+    await files.close();
+    db.$client.close();
+  });
+  const store = createNotes(db);
+  await store.add({ text: 'Prima nota', about: ref }, 'desk');
+  const router = createNotesRouter(store);
+  const baseContext = {
+    db,
+    files,
+    jobs,
+    run: createFakeDesktop(),
+    config: emptyConfig,
+    remoteAddress: '',
+    sockets: createDeviceSockets(),
+    restart: () => false,
+  };
+  const deviceCaller = router.createCaller({ ...baseContext, client: { kind: 'device', deviceId: 1 } });
+  const loopbackCaller = router.createCaller({ ...baseContext, client: { kind: 'loopback' } });
+
+  const deviceSub = (await deviceCaller.onOpen())[Symbol.asyncIterator]();
+  const loopbackSub = (await loopbackCaller.onOpen())[Symbol.asyncIterator]();
+  t.after(async () => {
+    await Promise.all([deviceSub.return?.(), loopbackSub.return?.()]);
+  });
+
+  const firstDevice = (await deviceSub.next()).value;
+  const firstLoopback = (await loopbackSub.next()).value;
+  assert.equal(firstDevice?.[0]?.about, null);
+  assert.deepEqual(firstLoopback?.[0]?.about, ref);
+
+  const nextDevice = deviceSub.next();
+  const nextLoopback = loopbackSub.next();
+  await store.add({ text: 'Seconda nota', about: ref }, 'desk');
+  assert.equal((await nextDevice).value?.[0]?.about, null);
+  assert.deepEqual((await nextLoopback).value?.[0]?.about, ref);
 });

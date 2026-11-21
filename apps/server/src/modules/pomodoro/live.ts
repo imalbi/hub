@@ -110,7 +110,7 @@ export function createPomodoro(
     if (result.ended?.completed) {
       lastCompletedAt = result.ended.endedAt;
       const { title, body } = result.ended.kind === 'focus' ? copy.focusDone : copy.breakDone;
-      void run('notify-send', ['--app-name', 'Hub', title, body]);
+      void run('notify-send', ['--app-name', 'Hub', '--', title, body]);
       if (settings.sound) void run('pw-play', [chime]);
     }
     void hub.notify();

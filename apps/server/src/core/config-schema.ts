@@ -56,6 +56,7 @@ export const coreConfigSchema = z.object({
         .default(true)
         .meta({ title: 'Attivo', description: 'Copia ogni giorno i dati di Hub nella cartella dei backup.' }),
       dir: z.string().min(1).optional().meta({
+        manual: true,
         title: 'Cartella',
         description:
           'Dove salvare le copie; se vuota, accanto al database di Hub. Sullo stesso disco protegge da una migrazione sbagliata o da una cancellazione, non da un guasto: indica un altro disco o una cartella sincronizzata.',

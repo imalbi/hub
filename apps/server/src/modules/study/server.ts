@@ -21,14 +21,15 @@ export const studyModule = defineModule({
   migrations: fileURLToPath(new URL('./drizzle', import.meta.url)),
   config: z
     .object({
-      plansDir: z
-        .string()
-        .default('')
-        .meta({ title: 'Cartella piani', description: 'Cartella dei piani; lascia vuoto per disattivare la ricerca.' }),
+      plansDir: z.string().default('').meta({
+        manual: true,
+        title: 'Cartella piani',
+        description: 'Cartella dei piani; lascia vuoto per disattivare la ricerca.',
+      }),
       materialDirs: z
         .array(z.string())
         .default([])
-        .meta({ title: 'Cartelle materiali', description: 'Cartelle dei materiali di studio.' }),
+        .meta({ manual: true, title: 'Cartelle materiali', description: 'Cartelle dei materiali di studio.' }),
     })
     .default({ plansDir: '', materialDirs: [] }),
   create({ db, config, log, focusHistory }) {

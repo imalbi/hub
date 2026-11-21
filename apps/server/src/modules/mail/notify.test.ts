@@ -51,9 +51,42 @@ void test('the first read only records; a new unread id sends one notification w
   observe(state(account('work', [row('1', 'Vecchia')])));
   assert.deepEqual(sent, [], 'no burst at boot');
   observe(state(account('work', [row('2', 'Offerta di colloquio'), row('1', 'Vecchia')])));
-  assert.deepEqual(sent, [['notify-send', '--app-name', 'Hub', 'Nuova mail', 'Mittente 2: Offerta di colloquio']]);
+  assert.deepEqual(sent, [
+    ['notify-send', '--app-name', 'Hub', '--', 'Nuova mail', 'Mittente 2: Offerta di colloquio'],
+  ]);
   observe(state(account('work', [row('2', 'Offerta di colloquio'), row('1', 'Vecchia')])));
   assert.equal(sent.length, 1, 'the same id again sends nothing');
+});
+
+void test('notify-send separates options with -- and escapes markup characters in sender and subject', () => {
+  const { sent, observe } = notifier();
+  observe(state(account('work', [])));
+  observe(
+    state(
+      account('work', [
+        {
+          id: '9',
+          messageId: null,
+          subject: 'A & B <script>alert(1)</script>',
+          from: { name: '--help <b>x</b>', email: 'a@example.org' },
+          date: null,
+          seen: false,
+          flagged: false,
+          hasAttachment: null,
+        },
+      ]),
+    ),
+  );
+  assert.deepEqual(sent, [
+    [
+      'notify-send',
+      '--app-name',
+      'Hub',
+      '--',
+      'Nuova mail',
+      '--help &lt;b&gt;x&lt;/b&gt;: A &amp; B &lt;script&gt;alert(1)&lt;/script&gt;',
+    ],
+  ]);
 });
 
 void test('a new message that is already read, or a read that failed, sends nothing and keeps what was known', () => {
@@ -69,7 +102,7 @@ void test('a long subject is cut at 80 characters', () => {
   const { sent, observe } = notifier();
   observe(state(account('work', [])));
   observe(state(account('work', [row('1', 'x'.repeat(200))])));
-  const body = sent[0]?.[4] ?? '';
+  const body = sent[0]?.[5] ?? '';
   assert.equal(body.length, 'Mittente 1: '.length + 80);
   assert.ok(body.endsWith('...'));
 });
@@ -78,7 +111,7 @@ void test('four new at once are one notification', () => {
   const { sent, observe } = notifier();
   observe(state(account('work', []), account('personal', [])));
   observe(state(account('work', [row('1', 'A'), row('2', 'B'), row('3', 'C')]), account('personal', [row('4', 'D')])));
-  assert.deepEqual(sent, [['notify-send', '--app-name', 'Hub', 'Nuova mail', '4 nuove mail']]);
+  assert.deepEqual(sent, [['notify-send', '--app-name', 'Hub', '--', 'Nuova mail', '4 nuove mail']]);
 });
 
 void test('an old unread row sliding into the window after an archive sends nothing; a newer one still does', () => {
