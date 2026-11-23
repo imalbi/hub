@@ -34,9 +34,8 @@ test('query tools stay out of the command palette', async ({ page, pc }) => {
   await expect(palette.getByRole('option', { name: /Leggi output job/ })).toHaveCount(0);
 });
 
-test.afterEach(async ({ pc, request }) => {
+test.afterEach(async ({ pc }) => {
   await restoreDesktop(pc);
-  if (examples) await request.post(`${SERVER_URL}/__fake/hue`, { data: { reset: true } });
 });
 
 test('Ctrl+K searches the registry, arrows and Enter run an action and Escape restores focus', async ({ page, pc }) => {
@@ -418,43 +417,43 @@ test('Vai a lists the rail zones above the actions and navigates', async ({ page
   expect(await page.evaluate(() => 'navigationMarker' in window)).toBe(true);
 });
 
-if (examples)
-  test('example Hue range and boolean forms run through registry discovery', async ({ page, request }) => {
+test('integer range and boolean forms run through registry discovery', async ({ page, pc }) => {
+  let configured = false;
+  page.on('request', (request) => {
+    if (request.url().includes('pomodoro.configure')) configured = true;
+  });
+  try {
     await page.goto('/desk');
     await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toBeVisible();
     await page.keyboard.press('Control+k');
     const palette = page.getByRole('dialog', { name: 'Comandi' });
-    await palette.getByRole('combobox').fill('Regola luminosità');
-    await expect(palette.getByRole('option', { name: /Regola luminosità/ })).toBeVisible();
+    await palette.getByRole('combobox').fill('Configura Pomodoro');
+    await expect(palette.getByRole('option', { name: /Configura Pomodoro/ })).toBeVisible();
     await page.keyboard.press('Enter');
-    const percent = palette.getByLabel('percent', { exact: true });
-    await percent.fill('101');
+    await palette.getByLabel('focusMinutes', { exact: true }).fill('0.1');
+    await palette.getByLabel('shortBreakMinutes', { exact: true }).fill('0.05');
+    await palette.getByLabel('longBreakMinutes', { exact: true }).fill('0.1');
+    const longBreakEvery = palette.getByLabel('longBreakEvery', { exact: true });
+    await longBreakEvery.fill('101');
+    await palette.getByRole('button', { name: 'sound: Scegli un valore', exact: true }).click();
+    await palette.getByRole('listbox', { name: 'sound' }).getByRole('option', { name: 'No', exact: true }).click();
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
-    expect((await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes).toEqual([]);
-    await percent.fill('42');
+    expect(configured).toBe(false);
+    await longBreakEvery.fill('3');
     await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
     await expect(palette.getByRole('status')).toHaveText('Fatto');
     await expect
-      .poll(async () => (await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes)
-      .toEqual([{ type: 'setBrightness', percent: 42 }]);
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Escape');
-    await expect(palette).not.toBeVisible();
-    await page.keyboard.press('Control+k');
-    await palette.getByRole('combobox').fill('Imposta luce');
-    await expect(palette.getByRole('option', { name: /Imposta luce/ })).toBeVisible();
-    await page.keyboard.press('Enter');
-    await palette.getByRole('button', { name: 'on: Scegli un valore', exact: true }).click();
-    await palette.getByRole('listbox', { name: 'on' }).getByRole('option', { name: 'No', exact: true }).click();
-    await palette.getByRole('button', { name: 'Esegui', exact: true }).click();
-    await expect(palette.getByRole('status')).toHaveText('Fatto');
-    await expect
-      .poll(async () => (await (await request.get(`${SERVER_URL}/__fake/hue`)).json()).writes)
-      .toEqual([
-        { type: 'setBrightness', percent: 42 },
-        { type: 'setPower', on: false },
-      ]);
-  });
+      .poll(async () => {
+        const state = (await (await pc.get('/trpc/pomodoro.state')).json()).result.data;
+        return { longBreakEvery: state.settings.longBreakEvery, sound: state.settings.sound };
+      })
+      .toEqual({ longBreakEvery: 3, sound: false });
+  } finally {
+    await pc.post('/trpc/pomodoro.configure', {
+      data: { focusMinutes: 0.1, shortBreakMinutes: 0.05, longBreakMinutes: 0.1, longBreakEvery: 4, sound: true },
+    });
+  }
+});
 
 // Step 64, P1 and the server cut: the example module's greetings, found by two characters.
 test('two characters find the example greetings under Saluti, one character finds none, and 5 matches show 3 rows', async ({
@@ -532,6 +531,7 @@ test('assistant danger action requires the hold dialog', async ({ page, pc }) =>
     const system = await (await pc.get(`${SERVER_URL}/__fake/system`)).json();
     expect(system.calls).not.toContain('systemctl poweroff');
     await confirmation.getByRole('button', { name: 'Rifiuta' }).click();
+    await expect(confirmation).toHaveCount(0);
   } finally {
     await pc.post(`${SERVER_URL}/__fake/assistant`, { data: { enabled: false } });
   }

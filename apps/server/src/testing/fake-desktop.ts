@@ -65,7 +65,6 @@ export function createFakeDesktop({
   let sinkVolume = 0.8;
   let sinkMuted = false;
   let micMuted = false;
-  let airplayRunning = false;
   const titles = ['Title', 'Second Title', 'Third Title'];
   const artUrl = new URL('../modules/media/fixtures/cover.png', import.meta.url).href;
 
@@ -116,23 +115,6 @@ export function createFakeDesktop({
       monitors[toggled] = !monitors[toggled];
       system.push([bin]);
       return Promise.resolve(ok());
-    }
-    if (bin === 'airplay') {
-      if (command === 'status') {
-        return Promise.resolve(
-          airplayRunning
-            ? ok('AirPlay (UxPlay) is RUNNING [PID 12345]\n')
-            : { stdout: 'AirPlay (UxPlay) is STOPPED\n', stderr: '', code: 1 },
-        );
-      }
-      if (command === 'start') {
-        airplayRunning = true;
-        return Promise.resolve(ok('AirPlay started\n'));
-      }
-      if (command === 'stop') {
-        airplayRunning = false;
-        return Promise.resolve(ok('AirPlay stopped\n'));
-      }
     }
     // The digest as the fake config names it, and opening its page: recorded, never run (a real run marks news seen).
     if (

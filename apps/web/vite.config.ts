@@ -59,6 +59,10 @@ export default defineConfig({
       '@phosphor-icons/react': fileURLToPath(new URL('./node_modules/@phosphor-icons/react', import.meta.url)),
       'motion/react': fileURLToPath(new URL('./node_modules/motion/react', import.meta.url)),
       '@tanstack/react-query': fileURLToPath(new URL('./node_modules/@tanstack/react-query', import.meta.url)),
+      '@tanstack/react-router': fileURLToPath(new URL('./node_modules/@tanstack/react-router', import.meta.url)),
+      '@trpc/tanstack-react-query': fileURLToPath(
+        new URL('./node_modules/@trpc/tanstack-react-query', import.meta.url),
+      ),
       motion: fileURLToPath(new URL('./node_modules/motion', import.meta.url)),
       'rough-notation': fileURLToPath(new URL('./node_modules/rough-notation', import.meta.url)),
       // No leading slash: Vite joins a glob that starts with '/' to the project root and never applies the alias.

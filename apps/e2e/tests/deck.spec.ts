@@ -332,13 +332,13 @@ test('Scrivania presents the requested controls in order', async ({ page }) => {
     /^Alza volume:/,
     /^Microfono:/,
     /^Pomodoro:/,
-    ...(examples ? [/^AirPlay:/] : []),
     /^Posta:/,
     /^Notizie:/,
     /^Blocca:/,
   ];
   const tiles = desk.locator(':scope > div > button, :scope > div > [role="group"]');
   await expect(tiles).toHaveCount(names.length);
+  await expect(desk.getByRole('button', { name: /^AirPlay:/ })).toHaveCount(0);
   for (const [index, name] of names.entries()) await expect(tiles.nth(index)).toHaveAccessibleName(name);
   await expect(desk.getByText('Volume −')).toBeVisible();
   await expect(desk.getByText('Volume +')).toBeVisible();
@@ -373,7 +373,7 @@ test('both pages and the player fit on the phone screen', async ({ page }) => {
   }
 });
 
-test('two monitors precede the light and the holds start a new row', async ({ page }) => {
+test('two monitors precede the module tiles and the holds start a new row', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.routeWebSocket(/\/trpc/, (socket) => {
     const server = socket.connectToServer();
@@ -404,10 +404,12 @@ test('two monitors precede the light and the holds start a new row', async ({ pa
   if (!first || !second || !hold) throw new Error('Missing system tile geometry');
   expect(second.x).toBeGreaterThan(first.x);
   if (examples) {
-    const light = await system.getByRole('button', { name: /^Luci:/ }).boundingBox();
-    expect(light).not.toBeNull();
-    if (!light) throw new Error('Missing light tile geometry');
-    expect(light.x).toBeGreaterThan(second.x);
+    await expect(system.getByRole('button', { name: /^Luci:/ })).toHaveCount(0);
+    const example = await system.getByRole('button', { name: /^Esempio:/ }).boundingBox();
+    expect(example).not.toBeNull();
+    if (!example) throw new Error('Missing example tile geometry');
+    expect(example.y).toBeGreaterThan(second.y);
+    expect(hold.y).toBeGreaterThan(example.y);
   }
   expect(hold.x).toBe(first.x);
   expect(hold.y).toBeGreaterThan(second.y);

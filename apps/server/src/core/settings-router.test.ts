@@ -5,8 +5,6 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { z } from 'zod';
 import { openDb } from '../db/index.ts';
-import { airplayConfigSchema } from '../integrations/airplay/config.ts';
-import { hueConfigSchema } from '../integrations/hue/module.ts';
 import { publicModules } from '../modules.ts';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { createDeviceSockets } from './auth.ts';
@@ -265,7 +263,6 @@ void test('agent settings save refuses changes to public command, path and URL f
   const dir = await mkdtemp(join(tmpdir(), 'hub-agent-manual-public-'));
   const path = join(dir, 'config.json');
   const initial = {
-    modules: { airplay: { command: '/usr/bin/airplay-fixture' } },
     system: {
       powerstatDir: '/var/lib/powerstat',
       monitors: [{ output: 'DP-1', label: 'Primary', command: '/usr/bin/monitor-toggle' }],
@@ -300,13 +297,6 @@ void test('agent settings save refuses changes to public command, path and URL f
       });
     }
   }
-  states.set({
-    name: 'airplay',
-    kind: 'private',
-    status: 'on',
-    configPath: ['modules', 'airplay'],
-    schema: airplayConfigSchema,
-  });
 
   const caller = createSettingsRouter({ states, configPath: path }).createCaller({
     db,
@@ -333,7 +323,6 @@ void test('agent settings save refuses changes to public command, path and URL f
     { module: 'news', value: { ...initial.news, command: '/usr/bin/evil' } },
     { module: 'news', value: { ...initial.news, page: '/tmp/evil.desktop' } },
     { module: 'news', value: { ...initial.news, stateFile: '/etc/passwd' } },
-    { module: 'airplay', value: { command: '/usr/bin/evil' } },
     { module: 'theme', value: { caelestiaScheme: '/etc/shadow' } },
     { module: 'study', value: { ...initial.study, plansDir: '/tmp/other' } },
     { module: 'study', value: { ...initial.study, materialDirs: ['/tmp/other'] } },
@@ -362,7 +351,7 @@ void test('agent settings save refuses changes to public command, path and URL f
   assert.equal(JSON.parse(await readFile(path, 'utf8')).system.monitors[0].label, 'Desk Display');
 });
 
-void test('every public and integration config field matching command/path/host/url is marked manual', () => {
+void test('every public and core config field matching command/path/host/url is marked manual', () => {
   const sensitiveName = /command|page|terminal|file|dir|dirs|scheme|host|url/i;
   // Core `files` is an object section wrapping only `maxUploadMb`, not a file path.
   const allowedNonManual = new Set(['core.files']);
@@ -391,8 +380,6 @@ void test('every public and integration config field matching command/path/host/
     const schema = mod.settingsSchema ?? mod.config;
     if (schema) walk(`public:${mod.name}`, formSchema(schema), []);
   }
-  walk('integration:airplay', formSchema(airplayConfigSchema), []);
-  walk('integration:hue', formSchema(hueConfigSchema), []);
 
   assert.deepEqual(missing, []);
 });

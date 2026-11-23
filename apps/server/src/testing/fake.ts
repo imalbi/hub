@@ -9,10 +9,8 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import type { IsLoopback } from '../core/auth.ts';
 import { z } from 'zod';
 import { configSchema, emptyConfig, type Config } from '../core/config.ts';
-import { hueStateSchema } from '../integrations/hue/contracts.ts';
 import { createFakeDesktop, fakeMonitors, fakeStreamSpawn } from './fake-desktop.ts';
 import type { createJobRunner } from '../core/jobs.ts';
-import { getFakeHue } from './fake-hue.ts';
 import { buildServer } from '../server.ts';
 import type { Run } from '../core/exec.ts';
 
@@ -392,21 +390,6 @@ function hooks(server: typeof app) {
     if (!body.success) return reply.code(400).send();
     failMail = body.data.fail;
     return { fail: failMail };
-  });
-  // Test hook for the Hue example module's fake light, so a spec can change it the way Echo or a power cut would and
-  // read the writes it received. Only this e2e server has it; there is no such route in `index.ts`.
-  const hueHook = z.union([z.object({ reset: z.literal(true) }), hueStateSchema.partial()]);
-  server.get('/__fake/hue', (_request, reply) => {
-    const fake = getFakeHue();
-    return fake ? { state: fake.state(), writes: fake.writes, watchers: fake.watchers } : reply.code(404).send();
-  });
-  server.post('/__fake/hue', (request, reply) => {
-    const fake = getFakeHue();
-    const body = hueHook.safeParse(request.body);
-    if (!fake || !body.success) return reply.code(fake ? 400 : 404).send();
-    if ('reset' in body.data) fake.reset();
-    else fake.patch(body.data);
-    return { state: fake.state() };
   });
 }
 hooks(app);

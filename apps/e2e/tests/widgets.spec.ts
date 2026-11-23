@@ -218,7 +218,7 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
   const missing = ['Server', 'Notizie', 'Comandi', 'Consumo', 'Aspetto', 'Post-it'];
-  if (process.env.HUB_EXAMPLE_MODULES === '1') missing.push('Esempio', 'Luci');
+  if (process.env.HUB_EXAMPLE_MODULES === '1') missing.push('Esempio');
   await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText(missing);
   await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Aspetto' }).click());
   await expect(cell(page, 'theme')).toBeVisible();
@@ -286,7 +286,7 @@ test('all widgets fit within the surface scroller', async ({ page, pc }) => {
     'notes',
     'calendar',
   ];
-  if (process.env.HUB_EXAMPLE_MODULES === '1') ids.push('hello', 'lights');
+  if (process.env.HUB_EXAMPLE_MODULES === '1') ids.push('hello');
   const items = ids.map((widget, index) => ({
     widget,
     size:

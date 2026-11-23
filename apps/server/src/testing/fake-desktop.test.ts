@@ -37,6 +37,7 @@ void test('every other command is refused and changes nothing', async () => {
     ['caelestia', ['toggle', 'unknown']],
     ['webdigest', []],
     ['xdg-open', ['https://example.com']],
+    ['airplay', ['status']],
   ] as const;
   for (const [bin, args] of refused) {
     const { code } = await run(bin, [...args]);
@@ -94,15 +95,6 @@ void test('wpctl get-volume, set-volume and set-mute manage fake audio state', a
 
   assert.equal((await run('wpctl', ['set-mute', '@DEFAULT_AUDIO_SOURCE@', 'toggle'])).code, 0);
   assert.equal((await run('wpctl', ['get-volume', '@DEFAULT_AUDIO_SOURCE@'])).stdout.trim(), 'Volume: 1.00 [MUTED]');
-});
-
-void test('airplay status, start and stop manage fake AirPlay state', async () => {
-  const run = createFakeDesktop();
-  assert.equal((await run('airplay', ['status'])).code, 1);
-  assert.equal((await run('airplay', ['start'])).code, 0);
-  assert.equal((await run('airplay', ['status'])).code, 0);
-  assert.equal((await run('airplay', ['stop'])).code, 0);
-  assert.equal((await run('airplay', ['status'])).code, 1);
 });
 
 void test('himalaya answers only the argv Hub builds: a send, a read with --seen, an unknown account or flag are refused', async () => {
