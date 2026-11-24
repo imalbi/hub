@@ -41,7 +41,7 @@ test('completion from a closed session cannot dismiss a newly opened form', asyn
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/trpc/news.refresh*', async (route) => {
+  await page.route('**/trpc/media.next*', async (route) => {
     await held;
     await route.continue();
   });
@@ -50,9 +50,9 @@ test('completion from a closed session cannot dismiss a newly opened form', asyn
     await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toBeVisible();
     await page.keyboard.press('Control+k');
     const palette = page.getByRole('dialog', { name: 'Comandi' });
-    await palette.getByRole('combobox').fill('Aggiorna notizie');
-    await expect(palette.getByRole('option', { name: /Aggiorna notizie/ })).toBeVisible();
-    const requested = page.waitForRequest((request) => request.url().includes('news.refresh'));
+    await palette.getByRole('combobox').fill('Traccia successiva');
+    await expect(palette.getByRole('option', { name: /Traccia successiva/ })).toBeVisible();
+    const requested = page.waitForRequest((request) => request.url().includes('media.next'));
     await page.keyboard.press('Enter');
     await requested;
     await page.keyboard.press('Escape');
@@ -63,10 +63,10 @@ test('completion from a closed session cannot dismiss a newly opened form', asyn
     await page.keyboard.press('Enter');
     const field = palette.getByRole('textbox', { name: 'label', exact: true });
     await field.fill('Casse');
-    const completed = page.waitForResponse((response) => response.url().includes('news.refresh'));
+    const completed = page.waitForResponse((response) => response.url().includes('media.next'));
     release?.();
     await completed;
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('hub.palette.recent'))).toContain('news.refresh');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('hub.palette.recent'))).toContain('media.next');
     await expect(field).toHaveValue('Casse');
     await expect(palette).toBeVisible();
   } finally {

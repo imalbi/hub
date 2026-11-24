@@ -18,7 +18,6 @@ test.describe('the deck', () => {
     await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Notizie: Apri sul PC, 22 voci nuove' })).toBeVisible();
     await waitForDeckCover(page);
     await page.evaluate(async () => {
       await document.fonts.ready;

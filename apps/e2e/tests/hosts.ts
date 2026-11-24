@@ -33,7 +33,7 @@ if (!process.env[TMP]) {
 export const SERVER_PORT = Number(process.env[SERVER]);
 export const WEB_PORT = Number(process.env[WEB]);
 export const SERVER_URL = `http://127.0.0.1:${SERVER_PORT}`;
-/** Fixtures the fake server writes and specs rewrite (Caelestia scheme, news page, powerstat), one folder per run. */
+/** Fixtures the fake server writes and specs rewrite (Caelestia scheme, powerstat), one folder per run. */
 export const RUN_TMP = process.env[TMP] ?? tmpdir();
 
 // Same machine, two names: the fake server treats `localhost` as the PC and `127.0.0.1` as a phone (see `fake.ts`).

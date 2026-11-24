@@ -4,7 +4,7 @@ Fastify 5 with tRPC 11 mounted at `/trpc`. `src/server.ts` builds the app (`buil
 
 Notes about one module live in `AGENTS.md` inside that module's folder (`src/modules/<name>/` and the folders named below). Read the one for every module you touch.
 
-`src/modules/weather/`, `src/modules/audio/`, `src/modules/media/`, `src/modules/pomodoro/`, `src/modules/theme/`, `src/modules/layout/`, `src/modules/system/`, `src/modules/news/`, `src/modules/mail/`, `src/modules/music/`, `src/modules/sites/`, `src/modules/study/`, `src/modules/notes/`.
+`src/modules/weather/`, `src/modules/audio/`, `src/modules/media/`, `src/modules/pomodoro/`, `src/modules/theme/`, `src/modules/layout/`, `src/modules/system/`, `src/modules/mail/`, `src/modules/music/`, `src/modules/sites/`, `src/modules/study/`, `src/modules/notes/`.
 
 ## Where files go
 

@@ -41,7 +41,6 @@ export function createFakeDesktop({
   notifications = [],
   sounds = [],
   system = [],
-  news = [],
   mail = [],
   player = { gone: false },
   monitors = fakeMonitors(),
@@ -49,7 +48,6 @@ export function createFakeDesktop({
   notifications?: string[][];
   sounds?: string[];
   system?: string[][];
-  news?: string[][];
   /** Set `gone` to make every playerctl read answer "No players found" (the e2e hook `/__fake/player`). */
   player?: { gone: boolean };
   /** Disabled flag per output name, answered as `hyprctl monitors all -j` and flipped by `fake-monitor-<output>` (the e2e hook `/__fake/monitor` sets it too). */
@@ -114,14 +112,6 @@ export function createFakeDesktop({
     if (toggled !== undefined && toggled in monitors) {
       monitors[toggled] = !monitors[toggled];
       system.push([bin]);
-      return Promise.resolve(ok());
-    }
-    // The digest as the fake config names it, and opening its page: recorded, never run (a real run marks news seen).
-    if (
-      (bin === 'webdigest' && systemCommand === 'webdigest --no-open') ||
-      (bin === 'xdg-open' && args.length === 1 && command?.endsWith('.html'))
-    ) {
-      news.push([bin, ...args]);
       return Promise.resolve(ok());
     }
     if (bin === 'pw-dump' && args.length === 0) {

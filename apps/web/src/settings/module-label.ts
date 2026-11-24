@@ -5,7 +5,6 @@ const publicNames: Record<string, () => string> = {
   health: m.module_health,
   audio: m.module_audio,
   media: m.module_media,
-  news: m.module_news,
   layout: m.module_layout,
   devices: m.module_devices,
   pairing: m.module_pairing,

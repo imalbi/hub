@@ -32,7 +32,7 @@ export const assistantCases: AssistantCase[] = [
     calls: [call('calendar.add', { day: '2026-11-19', start: { starts: '15' }, title: { contains: 'colloquio' } })],
   },
   { sentence: 'cerca nuovi annunci di lavoro', calls: [call('lavoro.raccogli')] },
-  { sentence: 'aggiorna le notizie', calls: [call('news.refresh')] },
+  { sentence: 'torna alla canzone precedente', calls: [call('media.previous')] },
   { sentence: 'avvia airplay', calls: [call('airplay.start')] },
   { sentence: 'che tempo fa a Torino?', calls: [] },
   { sentence: 'grazie, a posto così', calls: [] },

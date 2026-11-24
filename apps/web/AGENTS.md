@@ -4,7 +4,7 @@ React 19 SPA built with Vite. In dev, `/trpc` is proxied to the server (`vite.co
 
 Notes about one module live in `AGENTS.md` inside that module's folder (`src/modules/<name>/` and the folders named below). Read the one for every module you touch.
 
-`src/modules/mail/`, `src/modules/devices/`, `src/components/ui/`, `src/modules/media/`, `src/modules/pomodoro/`, `src/shell/`, `src/modules/audio/`, `src/theme/`, `src/settings/`, `src/modules/system/`, `src/modules/news/`, `src/modules/music/`, `src/modules/sites/`, `src/modules/jobs/`, `src/modules/study/`, `src/modules/notes/`, `src/modules/calendar/`.
+`src/modules/mail/`, `src/modules/devices/`, `src/components/ui/`, `src/modules/media/`, `src/modules/pomodoro/`, `src/shell/`, `src/modules/audio/`, `src/theme/`, `src/settings/`, `src/modules/system/`, `src/modules/music/`, `src/modules/sites/`, `src/modules/jobs/`, `src/modules/study/`, `src/modules/notes/`, `src/modules/calendar/`.
 
 ## Desk layers and scrolling
 

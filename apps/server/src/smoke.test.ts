@@ -158,22 +158,6 @@ void test('a configured powerstat dir is checked through the real parser', async
   assert.equal(missing.find((r) => r.name === 'powerstat dir')?.status, 'missing');
 });
 
-void test('a configured digest runs only its self-check, and its page goes through the real parser', async () => {
-  const seen: string[][] = [];
-  const page = new URL('modules/news/fixtures/latest.html', import.meta.url).pathname;
-  const results = await runSmoke(
-    healthy((bin, args) => {
-      if (bin !== 'webdigest') return undefined;
-      seen.push(args);
-      return ok('ok\n');
-    }),
-    { news: { page, command: 'webdigest' } },
-  );
-  assert.deepEqual(seen, [['--test']]);
-  assert.equal(results.find((r) => r.name === 'news digest --test')?.status, 'ok');
-  assert.equal(results.find((r) => r.name === 'news page')?.status, 'ok');
-});
-
 void test('a himalaya schema that no longer has a field Hub reads is reported as unparseable', async () => {
   const schema = JSON.parse(
     readFileSync(new URL('modules/mail/fixtures/envelope-list.schema.json', import.meta.url), 'utf8'),

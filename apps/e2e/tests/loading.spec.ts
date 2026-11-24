@@ -173,7 +173,6 @@ for (const entry of [
   { widget: 'audio', subscription: 'audio.onState' },
   { widget: 'media', subscription: 'media.onState' },
   { widget: 'pomodoro', subscription: 'pomodoro.onState' },
-  { widget: 'news', subscription: 'news.onState' },
   { widget: 'mail', subscription: 'mail.onState' },
   { widget: 'audio', subscription: 'audio.onState', size: 'medium' },
   { widget: 'media', subscription: 'media.onState', size: 'large' },

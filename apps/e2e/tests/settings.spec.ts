@@ -17,7 +17,6 @@ const EXPECTED_MODULES = [
   'Disposizione',
   'Meteomanca la città', // the note is forced by the test: a saved place in an earlier spec would clear it
   'Musica',
-  'Notizie',
   'Pomodoro',
   'Post-it',
   'Posta',
@@ -306,16 +305,16 @@ if (!example) {
     pc,
   }) => {
     try {
-      await saveSwitch(page, 'news');
+      await saveSwitch(page, 'pomodoro');
       await expect(
-        page.getByRole('navigation', { name: 'Sezioni' }).getByRole('link', { name: /^Notizie\s*Spento/ }),
+        page.getByRole('navigation', { name: 'Sezioni' }).getByRole('link', { name: /^Pomodoro\s*Spento/ }),
       ).toBeVisible(RESTARTED);
-      expect((await moduleStates(pc)).find((entry) => entry.name === 'news')?.status).toBe('off');
+      expect((await moduleStates(pc)).find((entry) => entry.name === 'pomodoro')?.status).toBe('off');
       // Off hides the module from the phone's list too: names only, and not this one.
       const enabled = data(await (await pc.get('/trpc/modules.enabled')).json());
-      expect(Array.isArray(enabled) && enabled.includes('news')).toBe(false);
+      expect(Array.isArray(enabled) && enabled.includes('pomodoro')).toBe(false);
     } finally {
-      await ensureOn(pc, 'news');
+      await ensureOn(pc, 'pomodoro');
     }
   });
 }

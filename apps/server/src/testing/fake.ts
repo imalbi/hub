@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,13 +42,6 @@ const samples = Array.from(
 );
 writeFileSync(join(powerstatDir, 'samples.csv'), ['iso,total_w', ...samples].join('\n'));
 
-// The digest page from the news fixture, under a name of its own; the fake desktop answers `webdigest --no-open`.
-const newsPage = join(runDir, 'hub-e2e-news.html');
-copyFileSync(new URL('../modules/news/fixtures/latest.html', import.meta.url), newsPage);
-// Its mtime is "last updated" on screen: a fixed one keeps the screenshots stable.
-const newsUpdated = new Date(2026, 10, 4, 8, 30);
-utimesSync(newsPage, newsUpdated, newsUpdated);
-
 const studyDir = join(runDir, 'study');
 mkdirSync(join(studyDir, 'in-arrivo'), { recursive: true });
 const studyMaterials = join(studyDir, 'materiali');
@@ -84,7 +77,6 @@ const config: Config = {
     // The fake desktop answers `fake-monitor-<output>` by flipping that output; DP-2 starts off, as in its fixture.
     monitors: [{ output: 'DP-2', label: 'Monitor verticale', command: 'fake-monitor-DP-2' }],
   },
-  news: { page: newsPage, command: 'webdigest' },
   mail: {
     accounts: [
       { account: 'work', label: 'Lavoro' },

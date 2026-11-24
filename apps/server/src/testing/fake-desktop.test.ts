@@ -35,7 +35,6 @@ void test('every other command is refused and changes nothing', async () => {
     ['systemctl', ['poweroff', '--force']],
     ['systemctl', ['halt']],
     ['caelestia', ['toggle', 'unknown']],
-    ['webdigest', []],
     ['xdg-open', ['https://example.com']],
     ['airplay', ['status']],
   ] as const;

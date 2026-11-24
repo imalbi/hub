@@ -108,7 +108,6 @@ export default defineConfig({
               'study.visual.spec.ts',
               'jobs.spec.ts',
               'system.spec.ts',
-              'news.spec.ts',
               'mail.spec.ts',
               'music.spec.ts',
               'settings.spec.ts',

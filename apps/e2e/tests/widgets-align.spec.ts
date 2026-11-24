@@ -198,38 +198,6 @@ test('C2: Posta aligns Piccolo and Medio and fits at 4K and 1080p', async ({ pag
   await expect(page).toHaveURL(/\/desk\/messaggi/);
 });
 
-test('C2: Notizie aligns Piccolo and Medio headlines and fits at 4K and 1080p', async ({ page, pc }) => {
-  await place(pc, [{ widget: 'news', size: 'small', x: 0, y: 0 }]);
-  await page.setViewportSize({ width: 3840, height: 2160 });
-  await page.goto('/desk');
-  const small = panel(page, 'news');
-  await expect(small.getByText('Aggiornato 4 nov, 08:30', { exact: true })).toBeVisible();
-  await expect(small.locator('[data-readout] .sr-only')).toHaveText('22');
-  await expect(small.getByText('voci nuove', { exact: true })).toBeVisible();
-  expect(await small.getByRole('button').count()).toBe(1);
-  await expect(small.getByRole('button', { name: 'Aggiorna', exact: true })).toBeVisible();
-  await expectFits(page, 'news', 'news small 4K');
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await expectFits(page, 'news', 'news small 1080p');
-
-  await place(pc, [{ widget: 'news', size: 'medium', x: 0, y: 0 }]);
-  await page.setViewportSize({ width: 3840, height: 2160 });
-  await page.goto('/desk');
-  const medium = panel(page, 'news');
-  await expect(medium.getByText('22', { exact: true })).toBeVisible();
-  await expect(medium.getByText('Aggiornato 4 nov, 08:30')).toBeVisible();
-  await expect(medium.getByRole('listitem')).toHaveCount(3);
-  await expect(medium.getByText('Example item')).toBeVisible();
-  await expect(medium.getByText('Example issue')).toBeVisible();
-  await expect(medium.getByText('Example React release')).toBeVisible();
-  await expect(medium.getByText('React Blog')).toBeVisible();
-  await expect(medium.getByText('Example CSS guide')).toBeVisible();
-  await expect(medium.getByText('Web Dev')).toBeVisible();
-  await expectFits(page, 'news', 'news medium 4K');
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await expectFits(page, 'news', 'news medium 1080p');
-});
-
 test('C2: Consumo and Server Piccolo follow P3 and fit at 4K and 1080p', async ({ page, pc }) => {
   await place(pc, [
     { widget: 'power', size: 'small', x: 0, y: 0 },

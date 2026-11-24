@@ -277,15 +277,6 @@ test('the Sistema page powers off only after a hold', async ({ page }) => {
   }
 });
 
-test('the Notizie tile shows the count as a badge and opens the digest on the PC', async ({ page }) => {
-  const tile = page.getByRole('region', { name: 'Scrivania' }).getByRole('button', { name: /^Notizie:/ });
-  await expect(tile).toHaveAccessibleName('Notizie: Apri sul PC, 22 voci nuove');
-  await expect(tile.getByText('22', { exact: true })).toBeVisible();
-  await tile.click();
-  await expect(tile).toBeEnabled();
-  await expect(tile).not.toHaveAccessibleName(/Errore/);
-});
-
 test('Posta shows only its unread count and hides the badge at zero', async ({ page, pc }) => {
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
@@ -333,7 +324,6 @@ test('Scrivania presents the requested controls in order', async ({ page }) => {
     /^Microfono:/,
     /^Pomodoro:/,
     /^Posta:/,
-    /^Notizie:/,
     /^Blocca:/,
   ];
   const tiles = desk.locator(':scope > div > button, :scope > div > [role="group"]');

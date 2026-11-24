@@ -2,7 +2,6 @@ import { run as realRun, type Run, type RunResult } from './core/exec.ts';
 import { parsePwDump, parseVolume } from './modules/audio/pipewire.ts';
 import { loadConfig } from './core/config.ts';
 import { MEDIA_FORMAT, parseMediaState } from './modules/media/playerctl.ts';
-import { createNewsLive } from './modules/news/page.ts';
 import { parseMonitorList } from './modules/system/monitor.ts';
 import { createPowerLive } from './modules/system/power.ts';
 import { ENVELOPE_SCHEMA_ARGS, missingEnvelopeFields } from './modules/mail/himalaya.ts';
@@ -136,31 +135,12 @@ async function checkPowerstat(dir: string): Promise<SmokeResult> {
     : { name, status: 'ok', detail: 'status and samples parse' };
 }
 
-// `--test` is the digest's self-check: exactly that argv, it fetches nothing and marks nothing seen. Any other unknown
-// flag runs the real digest, so never probe it with --help.
-async function checkDigest(run: Run, command: string): Promise<SmokeResult> {
-  const name = 'news digest --test';
-  const result = await run(command, ['--test']);
-  if (result.code === NOT_RUN) return { name, status: 'missing', detail: 'binary not found or timed out' };
-  return result.code === 0 && result.stdout.trim() === 'ok'
-    ? { name, status: 'ok', detail: 'self-check passed' }
-    : { name, status: 'unparseable', detail: exitDetail(result) };
-}
-
-async function checkNewsPage(page: string): Promise<SmokeResult> {
-  const state = await createNewsLive({ page }).read();
-  return state === null
-    ? { name: 'news page', status: 'unparseable', detail: 'missing, or no header nav with section counts' }
-    : { name: 'news page', status: 'ok', detail: `${state.sections.length} sections parse` };
-}
-
 type SmokeConfig = {
   powerstatDir?: string;
-  news?: { page?: string; command?: string };
 };
 
 /** Runs the read-only commands Hub depends on and feeds their output through the real parsers. */
-export function runSmoke(run: Run, { powerstatDir, news = {} }: SmokeConfig = {}): Promise<SmokeResult[]> {
+export function runSmoke(run: Run, { powerstatDir }: SmokeConfig = {}): Promise<SmokeResult[]> {
   return Promise.all([
     ...checks.map(async ({ name, bin, args, judge }): Promise<SmokeResult> => {
       const result = await run(bin, args);
@@ -169,14 +149,12 @@ export function runSmoke(run: Run, { powerstatDir, news = {} }: SmokeConfig = {}
       return { name, ...verdict };
     }),
     ...(powerstatDir ? [checkPowerstat(powerstatDir)] : []),
-    ...(news.command ? [checkDigest(run, news.command)] : []),
-    ...(news.page ? [checkNewsPage(news.page)] : []),
   ]);
 }
 
 if (import.meta.main) {
   const config = loadConfig();
-  const results = await runSmoke(realRun, { ...config.system, news: config.news });
+  const results = await runSmoke(realRun, { ...config.system });
   for (const { name, status, detail } of results)
     process.stdout.write(`${status.padEnd(12)}${name.padEnd(26)}${detail}\n`);
   process.exitCode = results.every((r) => r.status === 'ok') ? 0 : 1;

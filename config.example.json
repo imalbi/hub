@@ -6,11 +6,6 @@
     ]
   },
   "server": { "host": "127.0.0.1", "allowedOrigins": ["http://hub.example.test:4180"] },
-  "news": {
-    "page": "/path/to/webdigest/latest.html",
-    "stateFile": "/path/to/webdigest/state.json",
-    "command": "/path/to/webdigest"
-  },
   "system": { "powerstatDir": "/path/to/powerstat/state" },
   "pomodoro": { "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15, "longBreakEvery": 4 },
   "weather": { "name": "Località esempio", "latitude": 1, "longitude": 2 },

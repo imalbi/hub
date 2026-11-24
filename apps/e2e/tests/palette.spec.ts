@@ -359,7 +359,7 @@ test('the command palette holds its position while actions load', async ({ page 
 });
 
 test('a failing action shows the generic error and keeps the palette open', async ({ page }) => {
-  await page.route('**/trpc/news.refresh*', (route) =>
+  await page.route('**/trpc/media.next*', (route) =>
     route.fulfill({
       status: 500,
       json: [{ error: { message: 'secret detail', code: -32603, data: { code: 'INTERNAL_SERVER_ERROR' } } }],
@@ -369,8 +369,8 @@ test('a failing action shows the generic error and keeps the palette open', asyn
   await expect(pill(page)).toBeVisible();
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Comandi' });
-  await palette.getByRole('combobox').fill('Aggiorna notizie');
-  await expect(palette.getByRole('option', { name: /Aggiorna notizie/ })).toBeVisible();
+  await palette.getByRole('combobox').fill('Traccia successiva');
+  await expect(palette.getByRole('option', { name: /Traccia successiva/ })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(palette.getByText('Azione non riuscita. Riprova.')).toBeVisible();
   await expect(palette).not.toContainText('secret detail');

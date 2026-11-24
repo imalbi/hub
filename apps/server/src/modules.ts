@@ -1,7 +1,6 @@
 import { healthModule } from './modules/health/module.ts';
 import { audioModule } from './modules/audio/module.ts';
 import { mediaModule } from './modules/media/module.ts';
-import { newsModule } from './modules/news/module.ts';
 import { layoutModule } from './modules/layout/module.ts';
 import { devicesModule } from './modules/devices/module.ts';
 import { pairingModule } from './modules/devices/module.ts';
@@ -21,7 +20,6 @@ export const publicModules = [
   healthModule,
   audioModule,
   mediaModule,
-  newsModule,
   layoutModule,
   devicesModule,
   pairingModule,

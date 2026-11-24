@@ -2,7 +2,6 @@ import { useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
 import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
-import { NewsTile } from '../modules/news/deck-tile.tsx';
 import { MailTile } from '../modules/mail/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import {
@@ -46,7 +45,6 @@ const pages: Page[] = [
       MicMuteTile,
       PomodoroTile,
       MailTile,
-      NewsTile,
       LockTile,
     ],
   },
@@ -64,7 +62,6 @@ const holds: ComponentType[] = [SuspendTile, RebootTile, PowerOffTile];
 // The module each tile belongs to, so a module that is off takes its tiles off the deck.
 const tileOwner = new Map<ComponentType, string>([
   ...[AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
-  [NewsTile, 'news'],
   [MailTile, 'mail'],
   [PomodoroTile, 'pomodoro'],
   ...[
@@ -90,7 +87,8 @@ export function useDeckPages() {
   const trpc = useTRPC();
   const monitors = useSubscription(trpc.system.onMonitors.subscriptionOptions(undefined, { enabled: isOn('system') }));
   let result = pages.map((page) => ({ ...page, tiles: [...page.tiles] }));
-  for (const module of moduleUIs) {
+  // Insert from the end so earlier slots cannot shift another module's base position.
+  for (const module of moduleUIs.toSorted((a, b) => (b.deck?.at ?? 0) - (a.deck?.at ?? 0))) {
     const { deck } = module;
     if (!deck || !isOn(module.name) || deck.at === undefined) continue;
     const target = result.find((page) => page.id === deck.page);

@@ -179,7 +179,7 @@ void test('a valid save keeps the old file as .bak, writes a file that parses an
 
 void test('restore refuses a backup the server could not start with, and changes nothing', async (t) => {
   const { call, read, original, restarts, configPath } = await setup(t);
-  for (const backup of ['{ not json', JSON.stringify({ modulesOff: 'news' })]) {
+  for (const backup of ['{ not json', JSON.stringify({ modulesOff: 'pomodoro' })]) {
     await writeFile(`${configPath}.bak`, backup);
     assert.equal((await call('settings.restore', { input: { confirmed: true } })).status, 412);
     assert.equal(await read(), original);

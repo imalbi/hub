@@ -102,20 +102,20 @@ void test('modulesOff leaves a public module uncreated: its calls are NOT_FOUND 
   const app = buildServer({
     dbPath: ':memory:',
     deps: { run: createFakeDesktop() },
-    config: { ...emptyConfig, modulesOff: ['news'] },
+    config: { ...emptyConfig, modulesOff: ['pomodoro'] },
   });
   t.after(() => app.close());
-  assert.equal((await app.inject('/trpc/news.state')).statusCode, 404);
+  assert.equal((await app.inject('/trpc/pomodoro.state')).statusCode, 404);
   assert.equal((await app.inject('/trpc/audio.state')).statusCode, 200);
   const modules = (await app.inject('/trpc/settings.modules')).json().result.data;
   assert.deepEqual(
-    modules.find((m: { name: string }) => m.name === 'news'),
-    { name: 'news', kind: 'public', status: 'off', hasConfig: true },
+    modules.find((m: { name: string }) => m.name === 'pomodoro'),
+    { name: 'pomodoro', kind: 'public', status: 'off', hasConfig: true },
   );
   assert.equal(modules.find((m: { name: string }) => m.name === 'audio').status, 'on');
   // The protected list a phone may read carries names only, and not the module that is off.
   const enabled = (await app.inject('/trpc/modules.enabled')).json().result.data;
-  assert.ok(enabled.includes('audio') && !enabled.includes('news'));
+  assert.ok(enabled.includes('audio') && !enabled.includes('pomodoro'));
 });
 
 void test('multi-root discovery loads from both roots and gives localRoot precedence over installedRoot', async (t) => {
