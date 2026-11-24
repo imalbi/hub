@@ -20,6 +20,9 @@ const rowActive = { className: 'bg-surface' };
 export function SettingsLayout() {
   const trpc = useTRPC();
   const modules = useQuery(trpc.settings.modules.queryOptions());
+  const catalog = useQuery(trpc.catalog.state.queryOptions());
+  const catalogAttention =
+    catalog.data?.pendingApply || catalog.data?.installed.some((module) => module.updateAvailable);
   const { theme, custom } = useTheme();
   const themeName =
     builtInThemes.find((entry) => entry.id === theme)?.label() ??
@@ -39,6 +42,14 @@ export function SettingsLayout() {
           </Link>
           <Link to="/desk/settings/core" className={rowClass} activeProps={rowActive}>
             <span className="grow">{m.settings_core()}</span>
+          </Link>
+          <Link to="/desk/settings/catalog" className={rowClass} activeProps={rowActive}>
+            <span className="grow">{m.catalog_title()}</span>
+            {catalogAttention && (
+              <span data-catalog-dot className="size-2xs shrink-0 rounded-full bg-muted-foreground">
+                <span className="sr-only">{m.catalog_attention()}</span>
+              </span>
+            )}
           </Link>
           <p className="px-md pt-md text-label text-muted-foreground">{m.settings_modules()}</p>
           {modules.data

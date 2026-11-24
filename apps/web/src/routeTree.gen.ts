@@ -24,6 +24,7 @@ import { Route as DeskSystemRouteImport } from './routes/desk.system'
 import { Route as DeskSettingsIndexRouteImport } from './routes/desk.settings.index'
 import { Route as DeskSettingsModuleRouteImport } from './routes/desk.settings.$module'
 import { Route as DeskSettingsAppearanceRouteImport } from './routes/desk.settings.appearance'
+import { Route as DeskSettingsCatalogRouteImport } from './routes/desk.settings.catalog'
 import { Route as DeskSettingsCoreRouteImport } from './routes/desk.settings.core'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,11 @@ const DeskSettingsAppearanceRoute = DeskSettingsAppearanceRouteImport.update({
   path: '/appearance',
   getParentRoute: () => DeskSettingsRoute,
 } as any)
+const DeskSettingsCatalogRoute = DeskSettingsCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => DeskSettingsRoute,
+} as any)
 const DeskSettingsCoreRoute = DeskSettingsCoreRouteImport.update({
   id: '/core',
   path: '/core',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/desk/': typeof DeskIndexRoute
   '/desk/settings/$module': typeof DeskSettingsModuleRoute
   '/desk/settings/appearance': typeof DeskSettingsAppearanceRoute
+  '/desk/settings/catalog': typeof DeskSettingsCatalogRoute
   '/desk/settings/core': typeof DeskSettingsCoreRoute
   '/desk/settings/': typeof DeskSettingsIndexRoute
 }
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/desk': typeof DeskIndexRoute
   '/desk/settings/$module': typeof DeskSettingsModuleRoute
   '/desk/settings/appearance': typeof DeskSettingsAppearanceRoute
+  '/desk/settings/catalog': typeof DeskSettingsCatalogRoute
   '/desk/settings/core': typeof DeskSettingsCoreRoute
   '/desk/settings': typeof DeskSettingsIndexRoute
 }
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/desk/': typeof DeskIndexRoute
   '/desk/settings/$module': typeof DeskSettingsModuleRoute
   '/desk/settings/appearance': typeof DeskSettingsAppearanceRoute
+  '/desk/settings/catalog': typeof DeskSettingsCatalogRoute
   '/desk/settings/core': typeof DeskSettingsCoreRoute
   '/desk/settings/': typeof DeskSettingsIndexRoute
 }
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/desk/'
     | '/desk/settings/$module'
     | '/desk/settings/appearance'
+    | '/desk/settings/catalog'
     | '/desk/settings/core'
     | '/desk/settings/'
   fileRoutesByTo: FileRoutesByTo
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/desk'
     | '/desk/settings/$module'
     | '/desk/settings/appearance'
+    | '/desk/settings/catalog'
     | '/desk/settings/core'
     | '/desk/settings'
   id:
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/desk/'
     | '/desk/settings/$module'
     | '/desk/settings/appearance'
+    | '/desk/settings/catalog'
     | '/desk/settings/core'
     | '/desk/settings/'
   fileRoutesById: FileRoutesById
@@ -328,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskSettingsAppearanceRouteImport
       parentRoute: typeof DeskSettingsRoute
     }
+    '/desk/settings/catalog': {
+      id: '/desk/settings/catalog'
+      path: '/catalog'
+      fullPath: '/desk/settings/catalog'
+      preLoaderRoute: typeof DeskSettingsCatalogRouteImport
+      parentRoute: typeof DeskSettingsRoute
+    }
     '/desk/settings/core': {
       id: '/desk/settings/core'
       path: '/core'
@@ -341,6 +360,7 @@ declare module '@tanstack/react-router' {
 interface DeskSettingsRouteChildren {
   DeskSettingsModuleRoute: typeof DeskSettingsModuleRoute
   DeskSettingsAppearanceRoute: typeof DeskSettingsAppearanceRoute
+  DeskSettingsCatalogRoute: typeof DeskSettingsCatalogRoute
   DeskSettingsCoreRoute: typeof DeskSettingsCoreRoute
   DeskSettingsIndexRoute: typeof DeskSettingsIndexRoute
 }
@@ -348,6 +368,7 @@ interface DeskSettingsRouteChildren {
 const DeskSettingsRouteChildren: DeskSettingsRouteChildren = {
   DeskSettingsModuleRoute: DeskSettingsModuleRoute,
   DeskSettingsAppearanceRoute: DeskSettingsAppearanceRoute,
+  DeskSettingsCatalogRoute: DeskSettingsCatalogRoute,
   DeskSettingsCoreRoute: DeskSettingsCoreRoute,
   DeskSettingsIndexRoute: DeskSettingsIndexRoute,
 }

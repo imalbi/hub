@@ -70,6 +70,8 @@ export default defineConfig({
               'zone-pages.spec.ts',
               'music.spec.ts',
               'settings.spec.ts',
+              'catalog.spec.ts',
+              'catalog.visual.spec.ts',
               'loading.spec.ts',
             ]
           : [
@@ -110,6 +112,8 @@ export default defineConfig({
               'mail.spec.ts',
               'music.spec.ts',
               'settings.spec.ts',
+              'catalog.spec.ts',
+              'catalog.visual.spec.ts',
               'security.spec.ts',
               'loading.spec.ts',
               'settings.visual.spec.ts',

@@ -13,6 +13,7 @@ import { createFakeDesktop, fakeMonitors, fakeStreamSpawn } from './fake-desktop
 import type { createJobRunner } from '../core/jobs.ts';
 import { buildServer } from '../server.ts';
 import type { Run } from '../core/exec.ts';
+import { createFakeCatalog } from './fake-catalog.ts';
 
 // Fixtures live in the run's own folder (`apps/e2e/tests/hosts.ts` makes one per run), so two runs never share a file.
 const runDir = process.env.HUB_E2E_TMP ?? tmpdir();
@@ -116,6 +117,8 @@ const mailCalls: string[][] = [];
 const systemCalls: string[][] = [];
 const player = { gone: false };
 const monitors = fakeMonitors();
+const catalog = createFakeCatalog();
+mkdirSync(join(runDir, 'catalog-local', 'catalog-local'), { recursive: true });
 
 /** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
@@ -178,6 +181,7 @@ function build() {
   }
   const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls, player, monitors });
   const run: Run = (bin, args, options) => {
+    if (bin === 'git') return catalog.run(bin, args, options);
     // The inbox listing and a send both fail, so one hook covers a failed list and a failed send.
     if (
       failMail &&
@@ -301,7 +305,8 @@ function build() {
     deps: {
       run,
       fetch: fakeFetch,
-      spawn: fakeStreamSpawn,
+      spawn: (bin, args, line, end) =>
+        bin === 'fake-catalog-build' ? catalog.spawn(bin, args, line, end) : fakeStreamSpawn(bin, args, line, end),
       onJobs: (runner) => {
         jobs = runner;
       },
@@ -309,11 +314,13 @@ function build() {
     config: effectiveConfig,
     isLoopback,
     webRoot,
-    settings: { configPath, onRestart: () => void restart() },
+    settings: { configPath, onRestart: catalog.control.manualRestart ? undefined : () => void restart() },
     catalog: {
       reposDir: join(runDir, 'catalog-repos'),
       installedDir: join(runDir, 'catalog-installed'),
       localDir: join(runDir, 'catalog-local'),
+      buildCommand: { bin: 'fake-catalog-build', args: [] },
+      onRestart: catalog.control.manualRestart ? undefined : () => void restart(),
     },
   });
   app.get('/__fake/core', () => ({
@@ -347,6 +354,23 @@ function restart() {
 const listen = () => app.listen({ host: '127.0.0.1', port: Number(serverPort) });
 
 function hooks(server: typeof app) {
+  server.post('/__fake/catalog', (request, reply) => {
+    const parsed = z
+      .object({
+        version: z.enum(['1.0.0', '1.1.0']).optional(),
+        failBuild: z.boolean().optional(),
+        failSync: z.boolean().optional(),
+        manualRestart: z.boolean().optional(),
+        hideDemo: z.boolean().optional(),
+      })
+      .safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send();
+    const changedRestart =
+      parsed.data.manualRestart !== undefined && parsed.data.manualRestart !== catalog.control.manualRestart;
+    Object.assign(catalog.control, parsed.data);
+    if (changedRestart) setTimeout(() => void restart(), 100);
+    return catalog.control;
+  });
   server.get('/__fake/system', () => ({ calls: systemCalls }));
   server.post('/__fake/jobs', (request) => {
     // `{ clear: true }` empties the finished history, which otherwise carries over between specs of a process.

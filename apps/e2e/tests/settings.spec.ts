@@ -6,6 +6,7 @@ import { SERVER_PORT } from './hosts.ts';
 // socket reconnects with a back-off, so waiting for it is slower than any other assertion here.
 const RESTARTED = { timeout: 30_000 };
 const example = process.env.HUB_EXAMPLE_MODULES === '1';
+const GENERAL_LINKS = ['Aspetto', 'Sistema e agenti', 'Catalogo'];
 
 // What the fake server's public modules read as, sorted by label; the example pass adds its own module.
 const EXPECTED_MODULES = [
@@ -191,16 +192,18 @@ if (!example) {
     await expect(page.getByRole('link', { name: /^Meteo/ })).not.toContainText('manca la città');
   });
 
-  test('the list has Generale with Aspetto and Moduli with a row per module and its state', async ({ page, pc }) => {
+  test('the list has all general pages and a row per module with its state', async ({ page, pc }) => {
     await page.goto('/desk/settings');
     const list = page.getByRole('navigation', { name: 'Sezioni' });
     await expect(list.getByText('Generale', { exact: true })).toBeVisible();
     await expect(list.getByText('Moduli', { exact: true })).toBeVisible();
     await expect(list.getByRole('link', { name: /^Aspetto/ })).toBeVisible();
-    // One row for Aspetto and one for every module the server knows, so a module cannot be left out of the list.
+    for (const name of GENERAL_LINKS)
+      await expect(list.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
+    // General pages and every module the server knows must each occupy one row.
     const states = await moduleStates(pc);
     expect(states.length).toBeGreaterThan(5);
-    await expect(list.getByRole('link')).toHaveCount(states.length + 2);
+    await expect(list.getByRole('link')).toHaveCount(states.length + GENERAL_LINKS.length);
     await expect(list.getByRole('link', { name: /^Pomodoro\s*Attivo/ })).toBeVisible();
     // Every public module has Italian copy: Musica once listed as the raw name "Music".
     await expect(list.getByRole('link', { name: /^YouTube Music\s*Attivo/ })).toBeVisible();
@@ -214,11 +217,16 @@ if (!example) {
     const list = page.getByRole('navigation', { name: 'Sezioni' });
     await expect(list.getByRole('link', { name: /^Aspetto/ })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('heading', { level: 2, name: 'Aspetto' })).toBeVisible();
-    // After the two general rows: by label, so a module sits where its Italian name falls, not its id. Read once the
+    // After the three general rows: by label, so a module sits where its Italian name falls, not its id. Read once the
     // list has loaded (it read an empty list under the parallel verify).
-    await expect(list.getByRole('link')).toHaveCount(EXPECTED_MODULES.length + 2);
+    await expect(list.getByRole('link')).toHaveCount(EXPECTED_MODULES.length + GENERAL_LINKS.length);
     const rows = (await list.getByRole('link').allTextContents()).map((text) => text.replace(/\s*Attivo$/, '').trim());
-    expect(rows.slice(2)).toEqual(EXPECTED_MODULES);
+    expect(rows.slice(0, GENERAL_LINKS.length)).toEqual([
+      expect.stringMatching(/^Aspetto/),
+      'Sistema e agenti',
+      'Catalogo',
+    ]);
+    expect(rows.slice(GENERAL_LINKS.length)).toEqual(EXPECTED_MODULES);
     await page.goBack();
     await expect(page).not.toHaveURL(/settings/);
   });
