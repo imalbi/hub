@@ -19,12 +19,19 @@ import { StudyPlans } from '../modules/study/plans.tsx';
 import { StudyReview } from '../modules/study/review.tsx';
 import { StudyWidget } from '../modules/study/widget.tsx';
 
-// The only web import point for private source; Vite resolves a disposable root during tests.
+// The only web import points for private/installed module source; Vite resolves disposable roots during tests.
 const local = import.meta.glob<{ default: ModuleUI }>('@hub-private-modules/*/ui.tsx', { eager: true });
+const installed = import.meta.glob<{ default: ModuleUI }>('@hub-installed-modules/*/ui.tsx', { eager: true });
 const examples =
   import.meta.env.HUB_EXAMPLE_MODULES === '1'
     ? import.meta.glob<{ default: ModuleUI }>('../../../../modules.example/*/ui.tsx', { eager: true })
     : {};
+const localModules = Object.values(local).map((module) => module.default);
+const localNames = new Set(localModules.map((module) => module.name));
+const installedModules = Object.values(installed)
+  .map((module) => module.default)
+  .filter((module) => !localNames.has(module.name));
+const exampleModules = Object.values(examples).map((module) => module.default);
 export const moduleUIs: ModuleUI[] = [
   {
     name: 'study',
@@ -72,5 +79,7 @@ export const moduleUIs: ModuleUI[] = [
       { id: 'calendar', label: m.calendar_title, sizes: ['small', 'medium', 'large'], component: CalendarWidgetSlot },
     ],
   },
-  ...[...Object.values(local), ...Object.values(examples)].map((module) => module.default),
+  ...localModules,
+  ...installedModules,
+  ...exampleModules,
 ];

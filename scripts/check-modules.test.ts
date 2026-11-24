@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { checkModules } from './check-modules.ts';
 import { moduleImportViolation } from './module-imports.ts';
 
 const script = fileURLToPath(new URL('./check-modules.ts', import.meta.url));
@@ -106,4 +108,47 @@ void test('lint errors and unannotated dangerouslySetInnerHTML fail private modu
 
 void test('the script reaches the private root only through discovery, so it needs no exemption from the guard', async () => {
   assert.equal(moduleImportViolation('scripts/check-modules.ts', await readFile(script, 'utf8')), false);
+});
+
+void test('checkModules scans multiple roots and gives earlier roots precedence on duplicates', async (t) => {
+  const localRoot = await scratch(t);
+  const installedRoot = await scratch(t);
+  await addModule(localRoot, 'shared', { 'a.test.ts': passing });
+  await addModule(installedRoot, 'shared', { 'a.test.ts': failing });
+  await addModule(installedRoot, 'extra', { 'a.test.ts': passing });
+  assert.equal(checkModules([localRoot, installedRoot]), 0);
+});
+
+void test('web build with HUB_MODULES_ROOT set to an empty fixture excludes modules.installed', async (t) => {
+  const emptyRoot = await scratch(t);
+  const installedFixture = await scratch(t);
+  const outA = await scratch(t);
+  const outB = await scratch(t);
+  const sentinel = 'CATALOG_SENTINEL_98_UNIQUE';
+  await addModule(installedFixture, 'sentinel', {
+    'ui.tsx': `export default { name: 'sentinel', copy: { tag: '${sentinel}' } };\n`,
+  });
+
+  const repo = fileURLToPath(new URL('..', import.meta.url));
+  const buildWith = (env: Record<string, string>, outDir: string) =>
+    spawnSync('pnpm', ['--filter', '@hub/web', 'exec', 'vite', 'build', '--outDir', outDir, '--emptyOutDir'], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: { ...process.env, ...env },
+    });
+
+  const withFixture = buildWith(
+    { HUB_MODULES_ROOT: emptyRoot, HUB_INSTALLED_MODULES_ROOT: installedFixture, HUB_EXAMPLE_MODULES: '0' },
+    outA,
+  );
+  assert.equal(withFixture.status, 0, `${withFixture.stdout}${withFixture.stderr}`);
+  const jsFilesA = readdirSync(join(outA, 'assets')).filter((f) => f.endsWith('.js'));
+  const bundleA = (await Promise.all(jsFilesA.map((file) => readFile(join(outA, 'assets', file), 'utf8')))).join('\n');
+  assert.equal(bundleA.includes(sentinel), true);
+
+  const isolated = buildWith({ HUB_MODULES_ROOT: emptyRoot, HUB_EXAMPLE_MODULES: '0' }, outB);
+  assert.equal(isolated.status, 0, `${isolated.stdout}${isolated.stderr}`);
+  const jsFilesB = readdirSync(join(outB, 'assets')).filter((f) => f.endsWith('.js'));
+  const bundleB = (await Promise.all(jsFilesB.map((file) => readFile(join(outB, 'assets', file), 'utf8')))).join('\n');
+  assert.equal(bundleB.includes(sentinel), false);
 });

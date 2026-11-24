@@ -22,6 +22,10 @@ void test('G10: guard-modules allows no-slash ignore and fails on tracked privat
   git('init', '--quiet');
   writeFileSync(join(dir, '.gitignore'), 'modules[.]local\n');
   git('add', '.gitignore');
+  assert.deepEqual(guardModules(dir, false), ['Private module directory must be ignored']);
+
+  writeFileSync(join(dir, '.gitignore'), 'modules[.]local\nmodules[.]installed\nmodules[.]repos\n');
+  git('add', '.gitignore');
   assert.deepEqual(guardModules(dir, false), []);
   assert.deepEqual(guardModules(dir, true), []);
 

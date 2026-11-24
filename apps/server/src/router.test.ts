@@ -68,6 +68,13 @@ void test('every mutation carries an Italian label and an English description in
     'calendar.restoreSeries',
     'calendar.update',
     'calendar.updateSeries',
+    'catalog.addSource',
+    'catalog.applyChanges',
+    'catalog.install',
+    'catalog.remove',
+    'catalog.removeSource',
+    'catalog.syncSource',
+    'catalog.update',
     'confirmations.confirm',
     'confirmations.deny',
     'devices.revoke',
@@ -144,6 +151,10 @@ void test('every danger mutation is refused without confirmed: true and runs wit
   );
   assert.deepEqual(danger.map((m) => m.path).toSorted(), [
     'agents.revoke',
+    'catalog.install',
+    'catalog.remove',
+    'catalog.removeSource',
+    'catalog.update',
     'devices.revoke',
     'jobs.cancel',
     'music.deletePlaylist',
@@ -163,8 +174,14 @@ void test('every danger mutation is refused without confirmed: true and runs wit
       });
     // From the PC, so only the missing confirmation can refuse it. The ids do not exist (a delete answers 404) and the
     // fake desktop only records power commands (200): either way the action ran.
-    assert.equal((await call({ id: 999, jobId: 'missing' })).statusCode, 412, path);
-    assert.equal((await call({ id: 999, jobId: 'missing', confirmed: false })).statusCode, 412, path);
-    assert.ok([200, 404].includes((await call({ id: 999, jobId: 'missing', confirmed: true })).statusCode), path);
+    const args = {
+      id: path.startsWith('catalog.') ? 'missing' : 999,
+      sourceId: 'missing',
+      name: 'missing',
+      jobId: 'missing',
+    };
+    assert.equal((await call(args)).statusCode, 412, path);
+    assert.equal((await call({ ...args, confirmed: false })).statusCode, 412, path);
+    assert.ok([200, 404].includes((await call({ ...args, confirmed: true })).statusCode), path);
   }
 });

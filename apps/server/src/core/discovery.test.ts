@@ -14,6 +14,41 @@ import { createModuleStates } from './module-states.ts';
 
 const noop = () => {};
 
+void test('a failed local module still shadows its installed copy', async (t) => {
+  for (const failure of ['import', 'config', 'factory']) {
+    await t.test(failure, async (t) => {
+      const dir = await mkdtemp(join(tmpdir(), 'hub-discovery-shadow-'));
+      t.after(() => rm(dir, { recursive: true, force: true }));
+      const local = join(dir, 'local');
+      const installed = join(dir, 'installed');
+      const api = JSON.stringify(new URL('./module.ts', import.meta.url).href);
+      const trpc = JSON.stringify(new URL('./trpc.ts', import.meta.url).href);
+      for (const root of [local, installed]) await mkdir(join(root, 'demo'), { recursive: true });
+      await writeFile(
+        join(local, 'demo', 'server.ts'),
+        failure === 'import'
+          ? `throw new Error('broken import');`
+          : `import { defineModule, z } from ${api};
+           export default defineModule({ name: 'demo', ${failure === 'config' ? 'config: z.object({ required: z.string() }),' : ''}
+             create: () => { throw new Error('broken factory'); } });`,
+      );
+      await writeFile(
+        join(installed, 'demo', 'server.ts'),
+        `import { router, protectedProcedure } from ${trpc};
+         export default { name: 'demo', create: () => ({ router: router({ state: protectedProcedure.query(() => 'installed') }) }) };`,
+      );
+      const app = buildServer({
+        config: emptyConfig,
+        dbPath: ':memory:',
+        deps: { run: createFakeDesktop() },
+        moduleRoots: [local, installed],
+      });
+      t.after(() => app.close());
+      assert.equal((await app.inject('/trpc/demo.state')).statusCode, 404);
+    });
+  }
+});
+
 // The private root may hold its own git repository: `.git` and other dot or non-module folders are not modules, and
 // trying them logged "Module skipped" at every start.
 void test('folders that cannot be module names are never tried, so a git repository in the root stays silent', async (t) => {
@@ -140,4 +175,57 @@ void test('an off discovered module is not created and its database file is left
   const back = build([]);
   t.after(() => back.close());
   assert.equal((await back.inject('/trpc/hello.state')).json().result.data.count, 1);
+});
+
+void test('duplicate module in a later root is skipped with a warning and keeps the first root state', async (t) => {
+  const firstRoot = await mkdtemp(join(tmpdir(), 'hub-discovery-r1-'));
+  const secondRoot = await mkdtemp(join(tmpdir(), 'hub-discovery-r2-'));
+  t.after(async () => {
+    await rm(firstRoot, { recursive: true, force: true });
+    await rm(secondRoot, { recursive: true, force: true });
+  });
+  const api = JSON.stringify(new URL('./module.ts', import.meta.url).href);
+  const trpc = JSON.stringify(new URL('./trpc.ts', import.meta.url).href);
+  for (const [root, value] of [
+    [firstRoot, 'first'],
+    [secondRoot, 'second'],
+  ] as const) {
+    await mkdir(join(root, 'dup'), { recursive: true });
+    await writeFile(
+      join(root, 'dup', 'server.ts'),
+      `import { defineModule } from ${api}; import { router, protectedProcedure } from ${trpc};
+       export default defineModule({ name: 'dup', create: () => ({ router: router({ state: protectedProcedure.query(() => ${JSON.stringify(value)}) }) }) });`,
+    );
+  }
+  const warnings: unknown[] = [];
+  const log: FastifyBaseLogger = {
+    level: 'info',
+    fatal: noop,
+    error: noop,
+    warn: (...args: unknown[]) => void warnings.push(args),
+    info: noop,
+    debug: noop,
+    trace: noop,
+    silent: noop,
+    child: () => log,
+  };
+  const states = createModuleStates();
+  const routers = await discoverModules({
+    roots: [firstRoot, secondRoot],
+    reserved: [],
+    deps: {
+      run: createFakeDesktop(),
+      fetch,
+      log,
+      zones: new Set(),
+      focusHistory: createFocusHistory(openDb(':memory:')),
+    },
+    dbPath: ':memory:',
+    config: {},
+    onClose: () => {},
+    states,
+  });
+  assert.deepEqual(Object.keys(routers), ['dup']);
+  assert.equal(states.get('dup')?.status, 'on');
+  assert.equal(warnings.length, 1);
 });

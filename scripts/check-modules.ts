@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 
-// Tests and typecheck of the private modules, which no workspace covers. Prints module names and counts only; the
-// output of a failing run is the one thing shown in full, because it is what the author needs to fix it.
+// Tests and typecheck of the private/installed modules, which no workspace covers. Prints module names and counts only;
+// the output of a failing run is the one thing shown in full, because it is what the author needs to fix it.
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const tsc = join(repo, 'node_modules/.bin/tsc');
 const oxlint = join(repo, 'node_modules/.bin/oxlint');
@@ -14,13 +14,20 @@ const oxlintConfig = join(repo, '.oxlintrc.json');
 const prettier = join(repo, 'node_modules/.bin/prettier');
 const baseConfig = join(repo, 'scripts/tsconfig.modules.json');
 
-/** A module is a folder with a `server.ts`, the same rule discovery uses. */
-function findModules(root: string) {
-  if (!existsSync(root)) return [];
-  return readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && existsSync(join(root, entry.name, 'server.ts')))
-    .map((entry) => entry.name)
-    .toSorted();
+/** A module is a folder with a `server.ts`, the same rule discovery uses. Earlier roots win on name collision. */
+function findModules(roots: string | readonly string[]) {
+  const list = typeof roots === 'string' ? [roots] : roots;
+  const seen = new Map<string, string>();
+  for (const root of list) {
+    if (!existsSync(root)) continue;
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (entry.isDirectory() && existsSync(join(root, entry.name, 'server.ts')) && !seen.has(entry.name))
+        seen.set(entry.name, join(root, entry.name));
+    }
+  }
+  return [...seen.entries()]
+    .map(([name, folder]) => ({ name, folder }))
+    .toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 function testFiles(folder: string) {
@@ -34,8 +41,7 @@ function count(output: string, label: string) {
 }
 
 /** Runs one module; returns the failure output, or null with the counts it printed. */
-function checkModule(root: string, name: string, scratch: string) {
-  const folder = join(root, name);
+function checkModule(folder: string, name: string, scratch: string) {
   const format = formatModule(folder, false);
   if (format.status !== 0) return `${format.stdout}${format.stderr}`;
   const files = testFiles(folder);
@@ -87,10 +93,12 @@ function formatModule(folder: string, write: boolean) {
   );
 }
 
-export function checkModules(root: string, only?: string, write = false) {
-  const found = findModules(root);
-  if (only && !found.includes(only)) {
-    process.stderr.write(`check-modules: unknown module "${only}"; found: ${found.join(', ') || 'none'}\n`);
+export function checkModules(roots: string | readonly string[], only?: string, write = false) {
+  const found = findModules(roots);
+  if (only && !found.some((entry) => entry.name === only)) {
+    process.stderr.write(
+      `check-modules: unknown module "${only}"; found: ${found.map((entry) => entry.name).join(', ') || 'none'}\n`,
+    );
     return 1;
   }
   if (!found.length) {
@@ -100,9 +108,9 @@ export function checkModules(root: string, only?: string, write = false) {
   const scratch = mkdtempSync(join(tmpdir(), 'hub-check-modules-'));
   try {
     let failed = 0;
-    for (const name of only ? [only] : found) {
+    for (const { name, folder } of only ? found.filter((entry) => entry.name === only) : found) {
       if (write) {
-        const result = formatModule(join(root, name), true);
+        const result = formatModule(folder, true);
         process.stdout.write(result.stdout);
         if (result.status !== 0) {
           process.stderr.write(result.stderr);
@@ -110,7 +118,7 @@ export function checkModules(root: string, only?: string, write = false) {
         }
         continue;
       }
-      const failure = checkModule(root, name, scratch);
+      const failure = checkModule(folder, name, scratch);
       if (failure === null) continue;
       failed++;
       process.stderr.write(`check-modules: ${name}: FAILED\n${failure}\n`);
@@ -124,5 +132,6 @@ export function checkModules(root: string, only?: string, write = false) {
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const write = args[0] === '--write';
-  process.exitCode = checkModules(process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0], args[write ? 1 : 0], write);
+  const roots = process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : defaultModuleRoots;
+  process.exitCode = checkModules(roots, args[write ? 1 : 0], write);
 }

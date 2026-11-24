@@ -27,6 +27,18 @@ void test('findPrivateE2eFolders returns only modules that have an e2e folder', 
   assert.deepEqual(found, [{ name: 'mod-a', path: join(root, 'mod-a', 'e2e') }]);
 });
 
+void test('findPrivateE2eFolders scans multiple roots with first-root precedence', async (t) => {
+  const localRoot = await scratch(t);
+  const installedRoot = await scratch(t);
+  await mkdir(join(localRoot, 'mod-a', 'e2e'), { recursive: true });
+  await mkdir(join(installedRoot, 'mod-a', 'e2e'), { recursive: true });
+  await mkdir(join(installedRoot, 'mod-b', 'e2e'), { recursive: true });
+  assert.deepEqual(findPrivateE2eFolders([localRoot, installedRoot]), [
+    { name: 'mod-a', path: join(localRoot, 'mod-a', 'e2e') },
+    { name: 'mod-b', path: join(installedRoot, 'mod-b', 'e2e') },
+  ]);
+});
+
 void test('CLI exits 0 when no private e2e folders exist', async (t) => {
   const root = await scratch(t);
   const run = spawnSync(process.execPath, [script], {

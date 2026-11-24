@@ -3,12 +3,17 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 
-export function findPrivateE2eFolders(root: string) {
-  if (!existsSync(root)) return [];
-  return readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && existsSync(join(root, entry.name, 'e2e')))
-    .map((entry) => ({ name: entry.name, path: join(root, entry.name, 'e2e') }))
-    .toSorted((a, b) => a.name.localeCompare(b.name));
+export function findPrivateE2eFolders(roots: string | readonly string[]) {
+  const list = typeof roots === 'string' ? [roots] : roots;
+  const seen = new Map<string, string>();
+  for (const root of list) {
+    if (!existsSync(root)) continue;
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      const e2ePath = join(root, entry.name, 'e2e');
+      if (entry.isDirectory() && existsSync(e2ePath) && !seen.has(entry.name)) seen.set(entry.name, e2ePath);
+    }
+  }
+  return [...seen.entries()].map(([name, path]) => ({ name, path })).toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 export function runPrivateE2e(folder: string) {
@@ -24,8 +29,8 @@ if (import.meta.main) {
   if (custom) {
     process.exitCode = runPrivateE2e(custom);
   } else {
-    const root = process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0];
-    const targets = findPrivateE2eFolders(root);
+    const roots = process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : defaultModuleRoots;
+    const targets = findPrivateE2eFolders(roots);
     const chosen = process.argv[2];
     if (chosen) {
       const match = targets.find((t) => t.name === chosen);

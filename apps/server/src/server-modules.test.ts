@@ -117,3 +117,44 @@ void test('modulesOff leaves a public module uncreated: its calls are NOT_FOUND 
   const enabled = (await app.inject('/trpc/modules.enabled')).json().result.data;
   assert.ok(enabled.includes('audio') && !enabled.includes('news'));
 });
+
+void test('multi-root discovery loads from both roots and gives localRoot precedence over installedRoot', async (t) => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const localRoot = await mkdtemp(join(tmpdir(), 'hub-local-root-'));
+  const installedRoot = await mkdtemp(join(tmpdir(), 'hub-installed-root-'));
+  t.after(async () => {
+    await rm(localRoot, { recursive: true, force: true });
+    await rm(installedRoot, { recursive: true, force: true });
+  });
+  const api = JSON.stringify(new URL('./core/module.ts', import.meta.url).href);
+  const trpc = JSON.stringify(new URL('./core/trpc.ts', import.meta.url).href);
+  const writeMod = async (root: string, folder: string, name: string, value: string) => {
+    await mkdir(join(root, folder), { recursive: true });
+    await writeFile(
+      join(root, folder, 'server.ts'),
+      `import { defineModule } from ${api}; import { router, protectedProcedure } from ${trpc};
+       export default defineModule({ name: ${JSON.stringify(name)}, create: () => ({ router: router({ state: protectedProcedure.query(() => ${JSON.stringify(value)}) }) }) });`,
+    );
+  };
+  await writeMod(localRoot, 'local-only', 'local-only', 'local');
+  await writeMod(localRoot, 'shared', 'shared', 'from-local');
+  await writeMod(localRoot, 'shadowed-off', 'shadowed-off', 'off-local');
+  await writeMod(installedRoot, 'installed-only', 'installed-only', 'installed');
+  await writeMod(installedRoot, 'shared', 'shared', 'from-installed');
+  await writeMod(installedRoot, 'shadowed-off', 'shadowed-off', 'from-installed-off');
+
+  const app = buildServer({
+    dbPath: ':memory:',
+    moduleRoots: [localRoot, installedRoot],
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, modulesOff: ['shadowed-off'] },
+  });
+  t.after(() => app.close());
+
+  assert.equal((await app.inject('/trpc/local-only.state')).json().result.data, 'local');
+  assert.equal((await app.inject('/trpc/installed-only.state')).json().result.data, 'installed');
+  assert.equal((await app.inject('/trpc/shared.state')).json().result.data, 'from-local');
+  assert.equal((await app.inject('/trpc/shadowed-off.state')).statusCode, 404);
+});

@@ -310,6 +310,11 @@ function build() {
     isLoopback,
     webRoot,
     settings: { configPath, onRestart: () => void restart() },
+    catalog: {
+      reposDir: join(runDir, 'catalog-repos'),
+      installedDir: join(runDir, 'catalog-installed'),
+      localDir: join(runDir, 'catalog-local'),
+    },
   });
   app.get('/__fake/core', () => ({
     mcp: effectiveConfig.mcp.enabled,

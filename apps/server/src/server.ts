@@ -30,7 +30,8 @@ import { createJobRunner } from './core/jobs.ts';
 import { publicModules } from './modules.ts';
 import { registerMusicCoverRoute, type CoverImage } from './modules/music/cover-route.ts';
 import { createMusicModule } from './modules/music/server.ts';
-import { discoverModules } from './core/discovery.ts';
+import { discoverModules, installedRoot, privateRoot, reposRoot } from './core/discovery.ts';
+import { createCatalogService } from './core/catalog.ts';
 import { allowedOrigins, isAllowedHost, isAllowedOrigin } from './core/origin.ts';
 import { createModuleStates } from './core/module-states.ts';
 import { createBackup, startDailyCheck } from './core/backup.ts';
@@ -73,6 +74,7 @@ export function buildServer({
   exampleModules = process.env.HUB_EXAMPLE_MODULES === '1',
   onlyModules,
   settings,
+  catalog,
   music,
   autoBackup = false,
 }: {
@@ -100,6 +102,13 @@ export function buildServer({
    * out, a save writes the file and answers `restarting: false` (a dev server nobody would start again).
    */
   settings?: { configPath: string; onRestart?: () => void };
+  catalog?: {
+    reposDir?: string;
+    installedDir?: string;
+    localDir?: string;
+    buildCommand?: { bin: string; args: string[] };
+    onRestart?: () => void;
+  };
   /** Starts the daily copy check. Only `index.ts` sets it: tests and the e2e fake run a copy through `backup.run`. */
   autoBackup?: boolean;
 }) {
@@ -203,21 +212,23 @@ export function buildServer({
       scope.addHook('onClose', close);
     };
     const states = createModuleStates();
+    const reserved = [
+      ...publicModules.map((m) => m.name),
+      'registry',
+      'settings',
+      'modules',
+      'agents',
+      'confirmations',
+      'backup',
+      'assistant',
+      'jobs',
+      'catalog',
+    ];
     const extra = await discoverModules({
       roots: moduleRoots,
       examples: exampleModules,
       onlyModules,
-      reserved: [
-        ...publicModules.map((m) => m.name),
-        'registry',
-        'settings',
-        'modules',
-        'agents',
-        'confirmations',
-        'backup',
-        'assistant',
-        'jobs',
-      ],
+      reserved,
       deps: discoveredDeps,
       dbPath,
       config: config.modules ?? {},
@@ -226,6 +237,18 @@ export function buildServer({
       off: config.modulesOff,
       onDb: backup.add,
     });
+    const catalogService = createCatalogService({
+      db,
+      run,
+      jobs,
+      reposDir: catalog?.reposDir ?? process.env.HUB_CATALOG_REPOS_DIR ?? reposRoot,
+      installedDir: catalog?.installedDir ?? process.env.HUB_CATALOG_INSTALLED_DIR ?? installedRoot,
+      localDir: catalog?.localDir ?? privateRoot,
+      reservedNames: new Set(reserved),
+      buildCommand: catalog?.buildCommand,
+      onRestart: catalog?.onRestart ?? settings?.onRestart,
+    });
+    onClose(() => catalogService.close());
     let readMusicCover: ((id: string) => Promise<CoverImage | null>) | undefined;
     const modules = publicModules.map((module) =>
       module.name === 'music'
@@ -251,6 +274,7 @@ export function buildServer({
         jobs,
         confirmations,
         backup,
+        catalog: catalogService,
       },
     );
     scope.register(async (musicScope) =>

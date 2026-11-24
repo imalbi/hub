@@ -153,8 +153,8 @@ function variants(): Variant[] {
     { name: 'public', moduleRoot: override ?? '/tmp/hub-e2e-no-modules', examples: false, shards: 3 },
     { name: 'example', moduleRoot: override ?? join(root, 'modules.example'), examples: true, shards: 2 },
   ];
-  const privateRoot = override ?? defaultModuleRoots[0];
-  for (const folder of findPrivateE2eFolders(privateRoot))
+  const privateRoots = override ? [override] : defaultModuleRoots;
+  for (const folder of findPrivateE2eFolders(privateRoots))
     list.push({
       name: `private-${folder.name}`,
       moduleRoot: join(folder.path, 'root'),

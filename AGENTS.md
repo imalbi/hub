@@ -39,7 +39,7 @@ Node >= 24, pnpm workspaces, TypeScript 7. Linting is oxlint, not ESLint: typesc
 
 ## Writing a module
 
-A module is one folder with `server.ts` (`defineModule`, required) and `ui.tsx` (`ModuleUI`, optional): public ones in `apps/server/src/modules/<name>/` listed in `apps/server/src/modules.ts`, private ones in the gitignored `modules.local/`, discovered at startup. A module folder cannot resolve npm packages, so it imports them through the re-exports in `apps/server/src/core/` (`module.ts`, `module-db.ts`, `module-html.ts`). `modules.example/hello/` is the working reference. <!-- guard-private: allow Repository-local module directory -->
+A module is one folder with `server.ts` (`defineModule`, required) and `ui.tsx` (`ModuleUI`, optional): public ones in `apps/server/src/modules/<name>/` listed in `apps/server/src/modules.ts`, local and catalog-installed ones in the gitignored `modules.local/` and `modules.installed/` (`defaultModuleRoots`, with `modules.local/` winning on collision; cloned Git catalogs live in `modules.repos/`), discovered at startup. A module folder cannot resolve npm packages, so it imports them through the re-exports in `apps/server/src/core/` (`module.ts`, `module-db.ts`, `module-html.ts`). `modules.example/hello/` is the working reference. <!-- guard-private: allow Repository-local module directory -->
 
 **Before writing or changing a module, read `docs/modules.md`**: config, storage and migrations, files, HTML, web zones and sections, discovery points, checks and private e2e.
 

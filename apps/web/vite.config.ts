@@ -1,4 +1,4 @@
-import { defaultModuleRoots } from '../server/src/core/discovery.ts';
+import { installedRoot, privateRoot } from '../server/src/core/discovery.ts';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
@@ -49,6 +49,8 @@ function extraLicenses(): Plugin {
   };
 }
 
+const emptyInstalledRoot = fileURLToPath(new URL('./node_modules/.hub-no-installed-modules', import.meta.url));
+
 export default defineConfig({
   // e2e runs with different module roots at the same time: one dep cache per variant (`apps/e2e/playwright.config.ts`).
   cacheDir: process.env.HUB_VITE_CACHE,
@@ -66,7 +68,9 @@ export default defineConfig({
       motion: fileURLToPath(new URL('./node_modules/motion', import.meta.url)),
       'rough-notation': fileURLToPath(new URL('./node_modules/rough-notation', import.meta.url)),
       // No leading slash: Vite joins a glob that starts with '/' to the project root and never applies the alias.
-      '@hub-private-modules': process.env.HUB_MODULES_ROOT ?? defaultModuleRoots[0],
+      '@hub-private-modules': process.env.HUB_MODULES_ROOT ?? privateRoot,
+      '@hub-installed-modules':
+        process.env.HUB_INSTALLED_MODULES_ROOT ?? (process.env.HUB_MODULES_ROOT ? emptyInstalledRoot : installedRoot),
     },
   },
   // Notices for the packages shipped in the bundle, generated from exactly what was bundled (plus the font below).

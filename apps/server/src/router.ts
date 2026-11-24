@@ -11,6 +11,10 @@ import { createBackup, createBackupRouter, type Backup } from './core/backup.ts'
 import { createJobsRouter } from './core/jobs-router.ts';
 import { streamSpawn } from './core/exec.ts';
 import { createEnabledRouter, createSettingsRouter } from './core/settings-router.ts';
+import { createCatalogService, type CatalogService } from './core/catalog.ts';
+import { createCatalogRouter } from './core/catalog-router.ts';
+import { RESERVED_CORE_NAMES } from './core/catalog-manifest.ts';
+import { installedRoot, privateRoot, reposRoot } from './core/discovery.ts';
 import type { ModuleDefinition, ModuleDeps, ModuleInstance } from './core/module.ts';
 import { configSchemaOf, createModuleStates, type ModuleStates } from './core/module-states.ts';
 import type { publicModules } from './modules.ts';
@@ -29,6 +33,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     jobs = createJobRunner(deps.db, streamSpawn, 2),
     confirmations = createConfirmations(),
     backup = createBackup({ dbPath }),
+    catalog,
   }: {
     states?: ModuleStates;
     off?: readonly string[];
@@ -37,6 +42,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     jobs?: ReturnType<typeof createJobRunner>;
     confirmations?: ReturnType<typeof createConfirmations>;
     backup?: Backup;
+    catalog?: CatalogService;
   } = {},
 ) {
   type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
@@ -75,6 +81,18 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   const settings = createSettingsRouter({ states, configPath });
   const backupRouter = createBackupRouter(backup);
   const confirmationRouter = createConfirmationsRouter(confirmations);
+  const effectiveCatalog =
+    catalog ??
+    createCatalogService({
+      db: deps.db,
+      run: deps.run,
+      jobs,
+      reposDir: reposRoot,
+      installedDir: installedRoot,
+      localDir: privateRoot,
+      reservedNames: new Set([...modules.map((m) => m.name), ...RESERVED_CORE_NAMES]),
+    });
+  if (!catalog) onClose(() => effectiveCatalog.close());
   const registered = router({
     ...app._def.record,
     settings,
@@ -91,6 +109,8 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     confirmations: confirmationRouter,
     backup: backupRouter,
     modules: createEnabledRouter(states),
+    // Mounted only outside `registered` so MCP agents, `registry.list`, palette, and assistant never see or call it.
+    catalog: createCatalogRouter(effectiveCatalog),
   });
 }
 

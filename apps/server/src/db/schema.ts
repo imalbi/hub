@@ -136,3 +136,36 @@ export const calendarSeriesSkips = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.seriesId, table.day] })],
 );
+
+export const moduleSources = sqliteTable('module_sources', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  url: text('url').notNull().unique(),
+  localPath: text('local_path').notNull(),
+  commitSha: text('commit_sha').notNull(),
+  addedAt: integer('added_at', { mode: 'timestamp_ms' }).notNull(),
+  lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }).notNull(),
+  syncError: text('sync_error'),
+});
+
+export const installedModules = sqliteTable('installed_modules', {
+  name: text('name').primaryKey(),
+  sourceId: text('source_id')
+    .notNull()
+    .references(() => moduleSources.id),
+  modulePath: text('module_path').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  version: text('version').notNull(),
+  installedCommit: text('installed_commit').notNull(),
+  installedAt: integer('installed_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+// Single row (id = 1) tracking whether installed/updated/removed modules await a web rebuild and restart.
+export const catalogState = sqliteTable('catalog_state', {
+  id: integer('id').primaryKey(),
+  pendingApply: integer('pending_apply', { mode: 'boolean' }).notNull().default(false),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});

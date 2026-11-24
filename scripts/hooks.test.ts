@@ -57,7 +57,10 @@ function setupHookRepo(t: { after: (fn: () => void) => void }, withRemote = fals
     copyFileSync(join(repoHooksDir, hook), dest);
     chmodSync(dest, 0o755);
   }
-  writeFileSync(join(dir, '.gitignore'), 'node_modules/\npnpm-lock.yaml\nmodules[.]local/\n.private-words\n');
+  writeFileSync(
+    join(dir, '.gitignore'),
+    'node_modules/\npnpm-lock.yaml\nmodules[.]local/\nmodules[.]installed\nmodules[.]repos\n.private-words\n',
+  );
   writeFileSync(
     join(dir, 'package.json'),
     JSON.stringify({

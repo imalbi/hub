@@ -4,6 +4,7 @@
 
 /* Tailwind scans apps/web only. Private module UI lives in the ignored module root, so name it here or its utilities never compile; a clone without the folder builds as before. */
 @source '../../../modules.local'; /* guard-private: allow Repository-local module directory */
+@source '../../../modules.installed';
 
 /*
  * Design tokens. Every size in the UI comes from a named step below; Tailwind's open numeric

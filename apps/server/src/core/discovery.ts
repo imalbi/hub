@@ -8,21 +8,28 @@ import { router } from './trpc.ts';
 import type { DiscoveredDeps, ModuleInstance } from './module.ts';
 import { configSchemaOf, type ModuleInfo, type ModuleStates } from './module-states.ts';
 
-// Only this server discovery point may load private source paths.
-const privateRoot = fileURLToPath(new URL('../../../../modules.local/', import.meta.url)); // guard-private: allow Private module discovery
-export const defaultModuleRoots = [privateRoot];
+// Only this server discovery point may load private or installed module source paths.
+export const privateRoot = fileURLToPath(new URL('../../../../modules.local/', import.meta.url)); // guard-private: allow Private module discovery
+export const installedRoot = fileURLToPath(new URL('../../../../modules.installed/', import.meta.url));
+export const reposRoot = fileURLToPath(new URL('../../../../modules.repos/', import.meta.url));
+export const defaultModuleRoots = [privateRoot, installedRoot] as const;
 const exampleRoot = fileURLToPath(new URL('../../../../modules.example/', import.meta.url));
-const name = z
+export const moduleNameSchema = z
   .string()
   .regex(/^[a-z][a-z\d-]{0,39}$/)
-  .refine((value) => !['then', '__proto__', 'constructor', 'prototype'].includes(value));
+  .refine((value) => !['then', 'call', 'apply', '__proto__', 'constructor', 'prototype'].includes(value));
+
+export function resolveModuleRoots(env: NodeJS.ProcessEnv = process.env): readonly string[] {
+  return env.HUB_MODULES_ROOT ? [env.HUB_MODULES_ROOT] : defaultModuleRoots;
+}
+
 // `db` is the module's own database, present only when it declared `migrations`; never the core one.
 type DiscoveredCreate = (deps: DiscoveredDeps & { db?: Db; config: unknown }) => ModuleInstance;
 const definitionSchema = z.object({
-  name,
+  name: moduleNameSchema,
   config: z.custom<z.ZodType>((value) => value instanceof z.ZodType).optional(),
   settingsSchema: z.custom<z.ZodType>((value) => value instanceof z.ZodType).optional(),
-  zones: z.array(name).optional(),
+  zones: z.array(moduleNameSchema).optional(),
   setupNote: z.custom<NonNullable<ModuleInfo['setupNote']>>((value) => typeof value === 'function').optional(),
   // A relative path would resolve against the server's working directory.
   migrations: z.string().refine(isAbsolute).optional(),
@@ -39,7 +46,7 @@ const instanceSchema = z.object({
 });
 
 export async function discoverModules({
-  roots = [privateRoot],
+  roots = defaultModuleRoots,
   examples = false,
   onlyModules,
   reserved,
@@ -69,6 +76,7 @@ export async function discoverModules({
 }) {
   const routers: Record<string, ModuleInstance['router']> = {};
   const names = new Set(reserved);
+  const folderNames = new Set<string>();
   for (const root of [...roots, ...(examples ? [exampleRoot] : [])]) {
     const folders = await readdir(root, { withFileTypes: true }).catch((error: unknown) => {
       if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT'))
@@ -77,7 +85,7 @@ export async function discoverModules({
     });
     for (const folder of folders
       // Only folders that can be module names: the private root may hold its own `.git` and other tool folders.
-      .filter((entry) => entry.isDirectory() && name.safeParse(entry.name).success)
+      .filter((entry) => entry.isDirectory() && moduleNameSchema.safeParse(entry.name).success)
       .filter((entry) => !onlyModules || onlyModules.includes(entry.name))
       .toSorted((a, b) => a.name.localeCompare(b.name))) {
       let close: ModuleInstance['close'];
@@ -85,9 +93,13 @@ export async function discoverModules({
       // Filled as soon as the definition parses, so a module that fails later still has its schema in settings.
       let info: Omit<ModuleInfo, 'status'> | undefined;
       try {
+        // Earlier roots own their folders even when import, configuration or creation fails.
+        if (folderNames.has(folder.name)) throw new Error('Duplicate module folder');
+        folderNames.add(folder.name);
         const imported: unknown = await import(pathToFileURL(join(root, folder.name, 'server.ts')).href);
         const { default: definition } = z.object({ default: definitionSchema }).parse(imported);
         if (names.has(definition.name)) throw new Error('Duplicate module name');
+        names.add(definition.name);
         info = {
           name: definition.name,
           kind: 'private',
@@ -111,7 +123,6 @@ export async function discoverModules({
         const parsed = instanceSchema.parse(instance);
         router({ [definition.name]: parsed.router });
         routers[definition.name] = parsed.router;
-        names.add(definition.name);
         states?.set({ ...info, status: 'on' });
         for (const zone of definition.zones ?? []) deps.zones.add(zone);
         // Fastify runs onClose hooks last in, first out: the database goes first in so it closes after the module's
