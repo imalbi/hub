@@ -19,7 +19,6 @@ const EXPECTED_MODULES = [
   'Musica',
   'Pomodoro',
   'Post-it',
-  'Posta',
   'Sistema',
   'Siti',
   'Stato',

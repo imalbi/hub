@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import type { Run, RunResult, StreamSpawn } from '../core/exec.ts';
 import { parsePwDump } from '../modules/audio/pipewire.ts';
-import { createFakeHimalaya } from './fake-himalaya.ts';
 
 const dump = readFileSync(new URL('../modules/audio/fixtures/pw-dump.json', import.meta.url), 'utf8');
 const { sinks, defaultName } = parsePwDump(dump);
@@ -41,7 +40,6 @@ export function createFakeDesktop({
   notifications = [],
   sounds = [],
   system = [],
-  mail = [],
   player = { gone: false },
   monitors = fakeMonitors(),
 }: {
@@ -52,10 +50,7 @@ export function createFakeDesktop({
   player?: { gone: boolean };
   /** Disabled flag per output name, answered as `hyprctl monitors all -j` and flipped by `fake-monitor-<output>` (the e2e hook `/__fake/monitor` sets it too). */
   monitors?: Record<string, boolean>;
-  /** Every `himalaya` argv the fake was asked, refused ones included. */
-  mail?: string[][];
 } = {}): Run {
-  const himalaya = createFakeHimalaya();
   let sinkName = defaultName ?? '';
   let status = 'Playing';
   let track = 0;
@@ -67,10 +62,6 @@ export function createFakeDesktop({
   const artUrl = new URL('../modules/media/fixtures/cover.png', import.meta.url).href;
 
   return (bin, args) => {
-    if (bin === 'himalaya') {
-      mail.push([...args]);
-      return Promise.resolve(himalaya(args));
-    }
     const [command, target] = args;
     if (
       bin === 'notify-send' &&

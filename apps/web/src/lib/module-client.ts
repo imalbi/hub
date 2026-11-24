@@ -1,5 +1,6 @@
 import { createTRPCClient, httpBatchLink, splitLink, wsLink } from '@trpc/client';
 import type { AnyRouter } from '@trpc/server';
+export type { AnyTRPCRootTypes, TRPCBuiltRouter, TRPCQueryProcedure } from '@trpc/server';
 import type { ModuleDefinition } from '../../../server/src/core/module.ts';
 import { getToken } from './auth.ts';
 import { moduleLink } from './module-link.ts';

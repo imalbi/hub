@@ -77,14 +77,6 @@ const config: Config = {
     // The fake desktop answers `fake-monitor-<output>` by flipping that output; DP-2 starts off, as in its fixture.
     monitors: [{ output: 'DP-2', label: 'Monitor verticale', command: 'fake-monitor-DP-2' }],
   },
-  mail: {
-    accounts: [
-      { account: 'work', label: 'Lavoro' },
-      { account: 'personal', label: 'Personale' },
-    ],
-    archiveMailbox: 'archive',
-    notify: true,
-  },
   weather: { name: 'Località esempio', latitude: 1, longitude: 2 },
   study: { plansDir: studyDir, materialDirs: [studyMaterials] },
 };
@@ -103,9 +95,7 @@ writeFileSync(configPath, '{}\n');
 const dbPath = join(runDir, 'hub-e2e.db');
 // How long the server stays down on a restart, long enough for the page to show it.
 const restartDelayMs = Number(process.env.HUB_E2E_RESTART_MS ?? 1500);
-let failMail = false;
 let jobs: ReturnType<typeof createJobRunner> | undefined;
-const mailCalls: string[][] = [];
 const systemCalls: string[][] = [];
 const player = { gone: false };
 const monitors = fakeMonitors();
@@ -171,16 +161,9 @@ function build() {
       fixtureDb.$client.close();
     }
   }
-  const desktop = createFakeDesktop({ mail: mailCalls, system: systemCalls, player, monitors });
+  const desktop = createFakeDesktop({ system: systemCalls, player, monitors });
   const run: Run = (bin, args, options) => {
     if (bin === 'git') return catalog.run(bin, args, options);
-    // The inbox listing and a send both fail, so one hook covers a failed list and a failed send.
-    if (
-      failMail &&
-      bin === 'himalaya' &&
-      ((args.includes('envelope') && args.includes('25')) || args.includes('--send'))
-    )
-      return Promise.resolve({ stdout: '', stderr: '', code: 1 });
     return desktop(bin, args, options);
   };
   const effectiveConfig = configSchema.parse({ ...config, ...(typeof stored === 'object' ? stored : {}) });
@@ -405,13 +388,6 @@ function hooks(server: typeof app) {
     );
     setTimeout(() => void restart(), 50);
     return { ok: true };
-  });
-  server.get('/__fake/mail', () => ({ calls: mailCalls }));
-  server.post('/__fake/mail', (request, reply) => {
-    const body = z.object({ fail: z.boolean() }).safeParse(request.body);
-    if (!body.success) return reply.code(400).send();
-    failMail = body.data.fail;
-    return { fail: failMail };
   });
 }
 hooks(app);

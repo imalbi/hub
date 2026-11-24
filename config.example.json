@@ -11,11 +11,5 @@
   "weather": { "name": "Località esempio", "latitude": 1, "longitude": 2 },
   "modules": { "airplay": { "command": "/path/to/airplay" } },
   "sites": [{ "name": "Esempio", "url": "https://example.com" }],
-  "study": { "plansDir": "/path/to/study/plans", "materialDirs": ["/path/to/study/materials"] },
-  "mail": {
-    "accounts": [
-      { "label": "Lavoro", "account": "work" },
-      { "label": "Personale", "account": "personal" }
-    ]
-  }
+  "study": { "plansDir": "/path/to/study/plans", "materialDirs": ["/path/to/study/materials"] }
 }

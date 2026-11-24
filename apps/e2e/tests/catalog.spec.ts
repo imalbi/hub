@@ -195,9 +195,9 @@ test('catalog explains required and optional dependencies and blocks installatio
   await expect(requirements.getByText('audio', { exact: true })).toBeVisible();
   await expect(requirements.getByText('Disponibile', { exact: true })).toBeVisible();
   const optional = page.getByRole('list', { name: 'Integrazioni facoltative di Modulo esempio', exact: true });
-  const mail = optional.getByRole('listitem').filter({ hasText: 'mail' });
-  await expect(mail.getByText('Attiva', { exact: true })).toBeVisible();
-  await expect(mail.getByText('Collega i messaggi al modulo.', { exact: true })).toBeVisible();
+  const media = optional.getByRole('listitem').filter({ hasText: 'media' });
+  await expect(media.getByText('Attiva', { exact: true })).toBeVisible();
+  await expect(media.getByText('Mostra lo stato del lettore nel modulo.', { exact: true })).toBeVisible();
   const calendar = optional.getByRole('listitem').filter({ hasText: 'calendar-sync' });
   await expect(calendar.getByText('Inattiva', { exact: true })).toBeVisible();
   await expect(calendar.getByText('Sincronizza gli appuntamenti.', { exact: true })).toBeVisible();

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { createFakeDesktop } from './testing/fake-desktop.ts';
 import type { Run, RunResult } from './core/exec.ts';
@@ -58,8 +57,6 @@ void test('every check is ok on a healthy desktop', async () => {
     ['caelestia shell -s', 'ok'],
     ['hyprctl monitors all -j', 'ok'],
     ['caelestia toggle --help', 'ok'],
-    ['himalaya --version', 'ok'],
-    ['himalaya envelope schema', 'ok'],
   ]);
 });
 
@@ -75,8 +72,6 @@ void test('only read-only commands are run', async () => {
     'busctl --version',
     'caelestia shell',
     'caelestia toggle',
-    'himalaya --version',
-    'himalaya json-schema',
     'hyprctl monitors',
     'notify-send --help',
     'pdftotext -v',
@@ -110,8 +105,6 @@ void test('a missing binary is reported as missing, not as unparseable', async (
     ['caelestia shell -s', 'ok'],
     ['hyprctl monitors all -j', 'ok'],
     ['caelestia toggle --help', 'ok'],
-    ['himalaya --version', 'ok'],
-    ['himalaya envelope schema', 'ok'],
   ]);
 });
 
@@ -156,19 +149,6 @@ void test('a configured powerstat dir is checked through the real parser', async
   assert.equal(results.find((r) => r.name === 'powerstat dir')?.status, 'unparseable');
   const missing = await runSmoke(healthy(), { powerstatDir: '/nonexistent/powerstat' });
   assert.equal(missing.find((r) => r.name === 'powerstat dir')?.status, 'missing');
-});
-
-void test('a himalaya schema that no longer has a field Hub reads is reported as unparseable', async () => {
-  const schema = JSON.parse(
-    readFileSync(new URL('modules/mail/fixtures/envelope-list.schema.json', import.meta.url), 'utf8'),
-  );
-  delete schema.$defs.Envelope.properties['has-attachment'];
-  const results = await runSmoke(
-    healthy((bin, args) => (bin === 'himalaya' && args[0] === 'json-schema' ? ok(JSON.stringify(schema)) : undefined)),
-  );
-  const check = results.find((r) => r.name === 'himalaya envelope schema');
-  assert.equal(check?.status, 'unparseable');
-  assert.equal(check?.detail, 'missing has-attachment');
 });
 
 void test('mpv status accepts known states and rejects unknown output', async () => {

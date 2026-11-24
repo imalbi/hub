@@ -277,24 +277,6 @@ test('the Sistema page powers off only after a hold', async ({ page }) => {
   }
 });
 
-test('Posta shows only its unread count and hides the badge at zero', async ({ page, pc }) => {
-  const requests: string[] = [];
-  page.on('request', (request) => requests.push(request.url()));
-  try {
-    await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
-    // Content stays on the PC, so the tile shows the count and is not a button.
-    await expect(page.getByRole('button', { name: 'Posta: 3 non lette' })).toHaveCount(0);
-    await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310', '308'], seen: true } });
-    await pc.post('/trpc/mail.setSeen', { data: { account: 'personal', ids: ['88'], seen: true } });
-    await expect(page.getByRole('group', { name: 'Posta: 0 non lette' })).toBeVisible();
-    expect(requests.filter((url) => /mail\.(list|search|read|threads)/.test(url))).toEqual([]);
-  } finally {
-    await pc.post('/trpc/mail.setSeen', { data: { account: 'work', ids: ['310', '308'], seen: false } });
-    await pc.post('/trpc/mail.setSeen', { data: { account: 'personal', ids: ['88'], seen: false } });
-    await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
-  }
-});
-
 test('the Sistema page has a tile per configured monitor that shows its state and toggles it', async ({ page, pc }) => {
   await page.getByRole('button', { name: 'Vai a Sistema' }).click();
   try {
@@ -323,7 +305,6 @@ test('Scrivania presents the requested controls in order', async ({ page }) => {
     /^Alza volume:/,
     /^Microfono:/,
     /^Pomodoro:/,
-    /^Posta:/,
     /^Blocca:/,
   ];
   const tiles = desk.locator(':scope > div > button, :scope > div > [role="group"]');

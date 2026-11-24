@@ -10,7 +10,6 @@ const zones = [
   ['Media', '/desk/media'],
   ['Sistema', '/desk/system'],
   ['Dispositivi', '/desk/devices'],
-  ['Messaggi', '/desk/messaggi'],
   ['Calendario', '/desk/calendar'],
   // Impostazioni opens on Aspetto (step 63): the rail link goes to the index, which replaces itself.
   ['Impostazioni', '/desk/settings/appearance'],

@@ -33,7 +33,7 @@ test.afterEach(async ({ pc }) => {
 });
 
 test('widget labels and measured figures use the self-hosted mono voice', async ({ page, pc, browser }) => {
-  const ids = ['pomodoro', 'audio', 'mail', 'devices', 'power', 'server'];
+  const ids = ['pomodoro', 'audio', 'devices', 'power', 'server'];
   await pc.post('/trpc/layout.save', {
     data: { zone: 'overview', items: ids.map((widget, y) => ({ widget, size: 'small', x: 0, y })) },
   });
@@ -72,14 +72,13 @@ test('C3: the default board of a fresh layout is P1 public widgets in P1 order',
   });
   await page.reload();
   const items = page.locator('[data-widget]');
-  await expect(items).toHaveCount(8);
+  await expect(items).toHaveCount(7);
   expect(await items.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-widget')))).toEqual([
     'today',
     'study',
     'pomodoro',
     'audio',
     'media',
-    'mail',
     'calendar',
     'devices',
   ]);
@@ -89,7 +88,6 @@ test('C3: the default board of a fresh layout is P1 public widgets in P1 order',
     'small',
     'small',
     'medium',
-    'small',
     'large',
     'large',
   ]);
@@ -224,13 +222,6 @@ test('Panoramica offers every widget, the ones that also have a page included', 
   await expect(cell(page, 'theme')).toBeVisible();
 });
 
-test('Posta shows unread count and latest sender', async ({ page }) => {
-  const widget = page.getByRole('region', { name: 'Posta' });
-  await expect(widget.locator('[data-readout] [aria-hidden="true"]').getByText('3', { exact: true })).toBeVisible();
-  await expect(widget.getByRole('paragraph').first()).toMatchAriaSnapshot('- paragraph: 3 non lette');
-  await expect(widget.getByText('Recruiter Example')).toBeVisible();
-});
-
 test('edit mode dims and disables content, and focuses the missing list', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Aggiungi widget', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
@@ -275,7 +266,6 @@ test('all widgets fit within the surface scroller', async ({ page, pc }) => {
     'pomodoro',
     'media',
     'server',
-    'mail',
     'controls',
     'power',
     'audio',

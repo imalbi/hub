@@ -1,6 +1,57 @@
+export type MailAccount = { label: string; account: string };
+
+export type MailAddress = { name: string | null; email: string | null };
+
+export type MailMessage = {
+  id: string;
+  messageId: string | null;
+  subject: string;
+  from: MailAddress | null;
+  date: string | null;
+  seen: boolean;
+  flagged: boolean;
+  hasAttachment: boolean | null;
+};
+
+export type MailThreadEntry = {
+  mailbox: 'inbox' | 'sent';
+  folder?: string;
+  id: string;
+  messageId: string | null;
+  inReplyTo: readonly string[];
+  subject: string;
+  date: string | null;
+  counterpart: string | null;
+};
+
+export type MailThreadView = {
+  /** The seed the thread was asked for. */
+  messageId: string;
+  key: string;
+  /** The last message is the owner's: the other side has not answered yet. */
+  waiting: boolean;
+  messages: MailThreadEntry[];
+};
+
+export type MailThreadAnswer = {
+  account: string;
+  messageId: string;
+  thread: MailThreadView | null;
+  status: 'ok' | 'account' | 'missing' | 'timeout';
+  resolvedMessageId?: string;
+};
+
+export interface MailCapability {
+  accounts(): readonly MailAccount[];
+  listThreadEntries(account: string, after: string): Promise<{ entries: MailThreadEntry[]; truncated: boolean }>;
+  readMessageText(account: string, mailbox: string, id: string): Promise<string | null>;
+  threadOf(entries: readonly MailThreadEntry[], messageId: string): MailThreadView | null;
+}
+
 /** Extend this interface with the shared contracts that modules actually consume. */
 export interface CapabilityMap {
   [name: string]: unknown;
+  mail: MailCapability;
 }
 
 export type CapabilityRegistry<Contracts extends object = CapabilityMap> = {

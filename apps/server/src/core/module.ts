@@ -1,6 +1,17 @@
 import type { AnyProcedure, AnyRouter } from '@trpc/server';
 import { createCapabilityRegistry, type CapabilityRegistry } from './capabilities.ts';
-export { createCapabilityRegistry, type CapabilityMap, type CapabilityRegistry } from './capabilities.ts';
+export {
+  createCapabilityRegistry,
+  type CapabilityMap,
+  type CapabilityRegistry,
+  type MailAccount,
+  type MailAddress,
+  type MailCapability,
+  type MailMessage,
+  type MailThreadAnswer,
+  type MailThreadEntry,
+  type MailThreadView,
+} from './capabilities.ts';
 import type { FastifyInstance, FastifyBaseLogger } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db/index.ts';

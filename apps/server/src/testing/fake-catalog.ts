@@ -21,7 +21,10 @@ export function createFakeCatalog() {
         version: control.version,
         path: 'demo',
         requires: [control.missingRequired ? 'calendar-sync' : 'audio'],
-        optional: { mail: 'Collega i messaggi al modulo.', 'calendar-sync': 'Sincronizza gli appuntamenti.' },
+        optional: {
+          media: 'Mostra lo stato del lettore nel modulo.',
+          'calendar-sync': 'Sincronizza gli appuntamenti.',
+        },
       },
       {
         name: 'catalog-local',

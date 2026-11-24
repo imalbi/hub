@@ -92,14 +92,6 @@ test('without an active plan there is no Studio row', async ({ page, pc }) => {
   }
 });
 
-test('Posta shows the unread count as one link', async ({ page, pc }) => {
-  await placeToday(pc, 'wide');
-  await open(page);
-  const row = today(page).getByRole('link', { name: /3 non lette/ });
-  await expect(row).toContainText('Posta');
-  await expect(row).toHaveAttribute('href', '/desk/messaggi');
-});
-
 test('Esteso adds tomorrow, Largo does not; Aggiungi under tomorrow preselects Domani', async ({ page, pc }) => {
   await studyOn(pc, 0);
   await placeToday(pc, 'full');
@@ -155,7 +147,7 @@ test('Medio cuts the lines by count: two rows and "e altre N"', async ({ page, p
   // The example module contributes one additional line when enabled.
   const lines = today(page).getByRole('list', { name: 'Righe di oggi' });
   await expect(lines.getByRole('link')).toHaveCount(2);
-  await expect(lines.getByText(process.env.HUB_EXAMPLE_MODULES === '1' ? 'e altre 3' : 'e altre 2')).toBeVisible();
+  await expect(lines.getByText(process.env.HUB_EXAMPLE_MODULES === '1' ? 'e altre 2' : 'e altre 1')).toBeVisible();
 });
 
 test('a long event in Medio ends in an ellipsis at 4K', async ({ page, pc }) => {
@@ -183,12 +175,16 @@ test('a long event in Medio ends in an ellipsis at 4K', async ({ page, pc }) => 
 
 test('every row with a link is one link, reached once by Tab', async ({ page, pc }) => {
   await studyOn(pc, 0);
+  await pc.post('/trpc/calendar.add', {
+    data: { title: 'Dentista', day: '2026-11-19', start: '09:00' },
+    headers: json,
+  });
   await placeToday(pc, 'wide');
   await open(page);
   const links = today(page).getByRole('list', { name: 'Righe di oggi' }).getByRole('link');
   // Lines arrive per module; wait for both before reading the list, or a late one shifts the order.
   await expect(links.filter({ hasText: 'G1 · La foglia' })).toHaveCount(1);
-  await expect(links.filter({ hasText: '3 non lette' })).toHaveCount(1);
+  await expect(links.filter({ hasText: 'Dentista' })).toHaveCount(1);
   const count = await links.count();
   expect(count).toBeGreaterThanOrEqual(2);
   const names = await links.evaluateAll((items) => items.map((item) => item.textContent));

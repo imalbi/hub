@@ -23,7 +23,6 @@
     "@trpc/server": "^11.23.0",
     "drizzle-orm": "1.0.0-rc.5",
     "fastify": "^5.12.8",
-    "linkedom": "0.18.15",
     "semver": "^7.8.6",
     "youtubei.js": "18.3.0",
     "zod": "^4.6.7"

@@ -136,7 +136,6 @@ for (const view of [
       '/desk/system',
       '/desk/system?tab=jobs',
       '/desk/devices',
-      '/desk/messaggi',
       '/desk/settings/appearance',
     ]) {
       await page.goto(path);

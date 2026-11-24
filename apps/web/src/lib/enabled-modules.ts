@@ -1,10 +1,9 @@
-import { createContext, createElement, useContext, type ReactNode } from 'react';
+import { createElement, useContext, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { moduleUIs } from './modules.ts';
 import { useTRPC } from './trpc.ts';
-import { EnabledContext } from './module-enabled.ts';
+import { AvailabilityContext, EnabledContext, useIsOn } from './module-enabled.ts';
 
-const AvailabilityContext = createContext<Record<string, { available: boolean; pending: boolean }>>({});
 const neverPending = () => false;
 
 function AvailabilityLayer({
@@ -42,11 +41,7 @@ export function ModuleAvailabilityProvider({ children }: { children: ReactNode }
   return createElement(EnabledContext, { value: enabled }, content);
 }
 
-export function useIsOn() {
-  const enabled = useContext(EnabledContext);
-  const availability = useContext(AvailabilityContext);
-  return (name: string) => (!enabled || enabled.includes(name)) && (availability[name]?.available ?? true);
-}
+export { useIsOn };
 
 export function usePendingModule(zone: string) {
   const enabled = useContext(EnabledContext);

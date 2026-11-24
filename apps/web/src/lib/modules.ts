@@ -1,4 +1,3 @@
-import { useMailAvailable } from '../modules/mail/use-mail.ts';
 import {
   useSitesAvailable,
   useSitesPending,
@@ -7,13 +6,10 @@ import {
   SitesWidget,
 } from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
-import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
 import { CalendarDotsIcon } from '@phosphor-icons/react';
 import { CalendarWidgetSlot, CalendarZone } from '../modules/calendar/zone.tsx';
 import { useCalendarTodayLines } from '../modules/calendar/today.tsx';
-import { mailMessages } from '../modules/mail/records.ts';
-import { useMailTodayLines } from '../modules/mail/today-line.ts';
 import { studyDays } from '../modules/study/records.ts';
 import { useStudyDaySummary, useStudyTodayLines } from '../modules/study/today-line.ts';
 import { useNotesCalendarItems } from '../modules/notes/calendar.ts';
@@ -63,14 +59,6 @@ export const moduleUIs: ModuleUI[] = [
     copy: {},
     sections: [{ zone: 'work', id: 'siti', label: m.sites_title, component: SitesSection }],
     widgets: [{ id: 'sites', label: m.sites_title, sizes: ['small', 'medium'], component: SitesWidget }],
-  },
-  {
-    name: 'mail',
-    useAvailable: useMailAvailable,
-    todayItems: useMailTodayLines,
-    records: mailMessages,
-    copy: {},
-    sections: [{ zone: 'messages', id: 'mail', label: m.module_mail, component: PostaSection, fill: true }],
   },
   {
     name: 'notes',

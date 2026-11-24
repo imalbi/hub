@@ -4,7 +4,6 @@ import { loadConfig } from './core/config.ts';
 import { MEDIA_FORMAT, parseMediaState } from './modules/media/playerctl.ts';
 import { parseMonitorList } from './modules/system/monitor.ts';
 import { createPowerLive } from './modules/system/power.ts';
-import { ENVELOPE_SCHEMA_ARGS, missingEnvelopeFields } from './modules/mail/himalaya.ts';
 
 export type SmokeResult = { name: string; status: 'ok' | 'missing' | 'unparseable'; detail: string };
 type Verdict = Pick<SmokeResult, 'status' | 'detail'>;
@@ -51,16 +50,6 @@ function judgeLockTarget(result: RunResult): Verdict {
   return result.code === 0 && /target lock\n(\s+function .*\n)*\s+function lock\(\)/.test(result.stdout)
     ? { status: 'ok', detail: 'lock IPC target listed' }
     : { status: 'unparseable', detail: result.code === 0 ? 'no lock() in the lock target' : exitDetail(result) };
-}
-
-// The envelope fields Hub reads must still be in himalaya's own schema. Reads the schema only: no account is touched.
-function judgeEnvelopeSchema(result: RunResult): Verdict {
-  if (result.code !== 0) return { status: 'unparseable', detail: exitDetail(result) };
-  const missing = missingEnvelopeFields(result.stdout);
-  if (missing === null) return { status: 'unparseable', detail: 'no Envelope definition in the schema' };
-  return missing.length === 0
-    ? { status: 'ok', detail: 'envelope fields match' }
-    : { status: 'unparseable', detail: `missing ${missing.join(', ')}` };
 }
 
 function judgeToggleHelp(result: RunResult): Verdict {
@@ -121,9 +110,6 @@ const checks = [
   { name: 'caelestia shell -s', bin: 'caelestia', args: ['shell', '-s'], judge: judgeLockTarget },
   { name: 'hyprctl monitors all -j', bin: 'hyprctl', args: ['monitors', 'all', '-j'], judge: judgeMonitors },
   { name: 'caelestia toggle --help', bin: 'caelestia', args: ['toggle', '--help'], judge: judgeToggleHelp },
-  // Mail: the binary, and the listing fields Hub reads against himalaya's schema. Never an account command.
-  { name: 'himalaya --version', bin: 'himalaya', args: ['--version'], judge: judgeVersion },
-  { name: 'himalaya envelope schema', bin: 'himalaya', args: ENVELOPE_SCHEMA_ARGS, judge: judgeEnvelopeSchema },
 ];
 
 async function checkPowerstat(dir: string): Promise<SmokeResult> {

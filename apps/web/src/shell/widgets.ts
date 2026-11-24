@@ -5,7 +5,6 @@ import type { WidgetSize } from '../lib/widget-size.ts';
 import { AudioWidget } from '../modules/audio/widget.tsx';
 import { DevicesWidget } from '../modules/devices/widget.tsx';
 import { MediaWidget } from '../modules/media/widget.tsx';
-import { MailWidget } from '../modules/mail/widget.tsx';
 import { PomodoroWidget } from '../modules/pomodoro/widget.tsx';
 import { ControlsWidget } from '../modules/system/controls-widget.tsx';
 import { PowerWidget } from '../modules/system/power-widget.tsx';
@@ -27,7 +26,6 @@ export const widgets: Array<{
   { id: 'pomodoro', label: m.pomodoro_title, sizes: ['small', 'medium', 'large', 'wide'], component: PomodoroWidget },
   { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide'], component: MediaWidget },
   { id: 'server', label: m.server_panel_title, sizes: ['small', 'medium', 'wide'], component: ServerWidget },
-  { id: 'mail', label: m.module_mail, sizes: ['small', 'medium'], component: MailWidget },
   { id: 'controls', label: m.system_controls, sizes: ['wide', 'large'], component: ControlsWidget },
   { id: 'power', label: m.power_title, sizes: ['small', 'medium'], component: PowerWidget },
   { id: 'audio', label: m.tile_audio_output, sizes: ['small', 'medium', 'wide'], component: AudioWidget },
@@ -43,7 +41,6 @@ export const defaultLayout: WidgetItem[] = [
   { widget: 'pomodoro', size: 'small', x: 6, y: 1 },
   { widget: 'audio', size: 'small', x: 9, y: 1 },
   { widget: 'media', size: 'medium', x: 0, y: 2 },
-  { widget: 'mail', size: 'small', x: 6, y: 2 },
   { widget: 'calendar', size: 'large', x: 0, y: 3 },
   { widget: 'devices', size: 'large', x: 6, y: 3 },
 ];
@@ -54,7 +51,6 @@ const widgetOwner = new Map<string, string>(
     pomodoro: 'pomodoro',
     media: 'media',
     server: 'health',
-    mail: 'mail',
     controls: 'system',
     power: 'system',
     audio: 'audio',

@@ -21,7 +21,6 @@ const surfacePages = [
   { path: '/desk/media', landmark: { role: 'region', name: 'Player musicale' } },
   { path: '/desk/system', landmark: { role: 'region', name: 'Questo PC' } },
   { path: '/desk/devices', landmark: { role: 'region', name: 'Chi ha accesso' } },
-  { path: '/desk/messaggi', landmark: { role: 'region', name: 'Posta in arrivo' } },
 ] as const;
 
 for (const { path, landmark } of surfacePages) {

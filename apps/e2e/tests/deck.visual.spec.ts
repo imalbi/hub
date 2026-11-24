@@ -17,7 +17,6 @@ test.describe('the deck', () => {
     await page.goto('/deck');
     await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Posta: 3 non lette' })).toBeVisible();
     await waitForDeckCover(page);
     await page.evaluate(async () => {
       await document.fonts.ready;

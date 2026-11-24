@@ -37,7 +37,6 @@ test.beforeEach(async ({ page }) => {
     )
     .toBe(0);
   await expect(page.getByRole('region', { name: 'Chi ha accesso' }).getByText('iPhone', { exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Posta' }).getByText('Recruiter Example')).toBeVisible();
   await expect(page.getByRole('status', { name: 'Caricamento' })).toHaveCount(0);
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -50,15 +49,6 @@ test('the desk at 4K matches the baseline', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Uscita audio' }).getByText('80%', { exact: true })).toHaveCount(1);
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('desk-4k.png', { animations: 'disabled' });
-});
-
-test('Posta at 4K shows the inbox and reader', async ({ page }) => {
-  await page.setViewportSize({ width: 3840, height: 2160 });
-  await page.goto('/desk/messaggi');
-  await page.getByRole('button', { name: /Offerta di colloquio/ }).click();
-  await expect(page.getByText('vorremmo proporle un colloquio.', { exact: false })).toBeVisible();
-  await page.mouse.move(0, 0);
-  await expect(page).toHaveScreenshot('desk-posta-4k.png', { animations: 'disabled' });
 });
 
 test('the idle progress ring draws no completed arc', async ({ page }) => {

@@ -16,7 +16,6 @@ const config: Config = {
     ],
   },
   server: { host: '127.0.0.1', allowedOrigins: [] },
-  mail: { accounts: [{ label: 'Lavoro', account: 'work' }], archiveMailbox: 'archive', notify: false },
 };
 
 const run = createFakeDesktop();
@@ -64,22 +63,6 @@ const artKey = createHash('sha256')
   .update(new URL('./modules/media/fixtures/cover.png', import.meta.url).href)
   .digest('hex')
   .slice(0, 16);
-
-void test('refreshing mail pushes unread counts changed outside Hub', async () => {
-  const client = connect();
-  try {
-    await client.subscribe('mail.onState');
-    assert.deepEqual(await client.next(), started);
-    assert.match(JSON.stringify(await client.next()), /"unread":2/);
-    const changed = await run('himalaya', ['--json', '-a', 'work', 'flag', 'add', '-m', 'INBOX', '-f', 'seen', '310']);
-    assert.equal(changed.code, 0);
-    const result = await app.inject('/trpc/mail.refresh?input=%7B%7D');
-    assert.equal(result.statusCode, 200);
-    assert.match(JSON.stringify(await client.next()), /"unread":1/);
-  } finally {
-    client.close();
-  }
-});
 
 void test('media.onState pushes the current state, then the new one right after play/pause', async () => {
   const client = connect();

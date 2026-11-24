@@ -169,35 +169,6 @@ test('C2: Uscita audio Piccolo puts volume in header and output + switch on the 
   await expect(page).toHaveURL(/\/desk\/system$/);
 });
 
-test('C2: Posta aligns Piccolo and Medio and fits at 4K and 1080p', async ({ page, pc }) => {
-  await place(pc, [{ widget: 'mail', size: 'small', x: 0, y: 0 }]);
-  await page.setViewportSize({ width: 3840, height: 2160 });
-  await page.goto('/desk');
-  const small = panel(page, 'mail');
-  await expect(small.getByText('Lavoro, Personale', { exact: true })).toBeVisible();
-  await expect(small.getByText(/^ultima: Recruiter Example/)).toBeVisible();
-  expect(await small.getByRole('button').count()).toBe(0);
-  await expectFits(page, 'mail', 'mail small 4K');
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await expectFits(page, 'mail', 'mail small 1080p');
-  await small.getByRole('link', { name: 'Apri Messaggi', exact: true }).click();
-  await expect(page).toHaveURL(/\/desk\/messaggi$/);
-
-  await place(pc, [{ widget: 'mail', size: 'medium', x: 0, y: 0 }]);
-  await page.setViewportSize({ width: 3840, height: 2160 });
-  await page.goto('/desk');
-  const medium = panel(page, 'mail');
-  await expect(medium.getByRole('listitem')).toHaveCount(3);
-  await expect(medium.getByText('Recruiter Example · Offerta di colloquio')).toBeVisible();
-  await expect(medium.getByText('Club Example · Iscrizione al club')).toBeVisible();
-  await expect(medium.getByText('news@example.org · Newsletter di prova')).toBeVisible();
-  await expectFits(page, 'mail', 'mail medium 4K');
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await expectFits(page, 'mail', 'mail medium 1080p');
-  await medium.getByRole('link', { name: /Offerta di colloquio/ }).click();
-  await expect(page).toHaveURL(/\/desk\/messaggi/);
-});
-
 test('C2: Consumo and Server Piccolo follow P3 and fit at 4K and 1080p', async ({ page, pc }) => {
   await place(pc, [
     { widget: 'power', size: 'small', x: 0, y: 0 },

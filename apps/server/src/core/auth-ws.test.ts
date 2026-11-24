@@ -11,10 +11,7 @@ process.env.NODE_ENV = 'test';
 const app = buildServer({
   dbPath: ':memory:',
   deps: { run: createFakeDesktop() },
-  config: {
-    ...emptyConfig,
-    mail: { accounts: [{ label: 'Lavoro', account: 'work' }], archiveMailbox: 'archive', notify: false },
-  },
+  config: emptyConfig,
   isLoopback: ({ headers }) => headers['x-test-pc'] === '1',
 });
 let port = 0;
@@ -91,20 +88,4 @@ void test('revoking a device closes its open socket', async () => {
     payload: JSON.stringify({ id: device.id, confirmed: true }),
   });
   await client.until(() => client.isClosed());
-});
-
-void test('the mail state pushed to a phone carries the unread count but no senders or subjects', async () => {
-  const client = connect(await pairPhone(), 'mail.onState');
-  const state = z.object({
-    id: z.literal(1),
-    result: z.object({
-      type: z.literal('data'),
-      data: z.object({ accounts: z.array(z.object({ unread: z.number().nullable(), latest: z.array(z.unknown()) })) }),
-    }),
-  });
-  await client.until(() => client.messages.some((m) => state.safeParse(m).success));
-  const [account] = client.messages.flatMap((m) => state.safeParse(m).data?.result.data.accounts ?? []);
-  assert.ok(account && account.unread !== null && account.unread > 0);
-  assert.deepEqual(account.latest, []);
-  client.close();
 });

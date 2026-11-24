@@ -204,7 +204,6 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 
   test('the Lavoro zone appears because the example adds a section, and Messaggi does not', async ({ page }) => {
-    await page.route('**/trpc/mail.accounts*', (route) => route.fulfill({ status: 404, body: '{}' }));
     await page.goto('/desk');
     await rail(page).getByRole('link', { name: 'Lavoro', exact: true }).click();
     await expect(page).toHaveURL(/\/desk\/lavoro$/);
@@ -226,7 +225,6 @@ if (process.env.HUB_EXAMPLE_MODULES === '1') {
   });
 
   test('without sections Lavoro and Messaggi have no rail entry and no page', async ({ page }) => {
-    await page.route('**/trpc/mail.accounts*', (route) => route.fulfill({ status: 404, body: '{}' }));
     await page.goto('/desk');
     await expect(rail(page).getByRole('link', { name: 'Panoramica', exact: true })).toBeVisible();
     for (const name of ['Lavoro', 'Messaggi'])

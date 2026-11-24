@@ -8,7 +8,6 @@ import { pomodoroModule } from './modules/pomodoro/module.ts';
 import { systemModule } from './modules/system/module.ts';
 import { themeModule } from './modules/theme/module.ts';
 import { musicModule } from './modules/music/server.ts';
-import { mailModule } from './modules/mail/module.ts';
 
 import { weatherModule } from './modules/weather/module.ts';
 import { sitesModule } from './modules/sites/server.ts';
@@ -26,7 +25,6 @@ export const publicModules = [
   pomodoroModule,
   systemModule,
   themeModule,
-  mailModule,
   musicModule,
   weatherModule,
   sitesModule,

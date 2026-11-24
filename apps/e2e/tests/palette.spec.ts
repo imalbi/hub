@@ -402,7 +402,7 @@ test('Vai a lists the rail zones above the actions and navigates', async ({ page
   const goto = palette.getByRole('group', { name: 'Vai a' });
   const names = ['Panoramica', 'Studio', 'Media', 'Sistema', 'Dispositivi'];
   if (examples) names.push('Lavoro');
-  names.push('Messaggi', 'Calendario');
+  names.push('Calendario');
   if (examples) names.push('Esempio');
   names.push('Impostazioni');
   await expect(goto.getByRole('option')).toHaveText(names);
