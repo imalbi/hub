@@ -580,5 +580,13 @@
   "catalog_manual_restart": "Ricostruzione completata. Riavvia manualmente il processo di sviluppo di Hub.",
   "catalog_version": "Versione {version}",
   "catalog_installed_version": "Installata: {version}",
-  "catalog_unlisted": "Non più presente nel catalogo."
+  "catalog_unlisted": "Non più presente nel catalogo.",
+  "catalog_requirements": "Requisiti di {name}",
+  "catalog_optional": "Integrazioni facoltative di {name}",
+  "catalog_dependency_missing": "Mancante",
+  "catalog_dependency_ready": "Disponibile",
+  "catalog_optional_active": "Attiva",
+  "catalog_optional_inactive": "Inattiva",
+  "catalog_requirements_hint": "Installa o attiva i requisiti prima di procedere. Per le funzionalità dei moduli appena installati, applica prima le modifiche.",
+  "catalog_hub_incompatible": "Aggiorna Hub: questo modulo richiede la versione {version}."
 }

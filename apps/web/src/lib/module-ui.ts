@@ -69,6 +69,9 @@ export type RecordSource = {
 export type ModuleUI = {
   name: string;
   copy: Record<string, string>;
+  useAvailable?: () => boolean;
+  usePending?: () => boolean;
+  pendingPage?: ComponentType;
   /** Widgets are for Panoramica, the one board: it offers every widget of every module. */
   widgets?: ModuleWidget[];
   /**

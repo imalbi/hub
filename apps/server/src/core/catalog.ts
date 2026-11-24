@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { satisfies, valid } from 'semver';
+import { z } from 'zod';
 import { mkdir, lstat, readFile, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,9 +16,10 @@ import {
   RESERVED_CORE_NAMES,
   resolveSafeModulePath,
   type CatalogManifest,
+  type CatalogModuleEntry,
 } from './catalog-manifest.ts';
 import { installedRoot, moduleNameSchema, privateRoot, reposRoot } from './discovery.ts';
-import type { Run } from './exec.ts';
+import { envWithNodeBin, type Run } from './exec.ts';
 import type { createJobRunner } from './jobs.ts';
 
 export const HARDENED_GIT_FLAGS = [
@@ -41,6 +44,12 @@ export type CatalogSourceModuleView = {
   version: string;
   path: string;
   minHubVersion?: string;
+  provides?: string[];
+  requires?: string[];
+  optional?: Record<string, string>;
+  hubCompatible: boolean;
+  missingRequires: string[];
+  activeOptional: string[];
   installed: boolean;
   installedFromOtherSource: boolean;
   installedVersion: string | null;
@@ -96,7 +105,17 @@ export type CatalogOptions = {
   gitTimeoutMs?: number;
   buildTimeoutMs?: number;
   onRestart?: () => void;
+  available?: () => readonly string[];
 };
+
+const HUB_VERSION = z
+  .object({ version: z.string().refine((value) => valid(value) !== null) })
+  .parse(JSON.parse(readFileSync(new URL('../../../../package.json', import.meta.url), 'utf8'))).version;
+
+function isHubCompatible(entry: CatalogModuleEntry) {
+  const minimum = entry.minHubVersion;
+  return !minimum || satisfies(HUB_VERSION, valid(minimum) ? `>=${minimum}` : minimum);
+}
 
 const MAX_MANIFEST_BYTES = 256 * 1024;
 
@@ -147,6 +166,7 @@ export function createCatalogService({
   gitTimeoutMs = 30_000,
   buildTimeoutMs = 600_000,
   onRestart,
+  available = () => [],
 }: CatalogOptions) {
   let queue: Promise<unknown> = Promise.resolve();
   const serialized = <T>(task: () => Promise<T>): Promise<T> => {
@@ -214,6 +234,7 @@ export function createCatalogService({
       db.select().from(installedModules),
       getPendingApply(),
     ]);
+    const active = new Set(available());
     const installedByName = new Map(installedRows.map((row) => [row.name, row]));
     const sourceById = new Map(sources.map((row) => [row.id, row]));
     const manifestBySource = new Map<string, CatalogManifest>();
@@ -237,6 +258,12 @@ export function createCatalogService({
               description: entry.description,
               version: entry.version,
               path: entry.path,
+              hubCompatible: isHubCompatible(entry),
+              provides: entry.provides,
+              requires: entry.requires,
+              optional: entry.optional,
+              missingRequires: (entry.requires ?? []).filter((name) => !active.has(name)),
+              activeOptional: Object.keys(entry.optional ?? {}).filter((name) => active.has(name)),
               ...(entry.minHubVersion && { minHubVersion: entry.minHubVersion }),
               installed: fromThisSource,
               installedFromOtherSource: Boolean(existing && existing.sourceId !== source.id),
@@ -418,6 +445,30 @@ export function createCatalogService({
     });
   }
 
+  function assertRequirements(entry: CatalogModuleEntry) {
+    if (!isHubCompatible(entry))
+      throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Module requires a different Hub version' });
+    const present = new Set(available());
+    if (entry.requires?.some((dependency) => !present.has(dependency)))
+      throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Install or enable the required modules first' });
+  }
+
+  async function installPackages(staging: string) {
+    if (!existsSync(join(staging, 'package.json'))) return;
+    // Staging is inside Hub, so pnpm must ignore the ancestor workspace to install only this module.
+    const result = await run(
+      'pnpm',
+      ['install', '--dir', staging, '--ignore-scripts', '--frozen-lockfile', '--ignore-workspace'],
+      {
+        timeoutMs: 120_000,
+        env: { PATH: envWithNodeBin().PATH ?? '' },
+      },
+    );
+    // Package managers may echo authenticated URLs or local paths; never expose their output.
+    if (result.code !== 0)
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Module dependency installation failed' });
+  }
+
   function installModule({ sourceId, name }: { sourceId: string; name: string }) {
     return serialized(async () => {
       if (isBuildRunning()) {
@@ -456,7 +507,8 @@ export function createCatalogService({
         throw new TRPCError({ code: 'BAD_REQUEST', message: summarizeError(error, 'Invalid module path') });
       }
 
-      await copyModuleAtomically(resolvedSourceDir, installedDir, name);
+      assertRequirements(entry);
+      await copyModuleAtomically(resolvedSourceDir, installedDir, name, installPackages);
       const now = new Date();
       await db.insert(installedModules).values({
         name,
@@ -512,7 +564,8 @@ export function createCatalogService({
         throw new TRPCError({ code: 'BAD_REQUEST', message: summarizeError(error, 'Invalid module path') });
       }
 
-      await copyModuleAtomically(resolvedSourceDir, installedDir, name);
+      assertRequirements(entry);
+      await copyModuleAtomically(resolvedSourceDir, installedDir, name, installPackages);
       await db
         .update(installedModules)
         .set({

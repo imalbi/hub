@@ -131,3 +131,34 @@ void test('deriveSourceId normalizes slugs and avoids collisions', () => {
   assert.notEqual(second, first);
   assert.match(second, /^[a-z0-9][a-z0-9-]{0,47}$/);
 });
+
+void test('manifest accepts dependency metadata and semver ranges while rejecting invalid ranges', () => {
+  const entry = {
+    name: 'sample',
+    title: 'Sample',
+    description: 'Module',
+    version: '1.0.0',
+    path: 'sample',
+    provides: ['clock'],
+    requires: ['base'],
+    optional: { mail: 'Collega i messaggi' },
+    minHubVersion: '>=0.1.0 <2.0.0',
+  };
+  const manifest = { version: 1, name: 'Catalog', description: 'Modules', modules: [entry] };
+  assert.deepEqual(parseCatalogManifest(manifest).modules[0], entry);
+  for (const minHubVersion of ['invalid', '1.broken', ''])
+    assert.throws(() => parseCatalogManifest({ ...manifest, modules: [{ ...entry, minHubVersion }] }));
+});
+
+void test('catalog module source rejects node_modules and package.json without a regular lockfile', async (t) => {
+  const root = await scratch(t);
+  const module = join(root, 'sample');
+  await mkdir(module);
+  await writeFile(join(module, 'server.ts'), 'export default {};');
+  await writeFile(join(module, 'package.json'), '{}');
+  await assert.rejects(() => resolveSafeModulePath(root, 'sample'), /pnpm-lock.yaml/);
+  await writeFile(join(module, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0');
+  assert.equal(await resolveSafeModulePath(root, 'sample'), module);
+  await mkdir(join(module, 'node_modules'));
+  await assert.rejects(() => resolveSafeModulePath(root, 'sample'), /node_modules/);
+});

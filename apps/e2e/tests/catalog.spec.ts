@@ -9,6 +9,36 @@ test.afterEach(async ({ page, pc }) => {
   await cleanCatalog(pc);
 });
 
+test('catalog remains usable before the backend restarts with capability metadata', async ({ page, pc }) => {
+  await pc.post('/trpc/catalog.addSource', { data: { url: CATALOG_URL } });
+  await page.route('**/trpc/*', async (route) => {
+    const paths = new URL(route.request().url()).pathname.replace('/trpc/', '').split(',');
+    if (!paths.includes('catalog.state')) return route.continue();
+    const response = await route.fetch();
+    const body: unknown = await response.json();
+    if (Array.isArray(body))
+      for (const [index, entry] of body.entries()) {
+        if (paths[index] !== 'catalog.state') continue;
+        for (const source of entry?.result?.data?.sources ?? [])
+          for (const module of source.modules)
+            for (const key of [
+              'hubCompatible',
+              'missingRequires',
+              'activeOptional',
+              'provides',
+              'requires',
+              'optional',
+            ])
+              delete module[key];
+      }
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto('/desk/settings/catalog');
+  await expect(page.getByRole('region', { name: 'Catalogo esempio' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tieni premuto per installare Modulo esempio' })).toBeEnabled();
+  await expect(page.getByText('Richiede Hub', { exact: false })).not.toBeVisible();
+});
+
 test('catalog validates URLs, requires a hold, updates and removes modules before their source', async ({
   page,
   pc,
@@ -153,4 +183,33 @@ test('an installed module removed from a newer manifest remains removable', asyn
   await expect(
     page.getByRole('button', { name: 'Tieni premuto per rimuovere il repository Catalogo esempio' }),
   ).toBeEnabled();
+});
+
+test('catalog explains required and optional dependencies and blocks installation when a requirement is missing', async ({
+  page,
+  pc,
+}) => {
+  await pc.post('/trpc/catalog.addSource', { data: { url: CATALOG_URL } });
+  await page.goto('/desk/settings/catalog');
+  const requirements = page.getByRole('list', { name: 'Requisiti di Modulo esempio', exact: true });
+  await expect(requirements.getByText('audio', { exact: true })).toBeVisible();
+  await expect(requirements.getByText('Disponibile', { exact: true })).toBeVisible();
+  const optional = page.getByRole('list', { name: 'Integrazioni facoltative di Modulo esempio', exact: true });
+  const mail = optional.getByRole('listitem').filter({ hasText: 'mail' });
+  await expect(mail.getByText('Attiva', { exact: true })).toBeVisible();
+  await expect(mail.getByText('Collega i messaggi al modulo.', { exact: true })).toBeVisible();
+  const calendar = optional.getByRole('listitem').filter({ hasText: 'calendar-sync' });
+  await expect(calendar.getByText('Inattiva', { exact: true })).toBeVisible();
+  await expect(calendar.getByText('Sincronizza gli appuntamenti.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tieni premuto per installare Modulo esempio' })).toBeEnabled();
+  await catalogControl(pc, { missingRequired: true });
+  await page.getByRole('button', { name: 'Aggiorna catalogo', exact: true }).click();
+  await expect(requirements.getByText('Mancante', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tieni premuto per installare Modulo esempio' })).toBeDisabled();
+  const source = (await catalogState(pc)).sources[0];
+  expect(
+    (
+      await pc.post('/trpc/catalog.install', { data: { sourceId: source?.id, name: 'catalog-demo', confirmed: true } })
+    ).status(),
+  ).toBe(412);
 });

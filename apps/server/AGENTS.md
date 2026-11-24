@@ -81,6 +81,8 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 - `settings.save`, `settings.restore` and the opted-in query `settings.config` are in `registry.list`. Agent saves and restores refuse the whole change when a secret or `.meta({ manual: true })` field changes, or pairing, devices or health is switched off; human approval does not override this rule. `server.host` is manual, and `core/settings-router.test.ts` walks all public and core `formSchema`s so any field matching `/command|page|terminal|file|dir|dirs|scheme|host|url/i` must carry `manual: true` (unless explicitly allowlisted as non-executable). Secrets inside objects, arrays and records are redacted and restored through the schema.
 - Tests: `core/settings.test.ts` (paired device refused on every procedure, invalid save changes nothing, valid save keeps `.bak`/mode and asks for one restart, secrets, `settingsSchema`, switch-only save, no restart hook), `server-modules.test.ts` (`modulesOff` of a public module), `core/discovery.test.ts` (off discovered module and its db file, failed module and payload-free log). Never point a settings test at `config.local.json`: they use a `mkdtemp` file.
 
+- `core/capabilities.ts` stages discovered-module registrations in a child registry until the factory validates; never publish partial services from a failed module. Declare dependency metadata in both the runtime definition and catalog manifest (see `docs/modules.md`). `/m/<name>` routes inherit the module scope's Host/Origin/auth guards; a route still owns any stricter authorization.
+
 ## Fake desktop and smoke check
 
 - The script has no `--help`: an unknown flag is ignored and the digest runs for real (it happened once while planning this module).

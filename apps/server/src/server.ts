@@ -1,3 +1,4 @@
+import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
 import { createFiles } from './core/files.ts';
 import { registerMcp } from './core/mcp.ts';
@@ -206,6 +207,7 @@ export function buildServer({
       log: app.log,
       zones: new Set(publicModules.flatMap((m) => m.zones ?? [])),
       focusHistory: createFocusHistory(db),
+      capabilities: createCapabilityRegistry(),
     };
     const moduleDeps = { ...discoveredDeps, db };
     const onClose = (close: () => void | Promise<void>) => {
@@ -236,6 +238,26 @@ export function buildServer({
       states,
       off: config.modulesOff,
       onDb: backup.add,
+      available: publicModules
+        .filter((module) => !config.modulesOff.includes(module.name))
+        .map((module) => module.name),
+      onRoutes: (name, routes) => {
+        scope.register(
+          async (moduleScope) => {
+            moduleScope.addHook('onRequest', async (req, reply) => {
+              if (req.headers.origin !== undefined && !isAllowedOrigin(req.headers.origin, allowlist))
+                return reply.code(403).send({ error: 'Origin not allowed' });
+              if (req.headers['sec-fetch-site'] === 'cross-site')
+                return reply.code(403).send({ error: 'Cross-site request not allowed' });
+              const client = await resolveClient(db, isLoopback, req, extractToken(req.headers.authorization, null));
+              if (client.kind === 'anonymous') return reply.code(401).send({ error: 'Pair this device first' });
+              return undefined;
+            });
+            routes(moduleScope);
+          },
+          { prefix: `/m/${name}` },
+        );
+      },
     });
     const catalogService = createCatalogService({
       db,
@@ -245,6 +267,13 @@ export function buildServer({
       installedDir: catalog?.installedDir ?? process.env.HUB_CATALOG_INSTALLED_DIR ?? installedRoot,
       localDir: catalog?.localDir ?? privateRoot,
       reservedNames: new Set(reserved),
+      available: () => [
+        ...states
+          .list()
+          .filter((module) => module.status === 'on')
+          .map((module) => module.name),
+        ...discoveredDeps.capabilities.list(),
+      ],
       buildCommand: catalog?.buildCommand,
       onRestart: catalog?.onRestart ?? settings?.onRestart,
     });
@@ -377,6 +406,8 @@ export function buildServer({
         !path.startsWith('/trpc') &&
         !path.startsWith('/files') &&
         !path.startsWith('/music/') &&
+        path !== '/m' &&
+        !path.startsWith('/m/') &&
         path !== '/mcp' &&
         !path.startsWith('/mcp/') &&
         !extname(path)

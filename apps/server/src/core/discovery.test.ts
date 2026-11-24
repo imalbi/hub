@@ -1,3 +1,4 @@
+import { createCapabilityRegistry } from './capabilities.ts';
 import { createFocusHistory } from './focus-history.ts';
 import { openDb } from '../db/index.ts';
 import assert from 'node:assert/strict';
@@ -76,6 +77,7 @@ void test('folders that cannot be module names are never tried, so a git reposit
       log,
       zones: new Set(),
       focusHistory: createFocusHistory(openDb(':memory:')),
+      capabilities: createCapabilityRegistry(),
     },
     dbPath: ':memory:',
     config: {},
@@ -117,6 +119,7 @@ void test('a module that fails is reported as failed and its log line carries no
       log,
       zones: new Set(),
       focusHistory: createFocusHistory(openDb(':memory:')),
+      capabilities: createCapabilityRegistry(),
     },
     dbPath: ':memory:',
     config: { picky: { count: 'PAYLOAD-MARKER' } },
@@ -219,6 +222,7 @@ void test('duplicate module in a later root is skipped with a warning and keeps 
       log,
       zones: new Set(),
       focusHistory: createFocusHistory(openDb(':memory:')),
+      capabilities: createCapabilityRegistry(),
     },
     dbPath: ':memory:',
     config: {},
@@ -228,4 +232,60 @@ void test('duplicate module in a later root is skipped with a warning and keeps 
   assert.deepEqual(Object.keys(routers), ['dup']);
   assert.equal(states.get('dup')?.status, 'on');
   assert.equal(warnings.length, 1);
+});
+
+void test('dependency discovery orders providers, isolates cycles and missing or disabled dependencies', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'hub-discovery-deps-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const api = JSON.stringify(new URL('./module.ts', import.meta.url).href);
+  const trpc = JSON.stringify(new URL('./trpc.ts', import.meta.url).href);
+  const fixtures = {
+    alpha: `requires: ['clock'], create: ({ capabilities }) => ({ router: router({ state: protectedProcedure.query(() => capabilities.get('clock')) }) })`,
+    zeta: `provides: ['clock'], create: ({ capabilities }) => { capabilities.register('clock', 42); return { router: router({}) }; }`,
+    missing: `requires: ['absent'], create: () => { throw new Error('never called'); }`,
+    first: `requires: ['second'], create: () => ({ router: router({}) })`,
+    second: `requires: ['first'], create: () => ({ router: router({}) })`,
+    disabled: `create: () => { throw new Error('never called'); }`,
+    blocked: `requires: ['disabled'], create: () => ({ router: router({}) })`,
+    broken: `provides: ['leaked'], create: ({ capabilities }) => { capabilities.register('leaked', true); throw new Error('broken'); }`,
+    leak: `requires: ['leaked'], create: () => ({ router: router({}) })`,
+    aoptional: `optional: { clock: 'Mostra il tempo' }, create: ({ capabilities }) => ({ router: router({ state: protectedProcedure.query(() => capabilities.get('clock')) }) })`,
+    byname: `requires: ['zeta'], create: () => ({ router: router({ state: protectedProcedure.query(() => 'ready') }) })`,
+    optionalmissing: `optional: { absent: 'Aggiunge dati' }, create: () => ({ router: router({ state: protectedProcedure.query(() => 'ready') }) })`,
+    optionalloop: `optional: { optionaluser: 'Aggiunge dati' }, create: () => ({ router: router({ state: protectedProcedure.query(() => 'ready') }) })`,
+    optionaluser: `requires: ['optionalloop'], create: () => ({ router: router({ state: protectedProcedure.query(() => 'ready') }) })`,
+    zzduplicate: `provides: ['clock'], create: () => ({ router: router({}) })`,
+    zzunregistered: `provides: ['forgotten'], create: () => ({ router: router({}) })`,
+  };
+  for (const [name, definition] of Object.entries(fixtures)) {
+    await mkdir(join(root, name));
+    await writeFile(
+      join(root, name, 'server.ts'),
+      `import { defineModule } from ${api}; import { router, protectedProcedure } from ${trpc}; export default defineModule({ name: '${name}', ${definition} });`,
+    );
+  }
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    moduleRoots: [root],
+    config: { ...emptyConfig, modulesOff: ['disabled'] },
+  });
+  t.after(() => app.close());
+  for (const name of ['alpha', 'aoptional']) {
+    const response = await app.inject(`/trpc/${name}.state`);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), { result: { data: 42 } });
+  }
+  const response = await app.inject('/trpc/settings.modules');
+  const states = response.json().result.data;
+  for (const name of ['byname', 'optionalmissing', 'optionalloop', 'optionaluser']) {
+    const response = await app.inject(`/trpc/${name}.state`);
+    assert.equal(response.statusCode, 200, name);
+    assert.deepEqual(response.json(), { result: { data: 'ready' } });
+  }
+  for (const name of ['missing', 'first', 'second', 'blocked', 'broken', 'leak', 'zzduplicate', 'zzunregistered']) {
+    assert.equal(states.find((entry: { name: string }) => entry.name === name)?.status, 'failed', name);
+  }
+  assert.equal(states.find((entry: { name: string }) => entry.name === 'disabled')?.status, 'off');
+  assert.equal((await app.inject('/trpc/audio.state')).statusCode, 200);
 });

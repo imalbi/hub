@@ -1,3 +1,4 @@
+import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
 /* oxlint-disable no-underscore-dangle -- tRPC exposes procedure type and meta only through _def */
 import assert from 'node:assert/strict';
@@ -24,7 +25,15 @@ const db = openDb(':memory:');
 const closes: Array<() => void | Promise<void>> = [];
 const appRouter = createAppRouter(
   publicModules,
-  { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set(), focusHistory: createFocusHistory(db) },
+  {
+    db,
+    run: createFakeDesktop(),
+    fetch,
+    log: fastify().log,
+    zones: new Set(),
+    focusHistory: createFocusHistory(db),
+    capabilities: createCapabilityRegistry(),
+  },
   emptyConfig,
   (close) => closes.push(close),
 );

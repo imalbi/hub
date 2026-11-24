@@ -4,7 +4,14 @@ import type { Run, StreamSpawn } from '../core/exec.ts';
 
 /** Git and web builds stay inside the e2e run, without subprocesses or network access. */
 export function createFakeCatalog() {
-  const control = { version: '1.0.0', failBuild: false, failSync: false, manualRestart: false, hideDemo: false };
+  const control = {
+    version: '1.0.0',
+    failBuild: false,
+    failSync: false,
+    manualRestart: false,
+    hideDemo: false,
+    missingRequired: false,
+  };
   async function writeRepository(root: string) {
     const modules = [
       {
@@ -13,6 +20,8 @@ export function createFakeCatalog() {
         description: 'Un modulo dal catalogo di prova.',
         version: control.version,
         path: 'demo',
+        requires: [control.missingRequired ? 'calendar-sync' : 'audio'],
+        optional: { mail: 'Collega i messaggi al modulo.', 'calendar-sync': 'Sincronizza gli appuntamenti.' },
       },
       {
         name: 'catalog-local',
@@ -20,6 +29,7 @@ export function createFakeCatalog() {
         description: 'Un modulo già presente sul PC.',
         version: '1.0.0',
         path: 'local',
+        requires: ['calendar-sync'],
       },
     ];
     await mkdir(root, { recursive: true });

@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures.ts';
+import { restoreDesktop } from './desktop.ts';
 
 test('opening a generated form moves keyboard focus to its first control', async ({ page }) => {
   await page.goto('/desk');
@@ -36,7 +37,7 @@ test('a page opened before the palette finished growing keeps its focus', async 
   await expect(hold).toBeFocused();
 });
 
-test('completion from a closed session cannot dismiss a newly opened form', async ({ page }) => {
+test('completion from a closed session cannot dismiss a newly opened form', async ({ page, pc }) => {
   let release: (() => void) | undefined;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -71,6 +72,8 @@ test('completion from a closed session cannot dismiss a newly opened form', asyn
     await expect(palette).toBeVisible();
   } finally {
     release?.();
+    await page.unrouteAll({ behavior: 'wait' });
+    await restoreDesktop(pc);
   }
 });
 

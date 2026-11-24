@@ -7,7 +7,7 @@ import { test, type TestContext } from 'node:test';
 import { moduleDbPath, openDatabase, openDb } from '../db/index.ts';
 import type { Run } from './exec.ts';
 import { createJobRunner } from './jobs.ts';
-import { isAllowedGitUrl } from './catalog-manifest.ts';
+import { isAllowedGitUrl, type CatalogModuleEntry } from './catalog-manifest.ts';
 import { createCatalogService } from './catalog.ts';
 
 async function scratch(t: TestContext) {
@@ -34,7 +34,7 @@ async function writeFakeRepo(
   }: {
     name?: string;
     description?: string;
-    modules?: { name: string; title: string; description: string; version: string; path: string }[];
+    modules?: CatalogModuleEntry[];
     createFiles?: boolean;
   } = {},
 ) {
@@ -256,4 +256,140 @@ void test('catalog service enforces hardened git args, manages sources, and pres
   const symlinkState = (await catalog.state()).sources.find((s) => s.id === addedClean.id);
   assert.equal(symlinkState?.manifestError, 'hub-catalog.json must be a regular file');
   void leakRepo;
+});
+
+void test('catalog installs packages in staging before swapping and preserves both install and pending state on failure', async (t) => {
+  const dir = await scratch(t);
+  const db = openDb(':memory:');
+  const jobs = createJobRunner(db, () => ({ kill() {} }), 2);
+  const installedDir = join(dir, 'installed');
+  const reposDir = join(dir, 'repos');
+  let failInstall = false;
+  let calls = 0;
+  const run: Run = async (bin, args, options) => {
+    if (bin === 'git' && args.includes('clone')) {
+      const root = args.at(-1) ?? '';
+      await writeFakeRepo(root);
+      await writeFile(join(root, 'modules/widget-mod/package.json'), '{}');
+      await writeFile(join(root, 'modules/widget-mod/pnpm-lock.yaml'), 'lockfileVersion: 9.0');
+    }
+    if (bin === 'pnpm') {
+      calls++;
+      const staging = args[2];
+      assert.ok(staging?.startsWith(join(installedDir, '.tmp-widget-mod-')));
+      assert.deepEqual(args, [
+        'install',
+        '--dir',
+        staging,
+        '--ignore-scripts',
+        '--frozen-lockfile',
+        '--ignore-workspace',
+      ]);
+      assert.equal(options?.timeoutMs, 120_000);
+      assert.ok(options?.env?.PATH);
+      assert.equal(existsSync(join(installedDir, 'widget-mod')), calls > 2);
+      if (calls > 2) assert.equal(await readFile(join(installedDir, 'widget-mod/marker'), 'utf8'), 'preserved');
+      if (failInstall) return { code: 1, stdout: '', stderr: 'private package error' };
+      await mkdir(join(staging, 'node_modules'));
+    }
+    return {
+      code: 0,
+      stdout: args.includes('rev-parse') ? '1111111111111111111111111111111111111111\n' : '',
+      stderr: '',
+    };
+  };
+  const service = createCatalogService({ db, run, jobs, installedDir, reposDir, localDir: join(dir, 'local') });
+  t.after(async () => {
+    service.close();
+    jobs.close();
+    db.$client.close();
+  });
+  const source = await service.addSource({ url: 'https://example.com/catalog.git' });
+  failInstall = true;
+  await assert.rejects(
+    () => service.installModule({ sourceId: source.id, name: 'widget-mod' }),
+    /dependency installation failed/,
+  );
+  assert.equal((await service.state()).pendingApply, false);
+  assert.equal(existsSync(join(installedDir, 'widget-mod')), false);
+  failInstall = false;
+  await service.installModule({ sourceId: source.id, name: 'widget-mod' });
+  await writeFile(join(installedDir, 'widget-mod/marker'), 'preserved');
+  const before = await service.state();
+  failInstall = true;
+  await assert.rejects(() => service.updateModule({ name: 'widget-mod' }), /dependency installation failed/);
+  assert.deepEqual(await service.state(), before);
+  assert.equal(await readFile(join(installedDir, 'widget-mod/marker'), 'utf8'), 'preserved');
+  failInstall = false;
+  await service.updateModule({ name: 'widget-mod' });
+  assert.equal(calls, 4);
+  assert.equal(existsSync(join(installedDir, 'widget-mod/marker')), false);
+  assert.equal(existsSync(join(installedDir, 'widget-mod/node_modules')), true);
+  const { readdir } = await import('node:fs/promises');
+  assert.deepEqual(await readdir(installedDir), ['widget-mod']);
+});
+
+void test('catalog checks the running Hub version and live dependencies on both install and update', async (t) => {
+  const dir = await scratch(t);
+  const db = openDb(':memory:');
+  const jobs = createJobRunner(db, () => ({ kill() {} }), 2);
+  let minimum = '^1.0.0';
+  let active = ['audio', 'clock'];
+  const reposDir = join(dir, 'repos');
+  const module = {
+    name: 'widget-mod',
+    title: 'Widget',
+    description: 'Shared widget',
+    version: '1.0.0',
+    path: 'widget',
+    requires: ['audio', 'clock'],
+    optional: { mail: 'Collega la posta.' },
+  };
+  const run: Run = async (_bin, args) => {
+    if (args.includes('clone'))
+      await writeFakeRepo(args.at(-1) ?? '', { modules: [{ ...module, minHubVersion: minimum }] });
+    return { code: 0, stdout: args.includes('rev-parse') ? 'a'.repeat(40) : '', stderr: '' };
+  };
+  const service = createCatalogService({
+    db,
+    run,
+    jobs,
+    reposDir,
+    installedDir: join(dir, 'installed'),
+    localDir: join(dir, 'local'),
+    available: () => active,
+  });
+  t.after(() => {
+    service.close();
+    jobs.close();
+    db.$client.close();
+  });
+  const source = await service.addSource({ url: 'https://example.com/versioned.git' });
+  const entry = async () => (await service.state()).sources[0]?.modules[0];
+  assert.equal((await entry())?.hubCompatible, true);
+  assert.deepEqual((await entry())?.missingRequires, []);
+  assert.deepEqual((await entry())?.activeOptional, []);
+  active = ['audio'];
+  assert.deepEqual((await entry())?.missingRequires, ['clock']);
+  await assert.rejects(() => service.installModule({ sourceId: source.id, name: module.name }), /required modules/);
+  assert.equal((await service.state()).pendingApply, false);
+  active.push('clock', 'mail');
+  assert.deepEqual((await entry())?.activeOptional, ['mail']);
+  minimum = '2.0.0';
+  await writeFakeRepo(join(reposDir, source.id), { modules: [{ ...module, minHubVersion: minimum }] });
+  assert.equal((await entry())?.hubCompatible, false);
+  await assert.rejects(() => service.installModule({ sourceId: source.id, name: module.name }), /Hub version/);
+  minimum = '0.9.0';
+  await writeFakeRepo(join(reposDir, source.id), { modules: [{ ...module, minHubVersion: minimum }] });
+  await service.installModule({ sourceId: source.id, name: module.name });
+  const before = await service.state();
+  active = ['mail'];
+  await assert.rejects(() => service.updateModule({ name: module.name }), /required modules/);
+  assert.deepEqual((await entry())?.missingRequires, ['audio', 'clock']);
+  active = ['audio', 'clock', 'mail'];
+  minimum = '>=2.0.0';
+  await writeFakeRepo(join(reposDir, source.id), { modules: [{ ...module, minHubVersion: minimum }] });
+  await assert.rejects(() => service.updateModule({ name: module.name }), /Hub version/);
+  assert.deepEqual((await service.state()).installed, before.installed);
+  assert.equal((await service.state()).pendingApply, before.pendingApply);
 });

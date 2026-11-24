@@ -1,5 +1,7 @@
 import type { AnyProcedure, AnyRouter } from '@trpc/server';
-import type { FastifyBaseLogger } from 'fastify';
+import { createCapabilityRegistry, type CapabilityRegistry } from './capabilities.ts';
+export { createCapabilityRegistry, type CapabilityMap, type CapabilityRegistry } from './capabilities.ts';
+import type { FastifyInstance, FastifyBaseLogger } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
@@ -14,15 +16,23 @@ export type DiscoveredDeps = {
   /** Shared with the layout module; only successfully created modules add zones. */
   zones: Set<string>;
   focusHistory: FocusHistory;
+  capabilities: CapabilityRegistry;
 };
 /** What a public module gets: the discovered deps plus the core database. */
 export type ModuleDeps = DiscoveredDeps & { db: Db };
-export type ModuleInstance = { router: AnyRouter | AnyProcedure; close?: () => void | Promise<void> };
+export type ModuleInstance = {
+  router: AnyRouter | AnyProcedure;
+  close?: () => void | Promise<void>;
+  routes?: (scope: FastifyInstance) => void;
+};
 export type ModuleDefinition = {
   name: string;
   config?: z.ZodType;
   settingsSchema?: z.ZodType;
   zones?: readonly string[];
+  provides?: readonly string[];
+  requires?: readonly string[];
+  optional?: Record<string, string>;
   setupNote?: (config: unknown) => string | undefined;
   migrations?: string;
   create: (deps: ModuleDeps & { config: unknown }) => ModuleInstance;
@@ -48,6 +58,9 @@ export function defineModule<
    */
   settingsSchema?: z.ZodType;
   zones?: readonly string[];
+  provides?: readonly string[];
+  requires?: readonly string[];
+  optional?: Record<string, string>;
   /** Impostazioni shows this note in the module's row while it is on and still unusable (Italian text, like a schema `title`). */
   setupNote?: (config: unknown) => string | undefined;
   migrations?: M;
@@ -61,12 +74,18 @@ export function defineModule<
 }) {
   return {
     ...definition,
-    create(deps: DiscoveredDeps & { db?: Db; config: unknown }): R {
+    create(
+      deps: Omit<DiscoveredDeps, 'capabilities'> & { capabilities?: CapabilityRegistry; db?: Db; config: unknown },
+    ): R {
       const config = (definition.config ?? z.undefined()).parse(deps.config);
       // The factory's parameter is conditional on `migrations`/`coreDb`, and its config type is the schema's output:
       // the schema just parsed it, and the caller passes `db` exactly when the definition declared one of the two.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Conditional deps and parsed config are promised by the signature.
-      return definition.create({ ...deps, config } as Parameters<typeof definition.create>[0]);
+      return definition.create({
+        ...deps,
+        config,
+        capabilities: deps.capabilities ?? createCapabilityRegistry(),
+      } as Parameters<typeof definition.create>[0]);
     },
   };
 }

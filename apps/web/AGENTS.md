@@ -181,7 +181,11 @@ Tailwind v4 through `@tailwindcss/vite`, no config file. All tokens live in `src
 
 ## Modules that are off
 
+- The served UI can update before the backend restarts. New catalog response fields need defaults in `settings/catalog-source.tsx`; `catalog.spec.ts` guards the previous API shape.
+
 - Off modules (`lib/enabled-modules.ts`, `useIsOn`/`useLiveModuleUIs` over the protected `modules.enabled`): until it answers everything counts as on. `useZones()` (rail, keys 1-9, palette Vai a; a section-only zone goes when its last section's module is off), `pageTabs` through `useLiveModuleUIs`, `useWidgets()` (the saved layout keeps off widgets, so switching on brings them back) and `useDeckPages()` (`shell/deck-page-config.ts` maps every tile to its module) all filter by it. `modules.enabled` goes over its own `httpLink` (`main.tsx`): in the batch with `health` it broke every spec that pins `health`.
+
+- `ModuleAvailabilityProvider` in `main.tsx` combines `modules.enabled` with each `ModuleUI.useAvailable` hook, using stable per-module layers. `usePending`/`pendingPage` keep zone skeleton geometry. Domain hooks import raw enabled state from `lib/module-enabled.ts`, never `enabled-modules.ts`: the latter imports the UI registry and would create a cycle and leak Vite-only types into module checks.
 
 ## Themes
 

@@ -31,23 +31,34 @@ export function CatalogSource({
   const sourceInstalled = installed.filter((module) => module.sourceId === source.id);
   const hasInstalled = sourceInstalled.length > 0;
   // Keep removal available when a later manifest drops an installed entry or fails validation.
-  const modules = source.modules.concat(
-    sourceInstalled
-      .filter((module) => !source.modules.some((entry) => entry.name === module.name))
-      .map((module) => ({
-        name: module.name,
-        title: module.title,
-        description: module.description,
-        version: module.version,
-        path: module.modulePath,
-        installed: true,
-        installedFromOtherSource: false,
-        installedVersion: module.version,
-        installedCommit: module.installedCommit,
-        updateAvailable: false,
-        localConflict: module.localConflict,
-      })),
-  );
+  // The served web build can precede the backend restart that adds this metadata.
+  const modules = source.modules
+    .map((module) => ({
+      ...module,
+      hubCompatible: module.hubCompatible ?? true,
+      missingRequires: module.missingRequires ?? [],
+      activeOptional: module.activeOptional ?? [],
+    }))
+    .concat(
+      sourceInstalled
+        .filter((module) => !source.modules.some((entry) => entry.name === module.name))
+        .map((module) => ({
+          name: module.name,
+          title: module.title,
+          description: module.description,
+          version: module.version,
+          path: module.modulePath,
+          hubCompatible: true,
+          missingRequires: [],
+          activeOptional: [],
+          installed: true,
+          installedFromOtherSource: false,
+          installedVersion: module.version,
+          installedCommit: module.installedCommit,
+          updateAvailable: false,
+          localConflict: module.localConflict,
+        })),
+    );
   return (
     <Panel title={source.name} subtitle={source.description}>
       <div className="flex flex-wrap items-start gap-md">
@@ -107,6 +118,43 @@ export function CatalogSource({
                 {m.catalog_version({ version: module.version })}
                 {module.installedVersion && ` · ${m.catalog_installed_version({ version: module.installedVersion })}`}
               </p>
+              {!module.hubCompatible && (
+                <p className="mt-xs text-label text-muted-foreground">
+                  {m.catalog_hub_incompatible({ version: module.minHubVersion ?? '' })}
+                </p>
+              )}
+              {module.requires && module.requires.length > 0 && (
+                <ul aria-label={m.catalog_requirements({ name: module.title })} className="mt-sm flex flex-col gap-xs">
+                  {module.requires.map((name) => (
+                    <li key={name} className="flex flex-wrap items-center gap-sm text-label">
+                      <span>{name}</span>
+                      <span className="rounded-full border border-border px-sm py-3xs text-muted-foreground">
+                        {module.missingRequires.includes(name)
+                          ? m.catalog_dependency_missing()
+                          : m.catalog_dependency_ready()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {module.missingRequires.length > 0 && (
+                <p className="mt-xs text-label text-muted-foreground">{m.catalog_requirements_hint()}</p>
+              )}
+              {module.optional && (
+                <ul aria-label={m.catalog_optional({ name: module.title })} className="mt-sm flex flex-col gap-xs">
+                  {Object.entries(module.optional).map(([name, reason]) => (
+                    <li key={name} className="flex flex-wrap items-center gap-sm text-label">
+                      <span>{name}</span>
+                      <span className="rounded-full border border-border px-sm py-3xs text-muted-foreground">
+                        {module.activeOptional.includes(name)
+                          ? m.catalog_optional_active()
+                          : m.catalog_optional_inactive()}
+                      </span>
+                      <span className="text-muted-foreground">{reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {!source.modules.some((entry) => entry.name === module.name) && (
                 <p className="mt-xs text-label text-muted-foreground">{m.catalog_unlisted()}</p>
               )}
@@ -119,7 +167,10 @@ export function CatalogSource({
               {module.installed ? (
                 <>
                   {module.updateAvailable && (
-                    <fieldset disabled={module.localConflict} className="disabled:opacity-45">
+                    <fieldset
+                      disabled={module.localConflict || !module.hubCompatible || module.missingRequires.length > 0}
+                      className="disabled:opacity-45"
+                    >
                       <HoldButton
                         label={m.catalog_update_hold({ name: module.title })}
                         idle={m.catalog_update()}
@@ -138,7 +189,12 @@ export function CatalogSource({
                 </>
               ) : (
                 <fieldset
-                  disabled={module.localConflict || module.installedFromOtherSource}
+                  disabled={
+                    module.localConflict ||
+                    module.installedFromOtherSource ||
+                    !module.hubCompatible ||
+                    module.missingRequires.length > 0
+                  }
                   className="disabled:opacity-45"
                 >
                   <HoldButton

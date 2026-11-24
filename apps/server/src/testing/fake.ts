@@ -354,6 +354,7 @@ function hooks(server: typeof app) {
         failSync: z.boolean().optional(),
         manualRestart: z.boolean().optional(),
         hideDemo: z.boolean().optional(),
+        missingRequired: z.boolean().optional(),
       })
       .safeParse(request.body);
     if (!parsed.success) return reply.code(400).send();

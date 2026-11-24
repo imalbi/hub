@@ -33,6 +33,7 @@ export async function cleanCatalog(pc: APIRequestContext) {
     failSync: false,
     failBuild: false,
     hideDemo: false,
+    missingRequired: false,
     manualRestart: true,
   });
   await expect

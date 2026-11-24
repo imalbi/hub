@@ -98,7 +98,16 @@ void test('the lock waits for a live holder, says so once, and takes over a stal
 });
 
 void test('resolveWorkers clamps valid integers to 1..WORKERS and falls back to WORKERS otherwise', () => {
-  assert.equal(resolveWorkers(undefined), WORKERS);
+  const configured = process.env.HUB_E2E_WORKERS;
+  try {
+    delete process.env.HUB_E2E_WORKERS;
+    assert.equal(resolveWorkers(undefined), WORKERS);
+    process.env.HUB_E2E_WORKERS = '3';
+    assert.equal(resolveWorkers(), 3);
+  } finally {
+    if (configured === undefined) delete process.env.HUB_E2E_WORKERS;
+    else process.env.HUB_E2E_WORKERS = configured;
+  }
   assert.equal(resolveWorkers('2'), 2);
   assert.equal(resolveWorkers('0'), 1);
   assert.equal(resolveWorkers('99'), WORKERS);

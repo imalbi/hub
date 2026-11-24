@@ -113,6 +113,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/files': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
+      '/m': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
       '/music': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
       '/trpc': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}`, ws: true },
     },

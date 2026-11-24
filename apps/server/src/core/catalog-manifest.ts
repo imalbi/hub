@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { copyFile, lstat, mkdir, readdir, realpath, rename, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative } from 'node:path';
+import { validRange } from 'semver';
 import { z } from 'zod';
 import { moduleNameSchema } from './discovery.ts';
 
@@ -33,7 +34,16 @@ export const catalogModuleEntrySchema = z.strictObject({
   description: z.string().trim().min(1).max(500),
   version: z.string().trim().min(1).max(64),
   path: safeRelativePathSchema,
-  minHubVersion: z.string().trim().min(1).max(64).optional(),
+  minHubVersion: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine((value) => validRange(value) !== null, 'Invalid semver range')
+    .optional(),
+  provides: z.array(moduleNameSchema).optional(),
+  requires: z.array(moduleNameSchema).optional(),
+  optional: z.record(moduleNameSchema, z.string().trim().min(1).max(500)).optional(),
 });
 
 export const catalogManifestSchema = z.strictObject({
@@ -130,6 +140,7 @@ export function deriveSourceId(url: string, existingIds: ReadonlySet<string>): s
 export async function assertNoSymlinks(dir: string): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
+    if (entry.name === 'node_modules') throw new Error('Committed node_modules is not allowed in module');
     if (entry.name === '.git') throw new Error('Nested .git directory is not allowed in module');
     const full = join(dir, entry.name);
     const info = await lstat(full);
@@ -162,13 +173,26 @@ export async function resolveSafeModulePath(repoRoot: string, relativePath: stri
   const entryFile = await lstat(join(realTarget, 'server.ts'));
   if (!entryFile.isFile() || entryFile.isSymbolicLink()) throw new Error('Module server.ts must be a regular file');
   await assertNoSymlinks(realTarget);
+  await assertModulePackage(realTarget);
   return realTarget;
+}
+
+async function assertModulePackage(dir: string) {
+  const pkg = await lstat(join(dir, 'package.json')).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
+    throw error;
+  });
+  if (!pkg) return;
+  if (!pkg.isFile() || pkg.isSymbolicLink()) throw new Error('Module package.json must be a regular file');
+  const lock = await lstat(join(dir, 'pnpm-lock.yaml')).catch(() => undefined);
+  if (!lock?.isFile() || lock.isSymbolicLink()) throw new Error('Module package.json requires pnpm-lock.yaml');
 }
 
 async function copyTreeNoSymlinks(sourceDir: string, targetDir: string): Promise<void> {
   await mkdir(targetDir, { recursive: true });
   const entries = await readdir(sourceDir);
   for (const name of entries) {
+    if (name === 'node_modules') throw new Error('Committed node_modules is not allowed in module');
     if (name === '.git') throw new Error('Nested .git directory is not allowed in module');
     const src = join(sourceDir, name);
     const dst = join(targetDir, name);
@@ -185,9 +209,15 @@ async function copyTreeNoSymlinks(sourceDir: string, targetDir: string): Promise
 }
 
 /** Stages a module tree in a temporary folder, verifies `server.ts` and zero symlinks, then swaps atomically. */
-export async function copyModuleAtomically(sourceDir: string, installedDir: string, moduleName: string): Promise<void> {
+export async function copyModuleAtomically(
+  sourceDir: string,
+  installedDir: string,
+  moduleName: string,
+  prepare?: (staging: string) => Promise<void>,
+): Promise<void> {
   const safeName = moduleNameSchema.parse(moduleName);
   await assertNoSymlinks(sourceDir);
+  await assertModulePackage(sourceDir);
   await mkdir(installedDir, { recursive: true });
   const staging = join(installedDir, `.tmp-${safeName}-${randomUUID()}`);
   const target = join(installedDir, safeName);
@@ -197,6 +227,7 @@ export async function copyModuleAtomically(sourceDir: string, installedDir: stri
     await copyTreeNoSymlinks(sourceDir, staging);
     const serverStat = await lstat(join(staging, 'server.ts'));
     if (!serverStat.isFile() || serverStat.isSymbolicLink()) throw new Error('Module server.ts must be a regular file');
+    await prepare?.(staging);
     const existing = await lstat(target).catch(() => undefined);
     if (existing) {
       await rename(target, backup);

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { z } from 'zod';
 import { emptyConfig } from './core/config.ts';
 import { buildServer } from './server.ts';
 import { createFakeDesktop } from './testing/fake-desktop.ts';
@@ -157,4 +158,62 @@ void test('multi-root discovery loads from both roots and gives localRoot preced
   assert.equal((await app.inject('/trpc/installed-only.state')).json().result.data, 'installed');
   assert.equal((await app.inject('/trpc/shared.state')).json().result.data, 'from-local');
   assert.equal((await app.inject('/trpc/shadowed-off.state')).statusCode, 404);
+});
+
+void test('module HTTP routes are scoped and protected, and unknown module paths never return the SPA', async (t) => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const root = await mkdtemp(join(tmpdir(), 'hub-module-routes-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'sample'));
+  const api = JSON.stringify(new URL('./core/module.ts', import.meta.url).href);
+  const trpc = JSON.stringify(new URL('./core/trpc.ts', import.meta.url).href);
+  await writeFile(
+    join(root, 'sample', 'server.ts'),
+    `import { defineModule } from ${api}; import { router } from ${trpc}; export default defineModule({ name: 'sample', create: () => ({ router: router({}), routes: (scope) => { scope.get('/ping', () => ({ ok: true })); } }) });`,
+  );
+  const webRoot = join(root, 'web');
+  await mkdir(webRoot);
+  await writeFile(join(webRoot, 'index.html'), '<html>Hub SPA</html>');
+  const app = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    moduleRoots: [root],
+    onlyModules: ['sample'],
+    webRoot,
+    isLoopback: (req) => req.headers.host === 'localhost',
+  });
+  t.after(() => app.close());
+  const request = (headers: Record<string, string>, url = '/m/sample/ping') => app.inject({ url, headers });
+  const ok = await request({ host: 'localhost' });
+  assert.equal(ok.statusCode, 200);
+  assert.deepEqual(ok.json(), { ok: true });
+  assert.equal((await request({ host: 'evil.example' })).statusCode, 421);
+  assert.equal((await request({ host: 'localhost', origin: 'https://evil.example' })).statusCode, 403);
+  assert.equal((await request({ host: 'localhost', 'sec-fetch-site': 'cross-site' })).statusCode, 403);
+  assert.equal((await request({ host: '127.0.0.1' })).statusCode, 401);
+  const created = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.createCode',
+    headers: { host: 'localhost' },
+    payload: {},
+  });
+  const code = z.object({ result: z.object({ data: z.object({ code: z.string() }) }) }).parse(created.json()).result
+    .data.code;
+  const redeemed = await app.inject({
+    method: 'POST',
+    url: '/trpc/pairing.redeem',
+    headers: { host: '127.0.0.1' },
+    payload: { code, deviceName: 'Test phone' },
+  });
+  const token = z.object({ result: z.object({ data: z.object({ token: z.string() }) }) }).parse(redeemed.json()).result
+    .data.token;
+  assert.equal((await request({ host: '127.0.0.1', authorization: `Bearer ${token}` })).statusCode, 200);
+  assert.equal((await request({ host: '127.0.0.1', authorization: 'Bearer invalid' })).statusCode, 401);
+  for (const path of ['/m', '/m/sample/missing', '/m/absent/ping', '/ping']) {
+    const response = await request({ host: 'localhost' }, path);
+    assert.equal(response.statusCode, path === '/ping' ? 200 : 404);
+    if (path.startsWith('/m')) assert.doesNotMatch(response.body, /Hub SPA/);
+  }
 });

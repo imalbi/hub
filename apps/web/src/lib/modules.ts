@@ -1,4 +1,11 @@
-import { SitesSection, SitesWidget } from '../modules/sites/sites.tsx';
+import { useMailAvailable } from '../modules/mail/use-mail.ts';
+import {
+  useSitesAvailable,
+  useSitesPending,
+  SitesPendingPage,
+  SitesSection,
+  SitesWidget,
+} from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
 import { PostaSection } from '../modules/mail/posta-section.tsx';
 import { m } from '../paraglide/messages.js';
@@ -50,12 +57,16 @@ export const moduleUIs: ModuleUI[] = [
   },
   {
     name: 'sites',
+    useAvailable: useSitesAvailable,
+    usePending: useSitesPending,
+    pendingPage: SitesPendingPage,
     copy: {},
     sections: [{ zone: 'work', id: 'siti', label: m.sites_title, component: SitesSection }],
     widgets: [{ id: 'sites', label: m.sites_title, sizes: ['small', 'medium'], component: SitesWidget }],
   },
   {
     name: 'mail',
+    useAvailable: useMailAvailable,
     todayItems: useMailTodayLines,
     records: mailMessages,
     copy: {},

@@ -1,3 +1,4 @@
+import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
@@ -94,6 +95,7 @@ void test('a discovered module without migrations gets no database', async (t) =
   t.after(() => app.close());
   assert.equal(data(await get(app, 'plain.hasDb')), false);
   assert.deepEqual(data(await get(app, 'plain.hasCoreDeps')), [
+    'capabilities',
     'config',
     'fetch',
     'focusHistory',
@@ -232,7 +234,15 @@ void test('a public module with migrations receives its own migrated database', 
   });
   createAppRouter(
     [module],
-    { db, run: createFakeDesktop(), fetch, log: fastify().log, zones: new Set(), focusHistory: createFocusHistory(db) },
+    {
+      db,
+      run: createFakeDesktop(),
+      fetch,
+      log: fastify().log,
+      zones: new Set(),
+      focusHistory: createFocusHistory(db),
+      capabilities: createCapabilityRegistry(),
+    },
     {},
     (close) => closes.push(close),
     {},

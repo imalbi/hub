@@ -73,6 +73,8 @@ Playwright (Chromium only) against a fake server: the real server code with a fa
 
 ## Fake hooks
 
+- `palette-regressions.spec.ts` forwards a delayed real `media.next`: release and drain its intercepted route before `restoreDesktop`, so a later widget spec gets the fixture track regardless of shard order.
+
 - `activity.spec.ts`: `/__fake/player` sets `{ gone: true }`; `restoreDesktop` posts `{ gone: false }`.
 - `jobs.spec.ts`: `/__fake/jobs` starts a fake job; cancel it after the test. `{ clear: true }` empties the finished history, which is per process: a spec that asserts the empty list clears it first.
 - `system.spec.ts`: GET `/__fake/system` reads recorded fake system calls; it does not change state.

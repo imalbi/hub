@@ -1,3 +1,4 @@
+import { useModuleEnabled } from '../../lib/module-enabled.ts';
 import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -89,5 +90,35 @@ export function SitesWidget() {
         m.sites_no_down()
       )}
     </Panel>
+  );
+}
+
+export function useSitesAvailable() {
+  return useSitesConfigured(useModuleEnabled('sites')).data === true;
+}
+
+export function useSitesPending() {
+  return useSitesConfigured(useModuleEnabled('sites')).isPending;
+}
+
+export function SitesPendingPage() {
+  return (
+    <output aria-label={m.tile_loading()} className="@container block rounded-xl border border-border bg-background">
+      <h2 className="flex items-center gap-sm border-b border-border p-lg text-title">
+        <span aria-hidden className="relative">
+          <span className="invisible">{m.sites_unknown()}</span>
+          <span className="absolute inset-0 rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+        </span>
+      </h2>
+      <section aria-label={m.sites_title()} className="px-lg">
+        <article className="border-b border-border py-md">
+          <span aria-hidden className="block h-md w-3xl rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse" />
+          <span
+            aria-hidden
+            className="mt-sm block h-touch rounded-sm bg-muted-foreground/20 motion-safe:animate-pulse"
+          />
+        </article>
+      </section>
+    </output>
   );
 }

@@ -1,3 +1,5 @@
+import { useModuleEnabled } from '../../lib/module-enabled.ts';
+import { mailIsOn } from '../../lib/mail-on.ts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import { createTRPCOptionsProxy, useSubscription, type ofFeatureFlags } from '@trpc/tanstack-react-query';
@@ -28,4 +30,8 @@ export function useMailAccounts(enabled = true) {
 export function useMail() {
   const trpc = useMailTRPC();
   return useSubscription(trpc.onState.subscriptionOptions());
+}
+
+export function useMailAvailable() {
+  return mailIsOn(useMailAccounts(useModuleEnabled('mail')));
 }
