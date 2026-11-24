@@ -15,12 +15,10 @@ const EXPECTED_MODULES = [
   'Calendario',
   'Dispositivi',
   'Disposizione',
-  'Meteomanca la città', // the note is forced by the test: a saved place in an earlier spec would clear it
   'Musica',
   'Pomodoro',
   'Post-it',
   'Sistema',
-  'Siti',
   'Stato',
   'Studio',
   'Temi',
@@ -47,7 +45,7 @@ async function moduleStates(pc: APIRequestContext) {
   );
 }
 
-/** Rewrites `settings.modules` answers: the weather row carries its note whatever an earlier spec saved. */
+/** Rewrites module status in settings responses. */
 async function withModuleNotes(page: Page, change: (module: Record<string, unknown>) => void = () => {}) {
   // Batched with other queries: change only the
   // `settings.modules` result, found by its place in the batch.
@@ -59,7 +57,6 @@ async function withModuleNotes(page: Page, change: (module: Record<string, unkno
       for (const [index, entry] of body.entries()) {
         if (paths[index] !== 'settings.modules') continue;
         for (const module of entry?.result?.data ?? []) {
-          if (module.name === 'weather') module.note = 'manca la città';
           change(module);
         }
       }
@@ -154,42 +151,6 @@ if (!example) {
     expect(await size(/^Cartelle dei materiali di studio\./)).toBe(await size(/^Cartella dei piani;/));
   });
 
-  test('weather location search shows empty and failed results and can retry', async ({ page }) => {
-    let calls = 0;
-    await page.route('**/trpc/weather.search*', async (route) => {
-      calls++;
-      if (calls === 2) await route.abort();
-      else await route.fulfill({ json: [{ result: { data: [] } }] });
-    });
-    await page.goto('/desk/settings/weather');
-    const search = page.getByLabel('Cerca località');
-    const submit = page.getByRole('button', { name: 'Cerca', exact: true });
-    await search.fill('Nessuno');
-    await submit.click();
-    await expect(page.getByText('Nessuna località trovata')).toBeVisible();
-    await search.fill('Errore');
-    await submit.click();
-    await expect(page.getByRole('alert')).toHaveText('Ricerca non riuscita');
-    await submit.click();
-    await expect(page.getByText('Nessuna località trovata')).toBeVisible();
-  });
-
-  test('weather location search fills the settings draft', async ({ page }) => {
-    await page.goto('/desk/settings/weather');
-    await page.getByLabel('Cerca località').fill('Località');
-    await page.getByRole('button', { name: 'Cerca', exact: true }).click();
-    await page.getByRole('button', { name: 'Località esempio, Regione esempio' }).click();
-    await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Località esempio');
-    await expect(page.getByRole('group', { name: 'Latitudine' }).getByRole('status')).toHaveText(/^1\b/);
-    await expect(page.getByRole('group', { name: 'Longitudine' }).getByRole('status')).toHaveText(/^2\b/);
-    await page.getByRole('button', { name: 'Salva e riavvia' }).click();
-    await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
-    await page.reload();
-    await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Località esempio');
-    // With a place saved the row has nothing to say.
-    await expect(page.getByRole('link', { name: /^Meteo/ })).not.toContainText('manca la città');
-  });
-
   test('the list has all general pages and a row per module with its state', async ({ page, pc }) => {
     await page.goto('/desk/settings');
     const list = page.getByRole('navigation', { name: 'Sezioni' });
@@ -232,11 +193,12 @@ if (!example) {
   test('a row has a dot only when it is off or has a setup note', async ({ page }) => {
     await withModuleNotes(page, (module) => {
       if (module.name === 'audio') module.status = 'off';
+      if (module.name === 'music') module.note = 'Configurazione richiesta';
     });
     await page.goto('/desk/settings/appearance');
     const row = (name: RegExp) => page.getByRole('navigation', { name: 'Sezioni' }).getByRole('link', { name });
-    await expect(row(/^Meteo/)).toContainText('manca la città');
-    await expect(row(/^Meteo/).locator('[data-state-dot]')).toHaveCount(1);
+    await expect(row(/^YouTube Music/)).toContainText('Configurazione richiesta');
+    await expect(row(/^YouTube Music/).locator('[data-state-dot]')).toHaveCount(1);
     await expect(row(/^Audio/)).toContainText('Spento');
     await expect(row(/^Audio/).locator('[data-state-dot]')).toHaveCount(1);
     await expect(row(/^Pomodoro/).locator('[data-state-dot]')).toHaveCount(0);

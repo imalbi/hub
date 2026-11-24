@@ -26,3 +26,4 @@
 - NumberRoll stacks every digit 0 to 9 in an absolutely placed strip (about 5000 px at hero size): its container must clip (`.instrument-dial` has `overflow: clip`) or a page scroller grows to the strip's height.
 
 - Positioned module deck tiles use indices in the built-in page, before any module insertion. `useDeckPages` inserts higher indices first so an earlier accessory cannot move a later tile ahead of Posta; covered by the private Notizie deck regression.
+- Oggi lives in `shell/today-widget.tsx`. It renders the first active `ModuleUI.todayHeader` contribution with `look`/`align`; without one, the dedicated wide column is omitted. Vertical apps must not be imported by the shell.

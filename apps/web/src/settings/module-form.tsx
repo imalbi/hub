@@ -25,7 +25,7 @@ export function ModuleForm({
   issueText: (path: Path) => string | undefined;
   onEdit: (path: Path, next: unknown) => void;
   onBlock: (path: Path, error: string | null) => void;
-  /** Shown first, inside the panel (the weather location search). */
+  /** Shown first, inside the panel (a module’s additional controls). */
   children?: React.ReactNode;
 }) {
   const groups = [

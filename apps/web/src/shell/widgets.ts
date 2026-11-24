@@ -10,7 +10,7 @@ import { ControlsWidget } from '../modules/system/controls-widget.tsx';
 import { PowerWidget } from '../modules/system/power-widget.tsx';
 import { ServerWidget } from '../modules/system/widget.tsx';
 import { m } from '../paraglide/messages.js';
-import { TodayWidget } from '../modules/weather/today-widget.tsx';
+import { TodayWidget } from './today-widget.tsx';
 import { ThemeWidget } from '../theme/widget.tsx';
 
 export type WidgetItem = { widget: string; size: WidgetSize; x: number; y: number };

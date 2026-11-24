@@ -1,3 +1,0 @@
-# Sites (web)
-
-- `ui/status-bars.tsx` adapts Hairline status-bars for the Sites history: copy is required from the caller, bars are keyboard-readable, and the last 30 remain visible in narrow containers. Sites with no configured entries are hidden from the rail and widget picker, decided by `sites.configured` (answered from the config; never `sites.state`, which waits for a running check); the settings restart invalidates their configuration query. `ZonePage` waits for that query on a direct Lavoro load before deciding the page is missing; the rail keeps an unknown configuration hidden to avoid changing keyboard shortcuts during load.

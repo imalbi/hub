@@ -62,7 +62,8 @@ test('Oggi leads the default board; the Italian date is said once, in the day li
   await expect(page.getByText('mercoledì 4 novembre', { exact: true })).toHaveCount(1);
   await expect(today.getByText('mercoledì 4 novembre')).toHaveCount(0);
   await expect(today.locator('[data-readout]').first()).toHaveCSS('font-family', /JetBrains Mono/);
-  await expect(today.getByText('Località esempio')).toBeVisible();
+  await expect(today.getByText('Località esempio')).toHaveCount(0);
+  await expect(today.locator('[data-today-header]')).toHaveCount(0);
 });
 
 test('C3: the default board of a fresh layout is P1 public widgets in P1 order', async ({ page, pc }) => {

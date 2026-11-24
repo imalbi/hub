@@ -1,17 +1,13 @@
-import { TextMorph } from '../../components/ui/text-morph.tsx';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Panel } from '../../components/panel.tsx';
-import { Readout } from '../../components/readout.tsx';
-import { TodayRow } from '../../components/today-row.tsx';
-import { useLiveModuleUIs, useIsOn } from '../../lib/enabled-modules.ts';
-import type { TodayDay, TodayLine, TodayLinesHook } from '../../lib/module-ui.ts';
-import type { WidgetSize } from '../../lib/widget-size.ts';
-import { useNow } from '../../lib/use-now.ts';
-import { addDays, dayDate, localDay } from '../../lib/day.ts';
-import { useTRPC } from '../../lib/trpc.ts';
-import { m } from '../../paraglide/messages.js';
+import { Panel } from '../components/panel.tsx';
+import { Readout } from '../components/readout.tsx';
+import { TodayRow } from '../components/today-row.tsx';
+import { useLiveModuleUIs } from '../lib/enabled-modules.ts';
+import type { TodayDay, TodayLine, TodayLinesHook } from '../lib/module-ui.ts';
+import type { WidgetSize } from '../lib/widget-size.ts';
+import { useNow } from '../lib/use-now.ts';
+import { addDays, dayDate, localDay } from '../lib/day.ts';
+import { m } from '../paraglide/messages.js';
 
 const weekday = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric' });
 const time = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -24,7 +20,7 @@ const CARDS: Partial<Record<WidgetSize, number>> = { wide: 2, large: 2, full: 2 
 
 type Reported = Record<string, TodayLine[] | null>;
 
-/** Oggi in four sizes (step 66, board P2): the time, the modules' lines, the post-its and the weather. */
+/** Oggi in four sizes (step 66, board P2): the time, the modules' lines, the post-its and an optional module header. */
 export function TodayWidget({ size }: { size: WidgetSize }) {
   const now = useNow('clock');
   const modules = useLiveModuleUIs();
@@ -40,6 +36,7 @@ export function TodayWidget({ size }: { size: WidgetSize }) {
   }, []);
   const linesOf = (day: TodayDay) => hooks.flatMap(({ id }) => reported[`${id}:${day}`] ?? []);
   const Column = modules.find((module) => module.todayColumn)?.todayColumn;
+  const Header = modules.find((module) => module.todayHeader)?.todayHeader;
   const max = LINES[size] ?? 3;
   const cards = CARDS[size] ?? 2;
   const clock = (
@@ -63,17 +60,19 @@ export function TodayWidget({ size }: { size: WidgetSize }) {
           <div className="flex shrink-0 flex-col justify-end border-r border-border pr-lg">{clock}</div>
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-sm">
             <Lines lines={linesOf('today')} max={max} label={m.today_lines()} />
-            <div className="flex items-center justify-between gap-sm">
-              {Column ? <Column day="today" variant="count" max={0} /> : <span />}
-              <Weather look="caption" />
-            </div>
+            {(Column || Header) && (
+              <div className="flex items-center justify-between gap-sm">
+                {Column && <Column day="today" variant="count" max={0} />}
+                {Header && <Header look="caption" />}
+              </div>
+            )}
           </div>
         </div>
       ) : size === 'large' ? (
         <div className="flex min-h-0 flex-1 flex-col gap-md">
           <div className="flex items-start justify-between gap-lg">
             {clock}
-            <Weather look="block" align="end" />
+            {Header && <Header look="block" align="end" />}
           </div>
           <Divided>
             <Lines lines={linesOf('today')} max={max} label={m.today_lines()} />
@@ -88,7 +87,7 @@ export function TodayWidget({ size }: { size: WidgetSize }) {
         <div className="flex min-h-0 flex-1 gap-lg">
           <div className="flex shrink-0 flex-col justify-end gap-sm border-r border-border pr-lg">
             {clock}
-            <Weather look="caption" />
+            {Header && <Header look="caption" />}
           </div>
           {days.map((day) => (
             <div
@@ -120,9 +119,11 @@ export function TodayWidget({ size }: { size: WidgetSize }) {
               <Column day="today" variant="column" max={cards} />
             </div>
           )}
-          <div className="flex w-1/6 flex-col justify-end border-l border-border pl-lg">
-            <Weather look="block" />
-          </div>
+          {Header && (
+            <div data-today-header className="flex w-1/6 flex-col justify-end border-l border-border pl-lg">
+              <Header look="block" />
+            </div>
+          )}
         </div>
       )}
     </Panel>
@@ -171,49 +172,4 @@ function LinesProbe({
   }, [id, key, report]);
   useEffect(() => () => report(id, null), [id, report]);
   return null;
-}
-
-/** The weather in a block (Grande, Largo) or one caption (Medio, Esteso); without data while on, it says so. */
-function Weather({ look, align = 'start' }: { look: 'block' | 'caption'; align?: 'start' | 'end' }) {
-  const trpc = useTRPC();
-  const on = useIsOn()('weather');
-  const weather = useQuery({ ...trpc.weather.state.queryOptions(), enabled: on, refetchInterval: 60_000 });
-  if (!on || !weather.isSuccess) return null;
-  const { current, configured } = weather.data;
-  if (!current)
-    return (
-      <p className="text-caption text-muted-foreground">
-        {configured ? (
-          m.today_weather_unreachable()
-        ) : (
-          <>
-            {m.today_weather_missing()} ·{' '}
-            <Link to="/desk/settings/$module" params={{ module: 'weather' }} className="underline">
-              {m.today_weather_set()}
-            </Link>
-          </>
-        )}
-      </p>
-    );
-  const stale = current.stale ? 'opacity-60' : '';
-  const title = current.stale ? m.weather_stale() : undefined;
-  if (look === 'caption')
-    return (
-      <p className={`text-caption text-muted-foreground tabular-nums ${stale}`} title={title}>
-        <TextMorph animateWidth={false}>{`${Math.round(current.temperature)}° · ${current.name}`}</TextMorph>
-      </p>
-    );
-  return (
-    <div className={`flex flex-col ${align === 'end' ? 'items-end text-right' : ''} ${stale}`} title={title}>
-      <p className="text-caption text-muted-foreground">
-        <TextMorph animateWidth={false}>{current.name}</TextMorph>
-      </p>
-      <p className="text-display tabular-nums">
-        <TextMorph animateWidth={false}>{`${Math.round(current.temperature)}°`}</TextMorph>
-      </p>
-      <p className="text-caption text-muted-foreground tabular-nums">
-        {Math.round(current.min)}° / {Math.round(current.max)}°
-      </p>
-    </div>
-  );
 }

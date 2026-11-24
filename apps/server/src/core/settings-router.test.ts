@@ -269,7 +269,7 @@ void test('agent settings save refuses changes to public command, path and URL f
     },
     theme: { caelestiaScheme: '/var/tmp/scheme.json' },
     study: { plansDir: '/var/tmp/plans', materialDirs: ['/var/tmp/materials'] },
-    sites: [{ name: 'Status', url: 'https://status.example.org' }],
+    services: [{ name: 'Status', url: 'https://status.example.org' }],
   };
   const original = `${JSON.stringify(initial, null, 2)}\n`;
   await writeFile(path, original);
@@ -297,6 +297,14 @@ void test('agent settings save refuses changes to public command, path and URL f
     }
   }
 
+  states.set({
+    name: 'services',
+    kind: 'private',
+    status: 'on',
+    configPath: ['services'],
+    schema: z.array(z.object({ name: z.string(), url: z.url().meta({ manual: true }) })),
+  });
+
   const caller = createSettingsRouter({ states, configPath: path }).createCaller({
     db,
     files,
@@ -322,7 +330,7 @@ void test('agent settings save refuses changes to public command, path and URL f
     { module: 'theme', value: { caelestiaScheme: '/etc/shadow' } },
     { module: 'study', value: { ...initial.study, plansDir: '/tmp/other' } },
     { module: 'study', value: { ...initial.study, materialDirs: ['/tmp/other'] } },
-    { module: 'sites', value: [{ name: 'Status', url: 'https://127.0.0.1/admin' }] },
+    { module: 'services', value: [{ name: 'Status', url: 'https://127.0.0.1/admin' }] },
   ];
 
   for (const entry of refused) {

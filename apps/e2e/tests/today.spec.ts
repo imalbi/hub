@@ -42,11 +42,6 @@ async function open(page: Page) {
 test.afterEach(async ({ pc }) => clean(pc));
 
 test('every size fits its cell without scrolling or clipping', async ({ page, pc }) => {
-  // With weather data, as after a spec that sets a city: Grande overflowed with two rows of post-its (step 64 review).
-  const weather = { name: 'Località esempio', temperature: 19, code: 1, min: 12, max: 23, stale: false };
-  await page.route('**/trpc/weather.state*', (route) =>
-    route.fulfill({ json: { result: { data: { configured: true, current: weather } } } }),
-  );
   await studyOn(pc, 2);
   for (const day of ['2026-11-19', '2026-11-20'])
     for (const title of ['Dentista', 'Riunione', 'Corso', 'Visita'])
@@ -110,34 +105,6 @@ test('Esteso adds tomorrow, Largo does not; Aggiungi under tomorrow preselects D
   await expect(today(page).getByRole('heading', { name: /^Domani/ })).toHaveCount(0);
 });
 
-test('weather with no data says so and links to its settings', async ({ page, pc }) => {
-  // `weather.state` goes over its own unbatched link (`main.tsx`): the answer is one object, not a batch array.
-  await page.route('**/trpc/weather.state*', (route) =>
-    route.fulfill({ json: { result: { data: { configured: false, current: null } } } }),
-  );
-  for (const size of ['medium', 'wide']) {
-    await placeToday(pc, size);
-    await open(page);
-    await expect(today(page).getByText(/Meteo non disponibile/)).toBeVisible();
-    await expect(today(page).getByRole('link', { name: 'Imposta la città' })).toHaveAttribute(
-      'href',
-      '/desk/settings/weather',
-    );
-  }
-});
-
-test('weather with a location but no reading has no settings link', async ({ page, pc }) => {
-  await page.route('**/trpc/weather.state*', (route) =>
-    route.fulfill({ json: { result: { data: { configured: true, current: null } } } }),
-  );
-  for (const size of ['medium', 'wide']) {
-    await placeToday(pc, size);
-    await open(page);
-    await expect(today(page).getByText('Meteo non raggiungibile')).toBeVisible();
-    await expect(today(page).getByRole('link', { name: 'Imposta la città' })).toHaveCount(0);
-  }
-});
-
 test('Medio cuts the lines by count: two rows and "e altre N"', async ({ page, pc }) => {
   await studyOn(pc, 0);
   for (const title of ['Dentista', 'Riunione'])
@@ -195,4 +162,22 @@ test('every row with a link is one link, reached once by Tab', async ({ page, pc
     await page.keyboard.press('Tab');
   }
   expect(reached).toEqual(names);
+});
+
+test('Oggi has no reserved header column without a contributor and renders an active contribution', async ({
+  page,
+  pc,
+}) => {
+  await placeToday(pc, 'wide');
+  await open(page);
+  const header = today(page).locator('[data-today-header]');
+  if (process.env.HUB_EXAMPLE_MODULES === '1') {
+    await expect(header).toHaveText('Contributo di esempio');
+    await page.route('**/trpc/modules.enabled*', (route) =>
+      route.fulfill({ json: { result: { data: ['notes', 'calendar'] } } }),
+    );
+    await page.reload();
+  }
+  await expect(header).toHaveCount(0);
+  await expect(today(page).getByText(/\d{2}:\d{2}/)).toBeVisible();
 });

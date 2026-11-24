@@ -24,7 +24,7 @@ const trpcClient = createTRPCClient<AppRouter>({
       true: wsLink({ client: wsClient }),
       false: splitLink({
         // The rail and Oggi query alongside health; keep these separate so a test pinning health does not replace their answers.
-        condition: (op) => op.path === 'modules.enabled' || op.path === 'weather.state',
+        condition: (op) => op.path === 'modules.enabled',
         true: httpLink({ url: '/trpc', headers: authHeaders }),
         false: httpBatchLink({ url: '/trpc', headers: authHeaders }),
       }),

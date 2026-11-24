@@ -118,6 +118,7 @@ export default {
   name: 'hello',
   copy,
   todayItems: useHelloToday,
+  todayHeader: () => <p className="text-caption">Contributo di esempio</p>,
   calendarItems: useHelloCalendar,
   records: greetings,
   deviceRows: HelloRow,

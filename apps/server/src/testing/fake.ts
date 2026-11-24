@@ -3,8 +3,6 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { moduleDbPath, openDatabase } from '../db/index.ts';
-import { recordCheck } from '../modules/sites/sites.ts';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { IsLoopback } from '../core/auth.ts';
 import { z } from 'zod';
@@ -77,7 +75,6 @@ const config: Config = {
     // The fake desktop answers `fake-monitor-<output>` by flipping that output; DP-2 starts off, as in its fixture.
     monitors: [{ output: 'DP-2', label: 'Monitor verticale', command: 'fake-monitor-DP-2' }],
   },
-  weather: { name: 'Località esempio', latitude: 1, longitude: 2 },
   study: { plansDir: studyDir, materialDirs: [studyMaterials] },
 };
 
@@ -102,7 +99,7 @@ const monitors = fakeMonitors();
 const catalog = createFakeCatalog();
 mkdirSync(join(runDir, 'catalog-local', 'catalog-local'), { recursive: true });
 
-/** Open-Meteo and YouTube artwork answer from fixtures; anything else goes to the real network as before. */
+/** YouTube artwork answer from fixtures; anything else goes to the real network as before. */
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   if (url.endsWith('/api/chat')) {
@@ -116,17 +113,6 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
         : { name: 'audio_setOutput', arguments: { label: 'Cuffie' } };
     return Response.json({ prompt_eval_count: 100, message: { content: '', tool_calls: [{ function: call }] } });
   }
-  if (url === 'https://example.com/up') return new Response(null, { status: 200 });
-  if (url === 'https://example.com/down') return new Response(null, { status: 503 });
-  if (url.startsWith('https://api.open-meteo.com/'))
-    return Response.json({
-      current: { temperature_2m: 19, weather_code: 3 },
-      daily: { temperature_2m_min: [12], temperature_2m_max: [23] },
-    });
-  if (url.startsWith('https://geocoding-api.open-meteo.com/'))
-    return Response.json({
-      results: [{ name: 'Località esempio', latitude: 1, longitude: 2, admin1: 'Regione esempio' }],
-    });
   if (url.startsWith('https://i.ytimg.com/'))
     return new Response(readFileSync(new URL('./music-art.png', import.meta.url)));
   return fetch(input, init);
@@ -139,28 +125,6 @@ function build() {
   let stopped = false;
   let musicVolume = 100;
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
-  if (stored && typeof stored === 'object' && 'sites' in stored) {
-    const fixtureDb = openDatabase(
-      moduleDbPath(dbPath, 'sites'),
-      fileURLToPath(new URL('../modules/sites/drizzle', import.meta.url)),
-    );
-    try {
-      const count = fixtureDb.$client.prepare('select count(*) as n from site_days').get();
-      if (count?.n === 0) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(12, 0, 0, 0);
-        recordCheck(fixtureDb, 'https://example.com/down', {
-          at: yesterday.getTime(),
-          status: 503,
-          latency: 10,
-          error: null,
-        });
-      }
-    } finally {
-      fixtureDb.$client.close();
-    }
-  }
   const desktop = createFakeDesktop({ system: systemCalls, player, monitors });
   const run: Run = (bin, args, options) => {
     if (bin === 'git') return catalog.run(bin, args, options);
@@ -369,25 +333,6 @@ function hooks(server: typeof app) {
     if (!body.success || !(body.data.output in monitors)) return reply.code(400).send();
     monitors[body.data.output] = body.data.disabled;
     return { monitors };
-  });
-  server.post('/__fake/sites', (request, reply) => {
-    const body = z.object({ enabled: z.boolean() }).safeParse(request.body);
-    if (!body.success) return reply.code(400).send();
-    writeFileSync(
-      configPath,
-      JSON.stringify(
-        body.data.enabled
-          ? {
-              sites: [
-                { name: 'Sito pronto', url: 'https://example.com/up' },
-                { name: 'Sito non raggiungibile', url: 'https://example.com/down' },
-              ],
-            }
-          : {},
-      ),
-    );
-    setTimeout(() => void restart(), 50);
-    return { ok: true };
   });
 }
 hooks(app);

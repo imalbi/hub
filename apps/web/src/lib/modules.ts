@@ -1,10 +1,3 @@
-import {
-  useSitesAvailable,
-  useSitesPending,
-  SitesPendingPage,
-  SitesSection,
-  SitesWidget,
-} from '../modules/sites/sites.tsx';
 import type { ModuleUI } from './module-ui.ts';
 import { m } from '../paraglide/messages.js';
 import { CalendarDotsIcon } from '@phosphor-icons/react';
@@ -50,15 +43,6 @@ export const moduleUIs: ModuleUI[] = [
       { zone: 'study', id: 'piani', label: m.study_plans, component: StudyPlans },
     ],
     widgets: [{ id: 'study', label: m.zone_study, sizes: ['small', 'medium', 'large'], component: StudyWidget }],
-  },
-  {
-    name: 'sites',
-    useAvailable: useSitesAvailable,
-    usePending: useSitesPending,
-    pendingPage: SitesPendingPage,
-    copy: {},
-    sections: [{ zone: 'work', id: 'siti', label: m.sites_title, component: SitesSection }],
-    widgets: [{ id: 'sites', label: m.sites_title, sizes: ['small', 'medium'], component: SitesWidget }],
   },
   {
     name: 'notes',

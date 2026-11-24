@@ -21,9 +21,6 @@ test.beforeEach(async ({ page }) => {
       for (const [index, entry] of body.entries())
         if (paths[index] === 'health' && entry?.result) entry.result.data = { ok: true, uptime: 42 };
         else if (paths[index] === 'settings.config' && entry?.result?.data) entry.result.data.hasBackup = false;
-        // Whether a place was saved by an earlier spec decides the weather note: pin it, so the list is the same each run.
-        else if (paths[index] === 'settings.modules')
-          for (const module of entry?.result?.data ?? []) if (module.name === 'weather') module.note = 'manca la città';
     return route.fulfill({ response, json: body });
   });
 });

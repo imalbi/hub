@@ -3,6 +3,7 @@ import { expect, test } from './fixtures.ts';
 import { chooseTheme } from './themes.ts';
 
 // "Now" is Saturday 14 November 2026, 17:48 local, so the card opens on Oggi and every label is fixed.
+const exampleSuffix = process.env.HUB_EXAMPLE_MODULES === '1' ? '-example' : '';
 const NOW = new Date(2026, 10, 14, 17, 48);
 const at = (day: number, hour: number) => new Date(2026, 10, day, hour).getTime();
 const notes = [
@@ -95,7 +96,7 @@ for (const size of sizes) {
     await page.setViewportSize(size);
     await page.mouse.move(0, 0);
     await expect(page.getByRole('region', { name: 'Oggi', exact: true })).toHaveScreenshot(
-      `notes-oggi${size.name}.png`,
+      `notes-oggi${size.name}${exampleSuffix}.png`,
       { animations: 'disabled' },
     );
   });
@@ -114,7 +115,7 @@ for (const size of sizes) {
     await card.getByRole('textbox', { name: 'Testo del post-it' }).fill('Domani ripartire dalla review della 38');
     await expect(card.getByRole('button', { name: 'Oggi' })).toHaveAttribute('aria-pressed', 'true');
     await page.mouse.move(0, 0);
-    await expect(card.locator('[data-modal-panel]')).toHaveScreenshot(`notes-capture${size.name}.png`, {
+    await expect(card.locator('[data-modal-panel]')).toHaveScreenshot(`notes-capture${size.name}${exampleSuffix}.png`, {
       animations: 'disabled',
     });
   });
@@ -145,9 +146,12 @@ test('Oggi, the widget and the capture card in paper', async ({ page }) => {
     page.getByRole('region', { name: 'Post-it per oggi' }).getByText(/Oggi facciamo lo step 40/),
   ).toBeVisible();
   await page.mouse.move(0, 0);
-  await expect(page.getByRole('region', { name: 'Oggi', exact: true })).toHaveScreenshot('notes-oggi-paper.png', {
-    animations: 'disabled',
-  });
+  await expect(page.getByRole('region', { name: 'Oggi', exact: true })).toHaveScreenshot(
+    `notes-oggi-paper${exampleSuffix}.png`,
+    {
+      animations: 'disabled',
+    },
+  );
   await expect(page.getByRole('region', { name: 'Post-it', exact: true })).toHaveScreenshot('notes-widget-paper.png', {
     animations: 'disabled',
   });

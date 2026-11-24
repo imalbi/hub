@@ -13,8 +13,7 @@ test.beforeEach(async ({ page, pc }) => {
   await page.clock.setFixedTime(NOW);
   await page.route('**/trpc/*', async (route) => {
     const paths = new URL(route.request().url()).pathname.replace('/trpc/', '').split(',');
-    if (!paths.includes('catalog.state') && !paths.includes('health') && !paths.includes('settings.modules'))
-      return route.continue();
+    if (!paths.includes('catalog.state') && !paths.includes('health')) return route.continue();
     const response = await route.fetch();
     const body: unknown = await response.json();
     if (Array.isArray(body))
@@ -22,8 +21,6 @@ test.beforeEach(async ({ page, pc }) => {
         if (paths[index] === 'health' && entry?.result) entry.result.data = { ok: true, uptime: 42 };
         if (paths[index] === 'catalog.state')
           for (const source of entry?.result?.data?.sources ?? []) source.lastSyncedAt = NOW.getTime();
-        if (paths[index] === 'settings.modules')
-          for (const module of entry?.result?.data ?? []) if (module.name === 'weather') module.note = 'manca la città';
       }
     return route.fulfill({ response, json: body });
   });

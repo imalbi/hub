@@ -8,7 +8,7 @@ import { ActionButton } from '../components/ui/action-button.tsx';
 import { Switch } from '../components/ui/switch.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
-import { LocationSearch } from '../modules/weather/location-search.tsx';
+import { moduleUIs } from '../lib/modules.ts';
 import { AdvancedPanel } from './advanced-panel.tsx';
 import { ChangesPanel } from './changes-panel.tsx';
 import { ModuleForm } from './module-form.tsx';
@@ -99,6 +99,7 @@ export function ModulePage({ name }: { name: string }) {
     await queryClient.invalidateQueries();
   }
 
+  const SettingsHeader = moduleUIs.find((module) => module.name === name)?.settingsHeader;
   const showAside = dirty || form.blocks.length > 0;
 
   return (
@@ -168,8 +169,8 @@ export function ModulePage({ name }: { name: string }) {
             onEdit={edited}
             onBlock={block}
           >
-            {name === 'weather' && serverEnabled && (
-              <LocationSearch onSelect={(location) => setEdit({ value: location })} />
+            {SettingsHeader && serverEnabled && (
+              <SettingsHeader onSelect={(location) => setEdit({ value: location })} />
             )}
           </ModuleForm>
           {showAside && (

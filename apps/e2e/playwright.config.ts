@@ -73,6 +73,8 @@ export default defineConfig({
               'catalog.spec.ts',
               'catalog.visual.spec.ts',
               'loading.spec.ts',
+              'today.spec.ts',
+              'notes.visual.spec.ts',
             ]
           : [
               'palette.spec.ts',
@@ -100,7 +102,6 @@ export default defineConfig({
               'calendar.visual.spec.ts',
               'calendar-views.spec.ts',
               'calendar-views.visual.spec.ts',
-              'sites.spec.ts',
               'study.spec.ts',
               'study-today.spec.ts',
               'today.spec.ts',

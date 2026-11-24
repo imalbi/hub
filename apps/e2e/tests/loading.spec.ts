@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { expect, test } from './fixtures.ts';
-import { RUN_TMP, SERVER_URL } from './hosts.ts';
+import { RUN_TMP } from './hosts.ts';
 import type { Page } from '@playwright/test';
 import { legiblePlan } from './study-fixtures.ts';
 
@@ -79,94 +79,6 @@ test('Sistema audio rows retain their boxes while audio state is delayed', async
   release();
   await expect(audio.getByRole('status', { name: 'Caricamento' })).toHaveCount(0);
   for (let i = 0; i < before.length; i++) expectStableBox(boxes[i] ?? null, (await before[i]?.boundingBox()) ?? null);
-});
-
-test('Siti widget retains its box while state is delayed', async ({ page, pc, request }) => {
-  await request.post(`${SERVER_URL}/__fake/sites`, { data: { enabled: true } });
-  try {
-    await expect
-      .poll(async () => (await (await request.get('/trpc/sites.state')).text()).includes('example.com/up'), {
-        timeout: 15000,
-      })
-      .toBe(true);
-    await pc.post('/trpc/layout.save', {
-      data: { zone: 'overview', items: [{ widget: 'sites', size: 'small', x: 0, y: 0 }] },
-    });
-    await page.setViewportSize({ width: 3840, height: 2160 });
-    const release = await delaySubscription(page, 'sites.onState');
-    await page.goto('/desk');
-    const widget = page.locator('[data-widget="sites"]');
-    const skeleton = widget.getByRole('status', { name: 'Caricamento' });
-    await expect(skeleton).toBeVisible();
-    const before = await widget.boundingBox();
-    release();
-    await expect(widget.getByText('Sito non raggiungibile')).toBeVisible();
-    expectStableBox(before, await widget.boundingBox());
-  } finally {
-    await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
-    await request.post(`${SERVER_URL}/__fake/sites`, { data: { enabled: false } });
-    await expect
-      .poll(
-        async () => {
-          try {
-            const response = await request.get('/trpc/sites.state');
-            return !response.ok() || (await response.text()).includes('example.com/up');
-          } catch {
-            return true;
-          }
-        },
-        { timeout: 15000 },
-      )
-      .toBe(false);
-  }
-});
-
-test('work zone shows a skeleton while configured sites are delayed', async ({ page, request }) => {
-  await request.post(`${SERVER_URL}/__fake/sites`, { data: { enabled: true } });
-  try {
-    await expect
-      .poll(async () => (await (await request.get('/trpc/sites.state')).text()).includes('example.com/up'), {
-        timeout: 15000,
-      })
-      .toBe(true);
-    await page.setViewportSize({ width: 3840, height: 2160 });
-    let release = () => {};
-    const pending = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await page.route('**/trpc/*sites.configured*', async (route) => {
-      await pending;
-      await route.continue();
-    });
-    await page.route('**/trpc/modules.enabled*', (route) => route.fulfill({ json: { result: { data: ['sites'] } } }));
-    await page.goto('/desk/lavoro');
-    const skeleton = page.getByRole('status', { name: 'Caricamento' }).first();
-    await expect(skeleton).toBeVisible();
-    const heading = page.locator('[data-page-surface] h2').first();
-    const article = page.locator('[data-page-surface] article').first();
-    const beforeHeading = await heading.boundingBox();
-    const beforeArticle = await article.boundingBox();
-    await page.screenshot({ path: '/tmp/hub88-work-zone-loading.png' });
-    release();
-    await expect(page.getByRole('heading', { name: 'Alcuni siti non sono raggiungibili' })).toBeVisible();
-    expectStablePosition(beforeHeading, await heading.boundingBox());
-    expectStablePosition(beforeArticle, await article.boundingBox());
-  } finally {
-    await request.post(`${SERVER_URL}/__fake/sites`, { data: { enabled: false } });
-    await expect
-      .poll(
-        async () => {
-          try {
-            const response = await request.get('/trpc/sites.state');
-            return !response.ok() || (await response.text()).includes('example.com/up');
-          } catch {
-            return true;
-          }
-        },
-        { timeout: 15000 },
-      )
-      .toBe(false);
-  }
 });
 
 for (const entry of [

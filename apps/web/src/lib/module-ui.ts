@@ -81,6 +81,10 @@ export type ModuleUI = {
   todayItems?: TodayLinesHook | TodayLinesHook[];
   /** Records the palette finds by typing, one group each, in module order while the module is on (step 64). */
   records?: RecordSource | RecordSource[];
+  /** Optional content beside Oggi's clock; omitted without an active contributor. */
+  todayHeader?: ComponentType<{ look: 'block' | 'caption'; align?: 'start' | 'end' }>;
+  /** Additional configuration controls before the schema fields. */
+  settingsHeader?: ComponentType<{ onSelect: (value: unknown) => void }>;
   /** The post-its of a day in Oggi, in the shape the size asks for. One per app (the post-its). */
   todayColumn?: ComponentType<{ day: TodayDay; variant: TodayColumnVariant; max: number }>;
   /** Read-only items for the Calendario page, in module order while the module is on. Not named `use...` by the caller (see `activities`). */
