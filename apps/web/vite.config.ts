@@ -49,6 +49,23 @@ function extraLicenses(): Plugin {
   };
 }
 
+function reactDevtoolsMcp(): Plugin {
+  return {
+    name: 'hub:react-devtools-cdt-mcp',
+    apply: 'serve',
+    transformIndexHtml() {
+      return [
+        {
+          tag: 'script',
+          attrs: { type: 'module' },
+          children: "import 'react-devtools-cdt-mcp/register';",
+          injectTo: 'head-prepend',
+        },
+      ];
+    },
+  };
+}
+
 const emptyInstalledRoot = fileURLToPath(new URL('./node_modules/.hub-no-installed-modules', import.meta.url));
 
 export default defineConfig({
@@ -77,6 +94,7 @@ export default defineConfig({
   build: { license: { fileName: licensesFile } },
   define: { 'import.meta.env.HUB_EXAMPLE_MODULES': JSON.stringify(process.env.HUB_EXAMPLE_MODULES ?? '0') },
   plugins: [
+    reactDevtoolsMcp(),
     // Must run before react() or route generation and code splitting fail silently.
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),

@@ -287,6 +287,7 @@ export function LogStream({
   max = 500,
   copy,
   className = '',
+  style,
   ...props
 }: LogStreamProps) {
   const title = copy.title;
@@ -481,7 +482,9 @@ export function LogStream({
   return (
     <section
       aria-label={title}
-      className={`@container flex min-h-0 w-full flex-1 flex-col rounded-xl border border-border bg-background text-foreground ${className}`}
+      // Chromium does not cut a child's scrollbar at the parent's rounded overflow clip; clip-path does.
+      style={{ clipPath: 'inset(0 round var(--radius-xl))', ...style }}
+      className={`@container flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground ${className}`}
       onKeyDown={(e) => {
         if (e.key === '/' && document.activeElement !== searchRef.current) {
           e.preventDefault();
@@ -596,7 +599,7 @@ export function LogStream({
           onPointerDown={(e) => e.target === e.currentTarget && meant()}
           tabIndex={0}
           aria-label={`${title}, ${copy.bottom}`}
-          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-2xs py-2xs font-mono text-caption @md:px-xs ${FOCUS} focus-visible:ring-inset`}
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-2xs pt-2xs pb-lg font-mono text-caption @md:px-xs ${FOCUS} focus-visible:ring-inset`}
         >
           <div ref={sentinelRef} aria-hidden="true" className="h-px" />
           {loadEarlier && (

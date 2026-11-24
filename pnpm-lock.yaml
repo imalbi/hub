@@ -166,6 +166,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
+      react-devtools-cdt-mcp:
+        specifier: ^0.1.0
+        version: 0.1.0
       tailwindcss:
         specifier: ^4.3.4
         version: 4.3.4
@@ -2260,6 +2263,9 @@ packages:
     resolution: {integrity: sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==}
     engines: {node: '>= 0.10'}
 
+  react-devtools-cdt-mcp@0.1.0:
+    resolution: {integrity: sha512-ruEhlMq+iTNl5uAIIUXfuKwbfLqADwE2BogM7mk7PtwE2FCTC5/rzu86YmWlCgKz5DjELre5AL6597y96/ziFQ==}
+
   react-dom@19.3.1:
     resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
@@ -4242,6 +4248,8 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       unpipe: 1.0.0
+
+  react-devtools-cdt-mcp@0.1.0: {}
 
   react-dom@19.3.1(react@19.3.1):
     dependencies:

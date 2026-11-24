@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { existsSync } from 'node:fs';
 import { mkdir, lstat, readFile, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { TRPCError } from '@trpc/server';
 import type { Db } from '../db/index.ts';
 import { catalogState, installedModules, moduleSources } from '../db/schema.ts';
@@ -28,7 +29,8 @@ export const HARDENED_GIT_FLAGS = [
 ] as const;
 
 const GIT_ENV = { GIT_TERMINAL_PROMPT: '0' };
-const DEFAULT_BUILD_COMMAND = { bin: 'pnpm', args: ['--filter', '@hub/web', 'build'] };
+const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+const DEFAULT_BUILD_COMMAND = { bin: 'pnpm', args: ['--dir', repoRoot, '--filter', '@hub/web', 'build'] };
 
 export type CatalogJobSummary = ReturnType<ReturnType<typeof createJobRunner>['list']>[number];
 

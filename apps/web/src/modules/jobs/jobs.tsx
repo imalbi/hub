@@ -1,4 +1,5 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { useCallback, useState } from 'react';
@@ -8,9 +9,13 @@ import { useTRPC, useTRPCClient } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
 import { useNow } from '../../lib/use-now.ts';
 
-export function useJobs() {
+function useJobsSubscription() {
   const trpc = useTRPC();
-  return useSubscription(trpc.jobs.onUpdate.subscriptionOptions()).data ?? [];
+  return useSubscription(trpc.jobs.onUpdate.subscriptionOptions());
+}
+
+export function useJobs() {
+  return useJobsSubscription().data ?? [];
 }
 
 const statusLabels: Record<string, () => string> = {
@@ -99,16 +104,32 @@ function JobOutput({ jobId }: { jobId: string }) {
 }
 
 export function JobsPage() {
-  const jobs = useJobs();
+  const { data } = useJobsSubscription();
+  const jobs = data ?? [];
   const trpc = useTRPC();
   const cancel = useMutation(trpc.jobs.cancel.mutationOptions());
   const [selected, setSelected] = useState<string | null>(null);
   const now = useNow(jobs.some((job) => job.status === 'running') ? 'clock' : null);
   const current = jobs.find((job) => job.id === selected) ?? jobs[0];
+  if (data === undefined) {
+    return (
+      <div className="flex min-h-0 flex-1 gap-lg pb-xl">
+        <section aria-label={m.jobs_title()} className="flex w-1/3 min-w-0 flex-col gap-sm">
+          <LoadingSkeleton label={m.tile_loading()} rows={4} />
+        </section>
+      </div>
+    );
+  }
+  if (data.length === 0) {
+    return (
+      <section aria-label={m.jobs_title()} className="flex min-h-0 flex-1 items-center justify-center pb-xl">
+        <EmptyState title={m.jobs_empty()} />
+      </section>
+    );
+  }
   return (
     <div className="flex min-h-0 flex-1 gap-lg pb-xl">
       <section aria-label={m.jobs_title()} className="flex w-1/3 min-w-0 flex-col gap-sm overflow-y-auto">
-        {jobs.length === 0 && <EmptyState title={m.jobs_empty()} />}
         {jobs.map((job) => (
           <button
             type="button"

@@ -1,5 +1,13 @@
 import { execFile, spawn } from 'node:child_process';
+import { delimiter, dirname } from 'node:path';
 import { createInterface } from 'node:readline';
+
+export function envWithNodeBin(base: NodeJS.ProcessEnv = process.env, execPath = process.execPath): NodeJS.ProcessEnv {
+  const binDir = dirname(execPath);
+  const current = base.PATH ?? '';
+  if (current.split(delimiter).includes(binDir)) return base;
+  return { ...base, PATH: current ? `${binDir}${delimiter}${current}` : binDir };
+}
 
 export type StreamSpawn = (
   bin: string,
@@ -9,10 +17,10 @@ export type StreamSpawn = (
 ) => { kill: () => void };
 
 export const streamSpawn: StreamSpawn = (bin, args, line, end) => {
-  const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], env: envWithNodeBin() });
   createInterface({ input: child.stdout }).on('line', (text) => line(text, 'stdout'));
   createInterface({ input: child.stderr }).on('line', (text) => line(text, 'stderr'));
-  child.on('error', () => {});
+  child.on('error', (error) => line(error.message, 'stderr'));
   child.on('close', end);
   return {
     kill: () => {

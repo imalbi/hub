@@ -7,6 +7,11 @@ test('a running job streams output and stops after a hold', async ({ page, reque
   await request.post(`${SERVER_URL}/__fake/jobs`, { data: { clear: true } });
   await page.goto('/desk/system?tab=jobs');
   await expect(page.getByRole('heading', { name: 'Nessun job' })).toBeVisible();
+  const emptyBox = await page.getByRole('heading', { name: 'Nessun job' }).boundingBox();
+  expect(emptyBox).not.toBeNull();
+  const centerX = emptyBox!.x + emptyBox!.width / 2;
+  expect(centerX).toBeGreaterThan(3840 * 0.4);
+  expect(centerX).toBeLessThan(3840 * 0.6);
   await request.post(`${SERVER_URL}/__fake/jobs`);
   await expect(page.getByText('fake.job').first()).toBeVisible();
   await expect(page.getByText('Riga 3')).toBeVisible();
