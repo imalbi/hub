@@ -45,6 +45,21 @@ void test('a module whose tests pass and whose types are sound is reported with 
   assert.equal(result.out, 'check-modules: good: 1 tests passed in 1 files, typecheck, lint and format ok\n');
 });
 
+void test('gitignored catalog modules are linted and lint failures still block the check', async (t) => {
+  const root = await scratch(t);
+  assert.equal(spawnSync('git', ['init', '--quiet', root]).status, 0);
+  await writeFile(join(root, '.gitignore'), 'catalog/\n');
+  const catalog = join(root, 'catalog');
+  await addModule(catalog, 'good', { 'a.test.ts': passing });
+  const good = check(catalog);
+  assert.equal(good.code, 0, good.err);
+  assert.match(good.out, /good: 1 tests passed/);
+  await writeFile(join(catalog, 'good', 'a.ts'), 'export function f(x: number) {\n  return x == 1;\n}\n');
+  const bad = check(catalog);
+  assert.equal(bad.code, 1);
+  assert.match(bad.err, /eqeqeq/);
+});
+
 void test('a failing private test fails the script and shows the failure', async (t) => {
   const root = await scratch(t);
   await addModule(root, 'bad', { 'a.test.ts': failing });

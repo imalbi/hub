@@ -133,6 +133,20 @@ void test('trailing allow comments require a reason and suppress only their own 
   }
 });
 
+void test('JSX allow comments waive generic matches but never private words or quoted markers', () => {
+  const comment = '{/* guard-private: allow Generic fixture */}';
+  assert.deepEqual(scanContent('fixture.tsx', `${homePath} ${comment}`), []);
+  assert.deepEqual(
+    scanContent(
+      'fixture.tsx',
+      `${homePath} {/* oxlint-disable-next-line generic-rule -- guard-private: allow Generic fixture */}`,
+    ),
+    [],
+  );
+  assert.ok(scanContent('fixture.tsx', `const token = "${secret} ${comment}";`).length > 0);
+  assert.ok(scanContent('fixture.tsx', `Acme ${comment}`, ['Acme']).some((f) => f.rule === 'private-word'));
+});
+
 void test('an allow marker inside a quoted string is not a trailing comment', () => {
   assert.equal(scanContent('fixture.ts', `const token = "${secret} // guard-private: allow sample";`).length, 1);
 });

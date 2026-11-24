@@ -66,9 +66,12 @@ function checkModule(folder: string, name: string, scratch: string) {
   );
   const types = spawnSync(tsc, ['-p', config], { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (types.status !== 0) return `${types.stdout}${types.stderr}`;
+  const lintFiles = readdirSync(folder, { recursive: true, encoding: 'utf8' })
+    .filter((file) => /\.tsx?$/u.test(file) && !file.split(/[\\/]/).includes('node_modules'))
+    .map((file) => join(folder, file));
   const lint = spawnSync(
     oxlint,
-    ['--type-aware', '--deny-warnings', '--config', oxlintConfig, '--tsconfig', config, folder],
+    ['--type-aware', '--deny-warnings', '--config', oxlintConfig, '--tsconfig', config, ...lintFiles],
     { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
   if (lint.status !== 0) return `${lint.stdout}${lint.stderr}`;
