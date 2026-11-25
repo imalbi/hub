@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { useLiveModuleUIs } from '../lib/enabled-modules.ts';
 import { zoneSearch } from '../lib/zone-search.ts';
+import { ContentBoundary } from '../shell/content-boundary.tsx';
 import { ZonePage } from '../shell/zone-page.tsx';
 
 export const Route = createFileRoute('/desk/$module')({
@@ -16,7 +17,9 @@ function ModuleZone() {
   if (zone.ownTabs)
     return (
       <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
-        <zone.page />
+        <ContentBoundary key={module}>
+          <zone.page />
+        </ContentBoundary>
       </div>
     );
   return <ZonePage zone={zone.id} own={[{ id: zone.id, label: zone.label, component: zone.page, fill: zone.fill }]} />;

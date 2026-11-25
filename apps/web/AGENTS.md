@@ -196,3 +196,5 @@ See `src/theme/AGENTS.md`.
 - Single-line text that changes in place uses `TextMorph`; long text crossfades as one block on a subject change. Use `FadingLine` for truncated text: its plain text run keeps the ellipsis. Preserve the accessible name and honor reduced motion.
 
 - Catalog Study owns `/desk/studio` through its module zone. `PageTab.dayLine` supplies a tab day line; `fallback` tabs disappear when a module contributes a section to that zone. `ModuleUI.mediaUpcoming` supplies the optional large Media widget content. Core shell and widgets never import catalog UI.
+
+- `lib/trpc.ts` enables keepAlive and reconnects on visible-page resume by closing `wsClient.connection.ws`; `wsClient.close()` disables reconnection and completes subscriptions. In the installed tRPC client the connected `connectionState` value is `pending`; the transport state is `open`. Reserve client close for token replacement.

@@ -74,20 +74,23 @@ export function createPomodoro(
     deadline = setTimeout(
       () => {
         try {
-          settle();
-          void hub.notify();
+          if (Date.now() >= end) {
+            settle();
+            void hub.notify();
+          }
           schedule();
         } catch (error) {
           onError(error);
         }
       },
-      Math.max(1, end - at),
+      // libuv timers pause during suspend; bound the next wall-clock check without pushing unchanged state.
+      Math.max(1, Math.min(30_000, end - at)),
     );
     deadline.unref();
   }
 
-  function apply(action: TimerAction) {
-    const result = transition(timer, action, settings, Date.now());
+  function apply(action: TimerAction, at = Date.now()) {
+    const result = transition(timer, action, settings, at);
     if (!result) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Invalid Pomodoro transition' });
     if (result.ended) {
       db.insert(pomodoroSessions)
@@ -117,7 +120,7 @@ export function createPomodoro(
   }
 
   function settle() {
-    if (timer.endsAt !== null && timer.endsAt <= Date.now()) apply('complete');
+    while (timer.endsAt !== null && timer.endsAt <= Date.now()) apply('complete', timer.endsAt);
   }
 
   function state() {

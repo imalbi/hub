@@ -27,3 +27,5 @@
 
 - Positioned module deck tiles use indices in the built-in page, before any module insertion. `useDeckPages` inserts higher indices first so an earlier accessory cannot move a later tile ahead of Posta; covered by the private Notizie deck regression.
 - Oggi lives in `shell/today-widget.tsx`. It renders the first active `ModuleUI.todayHeader` contribution with `look`/`align`; without one, the dedicated wide column is omitted. Vertical apps must not be imported by the shell.
+
+- `ContentBoundary` isolates each module zone/tab/widget and each Deck tile/extra; retry remounts the failed child while the shell and sibling controls stay usable. Keep successful renders wrapper-free so grid geometry stays unchanged. Panoramica layout saves share a mutation scope; only the last settled save invalidates the optimistic board, restoring persisted state after failure without overwriting queued edits.

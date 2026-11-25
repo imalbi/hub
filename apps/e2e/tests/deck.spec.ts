@@ -1,3 +1,4 @@
+import { breakHello } from './broken-module.ts';
 import type { Page, WebSocket as PageSocket } from '@playwright/test';
 import { playPause, restoreDesktop } from './desktop.ts';
 import { expect, test } from './fixtures.ts';
@@ -441,4 +442,53 @@ test('the corner setting of the device reaches the deck tiles, and pills stay pi
   await expect(page.locator('html')).toHaveAttribute('data-radius', 'sharp');
   expect(await radius()).toBeLessThan(standard);
   await page.evaluate(() => localStorage.removeItem('hub.radius'));
+});
+
+if (process.env.HUB_EXAMPLE_MODULES === '1') {
+  test('a broken deck tile preserves power controls and page navigation', async ({ page }) => {
+    const restore = await breakHello(page);
+    await page.goto('/deck');
+    await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+    await expect(page.getByRole('alert')).toContainText('Contenuto non disponibile');
+    await expect(page.getByRole('alert')).toHaveScreenshot('tile-unavailable.png');
+    await expect(page.getByRole('button', { name: 'Tieni premuto per spegnere il PC' })).toBeVisible();
+    await page.getByRole('button', { name: 'Vai a Scrivania' }).click();
+    await expect(page.getByRole('button', { name: 'Vai a Sistema' })).toBeVisible();
+    await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+    restore();
+    await page.getByRole('button', { name: 'Riprova', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^Esempio: Saluti:/ })).toBeVisible();
+  });
+}
+
+test('a silent socket is detected and subscriptions recover without a reload', async ({ page, pc }) => {
+  const sockets = await controlSockets(page);
+  await page.goto('/deck');
+  await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
+  await sockets.silence();
+  await expect(page.getByText('Connessione persa')).toBeVisible({ timeout: 20_000 });
+  await sockets.restore();
+  await expect(page.getByText('Connessione persa')).toBeHidden({ timeout: 15_000 });
+  expect((await playPause(pc)).ok()).toBe(true);
+  await expect(player(page).getByRole('button', { name: 'Riproduci musica' })).toBeVisible();
+});
+
+test('returning to a visible page replaces the transport and keeps subscriptions', async ({ page, pc }) => {
+  await controlSockets(page);
+  await page.goto('/deck');
+  await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
+  const count = await page.evaluate(() => window.hubSockets.open.length);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect(await page.evaluate(() => window.hubSockets.open.length)).toBe(count);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(() => page.evaluate(() => window.hubSockets.open.length)).toBeGreaterThan(count);
+  await expect.poll(() => page.evaluate(() => window.hubSockets.open.at(-1)?.readyState)).toBe(1);
+  expect((await playPause(pc)).ok()).toBe(true);
+  await expect(player(page).getByRole('button', { name: 'Riproduci musica' })).toBeVisible();
 });

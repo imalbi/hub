@@ -1,3 +1,4 @@
+import { ContentBoundary } from './content-boundary.tsx';
 import { notFound, useSearch } from '@tanstack/react-router';
 import { ZoneTabs } from '../components/zone-tabs.tsx';
 import { LoadingSkeleton } from '../components/ui/loading-skeleton.tsx';
@@ -29,7 +30,9 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
     return (
       <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
         <PageSurface>
-          <>{Pending ? <Pending /> : <LoadingSkeleton label={m.tile_loading()} rows={2} />}</>
+          <ContentBoundary key={zone}>
+            {Pending ? <Pending /> : <LoadingSkeleton label={m.tile_loading()} rows={2} />}
+          </ContentBoundary>
         </PageSurface>
       </div>
     );
@@ -37,11 +40,25 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
   return (
     <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
       <ZoneTabs
-        dayLine={DayLine ? <DayLine /> : undefined}
+        dayLine={
+          DayLine ? (
+            <ContentBoundary key={`${zone}/${active}`}>
+              <DayLine />
+            </ContentBoundary>
+          ) : undefined
+        }
         always={always}
         fill={ownScroll}
         float={float}
-        tabs={tabs.map(({ id, label, component: Content }) => ({ id, label: label(), content: <Content /> }))}
+        tabs={tabs.map(({ id, label, component: Content }) => ({
+          id,
+          label: label(),
+          content: (
+            <ContentBoundary key={`${zone}/${id}`}>
+              <Content />
+            </ContentBoundary>
+          ),
+        }))}
       />
     </div>
   );

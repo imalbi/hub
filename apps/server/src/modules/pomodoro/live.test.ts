@@ -267,3 +267,35 @@ void test('startTagged exposes the active tag to state and subscribers and prese
   abort.abort();
   await sub.return();
 });
+
+void test('suspend catches up on the next wall-clock check without a state read', async (t) => {
+  const start = new Date(2026, 10, 4, 10).getTime();
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: start });
+  const db = openDb(':memory:');
+  const timer = createPomodoro(db, createFakeDesktop(), emptyConfig.pomodoro);
+  t.after(() => {
+    timer.close();
+    db.$client.close();
+  });
+  const abort = new AbortController();
+  t.after(() => abort.abort());
+  const sub = timer.subscribe(abort.signal);
+  await sub.next();
+  timer.act('start');
+  await sub.next();
+  // Date advances during suspend, while libuv's monotonic timers do not.
+  t.mock.method(Date, 'now', () => start + 40 * 60_000);
+  mock.timers.tick(30_000);
+  await flush();
+  const rows = db.select().from(pomodoroSessions).all();
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]?.endedAt?.getTime(), start + 25 * 60_000);
+  assert.equal(rows[1]?.endedAt?.getTime(), start + 30 * 60_000);
+  assert.equal((await sub.next()).value?.phase, 'idle');
+  assert.equal(timer.state().lastCompletedAt, start + 30 * 60_000);
+  assert.equal(timer.state().completedFocusToday, 1);
+  mock.timers.tick(30_000);
+  assert.equal(db.select().from(pomodoroSessions).all().length, 2);
+  abort.abort();
+  await sub.return();
+});

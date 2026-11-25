@@ -1,3 +1,4 @@
+import { ContentBoundary } from './content-boundary.tsx';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { Badge } from '../components/ui/badge.tsx';
 import { useIsOn } from '../lib/enabled-modules.ts';
@@ -125,10 +126,16 @@ export function DeckPages() {
               <div className="deck-tile-grid grid grid-cols-3 gap-xs">
                 {page.tiles.map((Tile, tile) => (
                   // A fixed list: the position is the identity.
-                  <Tile key={tile} />
+                  <ContentBoundary key={tile}>
+                    <Tile />
+                  </ContentBoundary>
                 ))}
               </div>
-              {page.extra && <page.extra />}
+              {page.extra && (
+                <ContentBoundary>
+                  <page.extra />
+                </ContentBoundary>
+              )}
             </section>
           ))}
         </div>

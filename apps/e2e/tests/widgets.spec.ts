@@ -394,3 +394,37 @@ test('Dispositivi counts two phones and its large rows fit without overlap', asy
     if (index) expect(row.top).toBeGreaterThanOrEqual(bounds.rows[index - 1].bottom);
   }
 });
+
+test('a failed layout save restores the saved board and reports the failure', async ({ page }) => {
+  await page.route('**/trpc/layout.save*', (route) =>
+    route.fulfill({ status: 500, json: { error: { message: 'Unavailable' } } }),
+  );
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  await page.getByRole('button', { name: 'Rimuovi Pomodoro', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('salv');
+  await expect(cell(page, 'pomodoro')).toBeVisible();
+});
+
+test('rapid layout edits save in order and retain the latest board', async ({ page }) => {
+  let active = 0;
+  let maximum = 0;
+  let completed = 0;
+  await page.route('**/trpc/layout.save*', async (route) => {
+    active += 1;
+    maximum = Math.max(maximum, active);
+    if (completed === 0) await new Promise((resolve) => setTimeout(resolve, 300));
+    const response = await route.fetch();
+    await route.fulfill({ response });
+    active -= 1;
+    completed += 1;
+  });
+  await page.getByRole('button', { name: 'Modifica', exact: true }).click();
+  await page.getByRole('button', { name: 'Rimuovi Pomodoro', exact: true }).click();
+  await page.getByRole('button', { name: 'Rimuovi Uscita audio', exact: true }).click();
+  await expect.poll(() => completed).toBe(2);
+  expect(maximum).toBe(1);
+  await page.reload();
+  await expect(cell(page, 'today')).toBeVisible();
+  await expect(cell(page, 'pomodoro')).toHaveCount(0);
+  await expect(cell(page, 'audio')).toHaveCount(0);
+});

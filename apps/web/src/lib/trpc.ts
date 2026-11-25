@@ -10,6 +10,7 @@ export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRou
 // Derived from `location` so it works through the Vite proxy in dev and straight from the server on the LAN later.
 // The browser sends the page origin with the upgrade; the server refuses origins that are not Hub's.
 export const wsClient = createWSClient({
+  keepAlive: { enabled: true, intervalMs: 10_000, pongTimeoutMs: 3_000 },
   url: () => `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/trpc`,
   // A browser cannot set headers on a WebSocket, so the device token travels as the first message. Read on every
   // (re)connect, because the server decides who this socket is once, when it connects.
@@ -18,6 +19,15 @@ export const wsClient = createWSClient({
     return token ? { token } : null;
   },
 });
+
+function recoverVisibleConnection() {
+  if (document.visibilityState === 'visible' && wsClient.connection?.state === 'open') {
+    // Closing the client completes subscriptions; closing its transport preserves and resubscribes them.
+    wsClient.connection?.ws?.close(1000, 'Page resumed');
+  }
+}
+document.addEventListener('visibilitychange', recoverVisibleConnection);
+import.meta.hot?.dispose(() => document.removeEventListener('visibilitychange', recoverVisibleConnection));
 
 /** Pair (a token) or unpair (`null`): the socket in use was authenticated with the old token, so it is closed first and the next subscription opens a new one. */
 export async function replaceToken(token: string | null) {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, ArrowRightIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import { useRef, useState, useSyncExternalStore } from 'react';
 import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
+import { ContentBoundary } from './content-boundary.tsx';
 import { WidgetContext } from './widget-context.ts';
 import { DayLine } from './day-line.tsx';
 import { SplitPill } from '../components/split-pill.tsx';
@@ -45,7 +46,16 @@ export function WidgetBoard() {
   const queryClient = useQueryClient();
   const queryKey = trpc.layout.get.queryKey({ zone });
   const saved = useQuery(trpc.layout.get.queryOptions({ zone }));
-  const save = useMutation(trpc.layout.save.mutationOptions());
+  const save = useMutation(
+    trpc.layout.save.mutationOptions({
+      scope: { id: 'overview-layout' },
+      onSettled: () => {
+        // Queued edits keep their optimistic board until the last request has settled.
+        if (queryClient.isMutating({ mutationKey: trpc.layout.save.mutationKey() }) === 1)
+          return queryClient.invalidateQueries({ queryKey });
+      },
+    }),
+  );
   const reset = useMutation(trpc.layout.reset.mutationOptions());
   const [editing, setEditing] = useState(false);
   const missingRef = useRef<HTMLDivElement>(null);
@@ -143,7 +153,9 @@ export function WidgetBoard() {
                   {/* While editing the widget is a picture to move: its own buttons must not take the press. */}
                   <div className="h-full overflow-hidden rounded-lg" inert={editing}>
                     <WidgetContext value>
-                      <Widget size={item.size} />
+                      <ContentBoundary>
+                        <Widget size={item.size} />
+                      </ContentBoundary>
                     </WidgetContext>
                   </div>
                   {editing && (

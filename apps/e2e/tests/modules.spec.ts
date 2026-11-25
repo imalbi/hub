@@ -1,3 +1,4 @@
+import { breakHello } from './broken-module.ts';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { answerQueries } from './desktop.ts';
@@ -7,6 +8,36 @@ import { freezePomodoro } from './pomodoro-visual.ts';
 const rail = (page: Page) => page.getByRole('navigation', { name: 'Zone' });
 
 if (process.env.HUB_EXAMPLE_MODULES === '1') {
+  test('a broken module page and widget keep the shell usable and recover on retry', async ({ page, pc }) => {
+    await page.setViewportSize({ width: 3840, height: 2160 });
+    const restore = await breakHello(page);
+    await page.goto('/desk/hello');
+    await expect(page.getByRole('alert')).toContainText('Contenuto non disponibile');
+    await expect(page.getByRole('alert')).toHaveScreenshot('module-unavailable-4k.png');
+    await expect(rail(page).getByRole('link', { name: 'Panoramica', exact: true })).toBeVisible();
+    await pc.post('/trpc/layout.save', {
+      data: {
+        zone: 'overview',
+        items: [
+          { widget: 'hello', size: 'medium', x: 0, y: 0 },
+          { widget: 'pomodoro', size: 'small', x: 6, y: 0 },
+        ],
+      },
+    });
+    try {
+      await rail(page).getByRole('link', { name: 'Panoramica', exact: true }).click();
+      const widget = page.locator('[data-widget="hello"]');
+      await expect(widget.getByRole('alert')).toBeVisible();
+      await expect(page.locator('[data-widget="pomodoro"]')).toBeVisible();
+      restore();
+      await widget.getByRole('button', { name: 'Riprova', exact: true }).click();
+      await expect(widget.getByText('Ciao dal modulo di esempio', { exact: true })).toBeVisible();
+      await rail(page).getByRole('link', { name: 'Esempio', exact: true }).click();
+      await expect(page.getByText('Ciao dal modulo di esempio', { exact: true })).toBeVisible();
+    } finally {
+      await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
+    }
+  });
   test('example mark follows module availability', async ({ page }) => {
     await page.goto('/desk');
     await expect(
