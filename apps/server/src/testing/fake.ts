@@ -41,6 +41,9 @@ writeFileSync(join(powerstatDir, 'samples.csv'), ['iso,total_w', ...samples].joi
 
 // Labels match the generic descriptions in the pw-dump fixture. The e2e Vite (see apps/e2e) is not a dev origin
 // of the real server, so its origins (the run's Vite port) go on the allowlist or every WebSocket upgrade is refused.
+const extraMonitor = Object.entries(fakeMonitors()).find(([, disabled]) => disabled)?.[0];
+if (!extraMonitor) throw new Error('Missing disabled monitor fixture');
+
 const config: Config = {
   ...emptyConfig,
   pomodoro: { ...emptyConfig.pomodoro, focusMinutes: 0.1, shortBreakMinutes: 0.05, longBreakMinutes: 0.1 },
@@ -62,8 +65,15 @@ const config: Config = {
   theme: { caelestiaScheme },
   system: {
     powerstatDir,
-    // The fake desktop answers `fake-monitor-<output>` by flipping that output; DP-2 starts off, as in its fixture.
-    monitors: [{ output: 'DP-2', label: 'Monitor verticale', command: 'fake-monitor-DP-2' }],
+    monitors: [
+      {
+        output: extraMonitor,
+        label: 'Monitor verticale',
+        command: `fake-monitor-${extraMonitor}`,
+        horizontalCommand: `fake-horizontal-${extraMonitor}`,
+        verticalCommand: `fake-vertical-${extraMonitor}`,
+      },
+    ],
   },
 };
 
@@ -85,6 +95,7 @@ let jobs: ReturnType<typeof createJobRunner> | undefined;
 const systemCalls: string[][] = [];
 const player = { gone: false };
 const monitors = fakeMonitors();
+const monitorTransforms: Record<string, number> = {};
 const catalog = createFakeCatalog();
 mkdirSync(join(runDir, 'catalog-local', 'catalog-local'), { recursive: true });
 
@@ -107,7 +118,7 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
 
 function build() {
   const stored: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
-  const desktop = createFakeDesktop({ system: systemCalls, player, monitors });
+  const desktop = createFakeDesktop({ system: systemCalls, player, monitors, monitorTransforms });
   const run: Run = (bin, args, options) => {
     if (bin === 'git') return catalog.run(bin, args, options);
     return desktop(bin, args, options);
@@ -204,9 +215,12 @@ function hooks(server: typeof app) {
   });
   // The owner's keyboard shortcut: the monitor changes without Hub being asked, and the poll has to notice.
   server.post('/__fake/monitor', (request, reply) => {
-    const body = z.object({ output: z.string(), disabled: z.boolean() }).safeParse(request.body);
+    const body = z
+      .object({ output: z.string(), disabled: z.boolean(), transform: z.number().int().optional() })
+      .safeParse(request.body);
     if (!body.success || !(body.data.output in monitors)) return reply.code(400).send();
     monitors[body.data.output] = body.data.disabled;
+    if (body.data.transform !== undefined) monitorTransforms[body.data.output] = body.data.transform;
     return { monitors };
   });
 }

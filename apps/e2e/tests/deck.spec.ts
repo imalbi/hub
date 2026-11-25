@@ -285,7 +285,7 @@ test('the Sistema page has a tile per configured monitor that shows its state an
     await expect(vertical).toHaveAccessibleName('Monitor verticale: Spento');
     await expect(vertical.locator('svg')).toHaveAttribute('data-weight', 'regular');
     await vertical.click();
-    await expect(vertical).toHaveAccessibleName('Monitor verticale: Acceso');
+    await expect(vertical).toHaveAccessibleName('Monitor verticale: Acceso (verticale)');
     await expect(vertical.locator('svg')).toHaveAttribute('data-weight', 'fill');
   } finally {
     await pc.post(`${SERVER_URL}/__fake/monitor`, { data: { output: 'DP-2', disabled: true } });
@@ -357,7 +357,14 @@ test('two monitors precede the module tiles and the holds start a new row', asyn
     server.onMessage((message) => {
       const reply = JSON.parse(message.toString());
       if (monitorIds.has(reply?.id) && reply.result?.type === 'data' && Array.isArray(reply.result.data)) {
-        const second = { output: 'DP-3', label: 'Monitor TV', state: 'on' };
+        const second = {
+          output: 'DP-3',
+          label: 'Monitor TV',
+          state: 'on',
+          orientation: null,
+          supportsHorizontal: false,
+          supportsVertical: false,
+        };
         socket.send(JSON.stringify({ ...reply, result: { ...reply.result, data: [...reply.result.data, second] } }));
       } else socket.send(message);
     });

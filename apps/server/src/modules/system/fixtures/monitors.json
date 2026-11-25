@@ -9,7 +9,8 @@
     "x": 0,
     "y": 0,
     "focused": true,
-    "disabled": false
+    "disabled": false,
+    "transform": 0
   },
   {
     "id": 1,
@@ -21,6 +22,7 @@
     "x": 3840,
     "y": 0,
     "focused": false,
-    "disabled": true
+    "disabled": true,
+    "transform": 1
   }
 ]

@@ -30,6 +30,13 @@ const viteEnv = {
 };
 const deckViewport = { viewport: { width: 375, height: 812 }, deviceScaleFactor: 3 };
 
+const deskUse = {
+  baseURL: PC_URL,
+  viewport: { width: 1920, height: 1080 },
+  // Chromium's own fake camera and microphone, with the permission prompt answered: the webcam preview runs for real.
+  launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
+};
+
 export default defineConfig({
   testDir: './tests',
   // The fake desktop is one shared state: tests that change it put it back, and run one at a time.
@@ -68,6 +75,7 @@ export default defineConfig({
               'calendar.visual.spec.ts',
               'palette.spec.ts',
               'zone-pages.spec.ts',
+              'system.spec.ts',
               'music.spec.ts',
               'settings.spec.ts',
               'catalog.spec.ts',
@@ -111,13 +119,19 @@ export default defineConfig({
               'loading.spec.ts',
               'settings.visual.spec.ts',
             ],
-      use: {
-        baseURL: PC_URL,
-        viewport: { width: 1920, height: 1080 },
-        // Chromium's own fake camera and microphone, with the permission prompt answered: the webcam preview runs for real.
-        launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
-      },
+      use: deskUse,
     },
+    ...(examples
+      ? [
+          {
+            name: 'desk-system',
+            dependencies: ['setup'],
+            testMatch: 'desk.visual.spec.ts',
+            grep: /Sistema/,
+            use: deskUse,
+          },
+        ]
+      : []),
     ...(privateFolder
       ? [
           {

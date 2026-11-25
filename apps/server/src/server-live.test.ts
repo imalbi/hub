@@ -9,6 +9,17 @@ process.env.NODE_ENV = 'test';
 
 const config: Config = {
   ...emptyConfig,
+  system: {
+    monitors: [
+      {
+        output: 'DP-1',
+        label: 'Monitor',
+        command: 'fake-monitor-DP-1',
+        horizontalCommand: 'fake-horizontal-DP-1',
+        verticalCommand: 'fake-vertical-DP-1',
+      },
+    ],
+  },
   audio: {
     outputs: [
       { label: 'Cuffie', match: 'USB Headset' },
@@ -127,4 +138,33 @@ void test('audio.onState pushes the current state, then the new one right after 
     }),
   );
   client.close();
+});
+
+void test('monitor orientation pushes the new state immediately after its command', async (t) => {
+  const client = connect();
+  t.after(() => client.close());
+  await client.subscribe('system.onMonitors');
+  assert.deepEqual(await client.next(), started);
+  await client.next();
+  const res = await app.inject({
+    method: 'POST',
+    url: '/trpc/system.monitor.setOrientation',
+    headers: { 'content-type': 'application/json' },
+    payload: { output: 'DP-1', orientation: 'vertical' },
+  });
+  assert.equal(res.statusCode, 200);
+  // A 500 ms deadline beats the 5 s poll and proves the action notified the subscription.
+  assert.deepEqual(
+    await client.next(),
+    data([
+      {
+        output: 'DP-1',
+        label: 'Monitor',
+        state: 'on',
+        orientation: 'vertical',
+        supportsHorizontal: true,
+        supportsVertical: true,
+      },
+    ]),
+  );
 });

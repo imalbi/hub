@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import type { MonitorConfig } from './config.ts';
+import { configSchema } from './config.ts';
 import { emptyConfig } from '../../core/config.ts';
 import { buildServer } from '../../server.ts';
 import { createFakeDesktop, fakeMonitors } from '../../testing/fake-desktop.ts';
@@ -11,7 +13,7 @@ const monitors = [
   { output: 'DP-2', label: 'Secondo', command: 'fake-monitor-DP-2' },
 ];
 
-function setup(t: test.TestContext, configured = monitors, state = fakeMonitors()) {
+function setup(t: test.TestContext, configured: MonitorConfig[] = monitors, state = fakeMonitors()) {
   const system: string[][] = [];
   const app = buildServer({
     dbPath: ':memory:',
@@ -95,7 +97,68 @@ void test('a failing command is a server error, and the state query reads every 
   const both = setup(t);
   const response = await both.app.inject('/trpc/system.monitors');
   assert.deepEqual(response.json().result.data, [
-    { output: 'DP-1', label: 'Principale', state: 'on' },
-    { output: 'DP-2', label: 'Secondo', state: 'off' },
+    {
+      output: 'DP-1',
+      label: 'Principale',
+      state: 'on',
+      orientation: 'horizontal',
+      supportsHorizontal: false,
+      supportsVertical: false,
+    },
+    {
+      output: 'DP-2',
+      label: 'Secondo',
+      state: 'off',
+      orientation: null,
+      supportsHorizontal: false,
+      supportsVertical: false,
+    },
   ]);
+});
+
+void test('orientation runs only the configured command, without arguments', async (t) => {
+  const output = 'DP-1';
+  const { call, system, app } = setup(t, [
+    {
+      output,
+      label: 'Monitor',
+      command: 'unused',
+      horizontalCommand: `fake-horizontal-${output}`,
+      verticalCommand: `fake-vertical-${output}`,
+    },
+  ]);
+  for (const orientation of ['vertical', 'horizontal']) {
+    assert.equal((await call('monitor.setOrientation', { output, orientation })).statusCode, 200);
+    assert.equal((await app.inject('/trpc/system.monitors')).json().result.data[0].orientation, orientation);
+  }
+  assert.deepEqual(system, [[`fake-vertical-${output}`], [`fake-horizontal-${output}`]]);
+});
+
+void test('missing orientation commands and outputs fail closed, invalid input and LAN are refused', async (t) => {
+  const output = 'DP-1';
+  const { call, system } = setup(t, [
+    { output, label: 'Monitor', command: 'unused', horizontalCommand: 'missing-script' },
+  ]);
+  assert.equal((await call('monitor.setOrientation', { output, orientation: 'vertical' })).statusCode, 412);
+  assert.equal(
+    (await call('monitor.setOrientation', { output: 'unknown', orientation: 'horizontal' })).statusCode,
+    412,
+  );
+  assert.equal((await call('monitor.setOrientation', { output, orientation: 'diagonal' })).statusCode, 400);
+  assert.equal((await call('monitor.setOrientation', { output })).statusCode, 400);
+  assert.equal(
+    (await call('monitor.setOrientation', { output, orientation: 'horizontal' }, '192.0.2.20')).statusCode,
+    401,
+  );
+  assert.deepEqual(system, []);
+  assert.equal((await call('monitor.setOrientation', { output, orientation: 'horizontal' })).statusCode, 500);
+});
+
+void test('orientation config remains optional, nonempty and manual', () => {
+  const schema = configSchema.unwrap().shape.monitors.unwrap().element;
+  for (const field of [schema.shape.horizontalCommand, schema.shape.verticalCommand]) {
+    assert.equal(field.meta()?.manual, true);
+    assert.equal(field.safeParse(undefined).success, true);
+    assert.equal(field.safeParse('').success, false);
+  }
 });

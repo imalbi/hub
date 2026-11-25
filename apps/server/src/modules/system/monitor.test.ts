@@ -13,9 +13,9 @@ const entries = [
 
 void test('one read gives on, off and absent for several entries', () => {
   assert.deepEqual(parseMonitors(fixture, entries), [
-    { output: 'DP-1', label: 'Principale', state: 'on' },
-    { output: 'DP-2', label: 'Secondo', state: 'off' },
-    { output: 'DP-3', label: 'Terzo', state: 'absent' },
+    { output: 'DP-1', label: 'Principale', state: 'on', orientation: 'horizontal' },
+    { output: 'DP-2', label: 'Secondo', state: 'off', orientation: null },
+    { output: 'DP-3', label: 'Terzo', state: 'absent', orientation: null },
   ]);
 });
 
@@ -51,4 +51,46 @@ void test('a change made outside Hub reaches a subscriber at the next poll', asy
     else break;
   }
   assert.deepEqual(seen, ['off', 'on']);
+});
+
+void test('orientation follows transform parity only for an enabled, listed monitor', () => {
+  const entry = [{ output: 'TEST-1', label: 'Monitor', command: 'unused' }];
+  for (const transform of [0, 1, 2, 3, 4, 5, 6, 7]) {
+    const stdout = JSON.stringify([{ name: 'TEST-1', disabled: false, transform }]);
+    assert.equal(parseMonitors(stdout, entry)[0]?.orientation, transform % 2 === 1 ? 'vertical' : 'horizontal');
+  }
+  for (const stdout of [
+    '',
+    '[]',
+    '[{"name":"TEST-1","disabled":false}]',
+    '[{"name":"TEST-1","disabled":true,"transform":3}]',
+  ]) {
+    assert.equal(parseMonitors(stdout, entry)[0]?.orientation, null);
+  }
+});
+
+void test('readMonitors exposes capabilities without exposing configured commands', async () => {
+  const run: Run = () => Promise.resolve({ stdout: '[]', stderr: '', code: 0 });
+  const configured = [
+    { output: 'TEST-1', label: 'Monitor', command: 'toggle-script', horizontalCommand: 'horizontal-script' },
+    { output: 'TEST-2', label: 'Other', command: 'toggle-script', verticalCommand: 'vertical-script' },
+  ];
+  assert.deepEqual(await readMonitors(run, configured), [
+    {
+      output: 'TEST-1',
+      label: 'Monitor',
+      state: 'absent',
+      orientation: null,
+      supportsHorizontal: true,
+      supportsVertical: false,
+    },
+    {
+      output: 'TEST-2',
+      label: 'Other',
+      state: 'absent',
+      orientation: null,
+      supportsHorizontal: false,
+      supportsVertical: true,
+    },
+  ]);
 });

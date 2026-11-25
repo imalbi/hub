@@ -111,6 +111,7 @@ void test('every mutation carries an Italian label and an English description in
     'settings.save',
     'settings.saveCore',
     'system.lock',
+    'system.monitor.setOrientation',
     'system.monitor.toggle',
     'system.powerOff',
     'system.reboot',

@@ -11,6 +11,16 @@ const monitorSchema = z.object({
     title: 'Comando',
     description: 'Programma che accende o spegne questo monitor, senza argomenti.',
   }),
+  horizontalCommand: z.string().min(1).optional().meta({
+    manual: true,
+    title: 'Comando orizzontale',
+    description: 'Programma che accende questo monitor in orizzontale, senza argomenti.',
+  }),
+  verticalCommand: z.string().min(1).optional().meta({
+    manual: true,
+    title: 'Comando verticale',
+    description: 'Programma che accende questo monitor in verticale, senza argomenti.',
+  }),
 });
 export type MonitorConfig = z.output<typeof monitorSchema>;
 

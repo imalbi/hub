@@ -30,6 +30,20 @@ export function createSystemRouter(
     monitors: protectedProcedure.query(({ ctx }) => readMonitors(ctx.run, monitors.entries)),
     onMonitors: protectedProcedure.subscription(({ signal }) => monitors.live.subscribe(signal)),
     monitor: router({
+      setOrientation: protectedProcedure
+        .meta({
+          label: 'Orienta monitor',
+          description: 'Turn on a configured extra monitor in horizontal or vertical orientation',
+        })
+        .input(z.object({ output: z.string(), orientation: z.enum(['horizontal', 'vertical']) }))
+        .mutation(async ({ ctx, input }) => {
+          const entry = monitors.entries.find(({ output }) => output === input.output);
+          const target = input.orientation === 'horizontal' ? entry?.horizontalCommand : entry?.verticalCommand;
+          if (!target)
+            throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Monitor orientation is not configured' });
+          await command(ctx, target, []);
+          void monitors.live.notify();
+        }),
       // The entry's own command flips the monitor: re-enabling needs its geometry, which stays in the owner's script.
       toggle: protectedProcedure
         .meta({

@@ -9,8 +9,10 @@ const monitorFixture = readFileSync(new URL('../modules/system/fixtures/monitors
 /** The fixture's monitors by output name, true when disabled: the default state of the fake's `monitors` option. */
 export const fakeMonitors = (): Record<string, boolean> =>
   Object.fromEntries(parseMonitorFixture().map(({ name, disabled }) => [name, disabled]));
-function parseMonitorFixture(): { name: string; disabled: boolean }[] {
-  return z.array(z.object({ name: z.string(), disabled: z.boolean() }).loose()).parse(JSON.parse(monitorFixture));
+function parseMonitorFixture() {
+  return z
+    .array(z.object({ name: z.string(), disabled: z.boolean(), transform: z.number().int() }).loose())
+    .parse(JSON.parse(monitorFixture));
 }
 
 const ok = (stdout = ''): RunResult => ({ stdout, stderr: '', code: 0 });
@@ -42,6 +44,7 @@ export function createFakeDesktop({
   system = [],
   player = { gone: false },
   monitors = fakeMonitors(),
+  monitorTransforms = {},
 }: {
   notifications?: string[][];
   sounds?: string[];
@@ -50,6 +53,7 @@ export function createFakeDesktop({
   player?: { gone: boolean };
   /** Disabled flag per output name, answered as `hyprctl monitors all -j` and flipped by `fake-monitor-<output>` (the e2e hook `/__fake/monitor` sets it too). */
   monitors?: Record<string, boolean>;
+  monitorTransforms?: Record<string, number>;
 } = {}): Run {
   let sinkName = defaultName ?? '';
   let status = 'Playing';
@@ -94,7 +98,11 @@ export function createFakeDesktop({
       return Promise.resolve(ok());
     }
     if (bin === 'hyprctl' && systemCommand === 'hyprctl monitors all -j') {
-      const listed = parseMonitorFixture().map((monitor) => ({ ...monitor, disabled: monitors[monitor.name] ?? true }));
+      const listed = parseMonitorFixture().map((monitor) => ({
+        ...monitor,
+        disabled: monitors[monitor.name] ?? true,
+        transform: monitorTransforms[monitor.name] ?? monitor.transform,
+      }));
       return Promise.resolve(ok(JSON.stringify(listed)));
     }
     // The owner's toggle script, by name: it flips the monitor it is named after and is recorded like the other commands.
@@ -104,6 +112,16 @@ export function createFakeDesktop({
       monitors[toggled] = !monitors[toggled];
       system.push([bin]);
       return Promise.resolve(ok());
+    }
+    const oriented = /^fake-(horizontal|vertical)-(.+)$/.exec(bin);
+    if (oriented && args.length === 0) {
+      const [, orientation, output] = oriented;
+      if (output !== undefined && output in monitors) {
+        monitors[output] = false;
+        monitorTransforms[output] = orientation === 'vertical' ? 1 : 0;
+        system.push([bin]);
+        return Promise.resolve(ok());
+      }
     }
     if (bin === 'pw-dump' && args.length === 0) {
       return Promise.resolve(ok(dump.replace(/("default\.audio\.sink"[^}]*"name"\s*:\s*")[^"]+/, `$1${sinkName}`)));

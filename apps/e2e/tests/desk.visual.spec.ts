@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 import { chooseTheme, createFrom } from './themes.ts';
 import { answerQueries } from './desktop.ts';
@@ -6,6 +6,9 @@ import { PC_URL } from './hosts.ts';
 
 // A fixed clock and fixed answers for everything that moves: uptime, the countdown, "last seen", the random code.
 const NOW = new Date('2026-11-04T12:00:00Z');
+// Earlier example specs increment the greeting counter through its live subscription.
+const exampleCounter = (page: Page) =>
+  process.env.HUB_EXAMPLE_MODULES === '1' ? [page.getByRole('group', { name: 'Esempio' }).locator('p')] : [];
 test.afterEach(async ({ request }) => {
   await request.post(`${PC_URL}/trpc/layout.reset`, { data: { zone: 'overview' } });
 });
@@ -134,7 +137,7 @@ for (const zone of [
       await expect(page.getByRole('button', { name: 'Audio: Cuffie' })).toBeVisible();
     }
     await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled' });
+    await expect(page).toHaveScreenshot(zone.file, { animations: 'disabled', mask: exampleCounter(page) });
   });
 }
 
@@ -164,7 +167,7 @@ test('Sistema at 4K matches the baseline', async ({ page }) => {
     await document.fonts.ready;
   });
   await page.mouse.move(0, 0);
-  await expect(page).toHaveScreenshot('desk-system-4k.png', { animations: 'disabled' });
+  await expect(page).toHaveScreenshot('desk-system-4k.png', { animations: 'disabled', mask: exampleCounter(page) });
 });
 
 test('Sistema in paper matches the baseline', async ({ page }) => {
@@ -177,7 +180,7 @@ test('Sistema in paper matches the baseline', async ({ page }) => {
     await document.fonts.ready;
   });
   await page.mouse.move(0, 0);
-  await expect(page).toHaveScreenshot('desk-system-paper.png', { animations: 'disabled' });
+  await expect(page).toHaveScreenshot('desk-system-paper.png', { animations: 'disabled', mask: exampleCounter(page) });
 });
 
 test('Media in paper frosts the floating controls and matches the baseline', async ({ page }) => {

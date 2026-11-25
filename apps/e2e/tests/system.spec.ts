@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures.ts';
+import { controlSockets } from './sockets.ts';
 import { SERVER_URL } from './hosts.ts';
 
 // The fake desktop records lock, power, workspace and monitor commands and never runs them; server tests check the argv.
@@ -204,4 +205,77 @@ test('the Backup row says it never ran, then shows the time and count a run answ
   );
   await row.getByRole('button', { name: 'Esegui backup' }).click();
   await expect(row).toContainText('oggi, 03:12 · 4 copie');
+});
+
+test('configured orientation commands turn on an off monitor and keep the live state in sync', async ({ page, pc }) => {
+  const row = thisPc(page).getByRole('group', { name: 'Monitor verticale', exact: true });
+  const horizontal = row.getByRole('button', { name: 'Orizzontale Monitor verticale', exact: true });
+  const vertical = row.getByRole('button', { name: 'Verticale Monitor verticale', exact: true });
+  const status = await pc.get('/trpc/system.monitors');
+  const [{ output }] = (await status.json()).result.data;
+  const calls = async () => (await (await pc.get(`${SERVER_URL}/__fake/system`)).json()).calls;
+  const before = (await calls()).length;
+  try {
+    await expect(row).toContainText('Spento');
+    await expect(horizontal).toBeEnabled();
+    await expect(vertical).toBeEnabled();
+    await vertical.click();
+    await expect(row).toContainText('Acceso (verticale)');
+    await expect(vertical).toBeDisabled();
+    await expect(horizontal).toBeEnabled();
+    await horizontal.click();
+    await expect(row).toContainText('Acceso (orizzontale)');
+    await expect(horizontal).toBeDisabled();
+    await expect(vertical).toBeEnabled();
+    expect((await calls()).slice(before)).toEqual([[`fake-vertical-${output}`], [`fake-horizontal-${output}`]]);
+  } finally {
+    await pc.post(`${SERVER_URL}/__fake/monitor`, { data: { output, disabled: true, transform: 1 } });
+  }
+});
+
+for (const state of ['absent', 'unknown', 'unconfigured']) {
+  test(`monitor orientation controls respect ${state} status`, async ({ page }) => {
+    await page.routeWebSocket(/\/trpc/, (socket) => {
+      const server = socket.connectToServer();
+      const ids = new Set<unknown>();
+      socket.onMessage((message) => {
+        for (const request of [JSON.parse(message.toString())].flat())
+          if (request?.params?.path === 'system.onMonitors') ids.add(request.id);
+        server.send(message);
+      });
+      server.onMessage((message) => {
+        const reply = JSON.parse(message.toString());
+        if (ids.has(reply?.id) && reply.result?.type === 'data' && Array.isArray(reply.result.data)) {
+          reply.result.data = reply.result.data.map((monitor: object) => ({
+            ...monitor,
+            ...(state === 'unconfigured'
+              ? { supportsHorizontal: false, supportsVertical: false }
+              : { state, orientation: null }),
+          }));
+          socket.send(JSON.stringify(reply));
+        } else socket.send(message);
+      });
+    });
+    await page.reload();
+    const row = thisPc(page).getByRole('group', { name: 'Monitor verticale', exact: true });
+    if (state === 'unconfigured') {
+      await expect(row.getByRole('button', { name: /^Orizzontale|^Verticale/ })).toHaveCount(0);
+      await expect(row.getByRole('button', { name: 'Accendi Monitor verticale' })).toBeEnabled();
+    } else {
+      await expect(row).toContainText(state === 'absent' ? 'Non collegato' : 'Sconosciuto');
+      for (const button of await row.getByRole('button').all()) await expect(button).toBeDisabled();
+    }
+  });
+}
+
+test('monitor orientation controls disable while disconnected and recover', async ({ page }) => {
+  const sockets = await controlSockets(page);
+  await page.reload();
+  const row = thisPc(page).getByRole('group', { name: 'Monitor verticale', exact: true });
+  const horizontal = row.getByRole('button', { name: 'Orizzontale Monitor verticale', exact: true });
+  await expect(horizontal).toBeEnabled();
+  await sockets.cut();
+  for (const button of await row.getByRole('button').all()) await expect(button).toBeDisabled();
+  await sockets.restore();
+  await expect(horizontal).toBeEnabled();
 });

@@ -15,7 +15,7 @@ void test('registry lists all public mutations with labels, descriptions and the
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.config')?.kind, 'query');
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.save')?.kind, 'mutation');
   assert.equal(actions.find((a: { path: string }) => a.path === 'settings.restore')?.kind, 'mutation');
-  assert.equal(actions.length, 57);
+  assert.equal(actions.length, 58);
   assert.ok(!actions.some((a: { path: string }) => /^(study|music)\./.test(a.path)));
   // The palette runs an input-less action at once: a tag field here would turn "Avvia Pomodoro" into a form.
   assert.equal(actions.find((a: { path: string }) => a.path === 'pomodoro.start')?.schema, null);
@@ -38,6 +38,12 @@ void test('registry lists all public mutations with labels, descriptions and the
     required: ['label'],
   });
   assert.equal(actions.find((a: { path: string }) => a.path === 'media.playPause').schema, null);
+  assert.deepEqual(actions.find((a: { path: string }) => a.path === 'system.monitor.setOrientation').schema, {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    type: 'object',
+    properties: { output: { type: 'string' }, orientation: { type: 'string', enum: ['horizontal', 'vertical'] } },
+    required: ['output', 'orientation'],
+  });
   assert.equal(actions.find((a: { path: string }) => a.path === 'system.powerOff').danger, true);
   assert.ok(!actions.some((a: { path: string }) => a.path === 'registry.list'));
   assert.ok(!actions.some((a: { path: string }) => a.path.startsWith('assistant.')));
@@ -49,7 +55,7 @@ void test('registry is protected and automatically includes optional module acti
   const response = await app.inject('/trpc/registry.list');
   assert.equal(response.statusCode, 200);
   const actions = response.json().result.data;
-  assert.equal(actions.length, 59);
+  assert.equal(actions.length, 60);
   const configure = actions.find((a: { path: string }) => a.path === 'pomodoro.configure');
   assert.equal(configure.schema.properties.longBreakEvery.minimum, 0);
   assert.equal(configure.schema.properties.longBreakEvery.maximum, 100);
