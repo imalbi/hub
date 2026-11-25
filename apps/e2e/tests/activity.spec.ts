@@ -131,7 +131,6 @@ for (const view of [
     await pc.post('/trpc/pomodoro.start', { data: {} });
     for (const path of [
       '/desk',
-      '/desk',
       '/desk/media',
       '/desk/system',
       '/desk/system?tab=jobs',
@@ -167,7 +166,7 @@ test('Modifica stays in the top right corner, on Panoramica only, whether the ba
   expect(ballBox!.x).toBeLessThan(rail!.x + rail!.width);
   expect(ballBox!.y + ballBox!.height).toBeLessThanOrEqual(rail!.y);
   expect(busy!.x).toBeGreaterThan(ballBox!.x + ballBox!.width);
-  await page.goto('/desk');
+  await page.goto('/desk/media');
   await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toHaveCount(0);
 });
 

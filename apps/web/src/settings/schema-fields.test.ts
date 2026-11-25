@@ -6,7 +6,7 @@ import { getAt, setAt } from './path.ts';
 const schema = {
   type: 'object',
   properties: {
-    location: { type: 'string', default: 'Torino' },
+    location: { type: 'string', default: 'Roma' },
     profile: { type: 'string', multiline: true },
     hours: { type: 'integer' },
     remote: { type: 'boolean' },
@@ -35,7 +35,7 @@ void test('flat leaves become controls, even inside plain objects', () => {
     'access.key': 'secret',
     'access.domain': 'text',
   });
-  assert.equal(fields.find((f) => f.path.join('.') === 'location')?.placeholder, 'Torino');
+  assert.equal(fields.find((f) => f.path.join('.') === 'location')?.placeholder, 'Roma');
 });
 
 void test('lists of nested objects and unions are JSON blocks, named by their key', () => {

@@ -1,6 +1,8 @@
 # Writing a module
 
-Moved out of the root `AGENTS.md` to keep it short; the rules here are as binding as the ones there.
+The rules here are as binding as the ones in `AGENTS.md`.
+
+Hub has three module tiers: built-in lean core (`health`, `layout`, `devices`, `pairing`, `theme`, `notes`, `calendar`, `pomodoro`, `audio`, `media`, `system`, plus the Oggi view), optional modules installed from trusted Git catalogs, and private local modules. Catalogs have no personal default URL: the owner registers a source in Settings. Typed capabilities connect modules through `provides`, `requires` and `optional` rather than imports between their folders. Catalog code runs inside the Hub process with its permissions; disabling npm lifecycle scripts does not sandbox it.
 
 A module is one folder with `server.ts` (required) and `ui.tsx` (optional). Public modules live in `apps/server/src/modules/<name>/` and are listed in `apps/server/src/modules.ts`; private ones live in the gitignored `modules.local/` and Git catalog ones in `modules.installed/` (cloned repos in `modules.repos/`), both discovered at startup in order (`modules.local/` wins on name collision), no tracked file changes. `modules.example/hello/` is the working reference (state, live updates, an action, a file round trip, a widget, a zone page, a section on the Lavoro zone and a deck tile). <!-- guard-private: allow Repository-local module directory -->
 

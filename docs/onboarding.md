@@ -1,54 +1,44 @@
-# Onboarding a second developer
+# Developer onboarding
 
-Hub lives in three private GitHub repositories. Ask the owner for access to all three first.
+The public `hub` repository contains the server, web app, tests, desktop templates and development rules. It runs without access to private repositories.
 
-- `hub`, the root: server, web app, e2e, deploy templates, rules (`AGENTS.md`).
-- `hub-local`, cloned into `modules.local/`: private modules (Lavoro, Hue); gitignored by `hub`. <!-- guard-private: allow Repository-local module directory -->
-- `hub-plans`, cloned into `plans/`: plans, handoffs, `VISION.md`, `BACKLOG.md`; gitignored by `hub`.
+## 1. Clone and install
 
-## 1. Clone
+Use Node 24 or later and pnpm 11, with the version pinned in `package.json`.
 
 ```sh
 git clone https://github.com/imalbi/hub.git
 cd hub
-git clone https://github.com/imalbi/hub-local.git modules.local # guard-private: allow Repository-local module directory
-git clone https://github.com/imalbi/hub-plans.git plans
+pnpm install
+pnpm check
+pnpm demo
 ```
 
-The two nested folders must keep these exact names: the server discovers `modules.local/` and every agent reads `plans/`. <!-- guard-private: allow Repository-local module directory -->
+Installation sets up the Git hooks for privacy checks and verification. The demo prints local desk/deck URLs and uses fake data and temporary storage; it does not control the desktop.
 
-## 2. Install
+## 2. Configure a real instance
 
-Node 24 or later and pnpm 11 (`corepack enable` gives the version pinned in `package.json`).
+Copy `config.example.json` to `config.local.json` and fill in your own values. Configuration and databases are gitignored. Keep credentials and device identifiers private. `pnpm dev` starts the real server on loopback with Vite; see the root [README](../README.md) for desktop requirements and trust boundaries.
 
-```sh
-pnpm install          # also points git at .githooks (pre-commit, commit-msg, pre-push)
-pnpm check            # about 15 s; must be green before you change anything
-pnpm dev              # server on 127.0.0.1:4180, web app through Vite
-```
+`.private-words` is an optional private word list for the guard. It stays on its owner's machine; checks work without it.
 
-## 3. Your own config
+## 3. Add modules
 
-Copy `config.example.json` to `config.local.json` and fill in your own values. It is gitignored and never shared: it holds personal settings and API keys (Indeed, Gemini). Get your own keys; do not reuse the owner's. Databases (`*.db`) are local too: you start with empty ones.
+Read [Writing a module](modules.md) before changing a module. Optional trusted Git catalogs install into `modules.installed/`, with repository clones in `modules.repos/`. No catalog is registered by default. Personal modules belong in the gitignored `modules.local/`. <!-- guard-private: allow Repository-local module directory -->
 
-`.private-words` is the owner's private word list for `pnpm guard`. It stays on the owner's machine; the guard runs without it.
+The owner's additional repositories are **private** and require explicit access:
 
-## 4. Before writing code
+- `hub-local`, optionally cloned into `modules.local/`, holds private modules. <!-- guard-private: allow Repository-local module directory -->
+- `hub-plans`, optionally cloned into `plans/`, holds the project vision, approved plans and handoffs.
 
-Read, in order: `AGENTS.md`, `plans/VISION.md`, `plans/README.md`, then `docs/modules.md` before touching a module. The rules there apply to people and agents alike.
+Neither is required for public development. Collaborators using that private planning workflow must keep the exact folder names and follow the claim/review process in `AGENTS.md` and `plans/README.md`.
 
-## 5. Working in parallel
+## 4. Change and verify
 
-`AGENTS.md` was written for one owner with local-only git. With two people, until the owner updates it:
+Read `AGENTS.md` first. Authorized collaborators also read the private `plans/VISION.md` and `plans/README.md`. Pull the repositories you have access to before starting; claim a planned step before editing and do not overlap changes to the same files.
 
-- `git pull --rebase` in all three repositories before starting a step.
-- Take a step by writing your name in its row of `plans/README.md` and pushing `hub-plans` at once, so two people never run steps that edit the same files (Lavoro steps all touch `config.ts` and `server.ts`).
-- After the reviewed commit, push the repositories it touched. Never force-push `main`.
+Run targeted tests while working, `pnpm check` before handoff and the completion gate required by `AGENTS.md` before committing or pushing. Never commit local configuration or personal fixtures.
 
-## 6. Windows
+## Platform support
 
-Hub was built on Linux (CachyOS, Hyprland, Caelestia) and has not been run on Windows.
-
-- The server and web app are plain Node and React; the Linux-only parts are the system integrations, which call Linux tools: audio (`wpctl`), media (`playerctl`), notifications (`notify-send`), the Hue light (BlueZ through `busctl`), AirPlay (`uxplay`), music (`mpv`), and the desktop install (systemd user service, Hyprland config).
-- WSL2 with Ubuntu is the closest match for development, tests and e2e.
-- Running Hub as a Windows desktop app means porting those integrations: plan it as its own step with the owner, not as part of installing.
+Hub was built on Linux with Hyprland and Caelestia. Windows has not been verified. The clients and fake demo use Node and React; real desktop integrations call Linux tools such as `wpctl`, `playerctl`, `notify-send`, systemd and Hyprland. Optional modules can have additional system dependencies. Porting these integrations is separate from installation.

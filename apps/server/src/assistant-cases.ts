@@ -34,7 +34,7 @@ export const assistantCases: AssistantCase[] = [
   { sentence: 'cerca nuovi annunci di lavoro', calls: [call('lavoro.raccogli')] },
   { sentence: 'torna alla canzone precedente', calls: [call('media.previous')] },
   { sentence: 'avvia airplay', calls: [call('airplay.start')] },
-  { sentence: 'che tempo fa a Torino?', calls: [] },
+  { sentence: 'che tempo fa a Roma?', calls: [] },
   { sentence: 'grazie, a posto così', calls: [] },
   {
     sentence: 'metti le casse e fai partire la musica',

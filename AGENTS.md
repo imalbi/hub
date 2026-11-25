@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hub is a personal control center: one Fastify server on the desktop (CachyOS, Hyprland + Caelestia) exposes a registry of actions to two React clients, `/desk` (dashboard in the `special:hub` workspace) and `/deck` (Stream Deck style PWA on an iPhone X, Safari iOS 16.7). Design doc: https://claude.ai/artifact/EoUAnyrHmvFALAseJp25Cy
+Hub is a personal control center: one Fastify server on the desktop (CachyOS, Hyprland + Caelestia) exposes a registry of actions to two React clients, `/desk` (dashboard in the `special:hub` workspace) and `/deck` (Stream Deck style PWA on an old iPhone). Design doc (private): https://claude.ai/artifact/EoUAnyrHmvFALAseJp25Cy
 
 ## Commands
 
@@ -45,7 +45,7 @@ A module is one folder with `server.ts` (`defineModule`, required) and `ui.tsx` 
 
 ## Hard rules
 
-- **Public repo, private life stays out.** The repo is public (showcase, all rights reserved). No home paths, hostnames, IPs, device names, tokens or personal data in tracked files. Personal modules (family, study, mail, client sites) live in the gitignored `modules.local/`; personal values in the gitignored `config.local.json`, with a fake `config.example.json` tracked. If a change needs a personal value, read it from config, never hardcode it. `pnpm guard` enforces built-in patterns and an optional gitignored `.private-words` list; only the owner fills that list. Never open or print it. <!-- guard-private: allow Repository-local module directory -->
+- **Public repo, private life stays out.** The repo is public (showcase, all rights reserved). No home paths, hostnames, IPs, device names, tokens or personal data in tracked files. Personal modules live in the gitignored `modules.local/`; personal values in the gitignored `config.local.json`, with a fake `config.example.json` tracked. If a change needs a personal value, read it from config, never hardcode it. `pnpm guard` enforces built-in patterns and an optional gitignored `.private-words` list; only the owner fills that list. Never open or print it. <!-- guard-private: allow Repository-local module directory -->
 - **Only registry actions run.** The server never executes arbitrary shell commands, not even when an LLM asks. Every side effect is an action with a zod-validated input. Spawn binaries with an argument array (`execFile`), never a shell string.
 - **Never read secrets.** Do not open, cat or print `.env*` or `config.local.json`.
 - **Loopback unless paired.** The server binds `127.0.0.1` by default. `server.host` in the config can open it to the LAN, and then only a PC (loopback) or a paired device token gets past `protectedProcedure` (see "Trust, pairing and the LAN" in `apps/server/AGENTS.md`). Never bind to the LAN or edit the real config yourself: the owner does that.
@@ -68,19 +68,21 @@ A module is one folder with `server.ts` (`defineModule`, required) and `ui.tsx` 
 - **Keep plans executable.** Before a step, compare its prerequisites and named APIs with the current code/tests and the latest handoffs; record the checked commit, existing work and unresolved conflicts in the plan. Correct stale facts without reopening approved decisions; stop on a decision conflict. At handoff, update `plans/README.md` and the instructions/acceptance in affected future plans too, so an old instruction cannot undo shipped work. Anything a plan leaves to "a later step" or "its own plan" must land in that plan, or in `plans/BACKLOG.md` when the plan does not exist yet; a rewrite of a plan keeps or explicitly drops what earlier plans left to it. Keep historical notes labelled as history; never mark future checks passed from an earlier run.
 - **Settle from the code, stop only on decisions.** A doubt the code or tests answer (an ambiguous rule, a stale path, a line the code contradicts) is not a reason to stop: correct it, note in Progress the file and line that settle it, and continue. Stop and ask only on a conflict with a decision the plan records, or on a choice that is the owner's.
 - Library and system APIs are checked before use, not recalled: Context7 for docs (TanStack, tRPC, Fastify, Tailwind), the installed source in `node_modules` or `/usr` for behaviour, `--help` for CLIs (`wpctl`, `playerctl`, `hyprctl`, `caelestia`).
-- **Several developers, three private repos.** `hub` (root), `hub-local` cloned into `modules.local/` and `hub-plans` cloned into `plans/`; setup in `docs/onboarding.md`. Before a step, `git pull --rebase` in all three; if a pull conflicts, stop and ask. <!-- guard-private: allow Repository-local module directory -->
+- **Several developers, one public and two private repos.** `hub` (public root), `hub-local` (private) cloned into `modules.local/` and `hub-plans` (private) cloned into `plans/`; setup in `docs/onboarding.md`. Before a step, `git pull --rebase` in all three; if a pull conflicts, stop and ask. <!-- guard-private: allow Repository-local module directory -->
 - **Claim before starting.** A step is taken by writing `taken by <name>, <date>` in its row of `plans/README.md` and pushing `hub-plans` at once; a step already claimed by someone else is not started. Steps that edit the same files (every Lavoro source step touches `config.ts` and `server.ts`) never run in parallel, even under different owners.
 - Start a step from a clean tree; executors never commit or push; the reviewing session makes one commit per step after review, then pushes the repos it touched (`hub`, `hub-local`, `hub-plans` for plan updates) and clears the claim. Never force-push `main`, never rewrite pushed history. At the end of a step, after `pnpm check` is green, stage everything with `git add -A` and check the staged file list for anything that must not be tracked. The guard runs in the hook; still read the staged list. Details in `plans/README.md`. No `Co-Authored-By` or session trailers.
-- UI changes are not done until checked in a real browser (desk at 4K, deck at iPhone X size, 375x812).
+- UI changes are not done until checked in a real browser (desk at 4K, deck at 375x812).
 - **A plan that names an approved mockup is checked against it live, by the executor and again by the reviewer.**
   - Open the board (Artifact tool `read`, or its local copy) and render it at the same viewport as the page.
   - Screenshot both, view them side by side, and walk the board element by element: layout and proportions, order, grouping, what floats and where, borders, counts and copy.
   - The desk root is 150%, so built px are 1.5x the board's.
   - Every difference is either fixed or written in the plan as a deviation for the owner to accept.
   - A report that says "matches the mockup" without that walk is not a check: the reviewer redoes it, never trusting it. Two shell slices passed review that way while the rail and the Musica player did not match their boards (2026-11-13).
-- Design references for this project are in `~/swipefile_0.1/refs.json`, entries with `project: "hub"`; read each `note` before using it.
+- Design references live in the private project reference library; ask the owner for access and read each reference note before using it.
 
 ## Verification and tests
+
+- `pnpm demo` uses `scripts/demo.ts` with fresh temporary storage, empty module roots for both server and Vite, and an empty served-build root. Keep these overrides together: otherwise an inherited module root or existing `dist` can expose personal UI in the fake demo.
 
 Nothing is done until it is verified, and nothing verified once stays unguarded.
 

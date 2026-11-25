@@ -27,7 +27,8 @@
     "smoke": "pnpm --filter @hub/server smoke",
     "serve": "pnpm --filter @hub/web build && pnpm --filter @hub/server start",
     "desktop:install": "node deploy/install.ts",
-    "assistant:eval": "node apps/server/src/assistant-eval.ts"
+    "assistant:eval": "node apps/server/src/assistant-eval.ts",
+    "demo": "node scripts/demo.ts"
   },
   "devDependencies": {
     "oxlint": "^1.90.0",
@@ -35,5 +36,6 @@
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "7.0.2"
-  }
+  },
+  "license": "UNLICENSED"
 }
