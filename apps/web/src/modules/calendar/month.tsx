@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { m } from '../../paraglide/messages.js';
@@ -66,9 +67,9 @@ export function MonthView({
 }) {
   const days = monthDays(month);
   const range = { from: days[0] ?? today, to: days[41] ?? today };
-  const events = useEvents(range).data ?? [];
+  const events = useEvents(range);
   const { items, sources } = useContributions(range);
-  const byDay = entriesByDay(events, items);
+  const byDay = entriesByDay(events.data ?? [], items);
   const { grid, capacity } = useChipCapacity();
 
   const chosen = byDay.get(selected) ?? [];
@@ -182,7 +183,11 @@ export function MonthView({
             );
           })}
         </ul>
-        {chosen.length === 0 && <EmptyState scene="calendar" title={m.calendar_empty()} />}
+        {events.isPending ? (
+          <LoadingSkeleton label={m.tile_loading()} />
+        ) : chosen.length === 0 ? (
+          <EmptyState scene="calendar" title={m.calendar_empty()} />
+        ) : null}
         <div className="flex-1" />
         <p className="text-caption text-muted-foreground">{m.calendar_note()}</p>
       </aside>

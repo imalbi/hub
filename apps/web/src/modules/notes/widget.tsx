@@ -3,6 +3,7 @@ import { NoteIcon, PlusIcon } from '@phosphor-icons/react';
 import { AnimatedRow, AnimatedRows } from '../../components/animated-list.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { Kbd } from '../../components/ui/kbd.tsx';
 import { localDay } from '../../lib/day.ts';
 import { useNow } from '../../lib/use-now.ts';
@@ -37,34 +38,38 @@ export function NotesWidget({ size }: { size: WidgetSize }) {
           </button>
         }
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-md overflow-y-auto">
-          {notes && !notes.length && (
-            <EmptyState
-              variant="compact"
-              icon={<NoteIcon className="size-icon-lg" aria-hidden="true" />}
-              title={m.notes_empty()}
-            />
-          )}
-          <ul className="notes-presence-list grid grid-cols-3 gap-sm">
-            <AnimatedRows>
-              {due
-                .toSorted((a, b) => b.createdAt - a.createdAt)
-                .map((note) => (
-                  <NoteCard key={note.id} note={note} />
-                ))}
-            </AnimatedRows>
-          </ul>
-          <section aria-label={m.notes_upcoming()} className="notes-presence-section flex flex-col gap-xs">
-            <h3 className="text-label text-muted-foreground">{m.notes_upcoming()}</h3>
-            <ul className="grid grid-cols-3 gap-sm">
+        {notes === undefined ? (
+          <LoadingSkeleton label={m.tile_loading()} />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-md overflow-y-auto">
+            {notes && !notes.length && (
+              <EmptyState
+                variant="compact"
+                icon={<NoteIcon className="size-icon-lg" aria-hidden="true" />}
+                title={m.notes_empty()}
+              />
+            )}
+            <ul className="notes-presence-list grid grid-cols-3 gap-sm">
               <AnimatedRows>
-                {upcoming.map((note) => (
-                  <NoteCard key={note.id} note={note} today={today} />
-                ))}
+                {due
+                  .toSorted((a, b) => b.createdAt - a.createdAt)
+                  .map((note) => (
+                    <NoteCard key={note.id} note={note} />
+                  ))}
               </AnimatedRows>
             </ul>
-          </section>
-        </div>
+            <section aria-label={m.notes_upcoming()} className="notes-presence-section flex flex-col gap-xs">
+              <h3 className="text-label text-muted-foreground">{m.notes_upcoming()}</h3>
+              <ul className="grid grid-cols-3 gap-sm">
+                <AnimatedRows>
+                  {upcoming.map((note) => (
+                    <NoteCard key={note.id} note={note} today={today} />
+                  ))}
+                </AnimatedRows>
+              </ul>
+            </section>
+          </div>
+        )}
       </Panel>
     );
   }
@@ -85,7 +90,7 @@ export function NotesWidget({ size }: { size: WidgetSize }) {
   if (notes === undefined) {
     return (
       <Panel title={m.notes_title()} className="h-full" action={headerAction}>
-        {null}
+        <LoadingSkeleton label={m.tile_loading()} />
       </Panel>
     );
   }

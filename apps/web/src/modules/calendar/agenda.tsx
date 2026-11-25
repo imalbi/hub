@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
@@ -85,10 +86,10 @@ export function AgendaView({
     from: start <= miniStart ? start : miniStart,
     to: agendaEnd >= miniEnd ? agendaEnd : miniEnd,
   };
-  const events = useEvents(range).data ?? [];
+  const events = useEvents(range);
   const { items, sources } = useContributions(range);
   const shown = new Map(
-    [...entriesByDay(events, items)].map(([day, entries]) => [day, filterEntries(entries, show)] as const),
+    [...entriesByDay(events.data ?? [], items)].map(([day, entries]) => [day, filterEntries(entries, show)] as const),
   );
   const list = agendaDays(shown, start, AGENDA_DAYS);
   const words = { today: m.calendar_today(), tomorrow: m.calendar_tomorrow() };
@@ -128,7 +129,11 @@ export function AgendaView({
             </li>
           ))}
         </ol>
-        {list.length === 0 && <EmptyState scene="calendar" title={m.calendar_empty()} />}
+        {events.isPending ? (
+          <LoadingSkeleton label={m.tile_loading()} />
+        ) : list.length === 0 ? (
+          <EmptyState scene="calendar" title={m.calendar_empty()} />
+        ) : null}
       </section>
       <aside className="flex min-h-0 w-day-panel shrink-0 flex-col gap-md">
         <section aria-label={m.calendar_pick_month()} className={card}>

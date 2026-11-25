@@ -4,6 +4,7 @@ import { DeviceMobileIcon } from '@phosphor-icons/react';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
 import { useTRPC } from '../../lib/trpc.ts';
+import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { HoldButton } from '../../components/hold-button.tsx';
@@ -96,6 +97,7 @@ export function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pai
   return (
     <section className="flex flex-col gap-md" aria-label={m.devices_phones_title()}>
       <h3 className="text-label text-muted-foreground">{m.devices_phones_title()}</h3>
+      {devices.isPending && <LoadingSkeleton label={m.tile_loading()} />}
       {devices.data?.length === 0 && (
         <EmptyState
           illustration={<DeviceMobileIcon className="size-3xl text-muted-foreground" aria-hidden />}

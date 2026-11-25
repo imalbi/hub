@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures.ts';
+import { clean, seed } from './calendar-data.ts';
 import type { Page } from '@playwright/test';
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
@@ -163,6 +164,109 @@ for (const entry of cases) {
       const target = page.locator(selector).first();
       await expect(target).toBeVisible();
       expectStablePosition(boxes[index] ?? null, await target.boundingBox());
+    }
+  });
+}
+
+async function delayQuery(page: Page, path: string) {
+  let release = () => {};
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/trpc/*', async (route) => {
+    const paths = new URL(route.request().url()).pathname.replace('/trpc/', '').split(',');
+    if (!paths.includes(path)) return route.fallback();
+    await pending;
+    await route.continue();
+  });
+  return release;
+}
+
+for (const view of ['month', 'agenda']) {
+  test(`calendar ${view} waits for initial events before showing content`, async ({ page, pc }) => {
+    await page.clock.setFixedTime(new Date(2026, 10, 15, 10));
+    await seed(pc);
+    await page.addInitScript((value) => localStorage.setItem('hub.calendar.view', JSON.stringify(value)), view);
+    const release = await delayQuery(page, 'calendar.range');
+    try {
+      await page.goto('/desk/calendar');
+      const content =
+        view === 'month'
+          ? page.getByRole('complementary', { name: 'domenica 15 novembre' })
+          : page.getByRole('region', { name: 'Prossimi giorni' });
+      const loading = content.getByRole('status', { name: 'Caricamento' });
+      await expect(loading).toBeVisible();
+      await expect(content.locator('[data-empty-scene="calendar"]')).toHaveCount(0);
+      release();
+      await expect(loading).toHaveCount(0);
+      await expect(content.getByText('Dentista', { exact: true })).toBeVisible();
+    } finally {
+      release();
+      await page.unrouteAll({ behavior: 'wait' });
+      await page.close();
+      await clean(pc);
+    }
+  });
+}
+
+for (const size of ['medium', 'large', 'wide', 'full']) {
+  test(`notes ${size} waits for initial subscription before showing an empty state`, async ({ page, pc }) => {
+    await pc.post('/trpc/layout.save', {
+      data: { zone: 'overview', items: [{ widget: 'notes', size, x: 0, y: 0 }] },
+    });
+    const release = await delaySubscription(page, 'notes.onOpen');
+    try {
+      await page.goto('/desk');
+      const widget = page.locator('[data-widget="notes"]');
+      const loading = widget.getByRole('status', { name: 'Caricamento' });
+      await expect(loading).toBeVisible();
+      await expect(widget.getByText('Nessun post-it. Premi N per scriverne uno.')).toHaveCount(0);
+      release();
+      await expect(loading).toHaveCount(0);
+      await expect(widget.getByText('Nessun post-it. Premi N per scriverne uno.')).toBeVisible();
+    } finally {
+      release();
+      await page.close();
+      await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
+    }
+  });
+}
+
+for (const entry of [
+  {
+    name: 'devices',
+    path: '/desk/devices',
+    query: 'devices.list',
+    label: 'Caricamento',
+    empty: 'Nessun dispositivo abbinato',
+  },
+  {
+    name: 'catalog',
+    path: '/desk/settings/catalog',
+    query: 'catalog.state',
+    label: 'Carico le impostazioni',
+    empty: 'Nessun repository',
+  },
+]) {
+  test(`${entry.name} waits for initial query with a skeleton`, async ({ page }) => {
+    const release = await delayQuery(page, entry.query);
+    try {
+      await page.goto(entry.path);
+      const loading =
+        entry.name === 'devices'
+          ? page.getByRole('region', { name: 'Telefoni e tablet' }).getByRole('status', { name: entry.label })
+          : page.getByRole('status', { name: entry.label });
+      await expect(loading).toBeVisible();
+      await expect(loading.locator('[aria-hidden="true"]')).toHaveCount(3);
+      await expect(page.getByText(entry.empty, { exact: true })).toHaveCount(0);
+      release();
+      await expect(loading).toHaveCount(0);
+      if (entry.name === 'catalog') await expect(page.getByText(entry.empty, { exact: true })).toBeVisible();
+      else
+        await expect(page.getByRole('region', { name: 'Telefoni e tablet' }).getByRole('listitem')).not.toHaveCount(0);
+    } finally {
+      release();
+      await page.unrouteAll({ behavior: 'wait' });
     }
   });
 }

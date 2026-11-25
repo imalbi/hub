@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
 import { ActionButton } from '../components/ui/action-button.tsx';
 import { EmptyState } from '../components/ui/empty-state.tsx';
+import { LoadingSkeleton } from '../components/ui/loading-skeleton.tsx';
 import { Input } from '../components/ui/input.tsx';
 import { useTRPC } from '../lib/trpc.ts';
 import { m } from '../paraglide/messages.js';
@@ -178,7 +179,7 @@ export function CatalogPage() {
           </ActionButton>
         </form>
       </Panel>
-      {catalog.isPending && <output className="text-body text-muted-foreground">{m.settings_loading()}</output>}
+      {catalog.isPending && <LoadingSkeleton label={m.settings_loading()} />}
       {catalog.data?.sources.length === 0 && (
         <EmptyState variant="compact" title={m.catalog_empty()} description={m.catalog_empty_text()} />
       )}
