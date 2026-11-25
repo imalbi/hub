@@ -13,6 +13,7 @@
   },
   "server": {
     "host": "127.0.0.1",
+    "deviceTokenTtlDays": 90,
     "allowedOrigins": ["http://hub.example.test:4180"]
   },
   "system": {

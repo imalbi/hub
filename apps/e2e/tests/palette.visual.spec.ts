@@ -7,7 +7,21 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await freezePomodoro(page);
   await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
-  await answerQueries(page, { health: { ok: true, uptime: 42 }, 'pomodoro.today': [] });
+  await answerQueries(page, {
+    health: { ok: true, uptime: 42 },
+    'pomodoro.today': [],
+    // The access widget is visible behind the palette at 4K; pairing dates must not follow the test run's day.
+    'devices.list': [
+      {
+        id: 1,
+        name: 'iPhone',
+        createdAt: Date.parse('2026-11-04T12:00:00Z'),
+        lastSeenAt: Date.parse('2026-11-04T12:00:00Z'),
+        lastSeenIp: '192.0.2.10',
+        expiresAt: Date.parse('2027-02-02T12:00:00Z'),
+      },
+    ],
+  });
   await page.goto('/desk');
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Panoramica', exact: true })).toBeVisible();

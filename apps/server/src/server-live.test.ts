@@ -26,7 +26,7 @@ const config: Config = {
       { label: 'Monitor', match: 'HDMI Monitor' },
     ],
   },
-  server: { host: '127.0.0.1', allowedOrigins: [] },
+  server: { deviceTokenTtlDays: 90, host: '127.0.0.1', allowedOrigins: [] },
 };
 
 const run = createFakeDesktop();

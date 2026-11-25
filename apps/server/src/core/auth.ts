@@ -2,11 +2,12 @@ import { eq } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingHttpHeaders } from 'node:http';
 import type { Db } from '../db/index.ts';
+import { DEFAULT_DEVICE_TOKEN_TTL_DAYS } from './config-schema.ts';
 import { agents, devices } from '../db/schema.ts';
 
 export type Client =
   | { kind: 'loopback' }
-  | { kind: 'device'; deviceId: number }
+  | { kind: 'device'; deviceId: number; expiresAt: number }
   | { kind: 'agent'; agentId: number; name: string }
   | { kind: 'anonymous' };
 
@@ -42,7 +43,15 @@ export function extractToken(
 
 const SEEN_EVERY_MS = 60_000;
 
-export async function resolveClient(db: Db, isLoopback: IsLoopback, peer: Peer, token: string | null): Promise<Client> {
+export const deviceTokenExpiresAt = (createdAt: Date, ttlDays: number) => createdAt.getTime() + ttlDays * 86_400_000;
+
+export async function resolveClient(
+  db: Db,
+  isLoopback: IsLoopback,
+  peer: Peer,
+  token: string | null,
+  ttlDays = DEFAULT_DEVICE_TOKEN_TTL_DAYS,
+): Promise<Client> {
   if (isLoopback(peer)) return { kind: 'loopback' };
   if (!token) return { kind: 'anonymous' };
   const [device] = await db
@@ -52,13 +61,17 @@ export async function resolveClient(db: Db, isLoopback: IsLoopback, peer: Peer, 
     .limit(1);
   if (!device) return { kind: 'anonymous' };
   const now = Date.now();
+  const expiresAt = deviceTokenExpiresAt(device.createdAt, ttlDays);
+  if (now >= expiresAt) return { kind: 'anonymous' };
+  const lastSeenIp = peer.socket.remoteAddress ?? null;
   // Not on every request: the deck polls nothing, but a socket and its calls would otherwise write all day.
-  if (now - device.lastSeenAt.getTime() >= SEEN_EVERY_MS)
+  const refreshSeen = now - device.lastSeenAt.getTime() >= SEEN_EVERY_MS;
+  if (refreshSeen || device.lastSeenIp !== lastSeenIp)
     await db
       .update(devices)
-      .set({ lastSeenAt: new Date(now) })
+      .set({ lastSeenIp, ...(refreshSeen && { lastSeenAt: new Date(now) }) })
       .where(eq(devices.id, device.id));
-  return { kind: 'device', deviceId: device.id };
+  return { kind: 'device', deviceId: device.id, expiresAt };
 }
 
 type Closable = { close(code?: number, reason?: string): void; once(event: 'close', listener: () => void): unknown };
@@ -76,14 +89,23 @@ export const isSocket = (value: unknown): value is Closable =>
 export function createDeviceSockets() {
   const open = new Map<number, Set<Closable>>();
 
-  function track(deviceId: number, socket: Closable) {
+  function track(deviceId: number, socket: Closable, expiresAt: number) {
+    let expiry: NodeJS.Timeout | undefined;
+    function expire() {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) socket.close(4401, 'Device token expired');
+      // Node clamps longer delays to 1 ms; recheck at its maximum delay instead.
+      else expiry = setTimeout(expire, Math.min(remaining, 2_147_483_647)).unref();
+    }
     const sockets = open.get(deviceId) ?? new Set<Closable>();
     open.set(deviceId, sockets);
     sockets.add(socket);
     socket.once('close', () => {
+      clearTimeout(expiry);
       sockets.delete(socket);
       if (sockets.size === 0) open.delete(deviceId);
     });
+    expire();
   }
 
   function closeAll(deviceId: number) {

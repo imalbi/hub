@@ -150,3 +150,26 @@ void test('a push-only hub does not replay a state read after its last subscribe
   assert.deepEqual(await second.next(), { value: 'v2', done: false });
   await second.return();
 });
+
+void test('a new generation ignores a pending old read and reads fresh state without a poll', async () => {
+  for (const fails of [false, true]) {
+    let release: (() => void) | undefined;
+    let reads = 0;
+    const hub = createLiveHub(() => {
+      if (++reads > 1) return Promise.resolve('fresh');
+      return new Promise<string>((resolve, reject) => {
+        release = () => (fails ? reject(new Error('old failure')) : resolve('stale'));
+      });
+    }, null);
+    const first = new AbortController();
+    const consume = collect(hub.subscribe(first.signal), []);
+    await flush();
+    await stop(first, consume);
+    const second = hub.subscribe();
+    const next = second.next();
+    release?.();
+    assert.deepEqual(await next, { value: 'fresh', done: false });
+    assert.equal(reads, 2);
+    await second.return();
+  }
+});

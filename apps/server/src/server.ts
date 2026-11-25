@@ -168,6 +168,7 @@ export function buildServer({
       files,
       isLoopback,
       maxUploadMb: config.files?.maxUploadMb ?? 25,
+      deviceTokenTtlDays: config.server.deviceTokenTtlDays,
       origins: allowlist,
     }),
   );
@@ -232,7 +233,13 @@ export function buildServer({
               return reply.code(403).send({ error: 'Origin not allowed' });
             if (req.headers['sec-fetch-site'] === 'cross-site')
               return reply.code(403).send({ error: 'Cross-site request not allowed' });
-            const client = await resolveClient(db, isLoopback, req, extractToken(req.headers.authorization, null));
+            const client = await resolveClient(
+              db,
+              isLoopback,
+              req,
+              extractToken(req.headers.authorization, null),
+              config.server.deviceTokenTtlDays,
+            );
             if (client.kind === 'anonymous') return reply.code(401).send({ error: 'Pair this device first' });
             return undefined;
           });
@@ -338,9 +345,10 @@ export function buildServer({
                   isLoopback,
                   req,
                   extractToken(req.headers.authorization, info.connectionParams),
+                  config.server.deviceTokenTtlDays,
                 );
                 // For a WebSocket `res` is the socket, whatever the typings say.
-                if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res);
+                if (client.kind === 'device' && isSocket(res)) sockets.track(client.deviceId, res, client.expiresAt);
                 return {
                   db,
                   run,

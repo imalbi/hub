@@ -304,3 +304,35 @@ test('surface reserves its gutter when content does not overflow', async ({ page
   const after = (await panel.boundingBox())!;
   expect(Math.abs(after.x + after.width - right)).toBeLessThanOrEqual(1);
 });
+
+for (const width of [1920, 3840]) {
+  test(`Dispositivi shows last access, peer IP and pairing expiry at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 3840 ? 2160 : 1080 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.setFixedTime(new Date('2026-11-25T12:00:00Z'));
+    await answerQueries(page, {
+      'devices.list': [
+        {
+          id: 901,
+          name: 'Test phone',
+          lastSeenAt: Date.parse('2026-11-25T11:58:00Z'),
+          lastSeenIp: '2001:db8:1234:5678:abcd:ef01:2345:6789',
+          expiresAt: Date.parse('2027-02-23T12:00:00Z'),
+        },
+        {
+          id: 902,
+          name: 'Old phone',
+          lastSeenAt: Date.parse('2026-11-24T12:00:00Z'),
+          lastSeenIp: null,
+          expiresAt: Date.parse('2026-11-25T11:00:00Z'),
+        },
+      ],
+    });
+    await page.goto('/desk/devices');
+    const phones = page.getByRole('region', { name: 'Telefoni e tablet' });
+    await expect(phones.getByText('Ultimo indirizzo: 2001:db8:1234:5678:abcd:ef01:2345:6789')).toBeVisible();
+    await expect(phones.getByText('Abbinamento valido fino al 23/02/2027')).toBeVisible();
+    await expect(phones.getByText('Abbinamento scaduto: genera un nuovo codice')).toBeVisible();
+    await expect(phones).toHaveScreenshot(`device-token-metadata-${width}.png`);
+  });
+}

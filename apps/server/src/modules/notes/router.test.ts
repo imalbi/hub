@@ -206,7 +206,10 @@ void test('paired device receives about: null on open/onOpen and empty results o
     sockets: createDeviceSockets(),
     restart: () => false,
   };
-  const deviceCaller = router.createCaller({ ...baseContext, client: { kind: 'device', deviceId: 1 } });
+  const deviceCaller = router.createCaller({
+    ...baseContext,
+    client: { kind: 'device', deviceId: 1, expiresAt: Date.now() + 86_400_000 },
+  });
   const loopbackCaller = router.createCaller({ ...baseContext, client: { kind: 'loopback' } });
 
   const deviceSub = (await deviceCaller.onOpen())[Symbol.asyncIterator]();

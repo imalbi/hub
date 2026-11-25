@@ -1,7 +1,15 @@
+import type { Client } from './auth.ts';
 import { randomUUID } from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 
-type Request = { agentId: number; name: string; action: string; input: unknown; run: () => Promise<unknown> };
+type Request = {
+  agentId: number;
+  name: string;
+  action: string;
+  input: unknown;
+  deviceForbidden?: boolean;
+  run: () => Promise<unknown>;
+};
 type Status =
   | { state: 'pending' | 'running' | 'denied' | 'expired' }
   | { state: 'confirmed'; result: unknown }
@@ -55,8 +63,10 @@ export function createConfirmations(now: () => number = Date.now) {
       emit();
       return id;
     },
-    async confirm(id: string) {
+    async confirm(id: string, client: Client) {
       const entry = requirePending(id);
+      if (client.kind !== 'loopback' && (client.kind !== 'device' || entry.deviceForbidden))
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the PC can approve this action' });
       entry.status = { state: 'running' };
       emit();
       try {

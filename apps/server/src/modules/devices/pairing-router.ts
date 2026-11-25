@@ -28,9 +28,13 @@ export function createPairingRouter(pairing: PairingCodes) {
 
         const token = newToken();
         const now = new Date();
-        await ctx.db
-          .insert(devices)
-          .values({ name: input.deviceName, tokenHash: hashToken(token), createdAt: now, lastSeenAt: now });
+        await ctx.db.insert(devices).values({
+          name: input.deviceName,
+          tokenHash: hashToken(token),
+          createdAt: now,
+          lastSeenAt: now,
+          lastSeenIp: ctx.remoteAddress || null,
+        });
         // The only time the token exists in the clear: the database keeps its hash.
         return { token };
       }),

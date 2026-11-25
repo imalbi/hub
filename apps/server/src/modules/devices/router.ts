@@ -1,3 +1,4 @@
+import { deviceTokenExpiresAt } from '../../core/auth.ts';
 import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -10,12 +11,16 @@ export const devicesRouter = router({
   deckUrl: loopbackProcedure.query(({ ctx }) => deckUrl(ctx.config)),
 
   list: loopbackProcedure.query(async ({ ctx }) =>
-    (await ctx.db.select().from(devices).orderBy(devices.id)).map(({ id, name, createdAt, lastSeenAt }) => ({
-      id,
-      name,
-      createdAt: createdAt.getTime(),
-      lastSeenAt: lastSeenAt.getTime(),
-    })),
+    (await ctx.db.select().from(devices).orderBy(devices.id)).map(
+      ({ id, name, createdAt, lastSeenAt, lastSeenIp }) => ({
+        id,
+        name,
+        createdAt: createdAt.getTime(),
+        lastSeenAt: lastSeenAt.getTime(),
+        lastSeenIp,
+        expiresAt: deviceTokenExpiresAt(createdAt, ctx.config.server.deviceTokenTtlDays),
+      }),
+    ),
   ),
 
   revoke: loopbackProcedure

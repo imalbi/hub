@@ -54,6 +54,7 @@ const config: Config = {
     ],
   },
   server: {
+    ...emptyConfig.server,
     host: '127.0.0.1',
     allowedOrigins: [
       `http://localhost:${webPort}`,

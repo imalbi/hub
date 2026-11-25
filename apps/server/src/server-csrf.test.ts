@@ -107,7 +107,10 @@ void test('foreign, missing or malformed Host headers are refused across all rou
   const app = buildServer({
     dbPath: ':memory:',
     deps: { run: createFakeDesktop() },
-    config: { ...emptyConfig, server: { host: '127.0.0.1', allowedOrigins: ['http://hub.example:4180'] } },
+    config: {
+      ...emptyConfig,
+      server: { deviceTokenTtlDays: 90, host: '127.0.0.1', allowedOrigins: ['http://hub.example:4180'] },
+    },
   });
   const port = Number(new URL(await app.listen({ host: '127.0.0.1', port: 0 })).port);
   t.after(() => app.close());

@@ -201,7 +201,7 @@ void test('model confirmation cannot power off until the human confirms', async 
       false,
     );
     assert.ok(pending[0]);
-    await confirmations.confirm(pending[0].id);
+    await confirmations.confirm(pending[0].id, { kind: 'loopback' });
     assert.equal(commands.filter((call) => call[1] === 'poweroff').length, 1);
   } finally {
     unsubscribe();

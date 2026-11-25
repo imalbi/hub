@@ -15,8 +15,16 @@ export async function registerFiles(
     files,
     isLoopback,
     maxUploadMb,
+    deviceTokenTtlDays,
     origins,
-  }: { db: Db; files: Files; isLoopback: IsLoopback; maxUploadMb: number; origins: readonly string[] },
+  }: {
+    db: Db;
+    files: Files;
+    isLoopback: IsLoopback;
+    maxUploadMb: number;
+    deviceTokenTtlDays?: number;
+    origins: readonly string[];
+  },
 ) {
   await app.register(multipart, {
     limits: { fileSize: Math.floor(maxUploadMb * 1024 * 1024), files: 1, fields: 0, parts: 1 },
@@ -28,7 +36,13 @@ export async function registerFiles(
     const { origin } = req.headers;
     if (origin !== undefined && !isAllowedOrigin(origin, origins))
       return reply.code(403).send({ error: 'Origin not allowed' });
-    const client = await resolveClient(db, isLoopback, req, extractToken(req.headers.authorization, null));
+    const client = await resolveClient(
+      db,
+      isLoopback,
+      req,
+      extractToken(req.headers.authorization, null),
+      deviceTokenTtlDays,
+    );
     if (client.kind === 'anonymous') return reply.code(401).send({ error: 'Pair this device first' });
     return undefined;
   });

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertCanListen, configFilePath, loadConfig } from './core/config.ts';
 import { RESTART_EXIT_CODE } from './core/settings-router.ts';
+import { createShutdown } from './core/shutdown.ts';
 import { buildServer } from './server.ts';
 
 // XDG state dir: personal data stays out of the repo and survives reinstalls of it.
@@ -34,11 +35,16 @@ const app = buildServer({
   settings: {
     configPath: configFilePath(),
     // Closing first runs every module's cleanup: a running Lavoro collection is cancelled and recorded, not killed.
-    onRestart: process.env.INVOCATION_ID
-      ? () => void app.close().finally(() => process.exit(RESTART_EXIT_CODE))
-      : undefined,
+    onRestart: process.env.INVOCATION_ID ? () => shutdown(RESTART_EXIT_CODE) : undefined,
   },
 });
+const shutdown = createShutdown(
+  () => app.close(),
+  (error) => app.log.error(error, 'Shutdown failed'),
+);
+process.on('SIGTERM', () => shutdown());
+process.on('SIGINT', () => shutdown());
+
 await app.listen({
   host: config.server.host,
   port: Number(process.env.HUB_PORT ?? 4180),

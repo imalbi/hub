@@ -22,7 +22,7 @@ void test('a missing config file is an empty config', () => {
     jobs: { maxConcurrent: 2 },
     mcp: { enabled: true, client: 'claude' },
     modulesOff: [],
-    server: { host: '127.0.0.1', allowedOrigins: [] },
+    server: { deviceTokenTtlDays: 90, host: '127.0.0.1', allowedOrigins: [] },
     pomodoro: { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },
     theme: {},
     system: { monitors: [] },
@@ -72,6 +72,19 @@ void test('startup refuses a LAN host with an empty origin allowlist, and says w
     assert.doesNotThrow(() => assertCanListen({ ...lan, server: { ...lan.server, host } }));
   }
   assert.doesNotThrow(() =>
-    assertCanListen({ ...lan, server: { host: '0.0.0.0', allowedOrigins: ['http://hub.example:4180'] } }),
+    assertCanListen({
+      ...lan,
+      server: { deviceTokenTtlDays: 90, host: '0.0.0.0', allowedOrigins: ['http://hub.example:4180'] },
+    }),
   );
+});
+
+void test('device TTL defaults to 90 days and accepts only bounded whole days', () => {
+  assert.equal(loadConfig(configFile('{}')).server.deviceTokenTtlDays, 90);
+  assert.equal(loadConfig(configFile('{"server":{"deviceTokenTtlDays":7}}')).server.deviceTokenTtlDays, 7);
+  for (const deviceTokenTtlDays of [0, -1, 1.5, 366])
+    assert.throws(
+      () => loadConfig(configFile(JSON.stringify({ server: { deviceTokenTtlDays } }))),
+      /deviceTokenTtlDays/,
+    );
 });

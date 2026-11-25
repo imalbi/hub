@@ -56,6 +56,7 @@ export const devices = sqliteTable('devices', {
   tokenHash: text('token_hash').notNull().unique(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }).notNull(),
+  lastSeenIp: text('last_seen_ip'),
 });
 
 // The owner's own themes. `values` is validated by `themeValuesSchema` on the way in and out; only hex colors reach CSS.

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+export const DEFAULT_DEVICE_TOKEN_TTL_DAYS = 90;
+
 export const coreConfigSchema = z.object({
   assistant: z
     .object({
@@ -76,13 +78,19 @@ export const coreConfigSchema = z.object({
         title: 'Indirizzo di ascolto',
         description: 'Dove Hub accetta connessioni; 127.0.0.1 solo questo computer, 0.0.0.0 anche la rete di casa.',
       }),
+      deviceTokenTtlDays: z.number().int().min(1).max(365).default(DEFAULT_DEVICE_TOKEN_TTL_DAYS).meta({
+        title: 'Durata abbinamento',
+        description:
+          'Giorni dalla data di abbinamento prima di richiedere un nuovo codice. Vale anche per i dispositivi già abbinati.',
+        unit: 'giorni',
+      }),
       // Extra page origins allowed to open the WebSocket (the deck on the LAN); dev origins are built in.
       allowedOrigins: z.array(z.string().min(1)).default([]).meta({
         title: 'Origini consentite',
         description: 'Indirizzi di pagine extra che possono collegarsi, come il deck in rete locale.',
       }),
     })
-    .default({ host: '127.0.0.1', allowedOrigins: [] }),
+    .default({ host: '127.0.0.1', allowedOrigins: [], deviceTokenTtlDays: DEFAULT_DEVICE_TOKEN_TTL_DAYS }),
   files: z
     .object({
       maxUploadMb: z

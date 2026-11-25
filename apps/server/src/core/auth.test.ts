@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, afterEach, mock, test } from 'node:test';
 import { z } from 'zod';
 import { isLoopbackPeer } from './auth.ts';
+import { emptyConfig } from './config.ts';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { buildServer } from '../server.ts';
 
@@ -186,4 +187,65 @@ void test('local MCP calls are listed for the PC and only the PC', async () => {
     .parse((await call('GET', 'agents.localCalls')).data);
   assert.equal(calls[0]?.action, 'media.playPause');
   assert.equal((await call('GET', 'agents.localCallsToday')).data, 1);
+});
+
+void test('a paired token expires at the default TTL on HTTP and file routes', async () => {
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const token = await pair('Expiring phone');
+  mock.timers.tick(90 * 86_400_000 - 1);
+  assert.equal((await call('GET', 'health', { remoteAddress: LAN, token })).status, 200);
+  mock.timers.tick(1);
+  const expired = await call('GET', 'health', { remoteAddress: LAN, token });
+  assert.deepEqual([expired.status, expired.code], [401, 'UNAUTHORIZED']);
+  const file = await app.inject({
+    url: '/files/missing',
+    remoteAddress: LAN,
+    headers: { authorization: `Bearer ${token}` },
+  });
+  assert.equal(file.statusCode, 401);
+  assert.equal((await call('GET', 'health')).status, 200);
+});
+
+void test('device metadata shows expiry and the actual last peer, ignoring forwarded headers', async () => {
+  const now = Date.now();
+  mock.timers.enable({ apis: ['Date'], now });
+  const token = await pair('Moving phone');
+  await call('GET', 'health', { remoteAddress: '192.0.2.21', token, headers: { 'x-forwarded-for': '192.0.2.99' } });
+  const list = z
+    .array(z.object({ name: z.string(), lastSeenIp: z.string().nullable(), expiresAt: z.number() }))
+    .parse((await call('GET', 'devices.list')).data);
+  assert.deepEqual(
+    list.find((device) => device.name === 'Moving phone'),
+    { name: 'Moving phone', lastSeenIp: '192.0.2.21', expiresAt: now + 90 * 86_400_000 },
+  );
+});
+
+void test('a configured device lifetime applies to HTTP authentication', async (t) => {
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const server = buildServer({
+    dbPath: ':memory:',
+    deps: { run: createFakeDesktop() },
+    config: { ...emptyConfig, server: { ...emptyConfig.server, deviceTokenTtlDays: 1 } },
+  });
+  t.after(() => server.close());
+  const code = z
+    .object({ result: z.object({ data: z.object({ code: z.string() }) }) })
+    .parse((await server.inject({ method: 'POST', url: '/trpc/pairing.createCode', payload: {} })).json()).result
+    .data.code;
+  const token = z.object({ result: z.object({ data: z.object({ token: z.string() }) }) }).parse(
+    (
+      await server.inject({
+        method: 'POST',
+        url: '/trpc/pairing.redeem',
+        remoteAddress: LAN,
+        payload: { code, deviceName: 'Short-lived phone' },
+      })
+    ).json(),
+  ).result.data.token;
+  const health = () =>
+    server.inject({ url: '/trpc/health', remoteAddress: LAN, headers: { authorization: `Bearer ${token}` } });
+  mock.timers.tick(86_400_000 - 1);
+  assert.equal((await health()).statusCode, 200);
+  mock.timers.tick(1);
+  assert.equal((await health()).statusCode, 401);
 });

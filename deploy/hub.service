@@ -4,7 +4,13 @@ Description=Hub desktop control center
 PartOf=hyprland-session.target
 After=hyprland-session.target
 
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
 [Service]
+UMask=0077
+NoNewPrivileges=yes
+TimeoutStopSec=20
 Type=simple
 ExecStart=:"@NODE@" "@REPO@/apps/server/src/index.ts"
 Restart=on-failure

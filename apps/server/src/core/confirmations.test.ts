@@ -15,8 +15,8 @@ void test('confirmation runs once; denial and expiry do not run it', async () =>
     pending.request({ agentId: 1, name: 'Agent', action: 'test', input: {}, run: async () => ++calls });
   const first = create();
   assert.ok(first);
-  await pending.confirm(first);
-  await assert.rejects(pending.confirm(first));
+  await pending.confirm(first, { kind: 'loopback' });
+  await assert.rejects(pending.confirm(first, { kind: 'loopback' }));
   assert.equal(calls, 1);
   assert.deepEqual(pending.status(first, 1), { state: 'confirmed', result: 1 });
   const second = create();
@@ -27,7 +27,7 @@ void test('confirmation runs once; denial and expiry do not run it', async () =>
   assert.ok(third);
   now = 120_001;
   assert.deepEqual(pending.status(third, 1), { state: 'expired' });
-  await assert.rejects(pending.confirm(third));
+  await assert.rejects(pending.confirm(third, { kind: 'loopback' }));
   assert.equal(calls, 1);
   unsubscribe();
 });
@@ -42,7 +42,7 @@ void test('finished entries are deleted after 10 minutes and status still answer
   const denied = create();
   const lapsed = create();
   assert.ok(done && denied && lapsed);
-  await pending.confirm(done);
+  await pending.confirm(done, { kind: 'loopback' });
   pending.deny(denied);
   now = 120_001; // `lapsed` expires here
   assert.deepEqual(pending.status(lapsed, 1), { state: 'expired' });

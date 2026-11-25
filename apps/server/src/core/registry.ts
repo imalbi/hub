@@ -6,6 +6,7 @@ import { protectedProcedure, router } from './trpc.ts';
 const metadata = z.object({
   label: z.string().trim().min(1),
   description: z.string().min(1),
+  deviceForbidden: z.boolean().optional(),
   danger: z.boolean().default(false),
   pageOnly: z.boolean().default(false),
   job: z.boolean().default(false),

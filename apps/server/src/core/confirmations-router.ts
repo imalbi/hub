@@ -35,8 +35,8 @@ export function createConfirmationsRouter(confirmations: ReturnType<typeof creat
     confirm: humanProcedure
       .meta({ label: 'Conferma richiesta', description: 'Confirm a pending request on a human client' })
       .input(z.object({ id: z.string().uuid(), confirmed: z.literal(true) }))
-      .mutation(async ({ input }) => {
-        await confirmations.confirm(input.id);
+      .mutation(async ({ ctx, input }) => {
+        await confirmations.confirm(input.id, ctx.client);
         return { ok: true };
       }),
     deny: humanProcedure

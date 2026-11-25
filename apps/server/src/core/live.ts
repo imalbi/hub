@@ -7,23 +7,25 @@ import { EventEmitter, on } from 'node:events';
 export function createLiveHub<T>(read: () => Promise<T>, intervalMs: number | null = 1000) {
   const events = new EventEmitter();
   let subscribers = 0;
+  let generation = 0;
   let timer: NodeJS.Timeout | undefined;
   let latest: { value: T; json: string } | undefined;
   let reading: Promise<void> | undefined;
   let readAgain = false;
 
   async function readOnce() {
+    const startedGeneration = generation;
     try {
       const value = await read();
       // Nobody left to keep it fresh: storing it would replay it to the next subscriber.
-      if (subscribers === 0) return;
+      if (subscribers === 0 || generation !== startedGeneration) return;
       const json = JSON.stringify(value);
       if (json === latest?.json) return;
       latest = { value, json };
       events.emit('change', value);
     } catch (error) {
       // Every live subscriber also listens for 'error' (see `on`), so this ends their subscriptions instead of crashing the poller.
-      if (events.listenerCount('error') > 0) events.emit('error', error);
+      if (generation === startedGeneration && events.listenerCount('error') > 0) events.emit('error', error);
     }
   }
 
@@ -50,10 +52,11 @@ export function createLiveHub<T>(read: () => Promise<T>, intervalMs: number | nu
     if (intervalMs !== null) timer ??= setInterval(() => void refresh(), intervalMs);
     try {
       if (latest) yield latest.value;
-      else if (!reading) void refresh(); // a read already in flight will reach this subscriber through `changes`
+      else if (!reading || subscribers === 1) void refresh();
       for await (const [value] of changes) yield value;
     } finally {
       if (--subscribers === 0) {
+        generation++;
         clearInterval(timer);
         timer = undefined;
         // Nobody keeps it fresh any more; the next subscriber must read instead of replaying a stale value.

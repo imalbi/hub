@@ -114,6 +114,18 @@ export function PhonesList({ pairing: { devices, revoke, now } }: { pairing: Pai
               <span className="text-caption text-muted-foreground">
                 {m.device_last_seen({ when: lastSeen(device.lastSeenAt, now) })}
               </span>
+              {device.lastSeenIp && (
+                <span className="text-caption break-all text-muted-foreground">
+                  {m.device_last_ip({ ip: device.lastSeenIp })}
+                </span>
+              )}
+              {device.expiresAt && (
+                <span className="text-caption text-muted-foreground">
+                  {device.expiresAt <= now
+                    ? m.device_token_expired()
+                    : m.device_token_expires({ date: new Date(device.expiresAt).toLocaleDateString('it-IT') })}
+                </span>
+              )}
             </div>
             <HoldButton
               label={m.device_revoke_hold({ name: device.name })}

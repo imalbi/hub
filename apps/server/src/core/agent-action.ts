@@ -39,6 +39,7 @@ export async function callAgentAction(
         name: client.name,
         action: action.path,
         input,
+        deviceForbidden: action.deviceForbidden,
         run: () => invoke({ ...ctx, client: { kind: 'loopback' }, agentRequest: true }, { ...args, confirmed: true }),
       });
       if (!id) throw new Error('No desk or deck client connected');

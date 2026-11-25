@@ -124,3 +124,27 @@ void test('the series migration preserves existing events', async (t) => {
     ],
   );
 });
+
+void test('device metadata migration preserves existing pairings without inventing an IP', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'hub-devices-migration-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const core = fileURLToPath(new URL('../../drizzle', import.meta.url));
+  const before = join(root, 'before');
+  for (const name of (await readdir(core)).filter((folder) => folder < '20261125214335_demonic_daimon_hellstrom'))
+    await cp(join(core, name), join(before, name), { recursive: true });
+  const file = join(root, 'hub.db');
+  const old = openDatabase(file, before);
+  old.$client.exec(
+    "INSERT INTO devices (name, token_hash, created_at, last_seen_at) VALUES ('Test phone', 'saved-hash', 100, 200)",
+  );
+  old.$client.close();
+  const db = openDb(file);
+  t.after(() => db.$client.close());
+  assert.deepEqual(
+    db.$client
+      .prepare('SELECT name, token_hash, created_at, last_seen_at, last_seen_ip FROM devices')
+      .all()
+      .map((row) => Object.values(row)),
+    [['Test phone', 'saved-hash', 100, 200, null]],
+  );
+});

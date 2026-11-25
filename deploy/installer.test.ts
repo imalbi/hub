@@ -340,3 +340,27 @@ void test('uninstalling a legacy manifest leaves an unmanaged music service unto
   });
   assert.equal(readFileSync(join(configDir, 'systemd/user/hub-music.service'), 'utf8'), 'unmanaged');
 });
+
+void test('shipped services restrict privileges, file modes, stop time and restart storms', () => {
+  for (const name of ['hub', 'hub-music']) {
+    const template = readFileSync(new URL(`./${name}.service`, import.meta.url), 'utf8');
+    const unit = fillTemplate(template, { NODE: '/usr/bin/node', REPO: '/opt/hub' });
+    for (const directive of [
+      'UMask=0077',
+      'NoNewPrivileges=yes',
+      'TimeoutStopSec=20',
+      'Restart=on-failure',
+      'RestartSec=2',
+      'StartLimitIntervalSec=60',
+      'StartLimitBurst=5',
+    ])
+      assert.ok(unit.split('\n').includes(directive), `${name}: ${directive}`);
+    if (name === 'hub') {
+      assert.ok(unit.includes('ExecStart=:"/usr/bin/node" "/opt/hub/apps/server/src/index.ts"'));
+      assert.ok(unit.includes('WantedBy=hyprland-session.target'));
+    } else {
+      assert.ok(unit.includes('ExecStart=/usr/bin/mpv --idle=yes --no-video --input-ipc-server=%t/hub-music.sock'));
+      assert.ok(unit.includes('WantedBy=default.target'));
+    }
+  }
+});

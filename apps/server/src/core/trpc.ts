@@ -13,6 +13,8 @@ export type ActionMeta = {
   description: string;
   /** Refused unless the input carries `confirmed: true`, set only by a hold-to-confirm (see `confirmDanger`). */
   danger?: boolean;
+  /** Paired devices cannot execute or approve this action. */
+  deviceForbidden?: boolean;
   /** Only its own page runs it: left out of the palette and of MCP, so no agent can call it even with the owner's confirmation (sending mail). */
   pageOnly?: boolean;
   job?: boolean;
@@ -37,7 +39,8 @@ export type Context = {
 
 const t = initTRPC
   .context<Context>()
-  .meta<ActionMeta>()
+  // Base procedures carry access rules before an action adds its registry label and description.
+  .meta<ActionMeta | (Omit<ActionMeta, 'label' | 'description'> & { label?: never; description?: never })>()
   .create({
     isDev: false,
     errorFormatter({ shape, error }) {
@@ -69,7 +72,8 @@ export const publicProcedure = t.procedure.use(confirmDanger);
 
 /** The PC or a paired device. */
 export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
-  if (ctx.client.kind === 'anonymous') throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Pair this device first' });
+  if (ctx.client.kind === 'anonymous' || (ctx.client.kind === 'device' && Date.now() >= ctx.client.expiresAt))
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Pair this device first' });
   return next();
 });
 
@@ -82,13 +86,13 @@ export const jobProcedure = protectedProcedure.use(({ ctx, meta, path, next }) =
 });
 
 /** The PC only: device administration and pairing codes. A paired phone cannot pair or revoke other phones. */
-export const loopbackProcedure = protectedProcedure.use(({ ctx, next }) => {
+export const loopbackProcedure = protectedProcedure.meta({ deviceForbidden: true }).use(({ ctx, next }) => {
   if (ctx.client.kind !== 'loopback') throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the PC can do this' });
   return next();
 });
 
 /** Settings exposed to agents remain unavailable to paired devices. */
-export const agentOrLoopbackProcedure = protectedProcedure.use(({ ctx, next }) => {
+export const agentOrLoopbackProcedure = protectedProcedure.meta({ deviceForbidden: true }).use(({ ctx, next }) => {
   if (ctx.client.kind !== 'loopback' && ctx.client.kind !== 'agent')
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the PC or an agent can do this' });
   return next();

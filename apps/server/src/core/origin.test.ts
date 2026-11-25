@@ -38,7 +38,9 @@ void test('isAllowedOrigin rejects everything against an empty allowlist', () =>
 });
 
 void test('allowedOrigins merges the configured origins with the dev origins', () => {
-  const merged = allowedOrigins({ server: { host: '127.0.0.1', allowedOrigins: ['https://hub.example'] } });
+  const merged = allowedOrigins({
+    server: { host: '127.0.0.1', deviceTokenTtlDays: 90, allowedOrigins: ['https://hub.example'] },
+  });
   assert.deepEqual(merged, [...DEV_ORIGINS, 'https://hub.example']);
 });
 
