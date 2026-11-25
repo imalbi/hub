@@ -181,6 +181,7 @@
       opacity: 1;
     }
   }
+  --animate-loading-in: ui-fade-in 200ms var(--ease-out) 150ms both;
   @keyframes ui-ping {
     from {
       transform: scale(1);
