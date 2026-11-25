@@ -268,7 +268,7 @@ void test('agent settings save refuses changes to public command, path and URL f
       monitors: [{ output: 'DP-1', label: 'Primary', command: '/usr/bin/monitor-toggle' }],
     },
     theme: { caelestiaScheme: '/var/tmp/scheme.json' },
-    study: { plansDir: '/var/tmp/plans', materialDirs: ['/var/tmp/materials'] },
+    archive: { plansDir: '/var/tmp/plans', materialDirs: ['/var/tmp/materials'] },
     services: [{ name: 'Status', url: 'https://status.example.org' }],
   };
   const original = `${JSON.stringify(initial, null, 2)}\n`;
@@ -296,6 +296,17 @@ void test('agent settings save refuses changes to public command, path and URL f
       });
     }
   }
+
+  states.set({
+    name: 'archive',
+    kind: 'private',
+    status: 'on',
+    configPath: ['archive'],
+    schema: z.object({
+      plansDir: z.string().meta({ manual: true }),
+      materialDirs: z.array(z.string()).meta({ manual: true }),
+    }),
+  });
 
   states.set({
     name: 'services',
@@ -328,8 +339,8 @@ void test('agent settings save refuses changes to public command, path and URL f
     { module: 'system', value: { ...initial.system, monitors: [] } },
     { module: 'system', value: { ...initial.system, powerstatDir: '/etc' } },
     { module: 'theme', value: { caelestiaScheme: '/etc/shadow' } },
-    { module: 'study', value: { ...initial.study, plansDir: '/tmp/other' } },
-    { module: 'study', value: { ...initial.study, materialDirs: ['/tmp/other'] } },
+    { module: 'archive', value: { ...initial.archive, plansDir: '/tmp/other' } },
+    { module: 'archive', value: { ...initial.archive, materialDirs: ['/tmp/other'] } },
     { module: 'services', value: [{ name: 'Status', url: 'https://127.0.0.1/admin' }] },
   ];
 

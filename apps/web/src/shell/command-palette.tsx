@@ -27,7 +27,7 @@ function actionZone(path: string) {
   const builtins: Record<string, string> = {
     audio: 'media',
     media: 'media',
-    pomodoro: 'study',
+    pomodoro: 'overview',
     system: 'system',
     health: 'system',
     devices: 'devices',

@@ -8,10 +8,9 @@ test.beforeEach(async ({ page }) => {
   await freezePomodoro(page);
   await page.clock.setFixedTime(new Date('2026-11-04T12:00:00Z'));
   await answerQueries(page, { health: { ok: true, uptime: 42 }, 'pomodoro.today': [] });
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await expect(page.getByRole('button', { name: 'Avvia', exact: true })).toBeVisible();
-  // Studio's tab bar arrives with the study module's UI: open the palette only once the page has settled.
-  await expect(page.getByRole('tab', { name: 'Materie' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Panoramica', exact: true })).toBeVisible();
   await page.evaluate(async () => {
     await document.fonts.ready;
   });

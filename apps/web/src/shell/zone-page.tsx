@@ -4,7 +4,6 @@ import { LoadingSkeleton } from '../components/ui/loading-skeleton.tsx';
 import { usePendingModule, useLiveModuleUIs } from '../lib/enabled-modules.ts';
 import type { PageTab } from '../lib/module-ui.ts';
 import { pageTabs } from './zone-sections.ts';
-import { DayLine } from './day-line.tsx';
 import { m } from '../paraglide/messages.js';
 import { activeTab } from '../lib/zone-search.ts';
 import { PageSurface } from './page-surface.tsx';
@@ -24,6 +23,7 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
   const activeTabDef = tabs.find(({ id }) => id === active);
   const ownScroll = activeTabDef?.fill;
   const float = activeTabDef?.float;
+  const DayLine = activeTabDef?.dayLine;
   // A zone made only of module sections has no page without them.
   if (tabs.length === 0 && pending)
     return (
@@ -37,7 +37,7 @@ export function ZonePage({ zone, own }: { zone: string; own: PageTab[] }) {
   return (
     <div data-fill className="col-span-12 flex h-full min-h-0 flex-col gap-lg">
       <ZoneTabs
-        dayLine={zone === 'study' && active === 'study' ? <DayLine /> : undefined}
+        dayLine={DayLine ? <DayLine /> : undefined}
         always={always}
         fill={ownScroll}
         float={float}

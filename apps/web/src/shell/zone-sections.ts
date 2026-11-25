@@ -4,7 +4,8 @@ type ModuleZone = NonNullable<ModuleUI['zone']>;
 
 /** A page's own tabs, then the sections modules aim at it, in module order. */
 export function pageTabs(zone: string, own: readonly PageTab[], uis: readonly ModuleUI[]): PageTab[] {
-  return [...own, ...uis.flatMap((ui) => ui.sections ?? []).filter((section) => section.zone === zone)];
+  const sections = uis.flatMap((ui) => ui.sections ?? []).filter((section) => section.zone === zone);
+  return [...own.filter((tab) => !tab.fallback || sections.length === 0), ...sections];
 }
 
 /** Sections aimed at a zone that does not exist: no page shows them. */

@@ -37,7 +37,6 @@ export const widgets: Array<{
 /** What Panoramica shows until the owner rearranges it (board P1, public widgets only). */
 export const defaultLayout: WidgetItem[] = [
   { widget: 'today', size: 'wide', x: 0, y: 0 },
-  { widget: 'study', size: 'medium', x: 0, y: 1 },
   { widget: 'pomodoro', size: 'small', x: 6, y: 1 },
   { widget: 'audio', size: 'small', x: 9, y: 1 },
   { widget: 'media', size: 'medium', x: 0, y: 2 },

@@ -16,9 +16,9 @@ function VolumeSlider({ volume, onVolume }: MusicVolume) {
   return (
     <div className="flex flex-col gap-sm">
       {/* The slider's own bubble says the value; the bar button says it too. */}
-      <span className="text-label text-muted-foreground">{m.music_volume()}</span>
+      <span className="text-label text-muted-foreground">{m.media_volume()}</span>
       <Slider
-        label={m.music_volume()}
+        label={m.media_volume()}
         min={0}
         max={100}
         value={shown}
@@ -29,7 +29,7 @@ function VolumeSlider({ volume, onVolume }: MusicVolume) {
           if (next !== undefined) void onVolume(next).finally(() => setDraft(null));
         }}
       />
-      <span className="text-caption text-muted-foreground">{m.music_volume_note()}</span>
+      <span className="text-caption text-muted-foreground">{m.media_volume_note()}</span>
     </div>
   );
 }

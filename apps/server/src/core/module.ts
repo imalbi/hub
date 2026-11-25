@@ -13,6 +13,7 @@ export {
   type MailThreadView,
 } from './capabilities.ts';
 import type { FastifyInstance, FastifyBaseLogger } from 'fastify';
+export type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';

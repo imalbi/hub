@@ -8,7 +8,6 @@
       "./messages/{locale}.json",
       "./src/modules/audio/messages/{locale}.json",
       "./src/modules/media/messages/{locale}.json",
-      "./src/modules/music/messages/{locale}.json",
       "./src/modules/devices/messages/{locale}.json",
       "./src/modules/pomodoro/messages/{locale}.json",
       "./src/modules/theme/messages/{locale}.json",

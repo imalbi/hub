@@ -107,7 +107,7 @@ test('controls in a row act without navigating; the row itself goes to its page 
   await expect(panel.getByRole('button', { name: 'Apri Second Title' })).toBeVisible();
   await expect(page).toHaveURL(/\/desk\/devices$/);
   const rows: Array<[string, RegExp]> = [
-    ['Apri Pomodoro', /\/desk\/studio$/],
+    ['Apri Pomodoro', /\/desk$/],
     ['Apri fake.job', /\/desk\/system\?tab=jobs$/],
     ['Apri Second Title', /\/desk\/media$/],
   ];
@@ -131,7 +131,7 @@ for (const view of [
     await pc.post('/trpc/pomodoro.start', { data: {} });
     for (const path of [
       '/desk',
-      '/desk/studio',
+      '/desk',
       '/desk/media',
       '/desk/system',
       '/desk/system?tab=jobs',
@@ -167,7 +167,7 @@ test('Modifica stays in the top right corner, on Panoramica only, whether the ba
   expect(ballBox!.x).toBeLessThan(rail!.x + rail!.width);
   expect(ballBox!.y + ballBox!.height).toBeLessThanOrEqual(rail!.y);
   expect(busy!.x).toBeGreaterThan(ballBox!.x + ballBox!.width);
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await expect(page.getByRole('button', { name: 'Modifica', exact: true })).toHaveCount(0);
 });
 

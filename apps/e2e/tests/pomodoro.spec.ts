@@ -3,10 +3,19 @@ import { DECK_STATE, PHONE_URL } from './hosts.ts';
 import { expect, test } from './fixtures.ts';
 import { freezePomodoro, pausedPomodoro } from './pomodoro-visual.ts';
 
+test.beforeEach(async ({ pc }) => {
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'pomodoro', size: 'large', x: 0, y: 0 }] },
+  });
+});
+test.afterEach(async ({ pc }) => {
+  await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
+});
+
 test('settled timer digits share the same text top at the desk scale', async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
   await freezePomodoro(page, { ...pausedPomodoro, pausedRemainingMs: 45 * 60_000 });
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   const timer = page.getByRole('timer', { name: 'Tempo rimanente' });
   await expect(timer.locator(':scope > .sr-only')).toHaveText('45:00');
   const tops = await timer.evaluate((element) => {
@@ -59,7 +68,7 @@ test('settled timer digits share the same text top at the desk scale', async ({ 
 });
 
 test('a changing digit shows its strip only until the roll settles', async ({ page }) => {
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await page.getByRole('button', { name: 'Avvia', exact: true }).click();
   const timer = page.getByRole('timer', { name: 'Tempo rimanente' });
   const digits = timer.locator('span.relative.inline-block');
@@ -90,7 +99,7 @@ test('a changing digit shows its strip only until the roll settles', async ({ pa
 
 test('reduced motion keeps the digits in flow after a value changes', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await page.getByRole('button', { name: 'Avvia', exact: true }).click();
   const timer = page.getByRole('timer', { name: 'Tempo rimanente' });
   await expect(timer.locator(':scope > .sr-only')).toHaveText('00:05');
@@ -139,7 +148,7 @@ test.afterEach(async ({ pc }) => {
 test('the timer shows its first real value without rolling in from 00:00', async ({ page }) => {
   await freezePomodoro(page, pausedPomodoro);
   const frames = await recordTimerFrames(page);
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await expect(page.getByRole('timer', { name: 'Tempo rimanente' }).locator(':scope > .sr-only')).toHaveText('12:30');
   // A roll would start within a frame or two of the value arriving; look at the next twenty.
   await expect.poll(async () => (await frames()).filter((frame) => frame.text === '12:30').length).toBeGreaterThan(20);
@@ -149,7 +158,7 @@ test('the timer shows its first real value without rolling in from 00:00', async
 test('a later change still rolls the digits', async ({ page, pc }) => {
   await pc.post('/trpc/pomodoro.start', { data: {} });
   const frames = await recordTimerFrames(page);
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   // The first real value, then a tick of the clock: the seconds digit changes and rolls.
   await expect
     .poll(async () => {
@@ -165,7 +174,7 @@ test('deck taps start, pause and resume the timer shown on the desk', async ({ p
   const phone = await browser.newContext({ storageState: DECK_STATE, viewport: { width: 375, height: 812 } });
   try {
     const deck = await phone.newPage();
-    await page.goto('/desk/studio');
+    await page.goto('/desk');
     await deck.goto(`${PHONE_URL}/deck`);
     const tile = deck.getByRole('button', { name: /^Pomodoro:/ });
     await expect(tile).toHaveAccessibleName(/Pronto/);
@@ -205,7 +214,7 @@ test('deck taps start, pause and resume the timer shown on the desk', async ({ p
 });
 
 test('a real short phase ends, pushes the break and adds a completed focus today', async ({ page }) => {
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   const count = page.getByText(/Sessioni completate oggi:/);
   const before = Number((await count.innerText()).split(':').at(-1)?.trim());
   await page.getByRole('button', { name: 'Avvia', exact: true }).click();
@@ -222,7 +231,7 @@ const timeText = (page: Page) => page.getByRole('timer', { name: 'Tempo rimanent
 
 test('the countdown shows every second exactly once', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await page.getByRole('button', { name: 'Avvia', exact: true }).click();
   await expect(timeText(page)).toHaveText('00:06');
   await timeText(page).evaluate((element) => {
@@ -246,7 +255,7 @@ test('the countdown shows every second exactly once', async ({ page }) => {
 
 test('a client whose clock is an hour off still shows the server time left', async ({ page }) => {
   await page.clock.install({ time: Date.now() + 3_600_000 });
-  await page.goto('/desk/studio');
+  await page.goto('/desk');
   await page.getByRole('button', { name: 'Avvia', exact: true }).click();
   // Counting with its own clock it would read 00:00 at once.
   await expect(timeText(page)).toHaveText(/^00:0[1-6]$/);
@@ -256,7 +265,7 @@ test('the settings popover switches the preset and the sound', async ({ page, pc
   const fixture = { focusMinutes: 0.1, shortBreakMinutes: 0.05, longBreakMinutes: 0.1, longBreakEvery: 4, sound: true };
   const state = async () => (await pc.get('/trpc/pomodoro.state')).text();
   try {
-    await page.goto('/desk/studio');
+    await page.goto('/desk');
     const gear = page.getByRole('button', { name: 'Impostazioni Pomodoro' });
     await gear.click();
     const popover = page.getByRole('dialog', { name: 'Impostazioni Pomodoro' });
@@ -320,7 +329,7 @@ for (const [paused, via] of [
     const json = { headers: { 'content-type': 'application/json' } };
     try {
       await pc.post('/trpc/pomodoro.configure', { data: { ...fixture, focusMinutes: 25 }, ...json });
-      await page.goto('/desk/studio');
+      await page.goto('/desk');
       await page.getByRole('button', { name: 'Avvia', exact: true }).click();
       await expect(timeText(page)).toHaveText(/^24:5\d$/);
       await page.waitForTimeout(2500);
@@ -333,7 +342,7 @@ for (const [paused, via] of [
       await rail.getByRole('link', { name: via, exact: true }).click();
       await expect(page).toHaveURL(via === 'Media' ? /\/desk\/media$/ : /\/desk$/);
       // Panoramica has its own Pomodoro panel: read it there; otherwise come back to Studio.
-      if (via === 'Media') await rail.getByRole('link', { name: 'Studio', exact: true }).click();
+      if (via === 'Media') await rail.getByRole('link', { name: 'Panoramica', exact: true }).click();
       // Until the first push the hidden text is the 00:00 placeholder, and the session is at 24:5x: wait for the push.
       await expect(timeText(page)).toHaveText(/^(?!00:00)\d\d:\d\d$/);
       const after = await timeText(page).textContent();
@@ -360,7 +369,7 @@ test('Studio opened after the minute changed elsewhere shows the time left', asy
     await page.goto('/desk/media');
     await pc.post('/trpc/pomodoro.start', { data: {} });
     await page.waitForTimeout(8000);
-    await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica', exact: true }).click();
     await expect(timeText(page)).toHaveText(/^00:5\d$/);
     await expect.poll(() => shownDigits(page), { timeout: 5000 }).toBe(await timeText(page).textContent());
   } finally {

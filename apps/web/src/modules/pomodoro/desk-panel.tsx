@@ -1,6 +1,5 @@
 import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import type { ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
 import { useInWidget } from '../../shell/widget-context.ts';
 import { Panel } from '../../components/panel.tsx';
 import { m } from '../../paraglide/messages.js';
@@ -30,15 +29,7 @@ export function PomodoroPanel({
     <Panel
       title={m.pomodoro_title()}
       className={`${className} ${timer.connectionLost ? 'opacity-60' : ''}`}
-      action={
-        compact ? (
-          <Link to="/desk/studio" className="text-caption text-muted-foreground hover:text-foreground">
-            {m.zone_open({ zone: m.zone_study() })}
-          </Link>
-        ) : (
-          <PomodoroSettings settings={timer.state?.settings} />
-        )
-      }
+      action={<PomodoroSettings settings={timer.state?.settings} />}
     >
       <progress aria-label={m.pomodoro_progress()} value={timer.progress} max={1} className="sr-only" />
       <div className="flex items-center gap-lg">
@@ -80,7 +71,7 @@ export function PomodoroPanel({
       )}
       <div className="flex flex-wrap gap-xs">
         <RegistryButton
-          label={tag && timer.primaryAction === 'start' ? m.study_start_pomodoro() : timer.primaryLabel}
+          label={tag && timer.primaryAction === 'start' ? m.pomodoro_start_tagged() : timer.primaryLabel}
           action={() => timer.act(timer.primaryAction)}
           disabled={disabled}
         />
@@ -162,7 +153,7 @@ function InstrumentTimer({
           </>
         )}
         <RegistryButton
-          label={tag && timer.primaryAction === 'start' ? m.study_start_pomodoro() : timer.primaryLabel}
+          label={tag && timer.primaryAction === 'start' ? m.pomodoro_start_tagged() : timer.primaryLabel}
           action={() => timer.act(timer.primaryAction)}
           disabled={disabled}
         />

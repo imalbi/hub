@@ -192,7 +192,7 @@ const pill = (page: Page) => page.getByRole('button', { name: 'Cerca o esegui, s
 test('the trigger sits in the rail on every desk zone and the palette opens centred near the top', async ({ page }) => {
   const view = page.viewportSize();
   if (!view) throw new Error('no viewport');
-  for (const path of ['/desk', '/desk/studio', '/desk/settings']) {
+  for (const path of ['/desk', '/desk', '/desk/settings']) {
     await page.goto(path);
     const box = await pill(page).boundingBox();
     const rail = await page.getByRole('navigation', { name: 'Zone' }).boundingBox();
@@ -400,7 +400,7 @@ test('Vai a lists the rail zones above the actions and navigates', async ({ page
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Comandi' });
   const goto = palette.getByRole('group', { name: 'Vai a' });
-  const names = ['Panoramica', 'Studio', 'Media', 'Sistema', 'Dispositivi'];
+  const names = ['Panoramica', 'Media', 'Sistema', 'Dispositivi'];
   if (examples) names.push('Lavoro');
   names.push('Calendario');
   if (examples) names.push('Esempio');

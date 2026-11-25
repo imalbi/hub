@@ -53,15 +53,18 @@ function reactDevtoolsMcp(): Plugin {
   return {
     name: 'hub:react-devtools-cdt-mcp',
     apply: 'serve',
-    transformIndexHtml() {
-      return [
-        {
-          tag: 'script',
-          attrs: { type: 'module' },
-          children: "import 'react-devtools-cdt-mcp/register';",
-          injectTo: 'head-prepend',
-        },
-      ];
+    transformIndexHtml: {
+      order: 'pre',
+      handler() {
+        return [
+          {
+            tag: 'script',
+            attrs: { type: 'module' },
+            children: "import 'react-devtools-cdt-mcp/register';",
+            injectTo: 'head-prepend',
+          },
+        ];
+      },
     },
   };
 }
@@ -114,7 +117,6 @@ export default defineConfig({
     proxy: {
       '/files': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
       '/m': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
-      '/music': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}` },
       '/trpc': { target: `http://127.0.0.1:${process.env.HUB_PORT ?? 4180}`, ws: true },
     },
   },

@@ -1,6 +1,6 @@
 import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { PomodoroSettings } from './settings.tsx';
 import { Panel } from '../../components/panel.tsx';
 import { Readout } from '../../components/readout.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
@@ -35,11 +35,6 @@ function SmallPomodoro() {
       className={`relative h-full ${timer.connectionLost ? 'opacity-60' : ''}`}
       action={headerState}
     >
-      <Link
-        to="/desk/studio"
-        aria-label={m.zone_open({ zone: m.zone_study() })}
-        className="absolute inset-0 rounded-lg focus-visible:outline focus-visible:outline-accent"
-      />
       <div className="mt-auto flex items-end justify-between gap-sm">
         <div className="flex min-w-0 flex-col gap-3xs">
           <p>
@@ -75,11 +70,7 @@ function MediumPomodoro() {
     <Panel
       title={m.pomodoro_title()}
       className={`h-full ${timer.connectionLost ? 'opacity-60' : ''}`}
-      action={
-        <Link to="/desk/studio" className="text-muted-foreground hover:text-foreground">
-          {m.zone_open({ zone: m.zone_study() })}
-        </Link>
-      }
+      action={<PomodoroSettings settings={timer.state?.settings} />}
     >
       <progress aria-label={m.pomodoro_progress()} value={timer.progress} max={1} className="sr-only" />
       <div className="flex min-h-0 flex-1 items-stretch gap-lg">

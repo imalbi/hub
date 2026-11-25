@@ -1,19 +1,7 @@
 import type { APIRequestContext } from '@playwright/test';
 
 const json = { 'content-type': 'application/json' };
-// Study plans another spec of this process left active would add their days to the month: paused here, resumed in `clean`.
-let paused: string[] = [];
-
-async function activePlans(pc: APIRequestContext): Promise<string[]> {
-  const plans: Array<{ id: string }> = (await (await pc.get('/trpc/study.active')).json()).result.data;
-  return plans.map((plan) => plan.id);
-}
-export const setPlan = (pc: APIRequestContext, id: string, active: boolean) =>
-  pc.post('/trpc/study.setPlan', { data: { id, active }, headers: json });
-
 export async function seed(pc: APIRequestContext) {
-  paused = await activePlans(pc);
-  for (const id of paused) await setPlan(pc, id, false);
   const add = (title: string, day: string, start?: string, end?: string) =>
     pc.post('/trpc/calendar.add', { data: { title, day, start, end }, headers: json });
   await add('Dentista', '2026-11-15', '16:30');
@@ -50,7 +38,4 @@ export async function clean(pc: APIRequestContext) {
   const notes: Array<{ id: string }> = (await (await pc.get('/trpc/notes.open')).json()).result.data;
   for (const { id } of notes) await pc.post('/trpc/notes.remove', { data: { id }, headers: json });
   await pc.post('/trpc/layout.reset', { data: { zone: 'overview' }, headers: json });
-  for (const id of await activePlans(pc)) await setPlan(pc, id, false);
-  for (const id of paused) await setPlan(pc, id, true);
-  paused = [];
 }

@@ -19,5 +19,7 @@
   "media_audio_label": "Audio: {output}",
   "media_audio_label_volume": "Audio: {output}, volume musica {volume}%",
   "media_audio_none": "Nessuna uscita",
-  "media_upcoming": "Prossimi"
+  "media_upcoming": "Prossimi",
+  "media_volume": "Volume musica",
+  "media_volume_note": "Solo la musica di Hub, non il volume del sistema"
 }

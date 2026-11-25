@@ -2,7 +2,6 @@ import { useLiveModuleUIs, useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { LinkProps } from '@tanstack/react-router';
 import {
-  BookOpenIcon,
   BriefcaseIcon,
   ChatsIcon,
   CpuIcon,
@@ -25,7 +24,6 @@ type Zone = {
 
 const overview: Zone = { id: 'overview', path: '/desk', icon: SquaresFourIcon, label: m.zone_overview };
 const pages: Zone[] = [
-  { id: 'study', path: '/desk/studio', icon: BookOpenIcon, label: m.zone_study },
   { id: 'media', path: '/desk/media', icon: MusicNotesIcon, label: m.zone_media },
   { id: 'system', path: '/desk/system', icon: CpuIcon, label: m.zone_system },
   { id: 'devices', path: '/desk/devices', icon: DeviceMobileIcon, label: m.devices_title },

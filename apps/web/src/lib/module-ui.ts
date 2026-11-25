@@ -9,7 +9,15 @@ export type ModuleWidget = {
   component: ComponentType<{ size: WidgetSize }>;
 };
 /** One tab of a zone page. Ids are unique within a page; the first tab is the default one. */
-export type PageTab = { id: string; label: () => string; component: ComponentType; fill?: boolean; float?: boolean };
+export type PageTab = {
+  id: string;
+  label: () => string;
+  component: ComponentType;
+  fill?: boolean;
+  float?: boolean;
+  dayLine?: ComponentType;
+  fallback?: boolean;
+};
 /** A tab a module adds to a zone page, after the page's own tabs. */
 export type ModuleSection = PageTab & { zone: string };
 /** One thing a module has running now, shown in the "Attività in corso" ball and panel. `href` is the page that shows it. */
@@ -81,6 +89,8 @@ export type ModuleUI = {
   todayItems?: TodayLinesHook | TodayLinesHook[];
   /** Records the palette finds by typing, one group each, in module order while the module is on (step 64). */
   records?: RecordSource | RecordSource[];
+  /** Optional next tracks below the large core media widget. */
+  mediaUpcoming?: ComponentType;
   /** Optional content beside Oggi's clock; omitted without an active contributor. */
   todayHeader?: ComponentType<{ look: 'block' | 'caption'; align?: 'start' | 'end' }>;
   /** Additional configuration controls before the schema fields. */

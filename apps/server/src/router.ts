@@ -26,6 +26,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   onClose: (close: NonNullable<ModuleInstance['close']>) => void,
   extra: Record<string, ModuleInstance['router']> = {},
   {
+    onRoutes,
     states = createModuleStates(),
     off = [],
     configPath,
@@ -35,6 +36,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     backup = createBackup({ dbPath }),
     catalog,
   }: {
+    onRoutes?: (name: string, routes: NonNullable<ModuleInstance['routes']>) => void;
     states?: ModuleStates;
     off?: readonly string[];
     configPath?: string;
@@ -70,6 +72,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     }
     const instance = definition.create({ ...deps, ...(ownDb && { db: ownDb }), config: config[definition.name] });
     if (instance.close) onClose(instance.close);
+    if (instance.routes) onRoutes?.(definition.name, instance.routes);
     states.set({ ...info, status: 'on' });
     return [definition.name, instance.router];
   });

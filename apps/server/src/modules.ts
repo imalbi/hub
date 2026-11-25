@@ -7,9 +7,7 @@ import { pairingModule } from './modules/devices/module.ts';
 import { pomodoroModule } from './modules/pomodoro/module.ts';
 import { systemModule } from './modules/system/module.ts';
 import { themeModule } from './modules/theme/module.ts';
-import { musicModule } from './modules/music/server.ts';
 
-import { studyModule } from './modules/study/server.ts';
 import { notesModule } from './modules/notes/module.ts';
 import { calendarModule } from './modules/calendar/module.ts';
 
@@ -23,8 +21,6 @@ export const publicModules = [
   pomodoroModule,
   systemModule,
   themeModule,
-  musicModule,
-  studyModule,
   notesModule,
   calendarModule,
 ] as const;

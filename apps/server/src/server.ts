@@ -1,3 +1,4 @@
+import type { ModuleDefinition, ModuleInstance } from './core/module.ts';
 import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
 import { createFiles } from './core/files.ts';
@@ -29,8 +30,6 @@ import { openDb } from './db/index.ts';
 import { run as realRun, streamSpawn, type Run, type StreamSpawn } from './core/exec.ts';
 import { createJobRunner } from './core/jobs.ts';
 import { publicModules } from './modules.ts';
-import { registerMusicCoverRoute, type CoverImage } from './modules/music/cover-route.ts';
-import { createMusicModule } from './modules/music/server.ts';
 import { discoverModules, installedRoot, privateRoot, reposRoot } from './core/discovery.ts';
 import { createCatalogService } from './core/catalog.ts';
 import { allowedOrigins, isAllowedHost, isAllowedOrigin } from './core/origin.ts';
@@ -76,11 +75,9 @@ export function buildServer({
   onlyModules,
   settings,
   catalog,
-  music,
   autoBackup = false,
 }: {
   dbPath: string;
-  music?: Parameters<typeof createMusicModule>[0];
   deps?: {
     run?: Run;
     fetch?: typeof fetch;
@@ -88,6 +85,7 @@ export function buildServer({
     onJobs?: (jobs: ReturnType<typeof createJobRunner>) => void;
     onConfirmations?: (confirmations: ReturnType<typeof createConfirmations>) => void;
     testRouters?: Record<string, AnyRouter>;
+    testModules?: readonly ModuleDefinition[];
   };
   config?: Config;
   isLoopback?: IsLoopback;
@@ -226,6 +224,23 @@ export function buildServer({
       'jobs',
       'catalog',
     ];
+    const registerModuleRoutes = (name: string, routes: NonNullable<ModuleInstance['routes']>) => {
+      scope.register(
+        async (moduleScope) => {
+          moduleScope.addHook('onRequest', async (req, reply) => {
+            if (req.headers.origin !== undefined && !isAllowedOrigin(req.headers.origin, allowlist))
+              return reply.code(403).send({ error: 'Origin not allowed' });
+            if (req.headers['sec-fetch-site'] === 'cross-site')
+              return reply.code(403).send({ error: 'Cross-site request not allowed' });
+            const client = await resolveClient(db, isLoopback, req, extractToken(req.headers.authorization, null));
+            if (client.kind === 'anonymous') return reply.code(401).send({ error: 'Pair this device first' });
+            return undefined;
+          });
+          routes(moduleScope);
+        },
+        { prefix: `/m/${name}` },
+      );
+    };
     const extra = await discoverModules({
       roots: moduleRoots,
       examples: exampleModules,
@@ -241,23 +256,7 @@ export function buildServer({
       available: publicModules
         .filter((module) => !config.modulesOff.includes(module.name))
         .map((module) => module.name),
-      onRoutes: (name, routes) => {
-        scope.register(
-          async (moduleScope) => {
-            moduleScope.addHook('onRequest', async (req, reply) => {
-              if (req.headers.origin !== undefined && !isAllowedOrigin(req.headers.origin, allowlist))
-                return reply.code(403).send({ error: 'Origin not allowed' });
-              if (req.headers['sec-fetch-site'] === 'cross-site')
-                return reply.code(403).send({ error: 'Cross-site request not allowed' });
-              const client = await resolveClient(db, isLoopback, req, extractToken(req.headers.authorization, null));
-              if (client.kind === 'anonymous') return reply.code(401).send({ error: 'Pair this device first' });
-              return undefined;
-            });
-            routes(moduleScope);
-          },
-          { prefix: `/m/${name}` },
-        );
-      },
+      onRoutes: registerModuleRoutes,
     });
     const catalogService = createCatalogService({
       db,
@@ -278,24 +277,14 @@ export function buildServer({
       onRestart: catalog?.onRestart ?? settings?.onRestart,
     });
     onClose(() => catalogService.close());
-    let readMusicCover: ((id: string) => Promise<CoverImage | null>) | undefined;
-    const modules = publicModules.map((module) =>
-      module.name === 'music'
-        ? createMusicModule({
-            ...music,
-            onCover: (read) => {
-              readMusicCover = read;
-            },
-          })
-        : module,
-    );
     const appRouter = createAppRouter(
-      modules,
+      [...publicModules, ...(deps.testModules ?? [])],
       moduleDeps,
       config,
       onClose,
       { ...extra, ...deps.testRouters },
       {
+        onRoutes: registerModuleRoutes,
         states,
         off: config.modulesOff,
         dbPath,
@@ -305,14 +294,6 @@ export function buildServer({
         backup,
         catalog: catalogService,
       },
-    );
-    scope.register(async (musicScope) =>
-      registerMusicCoverRoute(musicScope, {
-        db,
-        isLoopback,
-        origins: allowlist,
-        readCover: (id) => readMusicCover?.(id) ?? Promise.resolve(null),
-      }),
     );
     if (autoBackup) onClose(startDailyCheck(backup).stop);
     // Last hook of the scope, so it runs first: a copy in progress finishes before any module or core handle closes.
@@ -405,7 +386,6 @@ export function buildServer({
       return req.method === 'GET' &&
         !path.startsWith('/trpc') &&
         !path.startsWith('/files') &&
-        !path.startsWith('/music/') &&
         path !== '/m' &&
         !path.startsWith('/m/') &&
         path !== '/mcp' &&

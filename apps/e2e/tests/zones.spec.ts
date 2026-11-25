@@ -6,7 +6,6 @@ import { chooseTheme } from './themes.ts';
 
 const zones = [
   ['Panoramica', '/desk'],
-  ['Studio', '/desk/studio'],
   ['Media', '/desk/media'],
   ['Sistema', '/desk/system'],
   ['Dispositivi', '/desk/devices'],
@@ -40,16 +39,16 @@ test('every desk page has exactly one h1 and it is visually hidden', async ({ pa
 });
 
 test('the rail keeps the active link style and aria-current when the URL has search parameters', async ({ page }) => {
-  await page.goto('/desk/studio?segment=favorites');
+  await page.goto('/desk?segment=favorites');
   const rail = page.getByRole('navigation', { name: 'Zone' });
-  const studioLink = rail.getByRole('link', { name: 'Studio', exact: true });
+  const studioLink = rail.getByRole('link', { name: 'Panoramica', exact: true });
   await expect(studioLink).toHaveAttribute('aria-current', 'page');
   await expect(studioLink).toHaveClass(/text-primary-foreground/);
 });
 
 test('number keys switch zones but do not interfere with typing or modified shortcuts', async ({ page }) => {
-  await page.goto('/desk/studio');
-  await expect(page.getByRole('heading', { level: 1, name: 'Studio' })).toBeVisible();
+  await page.goto('/desk');
+  await expect(page.getByRole('heading', { level: 1, name: 'Panoramica' })).toBeVisible();
   for (let i = 0; i < zones.length; i++) {
     await page.keyboard.press(String(i + 1));
     await expect(page).toHaveURL(new RegExp(`${zones[i]?.[1]}/?$`));
@@ -100,17 +99,21 @@ test('a chosen theme survives reload and the deck follows it', async ({ page }) 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'paper');
 });
 
-test('Pomodoro secondary controls remain readable when hovered in paper', async ({ page }) => {
+test('Pomodoro secondary controls remain readable when hovered in paper', async ({ page, pc }) => {
+  await pc.post('/trpc/layout.save', {
+    data: { zone: 'overview', items: [{ widget: 'pomodoro', size: 'large', x: 0, y: 0 }] },
+  });
   await freezePomodoro(page, pausedPomodoro);
   await page.goto('/desk/settings/appearance');
   await chooseTheme(page, 'Chiaro');
-  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Studio', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Zone' }).getByRole('link', { name: 'Panoramica', exact: true }).click();
   for (const name of ['Salta', 'Ferma']) {
     const button = page.getByRole('button', { name, exact: true });
     await button.hover();
     const ratio = await contrastRatio(button);
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
+  await pc.post('/trpc/layout.reset', { data: { zone: 'overview' } });
 });
 
 test('Sistema volume follows a second client and can be changed from the slider', async ({ page, pc }) => {

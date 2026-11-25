@@ -5,18 +5,16 @@ import { deskLayouts } from '../../db/schema.ts';
 
 // The built-in desk zones (`apps/web/src/shell/zones.ts`): the ids a module zone may not take. Only `overview` is a
 // board of widgets; the others are pages. A module zone's id is also its path (`/desk/<id>`), so the built-in paths
-// that differ from their ids (`studio`, `lavoro`, `messaggi`) are taken too.
+// that differ from their ids (`lavoro`, `messaggi`) are taken too.
 export const builtinZones = [
   'overview',
   'calendar',
-  'study',
   'media',
   'system',
   'devices',
   'settings',
   'work',
   'messages',
-  'studio',
   'lavoro',
   'messaggi',
 ];

@@ -1,8 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { clean, seed } from './calendar-data.ts';
-import { RUN_TMP } from './hosts.ts';
-import { legiblePlan } from './study-fixtures.ts';
 import { expect, test } from './fixtures.ts';
 import { answerQueries } from './desktop.ts';
 
@@ -32,7 +28,7 @@ test('day lines place calendar bands and keep nearby captions apart', async ({ p
     data: { title: 'Turno prova', day: '2026-11-15', start: '10:00', end: '13:00' },
   });
   await pc.post('/trpc/calendar.add', { data: { title: 'Colloquio prova', day: '2026-11-15', start: '10:30' } });
-  for (const path of ['/desk', '/desk/studio']) {
+  for (const path of ['/desk']) {
     await page.goto(path);
     const ruler = page.locator('[data-day-ruler]');
     const band = ruler.locator('[data-day-event][aria-label="Turno prova"]');
@@ -225,27 +221,6 @@ test('tomorrow with only a shift does not say there are no events', async ({ pag
   const lines = page.getByRole('list', { name: 'Righe di domani' });
   await expect(lines.getByRole('link', { name: /09:30-17:00 Turno Persona A/ })).toBeVisible();
   await expect(lines.getByText('Nessun evento tuo')).toHaveCount(0);
-});
-
-test('Studio days slide from today, one a day, and open Studio', async ({ page, pc }) => {
-  const inbox = join(RUN_TMP, 'study', 'in-arrivo');
-  await mkdir(inbox, { recursive: true });
-  await writeFile(join(inbox, 'calendar.json'), JSON.stringify(await legiblePlan()));
-  expect((await pc.post('/trpc/study.activate', { data: { name: 'calendar.json' } })).ok()).toBe(true);
-  await page.goto('/desk/calendar');
-  const month = page.getByRole('region', { name: 'novembre 2026' });
-  // The current day (La foglia) is today; the next open day is tomorrow, not today.
-  await expect(month.locator('[data-day="2026-11-15"]').getByRole('button', { name: /La foglia/ })).toBeVisible();
-  await expect(month.locator('[data-day="2026-11-14"]').getByRole('button')).toHaveCount(1);
-  await expect(month.locator('[data-day="2026-11-16"]').getByRole('button')).toHaveCount(2);
-  await expect(
-    page.getByRole('complementary', { name: 'domenica 15 novembre' }).getByText('Studio', { exact: true }),
-  ).toBeVisible();
-  await month
-    .locator('[data-day="2026-11-15"]')
-    .getByRole('button', { name: /La foglia/ })
-    .click();
-  await expect(page).toHaveURL(/\/desk\/studio$/);
 });
 
 test('weekly shifts support editing a day, editing the series and removing one occurrence', async ({ page }) => {

@@ -1,17 +1,47 @@
 {
   "audio": {
     "outputs": [
-      { "label": "Cuffie", "match": "Headphones model" },
-      { "label": "Casse", "match": "Speakers model" }
+      {
+        "label": "Cuffie",
+        "match": "Headphones model"
+      },
+      {
+        "label": "Casse",
+        "match": "Speakers model"
+      }
     ]
   },
-  "server": { "host": "127.0.0.1", "allowedOrigins": ["http://hub.example.test:4180"] },
-  "system": { "powerstatDir": "/path/to/powerstat/state" },
-  "pomodoro": { "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15, "longBreakEvery": 4 },
-  "modules": {
-    "airplay": { "command": "/path/to/airplay" },
-    "weather": { "name": "Località esempio", "latitude": 1, "longitude": 2 },
-    "sites": [{ "name": "Esempio", "url": "https://example.com" }]
+  "server": {
+    "host": "127.0.0.1",
+    "allowedOrigins": ["http://hub.example.test:4180"]
   },
-  "study": { "plansDir": "/path/to/study/plans", "materialDirs": ["/path/to/study/materials"] }
+  "system": {
+    "powerstatDir": "/path/to/powerstat/state"
+  },
+  "pomodoro": {
+    "focusMinutes": 25,
+    "shortBreakMinutes": 5,
+    "longBreakMinutes": 15,
+    "longBreakEvery": 4
+  },
+  "modules": {
+    "airplay": {
+      "command": "/path/to/airplay"
+    },
+    "weather": {
+      "name": "Località esempio",
+      "latitude": 1,
+      "longitude": 2
+    },
+    "sites": [
+      {
+        "name": "Esempio",
+        "url": "https://example.com"
+      }
+    ],
+    "study": {
+      "plansDir": "/path/to/study/plans",
+      "materialDirs": ["/path/to/study/materials"]
+    }
+  }
 }

@@ -73,10 +73,9 @@ test('C3: the default board of a fresh layout is P1 public widgets in P1 order',
   });
   await page.reload();
   const items = page.locator('[data-widget]');
-  await expect(items).toHaveCount(7);
+  await expect(items).toHaveCount(6);
   expect(await items.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-widget')))).toEqual([
     'today',
-    'study',
     'pomodoro',
     'audio',
     'media',
@@ -85,7 +84,6 @@ test('C3: the default board of a fresh layout is P1 public widgets in P1 order',
   ]);
   expect(await items.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-size')))).toEqual([
     'wide',
-    'medium',
     'small',
     'small',
     'medium',
@@ -272,7 +270,6 @@ test('all widgets fit within the surface scroller', async ({ page, pc }) => {
     'audio',
     'devices',
     'theme',
-    'study',
     'notes',
     'calendar',
   ];

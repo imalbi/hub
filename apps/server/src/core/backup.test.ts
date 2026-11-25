@@ -34,6 +34,7 @@ async function setup(t: TestContext, backup: { dir?: string; keep?: number } = {
   const dbPath = join(root, 'hub.db');
   const app = buildServer({
     dbPath,
+    exampleModules: true,
     deps: { run: createFakeDesktop() },
     config: { ...emptyConfig, backup: { enabled: true, keep: 14, ...backup } },
     isLoopback: (peer) => peer.headers['x-test-remote'] !== 'yes',
@@ -78,15 +79,15 @@ const agentNames = (file: string) => {
 void test('a run copies the core and a module database; later writes stay out, the live one keeps writing', async (t) => {
   const { root, dir, call } = await setup(t);
   await call('POST', 'agents.create', { input: { name: 'before' } });
-  // Test-only second handle on the study module's file, to give it a row to find in the copy.
-  const own = new DatabaseSync(join(root, 'modules', 'study.db'));
+  // Test-only second handle on the example module's file, to give it a row to find in the copy.
+  const own = new DatabaseSync(join(root, 'modules', 'hello.db'));
   own.exec("create table probe (x text); insert into probe values ('kept')");
   own.close();
 
   const run = stateSchema.parse((await call('POST', 'backup.run')).data);
   assert.equal(run.status, 'ok');
   assert.deepEqual(agentNames(join(dir, today, 'hub.db')), ['before']);
-  const copy = new DatabaseSync(join(dir, today, 'modules', 'study.db'), { readOnly: true });
+  const copy = new DatabaseSync(join(dir, today, 'modules', 'hello.db'), { readOnly: true });
   assert.deepEqual(
     copy
       .prepare('select x from probe')
@@ -225,6 +226,7 @@ void test('closing the server during the start copy lets it finish before any da
   t.after(() => rm(root, { recursive: true, force: true }));
   const app = buildServer({
     dbPath: join(root, 'hub.db'),
+    exampleModules: true,
     deps: { run: createFakeDesktop() },
     config: { ...emptyConfig, backup: { enabled: true, keep: 14 } },
     autoBackup: true,
@@ -233,5 +235,5 @@ void test('closing the server during the start copy lets it finish before any da
   // Regression: module databases closed in the plugin scope before the root hook waited for the copy.
   await app.close();
   assert.deepEqual(await readdir(join(root, 'backups')), [today]);
-  assert.ok((await readdir(join(root, 'backups', today, 'modules'))).includes('study.db'));
+  assert.ok((await readdir(join(root, 'backups', today, 'modules'))).includes('hello.db'));
 });

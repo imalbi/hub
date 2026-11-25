@@ -49,3 +49,17 @@ void test('a module zone whose id is the path of a built-in page is skipped, the
     ['ricerca'],
   );
 });
+
+void test('a fallback stays without contributions and is replaced only by sections in its zone', () => {
+  const fallback = { ...tab('player'), fallback: true };
+  const own = [tab('always'), fallback];
+  assert.deepEqual(ids(pageTabs('media', own, [])), ['always', 'player']);
+  assert.deepEqual(ids(pageTabs('media', own, [ui('other', { sections: [section('devices', 'extra')] })])), [
+    'always',
+    'player',
+  ]);
+  assert.deepEqual(ids(pageTabs('media', own, [ui('music', { sections: [section('media', 'music')] })])), [
+    'always',
+    'music',
+  ]);
+});

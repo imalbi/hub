@@ -172,7 +172,7 @@ function useItems(reported: Record<string, ModuleActivity | null>) {
       progress: timer.progress,
       clock: timer.time,
       icon: <TimerIcon className={iconClass} aria-hidden />,
-      href: '/desk/studio',
+      href: '/desk',
       below: (
         <div className="flex gap-xs pt-xs">
           <RegistryButton label={timer.primaryLabel} action={() => timer.act(timer.primaryAction)} />

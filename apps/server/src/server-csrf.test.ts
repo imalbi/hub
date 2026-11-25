@@ -122,7 +122,7 @@ void test('foreign, missing or malformed Host headers are refused across all rou
     },
     { method: 'POST' as const, url: '/mcp', headers: { 'content-type': 'application/json' }, payload: '{}' },
     { method: 'GET' as const, url: '/files/x' },
-    { method: 'GET' as const, url: '/music/cover/x' },
+    { method: 'GET' as const, url: '/m/missing/cover/x' },
   ]) {
     const res = await app.inject({
       ...req,

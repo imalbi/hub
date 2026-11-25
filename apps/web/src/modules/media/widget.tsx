@@ -6,7 +6,7 @@ import { RegistryButton } from '../../components/registry-button.tsx';
 import { FadingLine } from '../../components/ui/fading-line.tsx';
 import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
 import { Slider } from '../../components/ui/slider.tsx';
-import { useIsOn } from '../../lib/enabled-modules.ts';
+import { useLiveModuleUIs, useIsOn } from '../../lib/enabled-modules.ts';
 import { useTRPC } from '../../lib/trpc.ts';
 import type { WidgetSize } from '../../lib/widget-size.ts';
 import { m } from '../../paraglide/messages.js';
@@ -154,8 +154,7 @@ function MediumMedia() {
 
 /** Grande (P5): large square cover left; title, artist, seek line with times, centered transport, and Prossimi 3 right. */
 function LargeMedia() {
-  const isOn = useIsOn();
-  const musicOn = isOn('music');
+  const modules = useLiveModuleUIs();
   const media = useMedia();
   const title = useTrackTitle();
   const pending = media.state === undefined && !media.connectionLost;
@@ -190,7 +189,7 @@ function LargeMedia() {
           <div className="flex justify-center">
             <Transport compact />
           </div>
-          {musicOn && <UpcomingTracks />}
+          {modules.map(({ name, mediaUpcoming: Upcoming }) => (Upcoming ? <Upcoming key={name} /> : null))}
         </div>
       </div>
     </Panel>
@@ -232,29 +231,6 @@ function SeekSlider({ position, length, showTimes }: { position: number; length:
           <span>{time(length)}</span>
         </div>
       )}
-    </div>
-  );
-}
-
-function UpcomingTracks() {
-  const trpc = useTRPC();
-  const queue = useSubscription(trpc.music.onQueue.subscriptionOptions()).data;
-  const upcoming = queue?.upcoming.slice(0, 3) ?? [];
-  if (upcoming.length === 0) return null;
-  return (
-    <div className="flex min-w-0 flex-col gap-3xs">
-      <p className="text-caps text-muted-foreground">{m.media_upcoming()}</p>
-      <ul className="flex min-w-0 flex-col gap-3xs">
-        {upcoming.map((song, index) => {
-          const artist = song.artists.map((item) => item.name).join(', ');
-          return (
-            <li key={`${song.id}-${index}`} className="truncate text-body">
-              {song.title}
-              {artist && <span className="text-muted-foreground"> · {artist}</span>}
-            </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }

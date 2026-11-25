@@ -20,9 +20,7 @@ const EXPECTED_MODULES = [
   'Post-it',
   'Sistema',
   'Stato',
-  'Studio',
   'Temi',
-  'YouTube Music',
 ];
 
 type ModuleState = { name: string; status: string };
@@ -143,14 +141,6 @@ if (!example) {
     expect(await refused.text()).toMatch(/too small/i);
   });
 
-  test('a word list field shows its title and its caption like the other fields', async ({ page }) => {
-    await page.goto('/desk/settings/study');
-    // Regression (2026-11-13): the tag input had only an accessible name, no visible title, and its own smaller caption.
-    await expect(page.getByText('Cartelle materiali', { exact: true })).toBeVisible();
-    const size = (text: RegExp) => page.getByText(text).evaluate((node) => getComputedStyle(node).fontSize);
-    expect(await size(/^Cartelle dei materiali di studio\./)).toBe(await size(/^Cartella dei piani;/));
-  });
-
   test('the list has all general pages and a row per module with its state', async ({ page, pc }) => {
     await page.goto('/desk/settings');
     const list = page.getByRole('navigation', { name: 'Sezioni' });
@@ -165,7 +155,7 @@ if (!example) {
     await expect(list.getByRole('link')).toHaveCount(states.length + GENERAL_LINKS.length);
     await expect(list.getByRole('link', { name: /^Pomodoro\s*Attivo/ })).toBeVisible();
     // Every public module has Italian copy: Musica once listed as the raw name "Music".
-    await expect(list.getByRole('link', { name: /^YouTube Music\s*Attivo/ })).toBeVisible();
+    await expect(list.getByRole('link', { name: /^Audio\s*Attivo/ })).toBeVisible();
     await expect(list.getByRole('link', { name: /^Music\b/ })).toHaveCount(0);
   });
 
@@ -193,12 +183,12 @@ if (!example) {
   test('a row has a dot only when it is off or has a setup note', async ({ page }) => {
     await withModuleNotes(page, (module) => {
       if (module.name === 'audio') module.status = 'off';
-      if (module.name === 'music') module.note = 'Configurazione richiesta';
+      if (module.name === 'calendar') module.note = 'Configurazione richiesta';
     });
     await page.goto('/desk/settings/appearance');
     const row = (name: RegExp) => page.getByRole('navigation', { name: 'Sezioni' }).getByRole('link', { name });
-    await expect(row(/^YouTube Music/)).toContainText('Configurazione richiesta');
-    await expect(row(/^YouTube Music/).locator('[data-state-dot]')).toHaveCount(1);
+    await expect(row(/^Calendario/)).toContainText('Configurazione richiesta');
+    await expect(row(/^Calendario/).locator('[data-state-dot]')).toHaveCount(1);
     await expect(row(/^Audio/)).toContainText('Spento');
     await expect(row(/^Audio/).locator('[data-state-dot]')).toHaveCount(1);
     await expect(row(/^Pomodoro/).locator('[data-state-dot]')).toHaveCount(0);
@@ -281,19 +271,11 @@ if (!example) {
 }
 
 if (!example) {
-  test('with Musica off, Media keeps the player and the audio button but has no music search or volume', async ({
-    page,
-    pc,
-  }) => {
-    try {
-      await saveSwitch(page, 'music');
-      await page.goto('/desk/media');
-      await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible(RESTARTED);
-      await expect(page.getByRole('button', { name: 'Audio: Cuffie', exact: true })).toBeVisible();
-      await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toHaveCount(0);
-    } finally {
-      await ensureOn(pc, 'music');
-    }
+  test('Media without a catalog module keeps the player and audio control', async ({ page }) => {
+    await page.goto('/desk/media');
+    await expect(page.getByRole('region', { name: 'Player musicale' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Audio: Cuffie', exact: true })).toBeVisible();
+    await expect(page.getByRole('searchbox', { name: 'Cerca musica' })).toHaveCount(0);
   });
 }
 
