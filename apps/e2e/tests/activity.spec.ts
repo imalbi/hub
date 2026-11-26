@@ -202,3 +202,14 @@ test('the ball is dragged anywhere, stays there after a reload, a drag does not 
   await expect.poll(async () => (await ball.boundingBox())!.x).toBeCloseTo(start.x, 0);
   await page.evaluate(() => localStorage.removeItem('hub.ball'));
 });
+
+test('registered jobs show their Italian registry label in the activity panel', async ({ page, request }) => {
+  await player(request, true);
+  jobId = (await (await request.post(`${SERVER_URL}/__fake/jobs`, { data: { action: 'audio.cycleOutput' } })).json())
+    .jobId;
+  await page.goto('/desk/media');
+  await ballOf(page).click();
+  const panel = page.getByRole('dialog', { name: 'Attività in corso' });
+  await expect(panel.getByRole('button', { name: 'Apri Cambia uscita audio' })).toBeVisible();
+  await expect(panel.getByText('audio.cycleOutput', { exact: true })).toHaveCount(0);
+});

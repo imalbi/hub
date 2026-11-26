@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { useTRPC } from '../lib/trpc.ts';
 import { NumberRoll } from '../components/ui/number-roll.tsx';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion } from 'motion/react';
@@ -158,6 +160,8 @@ function Probe({
 }
 
 function useItems(reported: Record<string, ModuleActivity | null>) {
+  const trpc = useTRPC();
+  const registry = useQuery(trpc.registry.list.queryOptions());
   const timer = usePomodoro();
   const jobs = useJobs().filter(
     (job) =>
@@ -188,7 +192,7 @@ function useItems(reported: Record<string, ModuleActivity | null>) {
   for (const [index, job] of jobs.entries()) {
     items.push({
       id: `job-${job.id}`,
-      title: job.action,
+      title: registry.data?.find((action) => action.path === job.action)?.label ?? job.action,
       // The ball's name counts the jobs once ("2 job"), not once per job.
       summary: index === 0 ? m.activity_jobs_count({ count: jobs.length }) : '',
       detail: m.activity_job_elapsed({ time: time(Math.max(0, Math.floor((now - job.startedAt) / 1000))) }),

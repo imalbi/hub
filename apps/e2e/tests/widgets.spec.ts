@@ -32,6 +32,14 @@ test.afterEach(async ({ pc }) => {
   });
 });
 
+test('the core widget and zone say Media without the optional Musica module', async ({ page }) => {
+  await expect(cell(page, 'media').getByRole('heading', { name: 'Media', exact: true })).toBeVisible();
+  await expect(cell(page, 'media').getByText('Musica', { exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Media', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Media', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Musica', exact: true })).toHaveCount(0);
+});
+
 test('widget labels and measured figures use the self-hosted mono voice', async ({ page, pc, browser }) => {
   const ids = ['pomodoro', 'audio', 'devices', 'power', 'server'];
   await pc.post('/trpc/layout.save', {
@@ -63,7 +71,7 @@ test('Oggi leads the default board; the Italian date is said once, in the day li
   await expect(today.getByText('mercoledì 4 novembre')).toHaveCount(0);
   await expect(today.locator('[data-readout]').first()).toHaveCSS('font-family', /JetBrains Mono/);
   await expect(today.getByText('Località esempio')).toHaveCount(0);
-  await expect(today.locator('[data-today-header]')).toHaveCount(0);
+  await expect(today.locator('[data-today-header]')).toHaveCount(process.env.HUB_EXAMPLE_MODULES === '1' ? 1 : 0);
 });
 
 test('C3: the default board of a fresh layout is P1 public widgets in P1 order', async ({ page, pc }) => {
@@ -110,7 +118,7 @@ test('widgets on the same row have the same height, two small ones fill a medium
     ['pomodoro', 'media', 'server', 'audio'].map((widget) => box(page, widget)),
   );
   // One row is --spacing-widget-row at the desk's root size (15rem at 24px); a stale read of the root before the desk
-  // layout applied once gave 240px rows that cut the Musica widget.
+  // layout applied once gave 240px rows that cut the Media widget.
   expect(pomodoro.height).toBeCloseTo(360, 0);
   expect(media.height).toBeCloseTo(pomodoro.height, 0);
   expect(media.y).toBeCloseTo(pomodoro.y, 0);
@@ -151,11 +159,11 @@ test('a size chosen in edit mode resizes the widget and survives a reload', asyn
   await expect(cell(page, 'pomodoro').getByText(/^Sessioni completate oggi/)).toBeVisible();
 });
 
-test('the large Musica widget fits its cell: the hero-sized cover once pushed the title and controls out', async ({
+test('the large Media widget fits its cell: the hero-sized cover once pushed the title and controls out', async ({
   page,
 }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
-  const sizes = page.getByRole('group', { name: 'Dimensione di Musica' });
+  const sizes = page.getByRole('group', { name: 'Dimensione di Media' });
   await andSaved(page, () => sizes.locator('label', { has: page.getByRole('radio', { name: 'Grande' }) }).click());
   await page.getByRole('button', { name: 'Fine' }).click();
   await box(page, 'media');

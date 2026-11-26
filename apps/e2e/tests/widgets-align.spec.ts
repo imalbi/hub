@@ -65,7 +65,7 @@ test('C2: Pomodoro aligns Piccolo and Medio with live tag and fits at 4K and 108
   }
 });
 
-test('C2: Musica aligns Piccolo, Medio, and Grande with seek at 4K and 1080p', async ({ page, pc }) => {
+test('C2: Media aligns Piccolo, Medio, and Grande with seek at 4K and 1080p', async ({ page, pc }) => {
   await place(pc, [{ widget: 'media', size: 'small', x: 0, y: 0 }]);
   await page.setViewportSize({ width: 3840, height: 2160 });
   await page.goto('/desk');

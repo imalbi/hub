@@ -130,14 +130,14 @@ const cases = [
     url: '/desk/settings/core',
     query: 'settings.core',
     label: 'Carico le impostazioni',
-    selectors: ['main a[href="/desk/settings"]', 'main h2', 'main [data-panel]'],
+    selectors: ['main nav a[href="/desk/settings/appearance"]', 'main h2', 'main [data-panel]'],
   },
   {
     name: 'settings module',
     url: '/desk/settings/audio',
     query: 'settings.config',
     label: 'Carico le impostazioni',
-    selectors: ['main a[href="/desk/settings"]', 'main h2', 'main [data-panel]'],
+    selectors: ['main nav a[href="/desk/settings/appearance"]', 'main h2', 'main [data-panel]'],
   },
 ];
 
@@ -156,7 +156,6 @@ for (const entry of cases) {
     await page.goto(entry.url);
     const skeleton = page.getByRole('status', { name: entry.label }).first();
     await expect(skeleton).toBeVisible();
-    await page.screenshot({ path: `/tmp/hub88-${entry.name.replaceAll(' ', '-').toLowerCase()}-loading.png` });
     const boxes = await Promise.all(entry.selectors.map((selector) => page.locator(selector).first().boundingBox()));
     release();
     await expect(skeleton).toHaveCount(0);

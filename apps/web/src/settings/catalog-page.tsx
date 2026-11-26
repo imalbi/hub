@@ -1,7 +1,6 @@
-import { CaretLeftIcon } from '@phosphor-icons/react';
+import { Link } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TRPCClientError } from '@trpc/client';
-import { Link } from '@tanstack/react-router';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Panel } from '../components/panel.tsx';
@@ -90,10 +89,6 @@ export function CatalogPage() {
 
   return (
     <div className="flex flex-col gap-lg">
-      <Link to="/desk/settings" className="inline-flex w-fit items-center gap-2xs text-label text-muted-foreground">
-        <CaretLeftIcon aria-hidden className="size-icon-sm" />
-        {m.settings_back()}
-      </Link>
       <div className="sticky top-0 z-10 -my-xs flex flex-wrap items-center gap-lg bg-surface py-xs">
         <h2 className="text-heading">{m.catalog_title()}</h2>
       </div>

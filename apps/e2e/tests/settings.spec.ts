@@ -15,7 +15,7 @@ const EXPECTED_MODULES = [
   'Calendario',
   'Dispositivi',
   'Disposizione',
-  'Musica',
+  'Media',
   'Pomodoro',
   'Post-it',
   'Sistema',
@@ -195,7 +195,7 @@ if (!example) {
     await expect(row(/^Pomodoro/)).toHaveText(/^Pomodoro\s*Attivo$/);
   });
 
-  test('a module row opens its page beside the list; the back row, browser back and a deep link work', async ({
+  test('a module row opens its page beside the list; no redundant back row; browser back and a deep link work', async ({
     page,
   }) => {
     await page.goto('/desk/settings');
@@ -207,11 +207,7 @@ if (!example) {
     await expect(page.getByRole('heading', { level: 2, name: 'Pomodoro' })).toBeVisible();
     // The list is still there: it stays on the left while the page opens next to it.
     await expect(page.getByRole('navigation', { name: 'Sezioni' })).toBeVisible();
-    // The back row goes to the index, which opens Aspetto in place of itself.
-    await page.getByRole('main').getByRole('link', { name: 'Impostazioni', exact: true }).click();
-    await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/desk\/settings\/pomodoro$/);
+    await expect(page.getByRole('main').getByRole('link', { name: 'Impostazioni', exact: true })).toHaveCount(0);
     await page.goBack();
     await expect(page).toHaveURL(/\/desk\/settings\/appearance$/);
     // A deep link loads the page by itself, and Aspetto opens the same way.
@@ -539,3 +535,11 @@ if (example) {
     }
   });
 }
+
+test('settings details keep the section rail without a redundant back link', async ({ page }) => {
+  for (const route of ['appearance', 'core', 'catalog', 'pomodoro']) {
+    await page.goto(`/desk/settings/${route}`);
+    await expect(page.getByRole('navigation', { name: 'Sezioni' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: 'Impostazioni', exact: true })).toHaveCount(0);
+  }
+});

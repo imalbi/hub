@@ -55,11 +55,7 @@ export default defineConfig({
     {
       name: 'deck',
       dependencies: ['setup'],
-      testMatch: privateFolder
-        ? []
-        : examples
-          ? ['deck.spec.ts', 'deck.visual.spec.ts']
-          : ['deck.spec.ts', 'pairing.spec.ts', 'deck.visual.spec.ts'],
+      testMatch: privateFolder ? [] : ['deck.spec.ts', 'pairing.spec.ts', 'deck.visual.spec.ts'],
       use: { baseURL: PHONE_URL, storageState: DECK_STATE, ...deckViewport },
     },
     {
@@ -73,6 +69,13 @@ export default defineConfig({
               'pomodoro.spec.ts',
               'calendar.spec.ts',
               'calendar.visual.spec.ts',
+              'calendar-views.spec.ts',
+              'calendar-views.visual.spec.ts',
+              'jobs.spec.ts',
+              'activity.spec.ts',
+              'settings.visual.spec.ts',
+              'widgets.spec.ts',
+              'widgets-align.spec.ts',
               'palette.spec.ts',
               'zone-pages.spec.ts',
               'system.spec.ts',

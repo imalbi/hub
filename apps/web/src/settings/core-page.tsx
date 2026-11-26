@@ -1,7 +1,5 @@
 import { SettingsLoading } from './settings-loading.tsx';
-import { CaretLeftIcon } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { z } from '../lib/zod-csp.ts';
 import { ActionButton } from '../components/ui/action-button.tsx';
@@ -45,10 +43,6 @@ export function CoreSettings() {
   }
   return (
     <div className="flex flex-col gap-lg">
-      <Link to="/desk/settings" className="inline-flex w-fit items-center gap-2xs text-label text-muted-foreground">
-        <CaretLeftIcon aria-hidden className="size-icon-sm" />
-        {m.settings_back()}
-      </Link>
       <div className="sticky top-0 z-10 -my-xs flex flex-wrap items-center gap-lg bg-surface py-xs">
         <h2 className="text-heading">{m.settings_core()}</h2>
         <div className="ml-auto flex items-center gap-sm">

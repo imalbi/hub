@@ -1,6 +1,6 @@
 import { EmptyState } from '../../components/ui/empty-state.tsx';
 import { LoadingSkeleton } from '../../components/ui/loading-skeleton.tsx';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { useCallback, useState } from 'react';
 import { HoldButton } from '../../components/hold-button.tsx';
@@ -107,6 +107,7 @@ export function JobsPage() {
   const { data } = useJobsSubscription();
   const jobs = data ?? [];
   const trpc = useTRPC();
+  const registry = useQuery(trpc.registry.list.queryOptions());
   const cancel = useMutation(trpc.jobs.cancel.mutationOptions());
   const [selected, setSelected] = useState<string | null>(null);
   const now = useNow(jobs.some((job) => job.status === 'running') ? 'clock' : null);
@@ -138,7 +139,9 @@ export function JobsPage() {
             aria-pressed={current?.id === job.id}
             className="rounded-lg border border-border p-md text-left"
           >
-            <span className="block">{job.action}</span>
+            <span className="block">
+              {registry.data?.find((action) => action.path === job.action)?.label ?? job.action}
+            </span>
             <span className="text-muted-foreground">
               {statusLabels[job.status]?.()} · {new Date(job.startedAt).toLocaleString('it-IT')} ·{' '}
               {m.jobs_duration({ seconds: Math.max(0, Math.floor(((job.endedAt ?? now) - job.startedAt) / 1000)) })}

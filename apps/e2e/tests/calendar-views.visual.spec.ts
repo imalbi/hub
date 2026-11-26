@@ -5,6 +5,7 @@ import { expect, test } from './fixtures.ts';
 const json = { 'content-type': 'application/json' };
 // Sunday 15 November 2026, fixed, so every label and the today marks are the same on each run.
 const NOW = new Date(2026, 10, 15, 10, 0);
+const suffix = process.env.HUB_EXAMPLE_MODULES === '1' ? '-example' : '';
 
 test.beforeEach(async ({ page, pc }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -38,7 +39,7 @@ for (const size of sizes) {
       await document.fonts.ready;
     });
     await page.mouse.move(0, 0);
-    await expect(page.locator('[data-page-surface]')).toHaveScreenshot(`calendar-week${size.name}.png`, {
+    await expect(page.locator('[data-page-surface]')).toHaveScreenshot(`calendar-week${size.name}${suffix}.png`, {
       animations: 'disabled',
     });
   });
@@ -52,7 +53,7 @@ for (const size of sizes) {
       await document.fonts.ready;
     });
     await page.mouse.move(0, 0);
-    await expect(page.locator('[data-page-surface]')).toHaveScreenshot(`calendar-agenda${size.name}.png`, {
+    await expect(page.locator('[data-page-surface]')).toHaveScreenshot(`calendar-agenda${size.name}${suffix}.png`, {
       animations: 'disabled',
     });
   });

@@ -205,7 +205,8 @@ function hooks(server: typeof app) {
       jobs?.clearHistory();
       return { cleared: true };
     }
-    return { jobId: jobs?.start('fake.job', 'fake-job', []) };
+    const action = z.object({ action: z.enum(['audio.cycleOutput', 'fake.job']) }).safeParse(request.body);
+    return { jobId: jobs?.start(action.success ? action.data.action : 'fake.job', 'fake-job', []) };
   });
   // No player at all (as when nothing was ever started), or back to the first track: the activity ball follows it.
   server.post('/__fake/player', (request, reply) => {

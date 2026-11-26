@@ -208,6 +208,38 @@ async function copyTreeNoSymlinks(sourceDir: string, targetDir: string): Promise
   }
 }
 
+async function statIfPresent(path: string) {
+  return lstat(path).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
+    throw error;
+  });
+}
+
+async function preserveLocalFiles(previous: string, staging: string): Promise<void> {
+  const previousInfo = await lstat(previous);
+  const stagingInfo = await lstat(staging);
+  if (!previousInfo.isDirectory() || !stagingInfo.isDirectory()) {
+    throw new Error('Module configuration requires regular directories');
+  }
+  for (const name of await readdir(previous)) {
+    if (name === 'node_modules' || name === '.git') continue;
+    const source = join(previous, name);
+    const target = join(staging, name);
+    const info = await lstat(source);
+    if (info.isSymbolicLink()) continue;
+    if (info.isDirectory()) {
+      const destination = await statIfPresent(target);
+      if (destination && !destination.isDirectory()) continue;
+      await mkdir(target, { recursive: true });
+      await preserveLocalFiles(source, target);
+      // Avoid retaining obsolete source directories that contain no local configuration.
+      if (!destination && (await readdir(target)).length === 0) await rm(target, { recursive: true });
+    } else if (info.isFile() && /\.local\..+$/.test(name) && !(await statIfPresent(target))) {
+      await copyFile(source, target);
+    }
+  }
+}
+
 /** Stages a module tree in a temporary folder, verifies `server.ts` and zero symlinks, then swaps atomically. */
 export async function copyModuleAtomically(
   sourceDir: string,
@@ -227,8 +259,9 @@ export async function copyModuleAtomically(
     await copyTreeNoSymlinks(sourceDir, staging);
     const serverStat = await lstat(join(staging, 'server.ts'));
     if (!serverStat.isFile() || serverStat.isSymbolicLink()) throw new Error('Module server.ts must be a regular file');
+    const existing = await statIfPresent(target);
+    if (existing) await preserveLocalFiles(target, staging);
     await prepare?.(staging);
-    const existing = await lstat(target).catch(() => undefined);
     if (existing) {
       await rename(target, backup);
       movedPrevious = true;

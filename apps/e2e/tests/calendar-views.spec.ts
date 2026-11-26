@@ -46,7 +46,11 @@ test('the view switch picks Settimana and Agenda and the choice survives a reloa
 
 test('a shift added through the card shows in the week, the agenda and the day panel, never as a month chip', async ({
   page,
+  pc,
 }) => {
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  // An early event stays among the two month chips even with the example module's contributions.
+  await pc.post('/trpc/calendar.add', { data: { title: 'Appuntamento', day: '2026-11-15', start: '09:00' } });
   await page.goto('/desk/calendar');
   await page.getByRole('button', { name: 'Nuovo evento' }).click();
   const card = page.getByRole('dialog', { name: 'Nuovo evento' });
@@ -67,7 +71,7 @@ test('a shift added through the card shows in the week, the agenda and the day p
   await expect(panel.getByText('Turno 22-6')).toBeVisible();
   await expect(panel.getByText('Persona A')).toBeVisible();
   const cell = month.locator('[data-day="2026-11-15"]');
-  await expect(cell.getByText('16:30 Dentista')).toBeVisible();
+  await expect(cell.getByText('09:00 Appuntamento')).toBeVisible();
   await expect(cell.getByText('Persona A')).toHaveCount(0);
   await expect(cell.getByText(/22:00/)).toHaveCount(0);
 
@@ -147,4 +151,41 @@ test('the agenda names Oggi and Domani and its small month jumps the list to a d
   await expect(list.getByText('Dentista')).toHaveCount(0);
   await mini.getByRole('button', { name: 'Mese dopo' }).click();
   await expect(mini.getByText('dicembre 2026')).toBeVisible();
+});
+
+test('all calendar views align their controls and the week aside navigates and filters', async ({ page, pc }) => {
+  await seedShifts(pc);
+  await pc.post('/trpc/calendar.add', { data: { title: 'Esame', day: '2026-11-24' } });
+  await pc.post('/trpc/calendar.add', { data: { title: 'Fine anno', day: '2026-12-31' } });
+  await page.setViewportSize({ width: 3840, height: 2160 });
+  await page.goto('/desk/calendar');
+  const boxes = [];
+  for (const name of ['Mese', 'Settimana', 'Agenda']) {
+    await view(page, name).click();
+    const toolbar = await page.getByRole('toolbar', { name: 'Vista' }).boundingBox();
+    const add = await page.getByRole('button', { name: 'Nuovo evento' }).boundingBox();
+    expect(toolbar).not.toBeNull();
+    expect(add).not.toBeNull();
+    boxes.push([toolbar!, add!]);
+  }
+  for (const pair of boxes.slice(1)) {
+    for (const [index, box] of pair.entries()) {
+      expect(Math.abs(box.x - boxes[0][index].x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - boxes[0][index].width)).toBeLessThanOrEqual(1);
+    }
+  }
+  await view(page, 'Settimana').click();
+  const mini = page.getByRole('region', { name: 'Mese per scegliere il giorno' });
+  await mini.getByRole('button', { name: 'martedì 17 novembre' }).click();
+  const week = page.getByRole('region', { name: '16 - 22 novembre' });
+  await expect(week).toBeVisible();
+  await expect(mini.getByRole('button', { pressed: true })).toHaveCount(7);
+  await expect(week.getByText('Persona B')).toBeVisible();
+  await page.getByRole('region', { name: 'Mostra' }).getByRole('switch', { name: 'Turni' }).click();
+  await expect(week.getByText('Persona B')).toHaveCount(0);
+  await expect(week.getByText(/^Poi:/)).toBeVisible();
+  await mini.getByRole('button', { name: 'Mese dopo' }).click();
+  await expect(mini.getByRole('button', { name: 'giovedì 31 dicembre' })).toBeVisible();
+  await expect(week.getByText(/Esame/)).toBeVisible();
+  await expect(week.getByText(/Fine anno/)).toHaveCount(0);
 });

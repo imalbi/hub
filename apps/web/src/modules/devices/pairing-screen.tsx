@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExportIcon, PlusSquareIcon } from '@phosphor-icons/react';
 import type { FormEvent } from 'react';
 import { m } from '../../paraglide/messages.js';
@@ -10,8 +10,16 @@ const input = 'rounded-md border border-border bg-surface p-md';
 
 export function PairingScreen() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   // Storing the token is what swaps this screen for the tiles.
-  const redeem = useMutation(trpc.pairing.redeem.mutationOptions({ onSuccess: ({ token }) => replaceToken(token) }));
+  const redeem = useMutation(
+    trpc.pairing.redeem.mutationOptions({
+      onSuccess: async ({ token }) => {
+        await replaceToken(token);
+        await queryClient.invalidateQueries();
+      },
+    }),
+  );
   // The Home screen app on iOS does not share storage with Safari, so a token stored from Safari would be lost.
   const safari = 'standalone' in navigator && navigator.standalone === false;
 

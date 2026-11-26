@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
@@ -162,3 +162,80 @@ void test('catalog module source rejects node_modules and package.json without a
   await mkdir(join(module, 'node_modules'));
   await assert.rejects(() => resolveSafeModulePath(root, 'sample'), /node_modules/);
 });
+
+void test('catalog updates preserve nested local files while incoming defaults win', async (t) => {
+  const root = await scratch(t);
+  const source = join(root, 'source');
+  const installed = join(root, 'installed');
+  await mkdir(source);
+  await writeFile(join(source, 'server.ts'), '// old');
+  await copyModuleAtomically(source, installed, 'sample');
+  const target = join(installed, 'sample');
+  await mkdir(join(target, 'skills'));
+  await writeFile(join(target, 'skills', 'paths.local.json'), '{"path":"fixture"}');
+  await writeFile(join(target, 'settings.local.yaml'), 'old');
+  await writeFile(join(target, 'ordinary.json'), 'discard');
+  await writeFile(join(target, 'extra.local.backup.json'), 'keep');
+  await mkdir(join(source, 'empty'));
+  await mkdir(join(target, 'empty'));
+  await mkdir(join(target, 'obsolete'));
+  await writeFile(join(source, 'server.ts'), '// new');
+  await writeFile(join(source, 'settings.local.yaml'), 'incoming');
+  await copyModuleAtomically(source, installed, 'sample', async (staging) => {
+    assert.equal(await readFile(join(staging, 'skills', 'paths.local.json'), 'utf8'), '{"path":"fixture"}');
+  });
+  assert.equal(await readFile(join(target, 'skills', 'paths.local.json'), 'utf8'), '{"path":"fixture"}');
+  assert.equal(await readFile(join(target, 'settings.local.yaml'), 'utf8'), 'incoming');
+  await assert.rejects(lstat(join(target, 'ordinary.json')));
+  assert.equal(await readFile(join(target, 'extra.local.backup.json'), 'utf8'), 'keep');
+  assert.equal((await lstat(join(target, 'empty'))).isDirectory(), true);
+  await assert.rejects(lstat(join(target, 'obsolete')));
+  assert.deepEqual(await readdir(installed), ['sample']);
+});
+
+void test('catalog preservation skips symlinks without reading or writing outside either tree', async (t) => {
+  const root = await scratch(t);
+  const source = join(root, 'source');
+  const installed = join(root, 'installed');
+  const outside = join(root, 'outside');
+  await mkdir(source);
+  await mkdir(outside);
+  await writeFile(join(source, 'server.ts'), '// source');
+  await writeFile(join(outside, 'secret.local.json'), 'fixture');
+  await copyModuleAtomically(source, installed, 'sample');
+  const target = join(installed, 'sample');
+  await symlink(join(outside, 'secret.local.json'), join(target, 'link.local.json'));
+  await symlink(outside, join(target, 'linked-directory'));
+  await mkdir(join(target, 'safe'));
+  await writeFile(join(target, 'safe', 'keep.local.json'), 'keep');
+  await copyModuleAtomically(source, installed, 'sample');
+  await assert.rejects(lstat(join(target, 'link.local.json')));
+  await assert.rejects(lstat(join(target, 'linked-directory')));
+  assert.equal(await readFile(join(target, 'safe', 'keep.local.json'), 'utf8'), 'keep');
+  assert.equal(await readFile(join(outside, 'secret.local.json'), 'utf8'), 'fixture');
+  assert.deepEqual(await readdir(installed), ['sample']);
+});
+
+for (const phase of ['prepare', 'swap']) {
+  void test(`catalog ${phase} failure keeps the previous module and local files with no leftovers`, async (t) => {
+    const root = await scratch(t);
+    const source = join(root, 'source');
+    const installed = join(root, 'installed');
+    await mkdir(source);
+    await writeFile(join(source, 'server.ts'), '// old');
+    await copyModuleAtomically(source, installed, 'sample');
+    const target = join(installed, 'sample');
+    await mkdir(join(target, 'skills'));
+    await writeFile(join(target, 'skills', 'paths.local.json'), 'keep');
+    await writeFile(join(source, 'server.ts'), '// new');
+    await assert.rejects(
+      copyModuleAtomically(source, installed, 'sample', async (staging) => {
+        if (phase === 'prepare') throw new Error('Fixture preparation failure');
+        await rm(staging, { recursive: true });
+      }),
+    );
+    assert.equal(await readFile(join(target, 'server.ts'), 'utf8'), '// old');
+    assert.equal(await readFile(join(target, 'skills', 'paths.local.json'), 'utf8'), 'keep');
+    assert.deepEqual(await readdir(installed), ['sample']);
+  });
+}

@@ -12,8 +12,8 @@ test('a running job streams output and stops after a hold', async ({ page, reque
   const centerX = emptyBox!.x + emptyBox!.width / 2;
   expect(centerX).toBeGreaterThan(3840 * 0.4);
   expect(centerX).toBeLessThan(3840 * 0.6);
-  await request.post(`${SERVER_URL}/__fake/jobs`);
-  await expect(page.getByText('fake.job').first()).toBeVisible();
+  await request.post(`${SERVER_URL}/__fake/jobs`, { data: { action: 'audio.cycleOutput' } });
+  await expect(page.getByText('Cambia uscita audio').first()).toBeVisible();
   await expect(page.getByText('Riga 3')).toBeVisible();
   await expect(page.getByText(/Durata: \d+ s/).first()).toBeVisible();
   // The activity ball counts the job (and the playing fake track).
@@ -21,14 +21,19 @@ test('a running job streams output and stops after a hold', async ({ page, reque
   await expect(ball).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(ball).toHaveScreenshot('jobs-activity-ball.png', { animations: 'disabled' });
+  await ball.click();
+  const activity = page.getByRole('dialog', { name: 'Attività in corso' });
+  await expect(activity.getByRole('button', { name: 'Apri Cambia uscita audio' })).toBeVisible();
+  await expect(page.getByText('audio.cycleOutput', { exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   const cancel = page.getByRole('button', { name: 'Tieni premuto per annullare job' });
   await cancel.click();
-  await expect(page.getByRole('button', { name: /fake\.job In esecuzione/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Cambia uscita audio In esecuzione/ })).toBeVisible();
   await cancel.hover();
   await page.mouse.down();
   await page.waitForTimeout(900);
   await page.mouse.up();
-  await expect(page.getByRole('button', { name: /fake\.job Annullato/ }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Cambia uscita audio Annullato/ }).first()).toBeVisible();
   const log = page.locator('section[aria-label="Output"]').nth(1);
   await page.addStyleTag({
     content:

@@ -87,3 +87,35 @@ test('revoking a device from the PC sends its open deck back to the pairing scre
     await revokeDevices(pc, 'Revoked deck');
   }
 });
+
+test('first pairing immediately refetches cached unauthorized availability without a reload', async ({ page, pc }) => {
+  const name = 'Availability pairing';
+  let unauthorized = 0;
+  page.on('response', (response) => {
+    if (response.url().includes('modules.enabled') && response.status() === 401) unauthorized++;
+  });
+  await page.goto('/deck');
+  await expect(pairingTitle(page)).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Uscita audio/ })).toHaveCount(0);
+  // Exhaust the three default query retries before pairing, leaving a stable failed cache.
+  await expect.poll(() => unauthorized, { timeout: 15_000 }).toBe(4);
+  await page.evaluate(() => {
+    Object.defineProperty(window, 'pairingMarker', { value: true });
+  });
+  const response = await pc.post('/trpc/pairing.createCode', { data: {} });
+  const { code } = (await response.json()).result.data;
+  try {
+    await page.getByLabel('Codice').fill(code);
+    await page.getByLabel('Nome del dispositivo').fill(name);
+    const refreshed = page.waitForResponse(
+      (answer) => answer.url().includes('modules.enabled') && answer.status() === 200,
+      { timeout: 5_000 },
+    );
+    await page.getByRole('button', { name: 'Abbina', exact: true }).click();
+    await refreshed;
+    await expect(page.getByRole('button', { name: /^Uscita audio/ })).toBeVisible();
+    expect(await page.evaluate(() => 'pairingMarker' in window)).toBe(true);
+  } finally {
+    await revokeDevices(pc, name);
+  }
+});

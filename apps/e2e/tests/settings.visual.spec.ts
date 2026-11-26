@@ -4,6 +4,7 @@ import { freezePomodoro } from './pomodoro-visual.ts';
 // The settings list and two module pages at 4K, the size the desk is made for. The header's Pomodoro badge is the only
 // thing that moves on these pages, so it is pinned like in `desk.visual.spec.ts`.
 const NOW = new Date('2026-11-04T12:00:00Z');
+const suffix = process.env.HUB_EXAMPLE_MODULES === '1' ? '-example' : '';
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 3840, height: 2160 });
@@ -42,6 +43,6 @@ for (const { path, ready, file } of pages) {
       await document.fonts.ready;
     });
     await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot(file, { animations: 'disabled' });
+    await expect(page).toHaveScreenshot(file.replace('.png', `${suffix}.png`), { animations: 'disabled' });
   });
 }

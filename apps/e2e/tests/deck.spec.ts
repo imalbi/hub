@@ -49,7 +49,7 @@ test.afterEach(async ({ pc }) => {
 test('the deck has two pages and no duplicate music tiles', async ({ page }) => {
   await expect(page.getByRole('navigation', { name: 'Pagine' }).getByRole('button')).toHaveCount(2);
   const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
-  await expect(desk.getByRole('button', { name: /^Musica:/ })).toHaveCount(0);
+  await expect(desk.getByRole('button', { name: /^Media:/ })).toHaveCount(0);
   await expect(desk.getByRole('button', { name: /^Brano successivo:/ })).toHaveCount(0);
 });
 
@@ -62,9 +62,7 @@ test('an obsolete saved page opens Scrivania', async ({ page }) => {
 
 test('the deck has no duplicate music tile', async ({ page }) => {
   await expect(audioTile(page)).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Scrivania' }).getByRole('button', { name: /^Musica:/ })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole('region', { name: 'Scrivania' }).getByRole('button', { name: /^Media:/ })).toHaveCount(0);
 });
 
 test('audio and player show the state of the fake desktop', async ({ page }) => {

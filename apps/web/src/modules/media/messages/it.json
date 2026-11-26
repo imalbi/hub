@@ -1,6 +1,6 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "tile_media": "Musica",
+  "tile_media": "Media",
   "media_nothing_playing": "Niente in riproduzione",
   "media_track": "{artist} - {title}",
   "media_playing": "in riproduzione",

@@ -62,7 +62,15 @@ export function CalendarPage() {
         />
       )}
       {view === 'week' && (
-        <WeekView today={today} anchor={anchor} setAnchor={setAnchor} show={show} open={open} controls={controls} />
+        <WeekView
+          today={today}
+          anchor={anchor}
+          setAnchor={setAnchor}
+          show={show}
+          setShow={setShow}
+          open={open}
+          controls={controls}
+        />
       )}
       {view === 'agenda' && <AgendaView today={today} show={show} setShow={setShow} open={open} controls={controls} />}
       <EventDialog draft={draft} onClose={() => setDraft(null)} onSaved={select} onRemoved={showUndo} />
