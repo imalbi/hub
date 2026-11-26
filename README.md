@@ -2,6 +2,8 @@
 
 A desktop control center with two views: a dashboard for the PC and a Stream Deck style panel for an old iPhone. Keep everyday controls, notes, timers and the day's events in one place, with actions shared across both screens.
 
+Hub grew out of a collection of small tools I had built with AI agents for things like job searching, study, music, budgeting and AirPlay. They were scattered across my system, often hard to find or start without an agent, and sometimes duplicated the same context or functionality. I built Hub to bring them together in one place, where modules can share what they need and benefit from each other. It reflects how I use my desktop: a personal project shared as a showcase, not a general-purpose solution.
+
 Built for Linux, Hyprland and Caelestia. The interface is in Italian.
 
 ![Desk overview with notes, timer, audio and media controls](docs/images/desk.png)
@@ -23,6 +25,8 @@ Open the printed `/desk` or `/deck` URL. The demo binds to loopback, simulates d
 
 ## How it fits together
 
+Modules can connect to each other: the job search module uses email to link recruiter messages to applications, while work and study events can appear in the same calendar.
+
 One Fastify server exposes a registry of actions with zod-validated inputs. The React desk and deck clients share its tRPC API and live updates. Side effects run through registered actions; the server does not accept arbitrary shell commands. Local data stays in SQLite databases.
 
 ```text
@@ -34,7 +38,7 @@ Phone deck ──────┘                         └── SQLite + modu
 There are three module tiers:
 
 - **Built-in core:** health, layout, devices, pairing, theme, notes, calendar, pomodoro, audio, media and system controls, plus the Oggi view.
-- **Optional Git catalogs:** register a trusted source in Settings. Repositories are cloned into `modules.repos/` and selected modules installed into `modules.installed/`. Modules declare typed capabilities through `provides`, `requires` and `optional`. Owned dependencies install with `pnpm install --ignore-scripts --frozen-lockfile --ignore-workspace`.
+- **Optional Git catalogs:** register a trusted source in Settings and install the modules you want. Modules can declare capabilities they provide or need from each other.
 - **Private local modules:** keep personal integrations in the gitignored `modules.local/`; they take precedence over installed modules with the same name. <!-- guard-private: allow Repository-local module directory -->
 
 The core works without a catalog or private repository. There is no default catalog URL. See [Writing a module](docs/modules.md) for discovery, storage, capabilities and tests.
