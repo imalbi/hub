@@ -19,6 +19,8 @@
     "guard": "node scripts/guard-private.ts && node scripts/guard-modules.ts",
     "check": "node scripts/check.ts",
     "check:modules": "node scripts/check-modules.ts",
+    "step:start": "node scripts/step.ts start",
+    "step:status": "node scripts/step.ts status",
     "prepare": "git config core.hooksPath .githooks",
     "test:e2e": "node scripts/test-e2e.ts",
     "test:e2e:private": "node scripts/test-e2e-private.ts",

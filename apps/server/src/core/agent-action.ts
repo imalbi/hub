@@ -11,6 +11,7 @@ export async function callAgentAction(
   client: Extract<Context['client'], { kind: 'agent' }>,
   name: string,
   args: Record<string, unknown> = {},
+  { forceConfirm = false }: { forceConfirm?: boolean } = {},
 ) {
   const db = context.db;
   const started = Date.now();
@@ -33,14 +34,18 @@ export async function callAgentAction(
         signal: undefined,
         batchIndex: 0,
       });
-    if (action.danger) {
+    if (action.danger || forceConfirm) {
       const id = confirmations.request({
         agentId: client.agentId,
         name: client.name,
         action: action.path,
         input,
         deviceForbidden: action.deviceForbidden,
-        run: () => invoke({ ...ctx, client: { kind: 'loopback' }, agentRequest: true }, { ...args, confirmed: true }),
+        run: () =>
+          invoke(
+            { ...ctx, client: { kind: 'loopback' }, agentRequest: true },
+            action.danger ? { ...args, confirmed: true } : input,
+          ),
       });
       if (!id) throw new Error('No desk or deck client connected');
       result = { status: 'awaiting confirmation', id };

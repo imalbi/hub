@@ -93,7 +93,7 @@ export function CoreSettings() {
 }
 
 const editableSchema = z.object({
-  assistant: z.object({ enabled: z.boolean(), model: z.string(), numCtx: z.number() }),
+  assistant: z.object({ enabled: z.boolean(), model: z.string(), decisionModel: z.string(), numCtx: z.number() }),
   mcp: z.object({ enabled: z.boolean(), client: z.enum(['claude', 'codex']) }),
   jobs: z.object({ maxConcurrent: z.number() }),
   // An emptied folder field means "next to the database": leave it out rather than send an empty string.

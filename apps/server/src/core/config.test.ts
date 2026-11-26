@@ -16,7 +16,7 @@ function configFile(content: string) {
 
 void test('a missing config file is an empty config', () => {
   assert.deepEqual(loadConfig(join(dir, 'missing.json')), {
-    assistant: { enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384 },
+    assistant: { enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384, decisionModel: '' },
     audio: { outputs: [] },
     backup: { enabled: true, keep: 14 },
     jobs: { maxConcurrent: 2 },

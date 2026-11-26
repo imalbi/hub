@@ -105,7 +105,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
   });
   return router({
     ...app._def.record,
-    assistant: createAssistantRouter(() => registered, confirmations, deps.fetch),
+    assistant: createAssistantRouter(() => registered, confirmations, deps.fetch, deps.log),
     registry: createRegistryRouter(() => registered),
     settings,
     agents: agentsRouter,

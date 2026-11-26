@@ -9,6 +9,83 @@ export class OllamaError extends Error {
 }
 
 export const ollamaUrl = 'http://127.0.0.1:11434/api/chat';
+export const ollamaSystemOneUrl = 'http://127.0.0.1:11434/v1/systemone';
+
+const questionSchema = z.discriminatedUnion('type', [
+  z.strictObject({
+    type: z.literal('choice'),
+    instructions: z.string(),
+    criteria: z.record(z.string(), z.string().nullable()),
+  }),
+  z.strictObject({
+    type: z.literal('noul'),
+    instructions: z.string(),
+    criteria: z.strictObject({ false: z.string().optional(), true: z.string().optional() }).optional(),
+  }),
+  z.strictObject({ type: z.literal('score'), instructions: z.string(), criteria: z.array(z.string()).min(2).max(10) }),
+]);
+const probabilitySchema = z.number().min(0).max(1);
+const systemOneResponseSchema = z.strictObject({
+  model: z.string(),
+  answers: z.record(
+    z.string(),
+    z.discriminatedUnion('type', [
+      z.strictObject({
+        type: z.literal('choice'),
+        choice: z.string(),
+        probabilities: z.record(z.string(), probabilitySchema),
+        confidence: probabilitySchema,
+      }),
+      z.strictObject({ type: z.literal('noul'), noul: probabilitySchema }),
+      z.strictObject({
+        type: z.literal('score'),
+        score: z.number().min(0).max(9),
+        legend: z.record(z.string(), z.string()),
+        probabilities: z.record(z.string(), probabilitySchema),
+        confidence: probabilitySchema,
+      }),
+    ]),
+  ),
+  usage: z.strictObject({
+    input_tokens: z.number().int().nonnegative(),
+    output_tokens: z.number().int().nonnegative(),
+  }),
+});
+
+export async function ollamaSystemOne(
+  fetcher: typeof fetch,
+  input: {
+    model: string;
+    state: string | Record<string, unknown> | unknown[];
+    questions: Record<string, z.infer<typeof questionSchema>>;
+    signal?: AbortSignal;
+  },
+) {
+  try {
+    const questions = z.record(z.string(), questionSchema).parse(input.questions);
+    const response = await fetcher(ollamaSystemOneUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: input.signal,
+      body: JSON.stringify({ model: input.model, state: input.state, questions }),
+    });
+    if (!response.ok) throw new OllamaError(response.status);
+    const parsed = systemOneResponseSchema.parse(await response.json());
+    if (Object.keys(parsed.answers).length !== Object.keys(questions).length) throw new OllamaError();
+    for (const [key, question] of Object.entries(questions)) {
+      const answer = parsed.answers[key];
+      if (!answer || answer.type !== question.type) throw new OllamaError();
+      if (question.type === 'choice' && answer.type === 'choice' && !Object.hasOwn(question.criteria, answer.choice))
+        throw new OllamaError();
+      if (question.type === 'score' && answer.type === 'score' && answer.score > question.criteria.length - 1)
+        throw new OllamaError();
+    }
+    return parsed;
+  } catch (error) {
+    if (error instanceof OllamaError) throw error;
+    throw new OllamaError();
+  }
+}
 
 type Tool = { type: string; function: { name: string; description: string; parameters: object } };
 type Message = { role: 'system' | 'user' | 'assistant'; content: string };

@@ -21,7 +21,7 @@ import type { TrackJobFn } from './jobs.ts';
 export type { TrackJobFn, TrackedJob } from './jobs.ts';
 export const noopTrackJob: TrackJobFn = () => ({ id: crypto.randomUUID(), log: () => {}, finish: () => {} });
 import type { FocusHistory } from './focus-history.ts';
-export { ollamaChat, ollamaUrl, OllamaError } from './ollama.ts';
+export { ollamaChat, ollamaUrl, ollamaSystemOne, ollamaSystemOneUrl, OllamaError } from './ollama.ts';
 
 /** What a discovered (private or example) module gets: never the core database. */
 export type DiscoveredDeps = {

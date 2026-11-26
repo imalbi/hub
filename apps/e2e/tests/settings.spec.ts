@@ -87,6 +87,36 @@ async function ensureOn(pc: APIRequestContext, name: string) {
 }
 
 if (!example) {
+  test('the decision model survives saving and reopening core settings', async ({ page, pc }) => {
+    await page.setViewportSize({ width: 3840, height: 2160 });
+    const core = data(await (await pc.get('/trpc/settings.core')).json());
+    if (!isRecord(core) || !isRecord(core.value)) throw new Error('Missing core config');
+    const original = core.value;
+    try {
+      await page.goto('/desk/settings/core');
+      const model = page.getByRole('textbox', { name: 'Modello decisionale', exact: true });
+      await expect(model).toHaveValue('');
+      await expect(model).toHaveAccessibleDescription(/vuoto = disattivato/);
+      await model.fill('decision-test');
+      await page.getByRole('button', { name: 'Salva e riavvia' }).click();
+      await expect(page.getByText('Impostazioni salvate, Hub è di nuovo attivo')).toBeVisible(RESTARTED);
+      await page.reload();
+      await expect(model).toHaveValue('decision-test');
+    } finally {
+      await pc.post('/trpc/settings.saveCore', { data: original });
+      await expect
+        .poll(
+          async () =>
+            (await pc.get('/trpc/settings.core'))
+              .json()
+              .then(data)
+              .catch(() => null),
+          RESTARTED,
+        )
+        .toMatchObject({ value: original });
+    }
+  });
+
   test('core settings apply the MCP client and job limits after restart', async ({ page, pc, context }) => {
     const server = `http://localhost:${SERVER_PORT}`;
     const core = async () => await (await pc.get(`${server}/__fake/core`)).json();

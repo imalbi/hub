@@ -19,8 +19,12 @@ export const coreConfigSchema = z.object({
         .min(1024)
         .default(16384)
         .meta({ title: 'Contesto', description: 'Numero massimo di token nel contesto del modello.' }),
+      decisionModel: z.string().trim().default('').meta({
+        title: 'Modello decisionale',
+        description: 'Modello /v1/systemone per valutare il rischio delle azioni (vuoto = disattivato).',
+      }),
     })
-    .default({ enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384 })
+    .default({ enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384, decisionModel: '' })
     .meta({ title: 'Assistente', description: 'Modello locale per le azioni richieste nella ricerca.' }),
   mcp: z
     .object({
