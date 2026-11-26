@@ -159,7 +159,10 @@ function Probe({
 
 function useItems(reported: Record<string, ModuleActivity | null>) {
   const timer = usePomodoro();
-  const jobs = useJobs().filter((job) => job.status === 'running');
+  const jobs = useJobs().filter(
+    (job) =>
+      job.status === 'running' && !Object.values(reported).some((activity) => activity?.jobAction === job.action),
+  );
   const media = useMedia();
   const now = useNow(jobs.length > 0 ? 'clock' : null);
   const items: Item[] = [];

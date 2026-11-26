@@ -21,7 +21,14 @@ export type PageTab = {
 /** A tab a module adds to a zone page, after the page's own tabs. */
 export type ModuleSection = PageTab & { zone: string };
 /** One thing a module has running now, shown in the "Attività in corso" ball and panel. `href` is the page that shows it. */
-export type ModuleActivity = { id: string; label: string; detail: string; progress?: number; href: string };
+export type ModuleActivity = {
+  id: string;
+  label: string;
+  detail: string;
+  progress?: number;
+  jobAction?: string;
+  href: string;
+};
 /** A hook: a shell component calls it, so the ball knows whether anything runs without rendering the module's page. */
 export type ModuleActivityHook = () => ModuleActivity | null;
 /**

@@ -17,6 +17,9 @@ export type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import type { Run } from './exec.ts';
+import type { TrackJobFn } from './jobs.ts';
+export type { TrackJobFn, TrackedJob } from './jobs.ts';
+export const noopTrackJob: TrackJobFn = () => ({ id: crypto.randomUUID(), log: () => {}, finish: () => {} });
 import type { FocusHistory } from './focus-history.ts';
 export { ollamaChat, ollamaUrl, OllamaError } from './ollama.ts';
 
@@ -29,6 +32,7 @@ export type DiscoveredDeps = {
   zones: Set<string>;
   focusHistory: FocusHistory;
   capabilities: CapabilityRegistry;
+  trackJob: TrackJobFn;
 };
 /** What a public module gets: the discovered deps plus the core database. */
 export type ModuleDeps = DiscoveredDeps & { db: Db };
@@ -87,7 +91,12 @@ export function defineModule<
   return {
     ...definition,
     create(
-      deps: Omit<DiscoveredDeps, 'capabilities'> & { capabilities?: CapabilityRegistry; db?: Db; config: unknown },
+      deps: Omit<DiscoveredDeps, 'capabilities' | 'trackJob'> & {
+        capabilities?: CapabilityRegistry;
+        trackJob?: TrackJobFn;
+        db?: Db;
+        config: unknown;
+      },
     ): R {
       const config = (definition.config ?? z.undefined()).parse(deps.config);
       // The factory's parameter is conditional on `migrations`/`coreDb`, and its config type is the schema's output:
@@ -97,6 +106,7 @@ export function defineModule<
         ...deps,
         config,
         capabilities: deps.capabilities ?? createCapabilityRegistry(),
+        trackJob: deps.trackJob ?? noopTrackJob,
       } as Parameters<typeof definition.create>[0]);
     },
   };

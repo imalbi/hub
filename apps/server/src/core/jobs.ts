@@ -14,20 +14,27 @@ type Job = {
   exitCode: number | null;
   output: JobLine[];
 };
-type Pending = {
+export type TrackedJob = {
+  id: string;
+  log: (message: string, stream?: JobLine['stream']) => void;
+  finish: (status: 'completed' | 'failed' | 'cancelled', exitCode?: number | null) => void;
+};
+export type TrackJobFn = (action: string, options?: { onCancel?: () => void }) => TrackedJob;
+
+type Running = {
   job: Job;
-  bin: string;
-  args: string[];
-  timeoutMs: number;
   process?: { kill: () => void };
   timer?: NodeJS.Timeout;
   nextLine: number;
+  onCancel?: () => void;
 };
+type Pending = Running & { bin: string; args: string[]; timeoutMs: number };
 
 export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: number) {
   const events = new EventEmitter();
   const active = new Map<string, Pending>();
   const queue: Pending[] = [];
+  const tracked = new Map<string, Running>();
   const output = new Map<string, JobLine[]>();
   let closing = false;
   const insert = db.$client.prepare(
@@ -61,7 +68,7 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
     update.run(job.status, job.startedAt, job.endedAt, job.exitCode, JSON.stringify(job.output.slice(-50)), job.id);
     events.emit('update');
   }
-  function finish(item: Pending, status: Status, code: number | null, kill = false) {
+  function finish(item: Running, status: Status, code: number | null, kill = false) {
     if (item.job.endedAt !== null) return;
     clearTimeout(item.timer);
     item.job.status = status;
@@ -71,6 +78,7 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
     if (kill && item.process) item.process.kill();
     else {
       active.delete(item.job.id);
+      tracked.delete(item.job.id);
       drain();
     }
   }
@@ -89,11 +97,7 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
           item.bin,
           item.args,
           (message, stream) => {
-            if (item.job.endedAt !== null) return;
-            const line = { id: item.nextLine++, at: Date.now(), stream, message };
-            item.job.output.push(line);
-            if (item.job.output.length > 500) item.job.output.shift();
-            events.emit(`output:${item.job.id}`, line);
+            append(item, message, stream);
           },
           (code) => {
             if (item.job.endedAt === null) finish(item, code === 0 ? 'completed' : 'failed', code);
@@ -108,12 +112,12 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
       }
     }
   }
-  function start(action: string, bin: string, args: string[], timeoutMs = 600_000) {
+  function register(action: string, status: 'queued' | 'running') {
     if (closing) throw new Error('Job runner is closed');
     const job: Job = {
       id: randomUUID(),
       action,
-      status: 'queued',
+      status,
       startedAt: Date.now(),
       endedAt: null,
       exitCode: null,
@@ -125,8 +129,31 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
     );
     const retained = new Set(list().map((row) => row.id));
     for (const id of output.keys())
-      if (!retained.has(id) && !active.has(id) && !queue.some((item) => item.job.id === id)) output.delete(id);
+      if (!retained.has(id) && !active.has(id) && !tracked.has(id) && !queue.some((item) => item.job.id === id))
+        output.delete(id);
     output.set(job.id, job.output);
+    return job;
+  }
+  function append(item: Running, message: string, stream: JobLine['stream']) {
+    if (item.job.endedAt !== null) return;
+    const line = { id: item.nextLine++, at: Date.now(), stream, message };
+    item.job.output.push(line);
+    if (item.job.output.length > 500) item.job.output.shift();
+    events.emit(`output:${item.job.id}`, line);
+  }
+  const track: TrackJobFn = (action, options) => {
+    const job = register(action, 'running');
+    const item: Running = { job, nextLine: 0, onCancel: options?.onCancel };
+    tracked.set(job.id, item);
+    events.emit('update');
+    return {
+      id: job.id,
+      log: (message, stream = 'stdout') => append(item, message, stream),
+      finish: (status, exitCode = null) => finish(item, status, exitCode),
+    };
+  };
+  function start(action: string, bin: string, args: string[], timeoutMs = 600_000) {
+    const job = register(action, 'queued');
     queue.push({ job, bin, args, timeoutMs, nextLine: 0 });
     events.emit('update');
     drain();
@@ -134,14 +161,15 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
   }
   function cancel(id: string) {
     const index = queue.findIndex((item) => item.job.id === id);
-    const item = index >= 0 ? queue.splice(index, 1)[0] : active.get(id);
+    const item = index >= 0 ? queue.splice(index, 1)[0] : (active.get(id) ?? tracked.get(id));
     if (!item) return false;
     finish(item, 'cancelled', null, true);
+    item.onCancel?.();
     return true;
   }
   function close() {
     closing = true;
-    for (const item of [...queue, ...active.values()]) cancel(item.job.id);
+    for (const item of [...queue, ...active.values(), ...tracked.values()]) cancel(item.job.id);
   }
   function readOutput(id: string, limit = 500) {
     return (output.get(id) ?? parseOutput(storedOutput.get(id)?.output)).slice(-Math.min(limit, 500));
@@ -157,10 +185,11 @@ export function createJobRunner(db: Db, spawn: StreamSpawn, maxConcurrent: numbe
   // For the e2e fake: history is per process, so a spec that needs an empty list clears it first.
   function clearHistory() {
     db.$client.exec("DELETE FROM jobs WHERE status NOT IN ('queued', 'running')");
-    for (const id of output.keys()) if (!active.has(id) && !queue.some((item) => item.job.id === id)) output.delete(id);
+    for (const id of output.keys())
+      if (!active.has(id) && !tracked.has(id) && !queue.some((item) => item.job.id === id)) output.delete(id);
     events.emit('update');
   }
-  return { start, list, output: readOutput, cancel, close, updates, lines, clearHistory };
+  return { start, track, list, output: readOutput, cancel, close, updates, lines, clearHistory };
 }
 
 function parseStatus(value: unknown): Status {

@@ -150,3 +150,80 @@ void test('clearHistory drops finished jobs and keeps the running ones', () => {
   runner.close();
   db.$client.close();
 });
+
+void test('tracked jobs stream bounded output, persist it, and finish only once', async () => {
+  const { db, runner, processes } = setup(1);
+  const changes = runner.updates();
+  await changes.next();
+  const changed = changes.next();
+  const job = runner.track('lavoro.raccogli');
+  assert.equal((await changed).value?.find((row) => row.id === job.id)?.status, 'running');
+  const lines = runner.lines(job.id);
+  const next = lines.next();
+  job.log('prima');
+  assert.equal((await next).value?.message, 'prima');
+  for (let i = 0; i < 600; i++) job.log(String(i), i === 599 ? 'stderr' : 'stdout');
+  assert.equal(runner.output(job.id).length, 500);
+  assert.equal(runner.output(job.id).at(-1)?.stream, 'stderr');
+  // Tracking does not take a child-process slot.
+  runner.start('fake.process', 'fake', []);
+  assert.equal(processes.length, 1);
+  job.finish('failed', 2);
+  const finished = runner.list().find((row) => row.id === job.id);
+  job.finish('completed', 0);
+  job.log('troppo tardi');
+  assert.deepEqual(
+    runner.list().find((row) => row.id === job.id),
+    finished,
+  );
+  assert.equal(finished?.exitCode, 2);
+  assert.equal(runner.output(job.id).at(-1)?.message, '599');
+  const reopened = createJobRunner(
+    db,
+    () => {
+      throw new Error('No spawn');
+    },
+    1,
+  );
+  assert.equal(reopened.output(job.id).length, 50);
+  assert.equal(reopened.output(job.id)[0]?.message, '550');
+  await lines.return(undefined);
+  await changes.return(undefined);
+  runner.close();
+  reopened.close();
+  db.$client.close();
+});
+
+void test('tracked cancellation and shutdown abort once, and restart cancels stale jobs', () => {
+  const { db, runner } = setup();
+  let cancelled = 0;
+  const job = runner.track('lavoro.prova', {
+    onCancel: () => {
+      cancelled++;
+      job.finish('completed');
+    },
+  });
+  assert.equal(runner.cancel(job.id), true);
+  assert.equal(runner.cancel(job.id), false);
+  assert.equal(cancelled, 1);
+  assert.equal(runner.list().find((row) => row.id === job.id)?.status, 'cancelled');
+  const stale = runner.track('lavoro.pareri');
+  stale.log('prima del riavvio');
+  const reopened = createJobRunner(
+    db,
+    () => {
+      throw new Error('No spawn');
+    },
+    1,
+  );
+  assert.equal(reopened.list().find((row) => row.id === stale.id)?.status, 'cancelled');
+  let closed = 0;
+  const closing = reopened.track('fake.close', { onCancel: () => closed++ });
+  reopened.close();
+  reopened.close();
+  assert.equal(closed, 1);
+  assert.equal(reopened.list().find((row) => row.id === closing.id)?.status, 'cancelled');
+  assert.throws(() => reopened.track('fake.closed'), /closed/);
+  runner.close();
+  db.$client.close();
+});

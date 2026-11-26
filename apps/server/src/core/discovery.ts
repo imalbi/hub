@@ -4,6 +4,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { moduleDbPath, openDatabase, type Db } from '../db/index.ts';
+import type { TrackJobFn } from './jobs.ts';
+import { noopTrackJob } from './module.ts';
 import { createCapabilityRegistry } from './capabilities.ts';
 import { router } from './trpc.ts';
 import type { DiscoveredDeps, ModuleInstance } from './module.ts';
@@ -70,7 +72,7 @@ export async function discoverModules({
   /** Folder names to load; unset loads every folder. Only tests set it, so a broken sibling module cannot fail them. */
   onlyModules?: readonly string[];
   reserved: readonly string[];
-  deps: DiscoveredDeps;
+  deps: Omit<DiscoveredDeps, 'trackJob'> & { trackJob?: TrackJobFn };
   /** The core database path: module databases live next to it. */
   dbPath: string;
   config: Record<string, unknown>;
@@ -185,6 +187,7 @@ export async function discoverModules({
       const instance = definition.create({
         ...deps,
         capabilities,
+        trackJob: deps.trackJob ?? noopTrackJob,
         ...(db && { db }),
         config: definition.config?.parse(config[definition.name]),
       });

@@ -207,6 +207,7 @@ export function buildServer({
       zones: new Set(publicModules.flatMap((m) => m.zones ?? [])),
       focusHistory: createFocusHistory(db),
       capabilities: createCapabilityRegistry(),
+      trackJob: jobs.track,
     };
     const moduleDeps = { ...discoveredDeps, db };
     const onClose = (close: () => void | Promise<void>) => {

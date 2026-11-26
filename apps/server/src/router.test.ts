@@ -1,3 +1,4 @@
+import { noopTrackJob } from './core/module.ts';
 import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
 /* oxlint-disable no-underscore-dangle -- tRPC exposes procedure type and meta only through _def */
@@ -33,6 +34,7 @@ const appRouter = createAppRouter(
     zones: new Set(),
     focusHistory: createFocusHistory(db),
     capabilities: createCapabilityRegistry(),
+    trackJob: noopTrackJob,
   },
   emptyConfig,
   (close) => closes.push(close),

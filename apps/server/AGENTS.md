@@ -172,7 +172,9 @@ Deck tiles update by push, over the tRPC WebSocket (`wsLink` on the client). Pol
 ## Jobs
 
 - `core/jobs.ts` runs registry jobs with `jobs.maxConcurrent` (default 2), a 10-minute default timeout and a fakeable `StreamSpawn` from `core/exec.ts`; commands use a binary plus argument array, never a shell. A job action uses `jobProcedure.meta({ label, description, job: true, timeoutMs? })` and returns `ctx.startJob(binary, args)`; only registered actions choose commands.
-- `jobs.list/onUpdate/output/onOutput/cancel` are protected. Cancellation is `danger: true` and requires `confirmed: true`. The core SQLite history retains 100 records and 50 output lines per record; the live runner keeps 500 lines per job. Shutdown kills and records active and queued jobs as cancelled. No real job action ships yet.
+- `jobs.list/onUpdate/output/onOutput/cancel` are protected. Cancellation is `danger: true` and requires `confirmed: true`. The core SQLite history retains 100 records and 50 output lines per record; the live runner keeps 500 lines per job. Shutdown kills and records active and queued jobs as cancelled, including in-process tracked jobs.
+
+- Discovered modules receive only `deps.trackJob(action, { onCancel? })`: tracked work shares bounded output/history and cancellation, without occupying process slots or exposing `start`. `core/module.ts` is imported by browser code: keep job types as type-only imports and the no-op fallback browser-safe.
 
 ## MCP agents
 

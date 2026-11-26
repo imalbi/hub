@@ -289,3 +289,44 @@ void test('dependency discovery orders providers, isolates cycles and missing or
   assert.equal(states.find((entry: { name: string }) => entry.name === 'disabled')?.status, 'off');
   assert.equal((await app.inject('/trpc/audio.state')).statusCode, 200);
 });
+
+void test('discovered modules receive only the narrow job tracker, wired to core history', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'hub-discovery-jobs-'));
+  await mkdir(join(dir, 'demo'));
+  const trpc = JSON.stringify(new URL('./trpc.ts', import.meta.url).href);
+  await writeFile(
+    join(dir, 'demo', 'server.ts'),
+    `
+    import { router, protectedProcedure } from ${trpc};
+    export default { name: 'demo', create(deps) {
+      const job = deps.trackJob('demo.work');
+      job.log('Avviato');
+      job.finish('completed');
+      return { router: router({ state: protectedProcedure.query(() => ({
+        tracker: typeof deps.trackJob, start: 'start' in deps, cancel: 'cancel' in deps,
+        runner: 'jobs' in deps, db: 'db' in deps, id: job.id,
+      })) }) };
+    } };
+  `,
+  );
+  const app = buildServer({
+    config: emptyConfig,
+    dbPath: ':memory:',
+    moduleRoots: [dir],
+    deps: { run: createFakeDesktop() },
+  });
+  t.after(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+  const state = (await app.inject('/trpc/demo.state')).json().result.data;
+  assert.deepEqual(
+    { ...state, id: undefined },
+    { tracker: 'function', start: false, cancel: false, runner: false, db: false, id: undefined },
+  );
+  const rows = (await app.inject('/trpc/jobs.list')).json().result.data;
+  assert.equal(rows.find((row: { id: string }) => row.id === state.id)?.status, 'completed');
+  const input = encodeURIComponent(JSON.stringify({ jobId: state.id }));
+  const output = (await app.inject(`/trpc/jobs.output?input=${input}`)).json().result.data;
+  assert.equal(output[0].message, 'Avviato');
+});

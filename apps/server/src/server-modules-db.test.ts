@@ -1,3 +1,4 @@
+import { noopTrackJob } from './core/module.ts';
 import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
 import assert from 'node:assert/strict';
@@ -101,6 +102,7 @@ void test('a discovered module without migrations gets no database', async (t) =
     'focusHistory',
     'log',
     'run',
+    'trackJob',
     'zones',
   ]);
 });
@@ -242,6 +244,7 @@ void test('a public module with migrations receives its own migrated database', 
       zones: new Set(),
       focusHistory: createFocusHistory(db),
       capabilities: createCapabilityRegistry(),
+      trackJob: noopTrackJob,
     },
     {},
     (close) => closes.push(close),
