@@ -1,6 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
+import {
+  combineHashes,
+  hashDirectory,
+  hasPassStamp,
+  hubPrivateRuntimeHash,
+  stampsPath,
+  writePassStamp,
+} from './verify-stamp.ts';
 import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 
 export function findPrivateE2eFolders(roots: string | readonly string[]) {
@@ -16,12 +24,35 @@ export function findPrivateE2eFolders(roots: string | readonly string[]) {
   return [...seen.entries()].map(([name, path]) => ({ name, path })).toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
+export function privateE2eStampKey(name: string, skipVisual: boolean) {
+  return `e2e:private-${name}${skipVisual ? ':novisual' : ''}`;
+}
+
+export function privateE2eInputHash(moduleDir: string, skipVisual: boolean, cwd = process.cwd()) {
+  return combineHashes(hubPrivateRuntimeHash(cwd), hashDirectory(moduleDir), skipVisual ? 'novisual' : 'visual');
+}
+
 export function runPrivateE2e(folder: string) {
+  const cache = process.env.HUB_MODULES_ROOT === undefined;
+  const skipVisual = process.env.HUB_E2E_SKIP_VISUAL === '1';
+  const moduleDir = dirname(folder);
+  const key = privateE2eStampKey(basename(moduleDir), skipVisual);
+  const stamps = cache ? stampsPath() : undefined;
+  const startHash = cache ? privateE2eInputHash(moduleDir, skipVisual) : undefined;
+  if (stamps && startHash && hasPassStamp(stamps, key, startHash)) {
+    process.stdout.write(`e2e: private-${basename(moduleDir)} skipped (cached)\n`);
+    return 0;
+  }
   const run = spawnSync('pnpm', ['--filter', '@hub/e2e', 'e2e', '--project=private'], {
     stdio: 'inherit',
     env: { ...process.env, HUB_E2E_PRIVATE: folder },
   });
-  return run.status ?? 1;
+  const code = run.status ?? 1;
+  if (code === 0 && stamps && startHash) {
+    if (privateE2eInputHash(moduleDir, skipVisual) === startHash) writePassStamp(stamps, key, startHash);
+    else process.stderr.write(`e2e: private-${basename(moduleDir)} inputs changed; stamp not written\n`);
+  }
+  return code;
 }
 
 if (import.meta.main) {

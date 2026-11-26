@@ -1,9 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findPrivateE2eFolders } from './test-e2e-private.ts';
+import { combineHashes, hasPassStamp, hubE2eTreeHash, stampsPath, writePassStamp } from './verify-stamp.ts';
+import { findPrivateE2eFolders, privateE2eInputHash, privateE2eStampKey } from './test-e2e-private.ts';
 import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 
 // Each e2e process owns a fake desktop, two free ports and a temp folder (`apps/e2e/tests/hosts.ts`), so running the
@@ -129,7 +130,7 @@ function readHolder(path: string) {
 
 // One production build per variant (`vite build` bakes the module root and the example flag), served by `vite preview`
 // per process: the dev server transformed hundreds of modules on every page load and made the suite about 3x slower.
-interface Variant {
+export interface Variant {
   name: string;
   moduleRoot: string;
   examples: boolean;
@@ -296,6 +297,69 @@ function recordDurations(path: string, reportOf: Record<string, string>) {
   writeFileSync(path, JSON.stringify(durations));
 }
 
+export function variantStampKey(v: Variant, skipVisual: boolean) {
+  return v.privateFolder
+    ? privateE2eStampKey(v.name.slice('private-'.length), skipVisual)
+    : `e2e:${v.name}${skipVisual ? ':novisual' : ''}`;
+}
+
+export function variantInputHash(v: Variant, skipVisual: boolean) {
+  return v.privateFolder
+    ? privateE2eInputHash(dirname(v.privateFolder), skipVisual)
+    : combineHashes(hubE2eTreeHash(), skipVisual ? 'novisual' : 'visual');
+}
+
+export async function runVariants(
+  variants: Variant[],
+  reports: string,
+  durationsPath: string,
+  options: {
+    stamps?: string;
+    inputHash?: typeof variantInputHash;
+    runJob?: typeof run;
+    jobsFor?: typeof planJobs;
+  } = {},
+) {
+  const cache = process.env.HUB_MODULES_ROOT === undefined;
+  const stamps = cache ? (options.stamps ?? stampsPath()) : undefined;
+  const skipVisual = process.env.HUB_E2E_SKIP_VISUAL === '1';
+  const inputHash = options.inputHash ?? variantInputHash;
+  const runJob = options.runJob ?? run;
+  const starts = new Map<Variant, string>();
+  const all = variants.filter((v) => {
+    if (!stamps) return true;
+    const hash = inputHash(v, skipVisual);
+    starts.set(v, hash);
+    if (!hasPassStamp(stamps, variantStampKey(v, skipVisual), hash)) return true;
+    process.stdout.write(`e2e: ${v.name} skipped (cached)\n`);
+    return false;
+  });
+  if (!all.length) return 0;
+  const builds = await Promise.all(all.filter((v) => !v.privateFolder).map((v) => runJob(buildJob(v), true)));
+  if (builds.some((code) => code !== 0)) return 1;
+  const { jobs, reportOf } = (options.jobsFor ?? planJobs)(all, reports, readDurations(durationsPath));
+  const workers = resolveWorkers();
+  process.stdout.write(`e2e: ${jobs.length} jobs, ${workers} slots: ${jobs.map((j) => j.label).join(', ')}\n`);
+  const started = Date.now();
+  const code = await runQueue(jobs, workers, async (job) => {
+    const t = Date.now();
+    const result = await runJob(job);
+    process.stdout.write(`e2e: ${job.label} exit ${result} after ${Math.round((Date.now() - t) / 1000)}s\n`);
+    return result;
+  });
+  process.stdout.write(`e2e: queue done in ${Math.round((Date.now() - started) / 1000)}s\n`);
+  recordDurations(durationsPath, reportOf);
+  if (code === 0 && stamps) {
+    for (const v of all) {
+      const startHash = starts.get(v);
+      if (startHash && inputHash(v, skipVisual) === startHash)
+        writePassStamp(stamps, variantStampKey(v, skipVisual), startHash);
+      else process.stderr.write(`e2e: ${v.name} inputs changed; stamp not written\n`);
+    }
+  }
+  return code;
+}
+
 let releaseLock = () => {};
 
 async function main() {
@@ -305,22 +369,7 @@ async function main() {
   });
   const durationsPath = gitPath('hub-e2e-durations.json');
   try {
-    const all = variants();
-    const builds = await Promise.all(all.filter((v) => !v.privateFolder).map((v) => run(buildJob(v), true)));
-    if (builds.some((code) => code !== 0)) return 1;
-    const { jobs, reportOf } = planJobs(all, reports, readDurations(durationsPath));
-    const workers = resolveWorkers();
-    process.stdout.write(`e2e: ${jobs.length} jobs, ${workers} slots: ${jobs.map((j) => j.label).join(', ')}\n`);
-    const started = Date.now();
-    const code = await runQueue(jobs, workers, async (job) => {
-      const t = Date.now();
-      const result = await run(job);
-      process.stdout.write(`e2e: ${job.label} exit ${result} after ${Math.round((Date.now() - t) / 1000)}s\n`);
-      return result;
-    });
-    process.stdout.write(`e2e: queue done in ${Math.round((Date.now() - started) / 1000)}s\n`);
-    recordDurations(durationsPath, reportOf);
-    return code;
+    return await runVariants(variants(), reports, durationsPath);
   } finally {
     releaseLock();
     rmSync(reports, { recursive: true, force: true });

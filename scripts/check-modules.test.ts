@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkModules } from './check-modules.ts';
+import { readPassStamps } from './verify-stamp.ts';
 import { moduleImportViolation } from './module-imports.ts';
 
 const script = fileURLToPath(new URL('./check-modules.ts', import.meta.url));
@@ -166,4 +167,57 @@ void test('web build with HUB_MODULES_ROOT set to an empty fixture excludes modu
   const jsFilesB = readdirSync(join(outB, 'assets')).filter((f) => f.endsWith('.js'));
   const bundleB = (await Promise.all(jsFilesB.map((file) => readFile(join(outB, 'assets', file), 'utf8')))).join('\n');
   assert.equal(bundleB.includes(sentinel), false);
+});
+
+void test('default-root module checks reuse passes while write, custom roots, failures and drift do not stamp', async (t) => {
+  const dir = await scratch(t);
+  const modules = join(dir, 'fixtures');
+  await addModule(modules, 'good', {});
+  await mkdir(join(dir, 'scripts'));
+  await mkdir(join(dir, 'apps/server/src/core'), { recursive: true });
+  await mkdir(join(dir, 'node_modules/.bin'), { recursive: true });
+  await writeFile(join(dir, 'package.json'), '{"type":"module"}');
+  await writeFile(join(dir, '.gitignore'), 'fixtures/\nnode_modules/\ncommands\n');
+  for (const name of ['check-modules.ts', 'verify-stamp.ts'])
+    await copyFile(new URL(name, import.meta.url), join(dir, 'scripts', name));
+  await writeFile(join(dir, 'apps/server/src/core/discovery.ts'), "export const defaultModuleRoots = ['fixtures'];\n");
+  for (const name of ['prettier', 'tsc', 'oxlint']) {
+    const binary = join(dir, 'node_modules/.bin', name);
+    await writeFile(
+      binary,
+      `#!/usr/bin/env node
+import { appendFileSync, writeFileSync } from 'node:fs';
+import { basename } from 'node:path';
+const name = basename(process.argv[1]);
+appendFileSync('commands', name + '\\n');
+if (process.env.DRIFT && name === 'tsc') writeFileSync('fixtures/good/server.ts', 'drift');
+if (process.env.FAIL_STEP === name) process.exit(1);
+`,
+    );
+    await chmod(binary, 0o755);
+  }
+  const { NODE_TEST_CONTEXT: _outer, HUB_MODULES_ROOT: _root, ...env } = process.env;
+  const clean = Object.fromEntries(Object.entries(env).filter(([key]) => !key.startsWith('GIT_')));
+  assert.equal(spawnSync('git', ['init', '--quiet'], { cwd: dir, env: clean }).status, 0);
+  const run = (args: string[] = [], extra: NodeJS.ProcessEnv = {}) =>
+    spawnSync(process.execPath, ['scripts/check-modules.ts', ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...clean, HUB_VERIFY_NO_CACHE: '0', ...extra },
+    });
+  const stamps = join(dir, '.git/hub-pass-stamps.json');
+  assert.equal(run().status, 0);
+  assert.ok(readPassStamps(stamps)['check-module:good']);
+  const cached = run();
+  assert.equal(cached.status, 0);
+  assert.match(cached.stdout, /cached \(unchanged\)/);
+  await rm(stamps);
+  assert.equal(run(['--write']).status, 0);
+  assert.deepEqual(readPassStamps(stamps), {});
+  assert.equal(run([], { HUB_MODULES_ROOT: modules }).status, 0);
+  assert.deepEqual(readPassStamps(stamps), {});
+  assert.equal(run([], { DRIFT: '1' }).status, 0);
+  assert.deepEqual(readPassStamps(stamps), {});
+  assert.equal(run([], { FAIL_STEP: 'tsc' }).status, 1);
+  assert.deepEqual(readPassStamps(stamps), {});
 });

@@ -3,7 +3,20 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { acquireLock, balance, fileStats, resolveWorkers, runQueue, type Job, WORKERS } from './test-e2e.ts';
+import {
+  acquireLock,
+  balance,
+  fileStats,
+  resolveWorkers,
+  runQueue,
+  runVariants,
+  variantStampKey,
+  type Variant,
+  type Job,
+  WORKERS,
+} from './test-e2e.ts';
+
+import { readPassStamps, writePassStamp } from './verify-stamp.ts';
 
 const job = (label: string): Job => ({ label, command: 'x', args: [], env: {} });
 const tick = () => new Promise<void>((done) => setImmediate(done));
@@ -112,4 +125,73 @@ void test('resolveWorkers clamps valid integers to 1..WORKERS and falls back to 
   assert.equal(resolveWorkers('0'), 1);
   assert.equal(resolveWorkers('99'), WORKERS);
   assert.equal(resolveWorkers('2x'), WORKERS);
+});
+
+void test('cached variants skip builds and Playwright; uncached variants run both and record passes', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'hub-e2e-cache-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const previous = process.env.HUB_VERIFY_NO_CACHE;
+  process.env.HUB_VERIFY_NO_CACHE = '0';
+  t.after(() => {
+    if (previous === undefined) delete process.env.HUB_VERIFY_NO_CACHE;
+    else process.env.HUB_VERIFY_NO_CACHE = previous;
+  });
+  const stamps = join(dir, 'passes');
+  const durations = join(dir, 'durations');
+  const all: Variant[] = [
+    { name: 'public', moduleRoot: dir, examples: false, shards: 3 },
+    { name: 'example', moduleRoot: dir, examples: true, shards: 2 },
+  ];
+  const seen: string[] = [];
+  const options = {
+    stamps,
+    inputHash: () => 'same',
+    runJob: async (j: Job) => {
+      seen.push(j.label);
+      return 0;
+    },
+    jobsFor: (variants: Variant[]) => ({ jobs: variants.map((v) => job(v.name)), reportOf: {} }),
+  };
+  for (const v of all) writePassStamp(stamps, variantStampKey(v, false), 'same');
+  assert.equal(await runVariants(all, dir, durations, options), 0);
+  assert.deepEqual(seen, []);
+  writePassStamp(stamps, 'e2e:public', 'old');
+  assert.equal(await runVariants(all, dir, durations, options), 0);
+  assert.deepEqual(seen, ['build public', 'public']);
+  assert.equal(readPassStamps(stamps)['e2e:public'], 'same');
+});
+
+void test('failed or drifting e2e runs never write pass stamps; custom roots bypass caching', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'hub-e2e-drift-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const stamps = join(dir, 'passes');
+  const all: Variant[] = [{ name: 'public', moduleRoot: dir, examples: false, shards: 1 }];
+  let hash = 'start';
+  let failed = false;
+  const options = {
+    stamps,
+    inputHash: () => hash,
+    runJob: async (j: Job) => {
+      if (j.label === 'public') hash = 'end';
+      return failed ? 1 : 0;
+    },
+    jobsFor: () => ({ jobs: [job('public')], reportOf: {} }),
+  };
+  assert.equal(await runVariants(all, dir, join(dir, 'durations'), options), 0);
+  assert.deepEqual(readPassStamps(stamps), {});
+  failed = true;
+  assert.equal(await runVariants(all, dir, join(dir, 'durations'), options), 1);
+  assert.deepEqual(readPassStamps(stamps), {});
+  const previous = process.env.HUB_MODULES_ROOT;
+  process.env.HUB_MODULES_ROOT = dir;
+  t.after(() => {
+    if (previous === undefined) delete process.env.HUB_MODULES_ROOT;
+    else process.env.HUB_MODULES_ROOT = previous;
+  });
+  failed = false;
+  options.inputHash = () => {
+    throw new Error('fixture runs must not hash');
+  };
+  assert.equal(await runVariants(all, dir, join(dir, 'durations'), options), 0);
+  assert.deepEqual(readPassStamps(stamps), {});
 });

@@ -3,6 +3,14 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  combineHashes,
+  hashDirectory,
+  hasPassStamp,
+  stampsPath,
+  worktreeTree,
+  writePassStamp,
+} from './verify-stamp.ts';
 import { defaultModuleRoots } from '../apps/server/src/core/discovery.ts';
 
 // Tests and typecheck of the private/installed modules, which no workspace covers. Prints module names and counts only;
@@ -15,7 +23,7 @@ const prettier = join(repo, 'node_modules/.bin/prettier');
 const baseConfig = join(repo, 'scripts/tsconfig.modules.json');
 
 /** A module is a folder with a `server.ts`, the same rule discovery uses. Earlier roots win on name collision. */
-function findModules(roots: string | readonly string[]) {
+export function findModules(roots: string | readonly string[]) {
   const list = typeof roots === 'string' ? [roots] : roots;
   const seen = new Map<string, string>();
   for (const root of list) {
@@ -108,6 +116,8 @@ export function checkModules(roots: string | readonly string[], only?: string, w
     process.stdout.write('check-modules: no private modules\n');
     return 0;
   }
+  const cache = !write && process.env.HUB_MODULES_ROOT === undefined && roots === defaultModuleRoots;
+  const stamps = cache ? stampsPath() : undefined;
   const scratch = mkdtempSync(join(tmpdir(), 'hub-check-modules-'));
   try {
     let failed = 0;
@@ -121,8 +131,21 @@ export function checkModules(roots: string | readonly string[], only?: string, w
         }
         continue;
       }
+      const key = `check-module:${name}`;
+      const startHash = cache ? combineHashes(worktreeTree(), hashDirectory(folder)) : undefined;
+      if (stamps && startHash && hasPassStamp(stamps, key, startHash)) {
+        process.stdout.write(`check-modules: ${name}: cached (unchanged)\n`);
+        continue;
+      }
       const failure = checkModule(folder, name, scratch);
-      if (failure === null) continue;
+      if (failure === null) {
+        if (stamps && startHash) {
+          const endHash = combineHashes(worktreeTree(), hashDirectory(folder));
+          if (endHash === startHash) writePassStamp(stamps, key, startHash);
+          else process.stderr.write(`check-modules: ${name}: inputs changed; stamp not written\n`);
+        }
+        continue;
+      }
       failed++;
       process.stderr.write(`check-modules: ${name}: FAILED\n${failure}\n`);
     }
@@ -135,6 +158,6 @@ export function checkModules(roots: string | readonly string[], only?: string, w
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const write = args[0] === '--write';
-  const roots = process.env.HUB_MODULES_ROOT ? [process.env.HUB_MODULES_ROOT] : defaultModuleRoots;
+  const roots = process.env.HUB_MODULES_ROOT !== undefined ? [process.env.HUB_MODULES_ROOT] : defaultModuleRoots;
   process.exitCode = checkModules(roots, args[write ? 1 : 0], write);
 }

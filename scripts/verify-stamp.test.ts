@@ -1,10 +1,23 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import {
+  combineHashes,
+  filteredTreeHash,
+  hashDirectory,
+  hasPassStamp,
+  hubE2eTreeHash,
+  hubPrivateRuntimeHash,
+  readPassStamps,
+  worktreeTree,
+  writePassStamp,
+} from './verify-stamp.ts';
+import { privateE2eInputHash, privateE2eStampKey } from './test-e2e-private.ts';
 
 const script = fileURLToPath(new URL('./verify-stamp.ts', import.meta.url));
 
@@ -89,4 +102,108 @@ void test('G4: write refuses to write stamp when worktree drifted after start tr
   assert.equal(refused.status, 1);
   assert.match(refused.stderr, /worktree changed during verify/);
   assert.equal(repo.stamp('check').status, 1);
+});
+
+void test('directory hashes cover paths, bytes and symlink targets but ignore dependency and git folders', (t) => {
+  const { directory } = repository(t);
+  const hash = () => hashDirectory(directory);
+  const initial = hash();
+  mkdirSync(join(directory, 'node_modules'));
+  writeFileSync(join(directory, 'node_modules', 'dependency'), 'ignored');
+  writeFileSync(join(directory, '.git', 'ignored'), 'ignored');
+  assert.equal(hash(), initial);
+  writeFileSync(join(directory, 'a.txt'), 'two');
+  assert.notEqual(hash(), initial);
+  const edited = hash();
+  renameSync(join(directory, 'a.txt'), join(directory, 'b.txt'));
+  assert.notEqual(hash(), edited);
+  symlinkSync('b.txt', join(directory, 'link'));
+  const linked = hash();
+  rmSync(join(directory, 'link'));
+  symlinkSync('missing', join(directory, 'link'));
+  assert.notEqual(hash(), linked);
+});
+
+void test('private runtime filtering retains public modules and shared e2e helpers', (t) => {
+  const { directory } = repository(t);
+  const put = (path: string, value: string) => {
+    const full = join(directory, path);
+    mkdirSync(join(full, '..'), { recursive: true });
+    writeFileSync(full, value);
+  };
+  const hash = () => hubPrivateRuntimeHash(directory);
+  const initial = hash();
+  for (const path of [
+    'README.md',
+    'docs/guide.txt',
+    'modules.example/hello/server.ts',
+    'apps/e2e/tests/desk.spec.ts',
+    'apps/e2e/__screenshots__/desk.png',
+  ]) {
+    put(path, 'ignored');
+    assert.equal(hash(), initial, path);
+  }
+  for (const path of [
+    'apps/e2e/tests/hosts.ts',
+    'apps/e2e/tests/pair.setup.ts',
+    'apps/web/src/modules/calendar/page.tsx',
+  ]) {
+    const before = hash();
+    put(path, 'runtime');
+    assert.notEqual(hash(), before, path);
+  }
+  const publicHash = hubE2eTreeHash(directory);
+  put('apps/e2e/tests/desk.spec.ts', 'changed spec');
+  assert.notEqual(hubE2eTreeHash(directory), publicHash);
+  const tree = worktreeTree(directory);
+  assert.equal(
+    filteredTreeHash(tree, () => false, directory),
+    filteredTreeHash(tree, () => false, directory),
+  );
+});
+
+void test('pass stamps tolerate missing/corrupt data, preserve keys and bypass reads while refreshing writes', (t) => {
+  const { directory } = repository(t);
+  const path = join(directory, '.git', 'passes.json');
+  assert.deepEqual(readPassStamps(path), {});
+  for (const value of ['broken', 'null', '[]', '123']) {
+    writeFileSync(path, value);
+    assert.deepEqual(readPassStamps(path), {});
+  }
+  const previous = process.env.HUB_VERIFY_NO_CACHE;
+  t.after(() => {
+    if (previous === undefined) delete process.env.HUB_VERIFY_NO_CACHE;
+    else process.env.HUB_VERIFY_NO_CACHE = previous;
+  });
+  process.env.HUB_VERIFY_NO_CACHE = '0';
+  writePassStamp(path, 'one', 'first');
+  writePassStamp(path, 'two', 'second');
+  assert.ok(hasPassStamp(path, 'one', 'first'));
+  assert.ok(!hasPassStamp(path, 'one', 'wrong'));
+  process.env.HUB_VERIFY_NO_CACHE = '1';
+  assert.ok(!hasPassStamp(path, 'one', 'first'));
+  writePassStamp(path, 'one', 'fresh');
+  assert.deepEqual(readPassStamps(path), { one: 'fresh', two: 'second' });
+});
+
+void test('private module edits invalidate only that module and visual stamps are distinct', (t) => {
+  const { directory } = repository(t);
+  const a = join(directory, 'ignored', 'a');
+  const b = join(directory, 'ignored', 'b');
+  mkdirSync(a, { recursive: true });
+  mkdirSync(b, { recursive: true });
+  writeFileSync(join(a, 'server.ts'), 'first');
+  writeFileSync(join(b, 'server.ts'), 'first');
+  const hashA = privateE2eInputHash(a, false, directory);
+  const hashB = privateE2eInputHash(b, false, directory);
+  const publicHash = hubE2eTreeHash(directory);
+  writeFileSync(join(a, 'server.ts'), 'edited');
+  assert.notEqual(privateE2eInputHash(a, false, directory), hashA);
+  assert.equal(privateE2eInputHash(b, false, directory), hashB);
+  assert.equal(hubE2eTreeHash(directory), publicHash);
+  assert.notEqual(privateE2eInputHash(b, true, directory), hashB);
+  const path = join(directory, '.git', 'passes.json');
+  writePassStamp(path, privateE2eStampKey('a', true), hashA);
+  assert.ok(!hasPassStamp(path, privateE2eStampKey('a', false), hashA));
+  assert.notEqual(combineHashes('ab', 'c'), combineHashes('a', 'bc'));
 });
