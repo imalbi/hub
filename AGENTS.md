@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hub is a personal control center: one Fastify server on the desktop (CachyOS, Hyprland + Caelestia) exposes a registry of actions to two React clients, `/desk` (dashboard in the `special:hub` workspace) and `/deck` (Stream Deck style PWA on an old iPhone). Design doc (private): https://claude.ai/artifact/EoUAnyrHmvFALAseJp25Cy
+Hub is a personal control center: one Fastify server on the desktop (CachyOS, Hyprland + Caelestia) exposes a registry of actions to two React clients, `/desk` (dashboard in the `special:hub` workspace) and `/deck` (Stream Deck style PWA on an old iPhone).
 
 ## Commands
 
