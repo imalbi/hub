@@ -78,7 +78,7 @@ test('desk and deck load from the server under helmet CSP with zero browser viol
     await deck.getByLabel('Codice').fill(code);
     await deck.getByLabel('Nome del dispositivo').fill('Security test phone');
     await deck.getByRole('button', { name: 'Abbina' }).click();
-    await expect(deck.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
+    await expect(deck.getByRole('button', { name: /^Audio: Cuffie/ })).toBeVisible();
     expect(await deck.evaluate(() => document.documentElement.getAttribute('data-csp-violations'))).toBeNull();
     expect(deckErrors).toEqual([]);
   } finally {

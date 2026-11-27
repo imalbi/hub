@@ -16,12 +16,26 @@ test.describe('the deck', () => {
     await freezePomodoro(page);
     await page.goto('/deck');
     await expect(page.getByRole('region', { name: 'In riproduzione' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Audio: Cuffie/ })).toBeVisible();
     await waitForDeckCover(page);
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
     await expect(page).toHaveScreenshot(baseline('deck.png'), { animations: 'disabled' });
+  });
+
+  test('the audio dialog fits on the phone screen', async ({ page }) => {
+    await freezePomodoro(page);
+    await page.goto('/deck');
+    await page.getByRole('button', { name: /^Audio: Cuffie/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Cuffie', exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('slider', { name: 'Volume', exact: true })).toBeInViewport({ ratio: 1 });
+    await waitForDeckCover(page);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    await expect(page).toHaveScreenshot(baseline('deck-audio.png'), { animations: 'disabled' });
   });
 
   test('a paused Pomodoro remains readable on the deck', async ({ page }) => {

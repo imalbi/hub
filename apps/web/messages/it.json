@@ -1,8 +1,5 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "deck_volume_up": "Volume +",
-  "deck_volume_down": "Volume −",
-  "deck_audio_output": "Uscita",
   "ticks_count": "{value} di {total}",
   "day_line": "Linea del giorno",
   "day_now": "adesso",

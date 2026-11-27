@@ -1,7 +1,7 @@
 import { useIsOn } from '../lib/enabled-modules.ts';
 import { moduleUIs } from '../lib/modules.ts';
 import type { ComponentType } from 'react';
-import { AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
+import { AudioControlTile, MicMuteTile } from '../modules/audio/deck-tile.tsx';
 import { PomodoroTile } from '../modules/pomodoro/deck-tile.tsx';
 import {
   HubTile,
@@ -34,17 +34,7 @@ const pages: Page[] = [
   {
     id: 'desk',
     label: m.page_desk,
-    tiles: [
-      HubTile,
-      CommunicationTile,
-      MusicAppTile,
-      AudioOutputTile,
-      VolumeDownTile,
-      VolumeUpTile,
-      MicMuteTile,
-      PomodoroTile,
-      LockTile,
-    ],
+    tiles: [HubTile, CommunicationTile, MusicAppTile, AudioControlTile, MicMuteTile, PomodoroTile, LockTile],
   },
   {
     id: 'system',
@@ -59,7 +49,7 @@ const holds: ComponentType[] = [SuspendTile, RebootTile, PowerOffTile];
 
 // The module each tile belongs to, so a module that is off takes its tiles off the deck.
 const tileOwner = new Map<ComponentType, string>([
-  ...[AudioOutputTile, VolumeDownTile, VolumeUpTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
+  ...[AudioControlTile, MicMuteTile].map((tile) => [tile, 'audio'] as const),
   [PomodoroTile, 'pomodoro'],
   ...[
     HubTile,

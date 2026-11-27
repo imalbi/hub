@@ -14,7 +14,7 @@ setup('pair the deck through the desk and the pairing screen', async ({ browser 
   await deck.goto('/deck');
   await deck.getByLabel('Codice').fill(code);
   await deck.getByRole('button', { name: 'Abbina' }).click();
-  await expect(deck.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
+  await expect(deck.getByRole('button', { name: /^Audio: Cuffie/ })).toBeVisible();
 
   await phone.storageState({ path: DECK_STATE });
   await phone.close();

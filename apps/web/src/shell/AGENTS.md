@@ -25,7 +25,7 @@
 - Desk surfaces have no status line (step 91). `day-line-math.ts` packs measured captions in two rows, including adesso; shortened captions retain their full title.
 - NumberRoll stacks every digit 0 to 9 in an absolutely placed strip (about 5000 px at hero size): its container must clip (`.instrument-dial` has `overflow: clip`) or a page scroller grows to the strip's height.
 
-- Positioned module deck tiles use indices in the built-in page, before any module insertion. `useDeckPages` inserts higher indices first so an earlier accessory cannot move a later tile ahead of Posta; covered by the private Notizie deck regression.
+- Positioned module deck tiles use indices in the built-in page, before any module insertion. `useDeckPages` inserts higher indices first so an earlier accessory cannot move a later tile ahead of Posta; covered by the private Notizie deck regression. Indices beyond the base page length append (native splice); reducing built-in tiles can therefore change the order of modules sharing an out-of-range index.
 - Oggi lives in `shell/today-widget.tsx`. It renders the first active `ModuleUI.todayHeader` contribution with `look`/`align`; without one, the dedicated wide column is omitted. Vertical apps must not be imported by the shell.
 
 - `ContentBoundary` isolates each module zone/tab/widget and each Deck tile/extra; retry remounts the failed child while the shell and sibling controls stay usable. Keep successful renders wrapper-free so grid geometry stays unchanged. Panoramica layout saves share a mutation scope; only the last settled save invalidates the optimistic board, restoring persisted state after failure without overwriting queued edits.

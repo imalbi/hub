@@ -5,7 +5,7 @@ import { expect, test } from './fixtures.ts';
 import { controlSockets } from './sockets.ts';
 import { SERVER_PORT, SERVER_URL } from './hosts.ts';
 
-const audioTile = (page: Page) => page.getByRole('button', { name: /^Uscita audio/ });
+const audioTile = (page: Page) => page.getByRole('button', { name: /^Audio:/ });
 const player = (page: Page) => page.getByRole('region', { name: 'In riproduzione' });
 const examples = process.env.HUB_EXAMPLE_MODULES === '1';
 
@@ -66,7 +66,7 @@ test('the deck has no duplicate music tile', async ({ page }) => {
 });
 
 test('audio and player show the state of the fake desktop', async ({ page }) => {
-  await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
+  await expect(audioTile(page)).toHaveAccessibleName('Audio: Cuffie · 80%');
   await expect(player(page).getByText('Title', { exact: true })).toBeVisible();
   await expect(player(page).getByRole('button', { name: 'Metti in pausa la musica' })).toBeVisible();
 });
@@ -110,15 +110,27 @@ test('deck keeps short loading text while live tile state is delayed', async ({ 
     });
   });
   await page.reload();
-  await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Caricamento');
-  await page.screenshot({ path: '/tmp/hub88-deck-loading.png' });
+  await expect(audioTile(page)).toHaveAccessibleName('Audio: Caricamento');
+  await expect(audioTile(page)).toBeDisabled();
 });
 
-test('tapping the audio tile switches to the other output and back', async ({ page }) => {
+test('the audio dialog selects outputs and returns focus to its tile', async ({ page }) => {
   await audioTile(page).click();
-  await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Casse');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveAccessibleName('Cuffie');
+  const outputs = dialog.getByRole('toolbar', { name: 'Uscite configurate' });
+  await outputs.getByRole('button', { name: 'Casse', exact: true }).click();
+  await expect(dialog).toHaveAccessibleName('Casse');
+  await expect(audioTile(page)).toHaveAccessibleName('Audio: Casse · 80%');
+  await outputs.getByRole('button', { name: 'Cuffie', exact: true }).click();
+  await expect(dialog).toHaveAccessibleName('Cuffie');
+  await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(audioTile(page)).toBeFocused();
   await audioTile(page).click();
-  await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(audioTile(page)).toBeFocused();
 });
 
 test('a change made elsewhere reaches the open player without a reload', async ({ page, pc }) => {
@@ -137,15 +149,25 @@ test('the connection-lost state shows when the socket drops and clears when it i
     if (new URL(socket.url()).pathname !== '/trpc') otherSockets.push(socket);
   });
   await page.goto('/deck');
-  await expect(audioTile(page)).toHaveAccessibleName('Uscita audio: Cuffie');
+  await expect(audioTile(page)).toHaveAccessibleName('Audio: Cuffie · 80%');
   await expect(page.getByText('Connessione persa')).toBeHidden();
 
+  await audioTile(page).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('slider', { name: 'Volume', exact: true })).toBeEnabled();
+  await expect(dialog.getByRole('toolbar', { name: 'Uscite configurate' }).getByRole('button')).toHaveCount(2);
   await sockets.cut();
   // The retry backs off, so the page may need a few seconds: the default 5 s expect timeout is too tight.
   await expect(page.getByText('Connessione persa')).toBeVisible({ timeout: 15_000 });
   expect(otherSockets.every((socket) => !socket.isClosed())).toBe(true);
-  // The last known state stays on the tile.
-  await expect(audioTile(page)).toHaveAccessibleName(/Cuffie/);
+  await expect(dialog.getByRole('slider', { name: 'Volume', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Silenzia uscita audio', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('toolbar', { name: 'Uscite configurate' }).locator('button:enabled')).toHaveCount(0);
+  for (const button of await dialog.getByRole('toolbar', { name: 'Uscite configurate' }).getByRole('button').all())
+    await expect(button).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(audioTile(page)).toHaveAccessibleName('Audio: Non disponibile');
+  await expect(audioTile(page)).toBeDisabled();
 
   await sockets.restore();
   await expect(page.getByText('Connessione persa')).toBeHidden({ timeout: 15_000 });
@@ -321,23 +343,13 @@ test('the monitor tile opens controls without toggling and supports both orienta
 test('Scrivania presents the requested controls in order', async ({ page }) => {
   const desk = page.getByRole('region', { name: 'Scrivania', exact: true });
   await expect(audioTile(page)).toBeVisible();
-  const names = [
-    /^Hub:/,
-    /^Chat:/,
-    /^Lettore:/,
-    /^Uscita audio:/,
-    /^Abbassa volume:/,
-    /^Alza volume:/,
-    /^Microfono:/,
-    /^Pomodoro:/,
-    /^Blocca:/,
-  ];
+  const names = [/^Hub:/, /^Chat:/, /^Lettore:/, /^Audio:/, /^Microfono:/, /^Pomodoro:/, /^Blocca:/];
   const tiles = desk.locator(':scope > div > button, :scope > div > [role="group"]');
   await expect(tiles).toHaveCount(names.length);
   await expect(desk.getByRole('button', { name: /^AirPlay:/ })).toHaveCount(0);
   for (const [index, name] of names.entries()) await expect(tiles.nth(index)).toHaveAccessibleName(name);
-  await expect(desk.getByText('Volume −')).toBeVisible();
-  await expect(desk.getByText('Volume +')).toBeVisible();
+  await expect(desk.getByRole('button', { name: /^(Abbassa volume|Alza volume|Volume −|Volume \+)/ })).toHaveCount(0);
+  await expect(desk.getByText(/^(Volume −|Volume \+)$/)).toHaveCount(0);
 });
 
 test('the running Pomodoro header opens Scrivania', async ({ page, pc }) => {
@@ -422,15 +434,52 @@ test('two monitors precede the module tiles and the holds start a new row', asyn
   await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
 });
 
-test('volume and microphone controls update the fake desktop', async ({ page, pc }) => {
+test('audio volume commits once on release and mute reflects live state', async ({ page, pc }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.includes('audio.setVolume')) writes.push(request.url());
+  });
   try {
-    const down = page.getByRole('button', { name: /^Abbassa volume:/ });
-    const up = page.getByRole('button', { name: /^Alza volume:/ });
-    await expect(down).toHaveAccessibleName('Abbassa volume: 80%');
-    await down.click();
-    await expect(up).toHaveAccessibleName('Alza volume: 75%');
-    await up.click();
-    await expect(down).toHaveAccessibleName('Abbassa volume: 80%');
+    await audioTile(page).click();
+    const dialog = page.getByRole('dialog');
+    const slider = dialog.getByRole('slider', { name: 'Volume', exact: true });
+    await expect(slider).toHaveValue('80');
+    const box = await slider.boundingBox();
+    if (!box) throw new Error('Missing volume slider geometry');
+    await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.4, box.y + box.height / 2, { steps: 8 });
+    await expect(slider).not.toHaveValue('80');
+    expect(writes).toHaveLength(0);
+    expect((await (await pc.get('/trpc/audio.state')).json()).result.data.volume).toBe(0.8);
+    const picked = Number(await slider.inputValue());
+    await page.mouse.up();
+    await expect.poll(() => writes.length).toBe(1);
+    await expect
+      .poll(async () => (await (await pc.get('/trpc/audio.state')).json()).result.data.volume)
+      .toBe(picked / 100);
+    await expect(audioTile(page)).toHaveAccessibleName(`Audio: Cuffie · ${picked}%`);
+    await slider.press('End');
+    await expect(audioTile(page)).toHaveAccessibleName('Audio: Cuffie · 100%');
+    await slider.press('Home');
+    await expect(audioTile(page)).toHaveAccessibleName('Audio: Cuffie · 0%');
+    const mute = dialog.getByRole('button', { name: 'Silenzia uscita audio', exact: true });
+    await mute.click();
+    await expect(mute).toHaveAttribute('aria-pressed', 'true');
+    await expect(audioTile(page)).toHaveAccessibleName('Audio: Disattivata');
+    expect((await (await pc.get('/trpc/audio.state')).json()).result.data.muted).toBe(true);
+    await mute.click();
+    await expect(mute).toHaveAttribute('aria-pressed', 'false');
+    await expect(audioTile(page)).toHaveAccessibleName('Audio: Cuffie · 0%');
+  } finally {
+    const state = (await (await pc.get('/trpc/audio.state')).json()).result.data;
+    if (state.muted) await pc.post('/trpc/audio.toggleMute', { data: {} });
+    await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
+  }
+});
+
+test('the separate microphone tile updates the fake desktop', async ({ page, pc }) => {
+  try {
     const mic = page.getByRole('button', { name: /^Microfono:/ });
     await mic.click();
     await expect(mic).toHaveAccessibleName('Microfono: Disattivato');
@@ -439,7 +488,6 @@ test('volume and microphone controls update the fake desktop', async ({ page, pc
   } finally {
     const state = (await (await pc.get('/trpc/audio.state')).json()).result.data;
     if (state.micMuted) await pc.post('/trpc/audio.toggleMicMute', { data: {} });
-    await pc.post('/trpc/audio.setVolume', { data: { value: 0.8 } });
   }
 });
 

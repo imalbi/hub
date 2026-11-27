@@ -14,7 +14,7 @@ test('an unpaired deck shows the pairing screen and no tile', async ({ page }) =
   await expect(page.getByLabel('Codice')).toHaveAttribute('autocomplete', 'one-time-code');
   await expect(page.getByLabel('Nome del dispositivo')).toHaveValue('iPhone');
   await expect(page.getByText(/schermata Home/)).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^Uscita audio/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Audio:/ })).toHaveCount(0);
 });
 
 test('Safari shows the Home instructions before a usable dimmed form', async ({ page, pc }) => {
@@ -38,7 +38,7 @@ test('Safari shows the Home instructions before a usable dimmed form', async ({ 
     await page.getByLabel('Codice').fill(code);
     await page.getByLabel('Nome del dispositivo').fill(deviceName);
     await page.getByRole('button', { name: 'Abbina' }).click();
-    await expect(page.getByRole('button', { name: /^Uscita audio/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Audio:/ })).toBeVisible();
   } finally {
     await revokeDevices(pc, deviceName);
   }
@@ -78,7 +78,7 @@ test('revoking a device from the PC sends its open deck back to the pairing scre
   try {
     await page.addInitScript((value) => localStorage.setItem('hub.token', value), token);
     await page.goto('/deck');
-    await expect(page.getByRole('button', { name: /^Uscita audio: Cuffie/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Audio: Cuffie/ })).toBeVisible();
 
     await revokeDevices(pc, 'Revoked deck');
     // The server closes the socket, the client reconnects with the dead token and is told to pair again.
@@ -96,7 +96,7 @@ test('first pairing immediately refetches cached unauthorized availability witho
   });
   await page.goto('/deck');
   await expect(pairingTitle(page)).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Uscita audio/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Audio:/ })).toHaveCount(0);
   // Exhaust the three default query retries before pairing, leaving a stable failed cache.
   await expect.poll(() => unauthorized, { timeout: 15_000 }).toBe(4);
   await page.evaluate(() => {
@@ -113,7 +113,7 @@ test('first pairing immediately refetches cached unauthorized availability witho
     );
     await page.getByRole('button', { name: 'Abbina', exact: true }).click();
     await refreshed;
-    await expect(page.getByRole('button', { name: /^Uscita audio/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Audio:/ })).toBeVisible();
     expect(await page.evaluate(() => 'pairingMarker' in window)).toBe(true);
   } finally {
     await revokeDevices(pc, name);
