@@ -4,6 +4,8 @@ A desktop control center with two views: a dashboard for the PC and a Stream Dec
 
 Hub grew out of a collection of small tools I had built with AI agents for things like job searching, study, music, budgeting and AirPlay. They were scattered across my system, often hard to find or start without an agent, and sometimes duplicated the same context or functionality. I built Hub to bring them together in one place, where modules can share what they need and benefit from each other. It reflects how I use my desktop: a personal project shared as a showcase, not a general-purpose solution.
 
+My main uses today are study and job searching. Studio replaces parts of a workflow I previously handled with NotebookLM and separate tools: an agent prepares a study plan tailored to my needs using a documented format, and Hub brings its activities, materials, timer and progress together for each session. Recorded progress feeds back into later plan revisions. Lavoro brings job searches, ranking, applications and interviews into the same workspace.
+
 Built for Linux, Hyprland and Caelestia. The interface is in Italian.
 
 ![Desk overview with notes, timer, audio and media controls](docs/images/desk.png)
@@ -29,6 +31,8 @@ Modules can connect to each other: the job search module uses email to link recr
 
 One Fastify server exposes a registry of actions with zod-validated inputs. The React desk and deck clients share its tRPC API and live updates. Side effects run through registered actions; the server does not accept arbitrary shell commands. Local data stays in SQLite databases.
 
+I accepted more complexity in the initial foundation to make later additions simpler: modules reuse the registry, storage, UI and agent access rather than building those pieces separately.
+
 ```text
 Desk dashboard ──┐
                  ├── tRPC / WebSocket ── Fastify ── action registry ── desktop tools
@@ -42,6 +46,8 @@ There are three module tiers:
 - **Private local modules:** keep personal integrations in the gitignored `modules.local/`; they take precedence over installed modules with the same name. <!-- guard-private: allow Repository-local module directory -->
 
 The core works without a catalog or private repository. There is no default catalog URL. See [Writing a module](docs/modules.md) for discovery, storage, capabilities and tests.
+
+The optional [Hub Shared Modules](https://github.com/imalbi/hub-shared) catalog contains Lavoro, Mail, Sites, Weather, Studio and Music. Studio's [plan writing guide](https://github.com/imalbi/hub-shared/blob/main/study/README.md) explains how agents create and revise plans while preserving progress. These modules are separate from the core demo shown above.
 
 ## Run on your desktop
 
