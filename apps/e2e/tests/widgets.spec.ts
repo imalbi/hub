@@ -222,7 +222,7 @@ test('outside edit mode nothing drags and the widgets work as usual', async ({ p
 
 test('Panoramica offers every widget, the ones that also have a page included', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica' }).click();
-  const missing = ['Server', 'Comandi', 'Consumo', 'Aspetto', 'Post-it'];
+  const missing = ['Brief del mattino', 'Server', 'Comandi', 'Consumo', 'Aspetto', 'Post-it'];
   if (process.env.HUB_EXAMPLE_MODULES === '1') missing.push('Esempio');
   await expect(page.getByRole('button', { name: /^Aggiungi (?!widget$)/ })).toHaveText(missing);
   await andSaved(page, () => page.getByRole('button', { name: 'Aggiungi Aspetto' }).click());
@@ -243,7 +243,7 @@ test('edit mode dims and disables content, and focuses the missing list', async 
   await expect(pomodoro.getByRole('button', { name: 'Avvia' })).toBeVisible();
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
   await page.getByRole('button', { name: 'Aggiungi widget', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Aggiungi Server' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Aggiungi Brief del mattino' })).toBeFocused();
   await page.getByRole('button', { name: 'Aggiungi Comandi' }).click();
   await expect(cell(page, 'controls')).toHaveAttribute('data-size', 'large');
 });
@@ -264,11 +264,12 @@ test('edit actions share one split pill', async ({ page }, testInfo) => {
   await expect(add.locator('..')).toHaveCSS('filter', 'none');
   await page.screenshot({ path: testInfo.outputPath('split-pill-focus-4k.png') });
   await add.click();
-  await expect(page.getByRole('button', { name: 'Aggiungi Server' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Aggiungi Brief del mattino' })).toBeFocused();
 });
 
 test('all widgets fit within the surface scroller', async ({ page, pc }) => {
   const ids = [
+    'brief',
     'today',
     'pomodoro',
     'media',
@@ -289,7 +290,7 @@ test('all widgets fit within the surface scroller', async ({ page, pc }) => {
         ? 'wide'
         : widget === 'controls' || widget === 'theme'
           ? 'large'
-          : widget === 'notes' || widget === 'hello'
+          : widget === 'brief' || widget === 'notes' || widget === 'hello'
             ? 'medium'
             : 'small',
     x: 0,

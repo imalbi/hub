@@ -13,6 +13,7 @@ export const RESERVED_CORE_NAMES: ReadonlySet<string> = new Set([
   'confirmations',
   'backup',
   'assistant',
+  'brief',
   'jobs',
   'catalog',
 ]);

@@ -1,3 +1,10 @@
+import { localDay } from '../modules/notes/notes.ts';
+
+export type LlmUsageStore = {
+  read(day: string): number;
+  increment(day: string): number;
+};
+
 export class LlmGateError extends Error {
   readonly reason: 'cap' | 'timeout';
   constructor(reason: 'cap' | 'timeout') {
@@ -6,7 +13,7 @@ export class LlmGateError extends Error {
   }
 }
 
-export function createLlmGate() {
+export function createLlmGate(store?: LlmUsageStore) {
   let active = false;
   let lastStart = Number.NEGATIVE_INFINITY;
   let day = '';
@@ -14,8 +21,8 @@ export function createLlmGate() {
   const queue: (() => void)[] = [];
 
   function used() {
-    const today = new Date().toDateString();
-    // shortcut: the count resets on restart, persist it when a second LLM caller arrives (voice, phase 3)
+    const today = localDay(new Date());
+    if (store) return store.read(today);
     if (day !== today) {
       day = today;
       count = 0;
@@ -41,14 +48,17 @@ export function createLlmGate() {
           setTimeout(start, delay);
           return;
         }
-        // An uncounted call (local mail reads) still queues and times out like the others, but it neither meets the cap
-        // nor eats the budget the Parere shares.
-        if (counted && used() >= cap) {
-          reject(new LlmGateError('cap'));
+        try {
+          if (counted && used() >= cap) throw new LlmGateError('cap');
+          if (counted) {
+            if (store) store.increment(localDay(new Date()));
+            else count++;
+          }
+        } catch (error) {
+          reject(error);
           next();
           return;
         }
-        if (counted) count++;
         lastStart = Date.now();
         const controller = new AbortController();
         const timer = setTimeout(() => {
@@ -75,7 +85,12 @@ export function createLlmGate() {
     });
   }
 
-  return Object.assign(run, { used });
+  return Object.assign(run, {
+    used,
+    setStore(this: void, nextStore: LlmUsageStore) {
+      store = nextStore;
+    },
+  });
 }
 
 export const llmGate = createLlmGate();

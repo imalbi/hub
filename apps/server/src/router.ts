@@ -1,3 +1,6 @@
+import { createBrief, createBriefRouter } from './core/brief.ts';
+import { coreConfigSchema } from './core/config-schema.ts';
+import { llmGate } from './core/llm-gate.ts';
 /* oxlint-disable no-underscore-dangle -- Compose the existing typed router record with registry discovery. */
 import { moduleDbPath, openDatabase } from './db/index.ts';
 import { router } from './core/trpc.ts';
@@ -35,6 +38,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     confirmations = createConfirmations(),
     backup = createBackup({ dbPath }),
     catalog,
+    gate = llmGate,
   }: {
     onRoutes?: (name: string, routes: NonNullable<ModuleInstance['routes']>) => void;
     states?: ModuleStates;
@@ -45,6 +49,7 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
     confirmations?: ReturnType<typeof createConfirmations>;
     backup?: Backup;
     catalog?: CatalogService;
+    gate?: typeof llmGate;
   } = {},
 ) {
   type Entries = { [M in T[number] as M['name']]: ReturnType<M['create']>['router'] };
@@ -96,21 +101,32 @@ export function createAppRouter<const T extends readonly ModuleDefinition[]>(
       reservedNames: new Set([...modules.map((m) => m.name), ...RESERVED_CORE_NAMES]),
     });
   if (!catalog) onClose(() => effectiveCatalog.close());
+  const brief = createBrief({
+    db: deps.db,
+    config: coreConfigSchema.parse(config).assistant,
+    fetcher: deps.fetch,
+    log: deps.log,
+    gate,
+  });
+  onClose(() => brief.close());
+  const briefRouter = createBriefRouter(brief);
   const registered = router({
     ...app._def.record,
     settings,
     agents: agentsRouter,
     confirmations: confirmationRouter,
     backup: backupRouter,
+    brief: briefRouter,
   });
   return router({
     ...app._def.record,
-    assistant: createAssistantRouter(() => registered, confirmations, deps.fetch, deps.log),
+    assistant: createAssistantRouter(() => registered, confirmations, deps.fetch, deps.log, gate),
     registry: createRegistryRouter(() => registered),
     settings,
     agents: agentsRouter,
     confirmations: confirmationRouter,
     backup: backupRouter,
+    brief: briefRouter,
     modules: createEnabledRouter(states),
     // Mounted only outside `registered` so MCP agents, `registry.list`, palette, and assistant never see or call it.
     catalog: createCatalogRouter(effectiveCatalog),

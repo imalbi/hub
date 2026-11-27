@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { openDb } from '../db/index.ts';
+import { createLlmUsageStore } from '../db/llm-usage.ts';
 import { createLlmGate } from './llm-gate.ts';
 
 void test('the daily cap blocks calls and resets on the next local day', async (t) => {
@@ -123,4 +125,43 @@ void test('a front call runs ahead of waiting calls without interrupting the act
   finish?.();
   await Promise.all([first, ...waiting, front]);
   assert.deepEqual(order, ['active', 'front', 'one', 'two']);
+});
+
+void test('SQLite usage survives a fresh gate and follows the local calendar day', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 0, 1, 23, 59) });
+  const db = openDb(':memory:');
+  t.after(() => db.$client.close());
+  const store = createLlmUsageStore(db);
+  const first = createLlmGate(store);
+  await first(2, async () => 'one');
+  const restarted = createLlmGate(store);
+  assert.equal(restarted.used(), 1);
+  await restarted(2, async () => 'two');
+  await assert.rejects(
+    first(2, async () => 'blocked'),
+    { reason: 'cap' },
+  );
+  t.mock.timers.setTime(new Date(2026, 0, 2, 0, 1).getTime());
+  assert.equal(restarted.used(), 0);
+  await restarted(2, async () => 'new day');
+  assert.equal(store.read('2026-01-01'), 2);
+  assert.equal(store.read('2026-01-02'), 1);
+});
+
+void test('a usage store failure rejects without calling the provider or blocking the queue', async () => {
+  let attempts = 0;
+  const gate = createLlmGate({
+    read: () => 0,
+    increment: () => {
+      throw new Error('storage unavailable');
+    },
+  });
+  await assert.rejects(
+    gate(1, async () => {
+      attempts++;
+    }),
+    /storage unavailable/,
+  );
+  assert.equal(await gate(0, async () => 'recovered', { counted: false }), 'recovered');
+  assert.equal(attempts, 0);
 });

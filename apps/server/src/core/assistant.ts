@@ -26,6 +26,7 @@ export function createAssistantRouter(
   confirmations: ReturnType<typeof createConfirmations>,
   fetcher: typeof fetch,
   log: Pick<FastifyBaseLogger, 'warn'>,
+  gate = llmGate,
 ) {
   return router({
     state: loopbackProcedure.query(({ ctx }) => ({ enabled: ctx.config.assistant.enabled })),
@@ -36,7 +37,7 @@ export function createAssistantRouter(
         const config = ctx.config.assistant;
         if (!config.enabled) return { loading: false };
         // Not awaited: a failed load only makes the first question slower, and `ask` reports it then.
-        void llmGate(
+        void gate(
           0,
           (signal) =>
             ollamaChat(fetcher, {
@@ -69,7 +70,7 @@ export function createAssistantRouter(
         }));
         let answer;
         try {
-          answer = await llmGate(
+          answer = await gate(
             0,
             (signal) =>
               ollamaChat(fetcher, {
@@ -98,7 +99,7 @@ export function createAssistantRouter(
         let forceConfirm = false;
         if (config.decisionModel && matched.length > 0) {
           try {
-            const decision = await llmGate(
+            const decision = await gate(
               0,
               (signal) =>
                 ollamaSystemOne(fetcher, {

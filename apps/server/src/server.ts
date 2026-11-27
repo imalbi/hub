@@ -1,3 +1,5 @@
+import { createLlmGate } from './core/llm-gate.ts';
+import { createLlmUsageStore } from './db/llm-usage.ts';
 import type { ModuleDefinition, ModuleInstance } from './core/module.ts';
 import { createCapabilityRegistry } from './core/capabilities.ts';
 import { createFocusHistory } from './core/focus-history.ts';
@@ -80,6 +82,7 @@ export function buildServer({
   dbPath: string;
   deps?: {
     run?: Run;
+    llmGate?: ReturnType<typeof createLlmGate>;
     fetch?: typeof fetch;
     spawn?: StreamSpawn;
     onJobs?: (jobs: ReturnType<typeof createJobRunner>) => void;
@@ -113,6 +116,8 @@ export function buildServer({
 }) {
   const run = deps.run ?? realRun;
   const db = openDb(dbPath);
+  const gate = deps.llmGate ?? createLlmGate();
+  gate.setStore(createLlmUsageStore(db));
   const backup = createBackup({
     dbPath,
     core: db.$client,
@@ -223,6 +228,7 @@ export function buildServer({
       'confirmations',
       'backup',
       'assistant',
+      'brief',
       'jobs',
       'catalog',
     ];
@@ -299,6 +305,7 @@ export function buildServer({
         configPath: settings?.configPath,
         jobs,
         confirmations,
+        gate,
         backup,
         catalog: catalogService,
       },

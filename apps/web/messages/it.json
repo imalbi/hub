@@ -316,5 +316,11 @@
   "catalog_requirements_hint": "Installa o attiva i requisiti prima di procedere. Per le funzionalità dei moduli appena installati, applica prima le modifiche.",
   "catalog_hub_incompatible": "Aggiorna Hub: questo modulo richiede la versione {version}.",
   "content_unavailable": "Contenuto non disponibile",
-  "content_retry": "Riprova"
+  "content_retry": "Riprova",
+  "brief_title": "Brief del mattino",
+  "brief_refresh": "Aggiorna",
+  "brief_loading": "Preparazione del brief",
+  "brief_unavailable": "Il riepilogo non è disponibile. Puoi riprovare con Aggiorna.",
+  "brief_counts": "Elementi di oggi: {events} in calendario, {notes} post-it.",
+  "brief_updated": "Aggiornato alle"
 }

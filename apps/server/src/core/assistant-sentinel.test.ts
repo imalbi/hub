@@ -5,7 +5,7 @@ import { buildServer } from '../server.ts';
 import { createFakeDesktop } from '../testing/fake-desktop.ts';
 import { configSchema } from './config.ts';
 import type { createConfirmations } from './confirmations.ts';
-import { llmGate } from './llm-gate.ts';
+import { createLlmGate } from './llm-gate.ts';
 import { ollamaSystemOneUrl, ollamaUrl } from './ollama.ts';
 
 process.env.NODE_ENV = 'test';
@@ -258,6 +258,7 @@ void test('Sentinel failures warn without provider data and preserve safe and da
 });
 
 void test('Sentinel runs through the shared queue with front priority and without spending its cap', async () => {
+  const llmGate = createLlmGate();
   const order: string[] = [];
   const waiting: Promise<void>[] = [];
   const used = llmGate.used();
@@ -265,6 +266,7 @@ void test('Sentinel runs through the shared queue with front priority and withou
     dbPath: ':memory:',
     config: configSchema.parse({ assistant: { enabled: true, decisionModel: 'decision-test' } }),
     deps: {
+      llmGate,
       run: createFakeDesktop(),
       fetch: async (url, init) => {
         if (url === ollamaUrl) {

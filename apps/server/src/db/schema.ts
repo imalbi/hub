@@ -170,3 +170,19 @@ export const catalogState = sqliteTable('catalog_state', {
   pendingApply: integer('pending_apply', { mode: 'boolean' }).notNull().default(false),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+export const llmUsage = sqliteTable('llm_usage', {
+  day: text('day').primaryKey(),
+  count: integer('count').notNull().default(0),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export const briefState = sqliteTable('brief_state', {
+  id: integer('id').primaryKey(),
+  day: text('day').notNull(),
+  lastCursorAt: integer('last_cursor_at', { mode: 'timestamp_ms' }).notNull(),
+  generatedAt: integer('generated_at', { mode: 'timestamp_ms' }),
+  status: text('status', { enum: ['idle', 'ready', 'unavailable', 'error'] }).notNull(),
+  summary: text('summary'),
+  itemsJson: text('items_json').notNull(),
+});

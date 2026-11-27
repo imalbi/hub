@@ -1,3 +1,4 @@
+import { llmGate } from './core/llm-gate.ts';
 import { defaultModuleRoots } from './core/discovery.ts';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -30,6 +31,7 @@ const app = buildServer({
   webRoot,
   moduleRoots: defaultModuleRoots,
   autoBackup: true,
+  deps: { llmGate },
   // Under systemd (`INVOCATION_ID`) a save exits and `hub.service` (`Restart=on-failure`) starts it again, any non-zero
   // code does. From a terminal (`pnpm dev`, `pnpm serve`) nobody would start it again: it only writes the file.
   settings: {

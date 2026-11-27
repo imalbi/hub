@@ -10,6 +10,7 @@ import { ControlsWidget } from '../modules/system/controls-widget.tsx';
 import { PowerWidget } from '../modules/system/power-widget.tsx';
 import { ServerWidget } from '../modules/system/widget.tsx';
 import { m } from '../paraglide/messages.js';
+import { BriefWidget } from './brief-widget.tsx';
 import { TodayWidget } from './today-widget.tsx';
 import { ThemeWidget } from '../theme/widget.tsx';
 
@@ -22,6 +23,7 @@ export const widgets: Array<{
   sizes: readonly WidgetSize[];
   component: ComponentType<{ size: WidgetSize }>;
 }> = [
+  { id: 'brief', label: m.brief_title, sizes: ['medium', 'large', 'wide'], component: BriefWidget },
   { id: 'today', label: m.today_title, sizes: ['medium', 'large', 'wide', 'full'], component: TodayWidget },
   { id: 'pomodoro', label: m.pomodoro_title, sizes: ['small', 'medium', 'large', 'wide'], component: PomodoroWidget },
   { id: 'media', label: m.tile_media, sizes: ['small', 'medium', 'large', 'wide'], component: MediaWidget },
