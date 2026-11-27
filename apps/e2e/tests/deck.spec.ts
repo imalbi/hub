@@ -276,18 +276,44 @@ test('the Sistema page powers off only after a hold', async ({ page }) => {
   }
 });
 
-test('the Sistema page has a tile per configured monitor that shows its state and toggles it', async ({ page, pc }) => {
+test('the monitor tile opens controls without toggling and supports both orientations', async ({ page, pc }) => {
   await page.getByRole('button', { name: 'Vai a Sistema' }).click();
+  const [{ output }] = (await (await pc.get('/trpc/system.monitors')).json()).result.data;
+  const calls = async () => (await (await pc.get(`${SERVER_URL}/__fake/system`)).json()).calls;
+  const before = (await calls()).length;
   try {
-    const system = page.getByRole('region', { name: 'Sistema' });
-    const vertical = system.getByRole('button', { name: /^Monitor verticale:/ });
-    await expect(vertical).toHaveAccessibleName('Monitor verticale: Spento');
-    await expect(vertical.locator('svg')).toHaveAttribute('data-weight', 'regular');
+    const tile = page.getByRole('region', { name: 'Sistema' }).getByRole('button', { name: /^Monitor verticale:/ });
+    await expect(tile).toHaveAccessibleName('Monitor verticale: Spento');
+    await expect(tile.locator('svg')).toHaveAttribute('data-weight', 'regular');
+    await tile.click();
+    const dialog = page.getByRole('dialog', { name: 'Monitor verticale', exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(tile).toHaveAccessibleName('Monitor verticale: Spento');
+    expect((await calls()).slice(before)).toEqual([]);
+    const horizontal = dialog.getByRole('button', { name: 'Orizzontale Monitor verticale', exact: true });
+    const vertical = dialog.getByRole('button', { name: 'Verticale Monitor verticale', exact: true });
+    await horizontal.click();
+    await expect(tile).toHaveAccessibleName('Monitor verticale: Acceso (orizzontale)');
+    await expect(tile.locator('svg')).toHaveAttribute('data-weight', 'fill');
+    await expect(horizontal).toBeDisabled();
     await vertical.click();
-    await expect(vertical).toHaveAccessibleName('Monitor verticale: Acceso (verticale)');
-    await expect(vertical.locator('svg')).toHaveAttribute('data-weight', 'fill');
+    await expect(tile).toHaveAccessibleName('Monitor verticale: Acceso (verticale)');
+    await expect(vertical).toBeDisabled();
+    await dialog.getByRole('button', { name: 'Spegni Monitor verticale', exact: true }).click();
+    await expect(tile).toHaveAccessibleName('Monitor verticale: Spento');
+    await dialog.getByRole('button', { name: 'Accendi Monitor verticale', exact: true }).click();
+    await expect(tile).toHaveAccessibleName('Monitor verticale: Acceso (verticale)');
+    expect((await calls()).slice(before)).toEqual([
+      [`fake-horizontal-${output}`],
+      [`fake-vertical-${output}`],
+      [`fake-monitor-${output}`],
+      [`fake-monitor-${output}`],
+    ]);
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(tile).toBeFocused();
   } finally {
-    await pc.post(`${SERVER_URL}/__fake/monitor`, { data: { output: 'DP-2', disabled: true } });
+    await pc.post(`${SERVER_URL}/__fake/monitor`, { data: { output, disabled: true, transform: 1 } });
     await page.evaluate(() => localStorage.removeItem('hub.deck.page'));
   }
 });

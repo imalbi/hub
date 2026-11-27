@@ -15,7 +15,7 @@ import {
   secretPaths,
   setAt,
 } from './settings-config.ts';
-import { agentOrLoopbackProcedure, loopbackProcedure, protectedProcedure, router } from './trpc.ts';
+import { agentOrLoopbackProcedure, protectedProcedure, router } from './trpc.ts';
 
 /** Exit code that asks the service manager for a new start (`Restart=on-failure` restarts on any non-zero code). */
 export const RESTART_EXIT_CODE = 75;
@@ -83,7 +83,7 @@ const issueList = (error: z.ZodError, info: ModuleInfo) =>
   });
 
 /**
- * Impostazioni. The PC only, reads included: the deck could otherwise read personal values (site URLs, mail accounts,
+ * Impostazioni. The PC and agents only, reads included: the deck could otherwise read personal values (site URLs, mail accounts,
  * the job profile) over the LAN. A save validates against the full config schema before touching the file.
  */
 export function createSettingsRouter({ states, configPath }: { states: ModuleStates; configPath?: string }) {
@@ -105,18 +105,38 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
   };
 
   return router({
-    core: loopbackProcedure.query(async () => {
-      const file = await readConfigJson(requirePath());
-      return { schema: formSchema(editableCoreSchema), value: editableCoreSchema.parse(file) };
-    }),
-    saveCore: loopbackProcedure
+    core: agentOrLoopbackProcedure
+      .meta({ label: 'Leggi sistema', description: 'Read non-sensitive core settings and their schema' })
+      .query(async () => {
+        const file = await readConfigJson(requirePath());
+        return {
+          schema: formSchema(editableCoreSchema),
+          value: redactSchema(editableCoreSchema, editableCoreSchema.parse(file)),
+        };
+      }),
+    saveCore: agentOrLoopbackProcedure
       .meta({ label: 'Salva sistema', description: 'Save core settings and restart Hub' })
       .input(editableCoreSchema)
+      .use(async ({ getRawInput, next }) => next({ ctx: { corePatch: await getRawInput() } }))
       .mutation(({ ctx, input }) =>
         serialized(async () => {
           const path = requirePath();
           const file = await readConfigJson(path);
-          const next = { ...file, ...input };
+          const next = { ...file };
+          // Zod defaults also fill omitted children: only submitted fields may replace stored values.
+          for (const [section, values] of Object.entries(input)) {
+            const submitted = getAt(ctx.corePatch, [section]);
+            if (!isObject(submitted)) continue;
+            next[section] = {
+              ...(isObject(file[section]) ? file[section] : {}),
+              ...Object.fromEntries(Object.entries(values).filter(([key]) => Object.hasOwn(submitted, key))),
+            };
+          }
+          if (
+            (ctx.client.kind === 'agent' || ctx.agentRequest) &&
+            hasManualChanges(editableCoreSchema, editableCoreSchema.parse(file), editableCoreSchema.parse(next))
+          )
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'These settings require a manual change' });
           const parsed = configSchema.safeParse(next);
           if (!parsed.success)
             return {
@@ -127,19 +147,26 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
           return { ok: true as const, restarting: ctx.restart() };
         }),
       ),
-    modules: loopbackProcedure.query(async () => {
-      const list = states.list();
-      // The notes read the stored slice, so a saved place clears one; the file is only read when a module has a note.
-      const file =
-        configPath && list.some(({ setupNote }) => setupNote) ? await readConfigJson(configPath).catch(() => ({})) : {};
-      return list.map(({ name, kind, status, schema, setupNote, configPath: at }) => ({
-        name,
-        kind,
-        status,
-        hasConfig: schema !== undefined,
-        note: status === 'on' ? noteOf(setupNote, getAt(file, at)) : undefined,
-      }));
-    }),
+    modules: agentOrLoopbackProcedure
+      .meta({
+        label: 'Elenca moduli',
+        description: 'List modules, their on/off status, and whether they have settings',
+      })
+      .query(async () => {
+        const list = states.list();
+        // The notes read the stored slice, so a saved place clears one; the file is only read when a module has a note.
+        const file =
+          configPath && list.some(({ setupNote }) => setupNote)
+            ? await readConfigJson(configPath).catch(() => ({}))
+            : {};
+        return list.map(({ name, kind, status, schema, setupNote, configPath: at }) => ({
+          name,
+          kind,
+          status,
+          hasConfig: schema !== undefined,
+          note: status === 'on' ? noteOf(setupNote, getAt(file, at)) : undefined,
+        }));
+      }),
 
     /** One module's JSON Schema and its stored value, with every secret replaced by `{ set: true }` (or absent). */
     config: agentOrLoopbackProcedure
@@ -168,7 +195,7 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
         label: 'Salva impostazioni',
         description: "Save one module's settings and its on/off switch, then restart Hub",
       })
-      .input(z.object({ module: z.string(), enabled: z.boolean(), value: z.unknown().optional() }))
+      .input(z.object({ module: z.string(), enabled: z.boolean().optional(), value: z.unknown().optional() }))
       .mutation(({ ctx, input }) =>
         serialized(async () => {
           const info = known(input.module);
@@ -183,15 +210,15 @@ export function createSettingsRouter({ states, configPath }: { states: ModuleSta
             );
           }
           const off = new Set(Array.isArray(next.modulesOff) ? next.modulesOff.map(String) : []);
-          if (input.enabled) off.delete(info.name);
-          else off.add(info.name);
+          if (input.enabled === true) off.delete(info.name);
+          else if (input.enabled === false) off.add(info.name);
           next = off.size > 0 || 'modulesOff' in next ? { ...next, modulesOff: [...off].toSorted() } : next;
 
           if (ctx.client.kind === 'agent' || ctx.agentRequest) {
             const manual =
               info.schema && hasManualChanges(info.schema, getAt(file, info.configPath), getAt(next, info.configPath));
             const disablingCore =
-              !input.enabled &&
+              input.enabled === false &&
               ['pairing', 'devices', 'health'].includes(info.name) &&
               !(Array.isArray(file.modulesOff) && file.modulesOff.includes(info.name));
             if (manual || disablingCore)

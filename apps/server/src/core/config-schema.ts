@@ -31,7 +31,7 @@ export const coreConfigSchema = z.object({
       enabled: z
         .boolean()
         .default(true)
-        .meta({ title: 'Attivo', description: 'Consente agli agenti di collegarsi a Hub.' }),
+        .meta({ manual: true, title: 'Attivo', description: 'Consente agli agenti di collegarsi a Hub.' }),
       client: z
         .enum(['claude', 'codex'])
         .default('claude')

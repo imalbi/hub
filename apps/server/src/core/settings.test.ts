@@ -107,6 +107,8 @@ void test('a paired device is refused on every settings procedure, reads include
   const token = z.object({ token: z.string() }).parse(dataOf(redeemed)).token;
   const calls: Array<[string, unknown]> = [
     ['settings.modules', undefined],
+    ['settings.core', undefined],
+    ['settings.saveCore', {}],
     ['settings.config', { module: 'vault' }],
     ['settings.save', { module: 'vault', enabled: true, value: {} }],
     ['settings.restore', { confirmed: true }],

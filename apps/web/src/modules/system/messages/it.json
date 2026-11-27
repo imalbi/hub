@@ -34,6 +34,7 @@
   "system_toggle_name": "{action} {label}",
   "system_power_legend": "Alimentazione, tieni premuto",
   "power_label_today": "Consumo, {today}",
+  "monitor_close": "Chiudi i comandi del monitor",
   "monitor_on": "Acceso",
   "monitor_on_horizontal": "Acceso (orizzontale)",
   "monitor_on_vertical": "Acceso (verticale)",

@@ -6,8 +6,11 @@ import { RegistryButton } from '../../components/registry-button.tsx';
 import { ActionButton } from '../../components/ui/action-button.tsx';
 import { useTRPC } from '../../lib/trpc.ts';
 import { useNow } from '../../lib/use-now.ts';
+import { z } from '../../lib/zod-csp.ts';
 import { m } from '../../paraglide/messages.js';
 import { lastSeen } from './last-seen.ts';
+
+const coreClientSchema = z.object({ mcp: z.object({ client: z.enum(['claude', 'codex']) }) });
 
 // What a local agent needs: Hub always listens on loopback, whatever origin the page was opened from.
 function mcpCommand(client: 'claude' | 'codex') {
@@ -178,7 +181,7 @@ export function AgentsSection({ enabled }: { enabled: boolean }) {
   const trpc = useTRPC();
   const agents = useQuery({ ...trpc.agents.list.queryOptions(), enabled });
   const core = useQuery(trpc.settings.core.queryOptions());
-  const command = core.data && mcpCommand(core.data.value.mcp.client);
+  const command = core.data && mcpCommand(coreClientSchema.parse(core.data.value).mcp.client);
   return (
     <section className="flex flex-col gap-md" aria-label={m.agents_title()}>
       <h3 className="text-label text-muted-foreground">{m.agents_title()}</h3>

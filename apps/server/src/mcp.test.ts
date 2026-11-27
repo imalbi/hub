@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -6,6 +9,8 @@ import { z } from 'zod';
 import { jobProcedure, protectedProcedure, router } from './core/trpc.ts';
 import { buildServer } from './server.ts';
 import { createFakeDesktop } from './testing/fake-desktop.ts';
+import { emptyConfig } from './core/config.ts';
+import { coreConfigSchema } from './core/config-schema.ts';
 
 process.env.NODE_ENV = 'test';
 
@@ -182,4 +187,126 @@ void test('agent tokens admit LAN requests until revoked', async (t) => {
   const revoke = await app.inject({ method: 'POST', url: '/trpc/agents.revoke', payload: { id, confirmed: true } });
   assert.equal(revoke.statusCode, 200);
   assert.equal((await request(token)).statusCode, 401);
+});
+
+void test('MCP discovers settings and edits only permitted core and module fields', { timeout: 5000 }, async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'hub-mcp-settings-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const root = join(dir, 'modules');
+  await mkdir(join(root, 'vault'), { recursive: true });
+  await writeFile(
+    join(root, 'vault', 'server.ts'),
+    `import { defineModule, z } from ${JSON.stringify(new URL('./core/module.ts', import.meta.url).href)};
+     export default defineModule({ name: 'vault', config: z.object({
+       label: z.string(), secret: z.string().meta({ secret: true }), command: z.string().meta({ manual: true })
+     }), create: () => ({}) });`,
+  );
+  const initial = {
+    server: { host: '127.0.0.1', allowedOrigins: ['https://example.test'], deviceTokenTtlDays: 30 },
+    backup: { dir: '/tmp/hub-backups', keep: 14 },
+    assistant: { model: 'chat-test', decisionModel: 'decision-test' },
+    modulesOff: ['vault'],
+    modules: { vault: { label: 'Before', secret: 'fixture-private-value', command: '/usr/bin/fixture' } },
+  };
+  const configPath = join(dir, 'config.json');
+  await writeFile(configPath, JSON.stringify(initial));
+  let restarts = 0;
+  let resolveRestart = () => {};
+  const restarted = new Promise<void>((resolve) => {
+    resolveRestart = resolve;
+  });
+  const app = buildServer({
+    dbPath: ':memory:',
+    config: { ...emptyConfig, modulesOff: ['vault'], modules: initial.modules },
+    moduleRoots: [root],
+    deps: { run: createFakeDesktop() },
+    settings: {
+      configPath,
+      onRestart: () => {
+        if (++restarts === 2) resolveRestart();
+      },
+    },
+  });
+  t.after(() => app.close());
+  const request = async (method: string, params?: unknown) => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/mcp',
+      headers: { accept: 'application/json, text/event-stream' },
+      payload: { jsonrpc: '2.0', id: 1, method, params },
+    });
+    assert.equal(response.statusCode, 200);
+    return z.object({ result: z.unknown() }).parse(response.json()).result;
+  };
+  const call = async (name: string, args: Record<string, unknown> = {}) => {
+    const result = z
+      .object({ isError: z.boolean().optional(), content: z.array(z.object({ text: z.string() })).min(1) })
+      .parse(await request('tools/call', { name, arguments: args }));
+    const value: unknown = JSON.parse(result.content[0]?.text ?? 'null');
+    return { isError: result.isError === true, value };
+  };
+  const { tools } = z.object({ tools: z.array(z.object({ name: z.string() })) }).parse(await request('tools/list'));
+  for (const name of ['settings.modules', 'settings.core', 'settings.saveCore', 'settings.save'])
+    assert.ok(
+      tools.some((tool) => tool.name === name),
+      name,
+    );
+  const modules = await call('settings.modules');
+  assert.equal(modules.isError, false);
+  assert.ok(
+    z
+      .array(z.object({ name: z.string(), status: z.string(), hasConfig: z.boolean() }))
+      .parse(modules.value)
+      .some((entry) => entry.name === 'vault' && entry.status === 'off' && entry.hasConfig),
+  );
+  const core = await call('settings.core');
+  assert.equal(core.isError, false);
+  const coreResult = z
+    .object({
+      schema: z.object({ properties: z.record(z.string(), z.unknown()) }),
+      value: z.record(z.string(), z.unknown()),
+    })
+    .parse(core.value);
+  assert.equal('server' in coreResult.schema.properties, false);
+  assert.equal('server' in coreResult.value, false);
+  assert.equal(coreConfigSchema.parse(coreResult.value).assistant.decisionModel, 'decision-test');
+  const moduleConfig = await call('settings.config', { module: 'vault' });
+  assert.equal(moduleConfig.isError, false);
+  assert.ok(!JSON.stringify(moduleConfig.value).includes(initial.modules.vault.secret));
+  const savedCore = await call('settings.saveCore', {
+    jobs: { maxConcurrent: 4 },
+    backup: { keep: 21 },
+    assistant: { model: 'new-chat' },
+    server: { host: '0.0.0.0' },
+    modulesOff: [],
+  });
+  assert.equal(savedCore.isError, false);
+  assert.deepEqual(savedCore.value, { ok: true, restarting: true });
+  assert.deepEqual(JSON.parse(await readFile(configPath, 'utf8')), {
+    ...initial,
+    jobs: { maxConcurrent: 4 },
+    backup: { ...initial.backup, keep: 21 },
+    assistant: { ...initial.assistant, model: 'new-chat' },
+  });
+  const kept = { ...initial.modules.vault, label: 'After', secret: { set: true } };
+  assert.equal((await call('settings.save', { module: 'vault', value: kept })).isError, false);
+  const after = JSON.parse(await readFile(configPath, 'utf8'));
+  assert.deepEqual(after.modules.vault, { ...initial.modules.vault, label: 'After' });
+  assert.deepEqual(after.modulesOff, ['vault']);
+  for (const [name, args] of [
+    ['settings.saveCore', { backup: { dir: '/tmp/other' } }],
+    ['settings.saveCore', { mcp: { enabled: false } }],
+    ['settings.save', { module: 'vault', value: { ...kept, secret: 'replacement' } }],
+    ['settings.save', { module: 'vault', value: { ...kept, command: '/usr/bin/other' } }],
+  ] as const) {
+    const before = await readFile(configPath, 'utf8');
+    const backup = await readFile(`${configPath}.bak`, 'utf8');
+    const refused = await call(name, args);
+    assert.equal(refused.isError, true);
+    assert.match(JSON.stringify(refused.value), /manual change/);
+    assert.equal(await readFile(configPath, 'utf8'), before);
+    assert.equal(await readFile(`${configPath}.bak`, 'utf8'), backup);
+  }
+  await restarted;
+  assert.equal(restarts, 2);
 });

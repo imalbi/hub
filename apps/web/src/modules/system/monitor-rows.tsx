@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 import { MonitorIcon } from '@phosphor-icons/react';
 import { DeviceRow } from '../../components/device-row.tsx';
 import { RegistryButton } from '../../components/registry-button.tsx';
 import { Tile } from '../../components/tile.tsx';
+import { Dialog } from '../../components/ui/dialog.tsx';
 import { useConnectionLost, useTRPC } from '../../lib/trpc.ts';
 import { m } from '../../paraglide/messages.js';
 
@@ -20,9 +22,7 @@ const stateText = {
 function useMonitors() {
   const trpc = useTRPC();
   const state = useSubscription(trpc.system.onMonitors.subscriptionOptions());
-  const toggle = useMutation(trpc.system.monitor.toggle.mutationOptions());
-  const setOrientation = useMutation(trpc.system.monitor.setOrientation.mutationOptions());
-  return { monitors: state.data ?? [], toggle, setOrientation, stale: useConnectionLost() };
+  return { monitors: state.data ?? [], stale: useConnectionLost() };
 }
 
 function monitorText({ state, orientation }: Monitor) {
@@ -31,64 +31,90 @@ function monitorText({ state, orientation }: Monitor) {
   return stateText[state]();
 }
 
-/** One row of "Questo PC" per configured monitor, with its configured actions. */
-export function MonitorRows() {
-  const { monitors, toggle, setOrientation, stale } = useMonitors();
-  return monitors.map((monitor) => {
-    const { output, label, state, orientation, supportsHorizontal, supportsVertical } = monitor;
-    const disabled = stale || state === 'absent' || state === 'unknown';
-    return (
-      <DeviceRow key={output} label={label} state={monitorText(monitor)} stale={stale}>
+function MonitorControls({ monitor, stale }: { monitor: Monitor; stale: boolean }) {
+  const trpc = useTRPC();
+  const toggle = useMutation(trpc.system.monitor.toggle.mutationOptions());
+  const setOrientation = useMutation(trpc.system.monitor.setOrientation.mutationOptions());
+  const { output, label, state, orientation, supportsHorizontal, supportsVertical } = monitor;
+  const disabled = stale || state === 'absent' || state === 'unknown';
+  return (
+    <>
+      <RegistryButton
+        secondary
+        label={state === 'on' ? m.monitor_turn_off() : m.monitor_turn_on()}
+        name={state === 'on' ? m.monitor_turn_off_name({ label }) : m.monitor_turn_on_name({ label })}
+        disabled={disabled}
+        action={() => toggle.mutateAsync({ output })}
+      />
+      {supportsHorizontal && (
         <RegistryButton
           secondary
-          label={state === 'on' ? m.monitor_turn_off() : m.monitor_turn_on()}
-          name={state === 'on' ? m.monitor_turn_off_name({ label }) : m.monitor_turn_on_name({ label })}
-          // A monitor that is unplugged or unreadable has nothing to switch.
-          disabled={disabled}
-          action={() => toggle.mutateAsync({ output })}
+          label={m.monitor_horizontal()}
+          name={m.monitor_horizontal_name({ label })}
+          disabled={disabled || orientation === 'horizontal'}
+          action={() => setOrientation.mutateAsync({ output, orientation: 'horizontal' })}
         />
-        {supportsHorizontal && (
-          <RegistryButton
-            secondary
-            label={m.monitor_horizontal()}
-            name={m.monitor_horizontal_name({ label })}
-            disabled={disabled || orientation === 'horizontal'}
-            action={() => setOrientation.mutateAsync({ output, orientation: 'horizontal' })}
-          />
-        )}
-        {supportsVertical && (
-          <RegistryButton
-            secondary
-            label={m.monitor_vertical()}
-            name={m.monitor_vertical_name({ label })}
-            disabled={disabled || orientation === 'vertical'}
-            action={() => setOrientation.mutateAsync({ output, orientation: 'vertical' })}
-          />
-        )}
-      </DeviceRow>
-    );
-  });
+      )}
+      {supportsVertical && (
+        <RegistryButton
+          secondary
+          label={m.monitor_vertical()}
+          name={m.monitor_vertical_name({ label })}
+          disabled={disabled || orientation === 'vertical'}
+          action={() => setOrientation.mutateAsync({ output, orientation: 'vertical' })}
+        />
+      )}
+    </>
+  );
 }
 
-/** One deck tile per configured monitor; the tile of a list that is empty renders nothing, so no hole is left. */
+/** One row of "Questo PC" per configured monitor, with its configured actions. */
+export function MonitorRows() {
+  const { monitors, stale } = useMonitors();
+  return monitors.map((monitor) => (
+    <DeviceRow key={monitor.output} label={monitor.label} state={monitorText(monitor)} stale={stale}>
+      <MonitorControls monitor={monitor} stale={stale} />
+    </DeviceRow>
+  ));
+}
+
+/** One deck tile per configured monitor, opening the same controls as the desk row. */
 export function MonitorTiles() {
-  const { monitors, toggle, stale } = useMonitors();
-  return monitors.map((monitor) => {
-    const { output, label, state } = monitor;
-    return (
-      <Tile
-        key={output}
-        icon={MonitorIcon}
-        // Weight is the on/off state, as on the other toggle tiles.
-        iconWeight={state === 'on' ? 'fill' : 'regular'}
-        label={label}
-        state={monitorText(monitor)}
-        disabled={state === 'absent' || state === 'unknown'}
-        pending={toggle.isPending && toggle.variables?.output === output}
-        error={toggle.isError && toggle.variables?.output === output}
-        stale={stale}
-        onPress={() => toggle.mutate({ output })}
-      />
-    );
-  });
+  const { monitors, stale } = useMonitors();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const selectedMonitor = monitors.find((monitor) => monitor.output === selected);
+  return (
+    <>
+      {monitors.map((monitor) => (
+        <Tile
+          key={monitor.output}
+          icon={MonitorIcon}
+          iconWeight={monitor.state === 'on' ? 'fill' : 'regular'}
+          label={monitor.label}
+          state={monitorText(monitor)}
+          disabled={monitor.state === 'absent' || monitor.state === 'unknown'}
+          stale={stale}
+          onPress={() => {
+            setSelected(monitor.output);
+            setOpen(true);
+          }}
+        />
+      ))}
+      {selectedMonitor && (
+        <Dialog
+          open={open}
+          onOpenChange={setOpen}
+          title={selectedMonitor.label}
+          description={monitorText(selectedMonitor)}
+          closeLabel={m.monitor_close()}
+          size="sm"
+        >
+          <div className="flex flex-col gap-xs">
+            <MonitorControls key={selectedMonitor.output} monitor={selectedMonitor} stale={stale} />
+          </div>
+        </Dialog>
+      )}
+    </>
+  );
 }

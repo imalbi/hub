@@ -14,13 +14,13 @@ import { streamSpawn } from './exec.ts';
 import { createFiles } from './files.ts';
 import { createJobRunner } from './jobs.ts';
 import { createModuleStates } from './module-states.ts';
-import { formSchema, isObject } from './settings-config.ts';
+import { formSchema, getAt, isObject } from './settings-config.ts';
 import { createSettingsRouter } from './settings-router.ts';
 
 void test('agent settings save refuses an entire change containing a secret', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'hub-agent-settings-'));
   const path = join(dir, 'config.json');
-  const original = JSON.stringify({ modules: { example: { name: 'before', secret: 'old' } } });
+  const original = JSON.stringify({ modulesOff: ['example'], modules: { example: { name: 'before', secret: 'old' } } });
   await writeFile(path, original);
   const db = openDb(':memory:');
   const files = createFiles();
@@ -50,15 +50,15 @@ void test('agent settings save refuses an entire change containing a secret', as
     sockets: createDeviceSockets(),
     restart: () => false,
   });
-  await assert.rejects(caller.save({ module: 'example', enabled: true, value: { name: 'after', secret: 'new' } }));
+  await assert.rejects(caller.save({ module: 'example', value: { name: 'after', secret: 'new' } }), /manual change/);
   assert.equal(await readFile(path, 'utf8'), original);
   const result = await caller.save({
     module: 'example',
-    enabled: true,
     value: { name: 'after', secret: { set: true } },
   });
   assert.equal(result.ok, true);
   assert.deepEqual(JSON.parse(await readFile(path, 'utf8')).modules.example, { name: 'after', secret: 'old' });
+  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')).modulesOff, ['example']);
 });
 
 void test('a human-confirmed agent restore cannot change a manual host', async (t) => {
@@ -92,10 +92,18 @@ void test('a human-confirmed agent restore cannot change a manual host', async (
   assert.equal(await readFile(path, 'utf8'), original);
 });
 
-void test('core settings save only for loopback and preserve unrelated config', async (t) => {
+void test('core settings allow bounded agent edits and preserve omitted fields', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'hub-core-settings-'));
   const path = join(dir, 'config.json');
-  await writeFile(path, JSON.stringify({ server: { host: '127.0.0.1' } }));
+  const initial = {
+    server: { host: '127.0.0.1', allowedOrigins: ['https://example.test'], deviceTokenTtlDays: 30 },
+    backup: { enabled: false, dir: '/tmp/hub-backups', keep: 10 },
+    assistant: { enabled: true, model: 'chat-test', decisionModel: 'decision-test', numCtx: 8192 },
+    mcp: { enabled: true, client: 'codex' },
+    modulesOff: ['example'],
+    extra: { untouched: true },
+  };
+  await writeFile(path, JSON.stringify(initial));
   const db = openDb(':memory:');
   const files = createFiles();
   const jobs = createJobRunner(db, streamSpawn, 2);
@@ -116,22 +124,45 @@ void test('core settings save only for loopback and preserve unrelated config', 
     sockets: createDeviceSockets(),
     restart: () => false,
   };
-  const input = { mcp: { enabled: false, client: 'codex' as const }, jobs: { maxConcurrent: 3 } };
   const agent = settings.createCaller({ ...context, client: { kind: 'agent', agentId: 1, name: 'Test' } });
-  await assert.rejects(agent.core());
-  await assert.rejects(agent.saveCore(input));
+  const core = await agent.core();
+  const value = coreConfigSchema.parse(core.value);
+  assert.equal(value.mcp.client, 'codex');
+  assert.equal(isObject(core.value) && 'server' in core.value, false);
+  assert.equal('server' in (core.schema.properties ?? {}), false);
+  assert.equal(getAt(core.schema, ['properties', 'mcp', 'properties', 'enabled', 'manual']), true);
+  assert.deepEqual(await agent.modules(), []);
+  assert.equal(
+    (await agent.saveCore({ jobs: { maxConcurrent: 3 }, assistant: { model: 'new-chat' }, backup: { keep: 20 } })).ok,
+    true,
+  );
+  const saved = {
+    ...initial,
+    jobs: { maxConcurrent: 3 },
+    assistant: { ...initial.assistant, model: 'new-chat' },
+    backup: { ...initial.backup, keep: 20 },
+  };
+  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), saved);
+  const confirmedAgent = settings.createCaller({ ...context, client: { kind: 'loopback' }, agentRequest: true });
+  for (const caller of [agent, confirmedAgent]) {
+    for (const patch of [{ backup: { dir: '/tmp/other-backups' } }, { mcp: { enabled: false } }]) {
+      const before = await readFile(path, 'utf8');
+      await assert.rejects(caller.saveCore(patch), /manual change/);
+      assert.equal(await readFile(path, 'utf8'), before);
+    }
+  }
+  await assert.rejects(agent.saveCore({ jobs: { maxConcurrent: 0 } }));
+  assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), saved);
   const human = settings.createCaller({ ...context, client: { kind: 'loopback' } });
-  assert.equal((await human.core()).value.mcp.enabled, true);
-  assert.equal((await human.core()).value.mcp.client, 'claude');
+  const input = { mcp: { enabled: false }, backup: { dir: '/tmp/manual-backups' } };
   assert.equal((await human.saveCore(input)).ok, true);
   assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), {
-    server: { host: '127.0.0.1' },
-    ...input,
-    backup: { enabled: true, keep: 14 },
-    assistant: { enabled: false, model: 'gemma4:12b-it-qat', numCtx: 16384, decisionModel: '' },
+    ...saved,
+    mcp: { ...saved.mcp, enabled: false },
+    backup: { ...saved.backup, dir: '/tmp/manual-backups' },
   });
-  assert.equal((await human.saveCore({ ...input, assistant: { decisionModel: '  decision-test  ' } })).ok, true);
-  assert.equal(JSON.parse(await readFile(path, 'utf8')).assistant.decisionModel, 'decision-test');
+  assert.equal((await human.saveCore({ assistant: { decisionModel: '  new-decision  ' } })).ok, true);
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).assistant.decisionModel, 'new-decision');
 });
 
 void test('an agent never reads the raw slice of a module without a schema', async (t) => {
@@ -298,6 +329,7 @@ void test('agent settings save refuses changes to public command, path and URL f
       });
     }
   }
+  states.set({ name: 'health', kind: 'public', status: 'on', configPath: ['health'], schema: undefined });
 
   states.set({
     name: 'archive',
@@ -348,7 +380,7 @@ void test('agent settings save refuses changes to public command, path and URL f
 
   for (const entry of refused) {
     await assert.rejects(
-      caller.save({ module: entry.module, enabled: true, value: entry.value }),
+      caller.save({ module: entry.module, value: entry.value }),
       (error: unknown) => error instanceof Error && error.message.includes('manual change'),
       entry.module,
     );
@@ -358,7 +390,6 @@ void test('agent settings save refuses changes to public command, path and URL f
   // Non-manual fields in the same object (monitor label) remain writable by agents.
   const allowed = await caller.save({
     module: 'system',
-    enabled: true,
     value: {
       ...initial.system,
       monitors: [{ output: 'DP-1', label: 'Desk Display', command: '/usr/bin/monitor-toggle' }],
@@ -366,6 +397,15 @@ void test('agent settings save refuses changes to public command, path and URL f
   });
   assert.equal(allowed.ok, true);
   assert.equal(JSON.parse(await readFile(path, 'utf8')).system.monitors[0].label, 'Desk Display');
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).modulesOff, undefined);
+  assert.equal((await caller.save({ module: 'health' })).ok, true);
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).modulesOff, undefined);
+  const saved = await readFile(path, 'utf8');
+  await assert.rejects(
+    caller.save({ module: 'health', enabled: false }),
+    (error: unknown) => error instanceof Error && error.message.includes('manual change'),
+  );
+  assert.equal(await readFile(path, 'utf8'), saved);
 });
 
 void test('every public and core config field matching command/path/host/url is marked manual', () => {
