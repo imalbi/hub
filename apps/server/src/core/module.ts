@@ -4,6 +4,7 @@ export {
   createCapabilityRegistry,
   type CapabilityMap,
   type CapabilityRegistry,
+  type NewMailEvent,
   type MailAccount,
   type MailAddress,
   type MailCapability,

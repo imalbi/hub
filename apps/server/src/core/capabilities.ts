@@ -41,7 +41,10 @@ export type MailThreadAnswer = {
   resolvedMessageId?: string;
 };
 
+export type NewMailEvent = { account: string; messageIds: readonly string[] };
+
 export interface MailCapability {
+  onNewMail(listener: (event: NewMailEvent) => void): () => void;
   accounts(): readonly MailAccount[];
   listThreadEntries(account: string, after: string): Promise<{ entries: MailThreadEntry[]; truncated: boolean }>;
   readMessageText(account: string, mailbox: string, id: string): Promise<string | null>;
