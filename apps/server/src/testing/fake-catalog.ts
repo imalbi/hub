@@ -50,12 +50,22 @@ export function createFakeCatalog() {
       await writeFile(join(root, module.path, 'server.ts'), 'export default {};\n');
     }
   }
+  const heads = new Map<string, string>();
   const run: Run = async (_bin, args) => {
     if (control.failSync) return { stdout: '', stderr: 'Fake Git unavailable', code: 1 };
-    if (args.includes('clone')) await writeRepository(args.at(-1) ?? '');
-    if (args.includes('reset')) await writeRepository(args[args.indexOf('-C') + 1] ?? '');
+    const target = control.version === '1.0.0' ? 'a'.repeat(40) : 'b'.repeat(40);
+    if (args.includes('clone')) {
+      const root = args.at(-1) ?? '';
+      await writeRepository(root);
+      heads.set(root, target);
+    }
+    const repo = args[args.indexOf('-C') + 1] ?? '';
+    if (args.includes('merge')) {
+      await writeRepository(repo);
+      heads.set(repo, target);
+    }
     return {
-      stdout: args.includes('rev-parse') ? `${control.version === '1.0.0' ? 'a'.repeat(40) : 'b'.repeat(40)}\n` : '',
+      stdout: args.includes('rev-parse') ? `${args.includes('FETCH_HEAD') ? target : heads.get(repo)}\n` : '',
       stderr: '',
       code: 0,
     };

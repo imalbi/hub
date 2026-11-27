@@ -107,17 +107,18 @@ void test('catalog service enforces hardened git args, manages sources, and pres
       return { stdout: '', stderr: '', code: 0 };
     }
     if (args.includes('rev-parse')) {
-      return { stdout: `${headSha}\n`, stderr: '', code: 0 };
+      return { stdout: `${args.at(-1) === 'FETCH_HEAD' ? nextSha : headSha}\n`, stderr: '', code: 0 };
     }
+    if (args.includes('status') || args.includes('merge-base')) return { stdout: '', stderr: '', code: 0 };
     if (args.includes('fetch')) {
       if (failFetch) return { stdout: '', stderr: 'offline', code: 128 };
       return { stdout: '', stderr: '', code: 0 };
     }
-    if (args.includes('reset')) {
+    if (args.includes('merge') || args.includes('reset')) {
       const repoIdx = args.indexOf('-C');
       const repoPath = repoIdx >= 0 ? (args[repoIdx + 1] ?? '') : '';
       const targetRef = args.at(-1) ?? '';
-      if (targetRef === 'FETCH_HEAD') {
+      if (args.includes('merge')) {
         headSha = nextSha;
         if (corruptManifestOnFetch) {
           await writeFile(join(repoPath, 'hub-catalog.json'), '{not-json');

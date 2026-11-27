@@ -181,8 +181,8 @@ export function createCatalogService({
   const git = (args: readonly string[]) =>
     run('git', [...HARDENED_GIT_FLAGS, ...args], { timeoutMs: gitTimeoutMs, env: GIT_ENV });
 
-  async function readHeadSha(repoPath: string) {
-    const rev = await git(['-C', repoPath, 'rev-parse', 'HEAD']);
+  async function readHeadSha(repoPath: string, ref = 'HEAD') {
+    const rev = await git(['-C', repoPath, 'rev-parse', ref]);
     const sha = rev.stdout.trim();
     if (rev.code !== 0 || !/^[0-9a-f]{7,64}$/i.test(sha)) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Could not read repository HEAD commit' });
@@ -376,30 +376,94 @@ export function createCatalogService({
       const [source] = await db.select().from(moduleSources).where(eq(moduleSources.id, id));
       if (!source) throw new TRPCError({ code: 'NOT_FOUND', message: 'Catalog repository not found' });
 
-      const fetched = await git(['-C', source.localPath, 'fetch', '--depth', '1', 'origin']);
-      if (fetched.code !== 0) {
-        const error = 'Git fetch failed';
+      async function refuse(error: string) {
         await db.update(moduleSources).set({ syncError: error }).where(eq(moduleSources.id, id));
         return { ok: false as const, error, commitSha: source.commitSha };
       }
 
-      const reset = await git(['-C', source.localPath, 'reset', '--hard', 'FETCH_HEAD']);
-      if (reset.code !== 0) {
-        const error = 'Git reset failed';
-        await db.update(moduleSources).set({ syncError: error }).where(eq(moduleSources.id, id));
-        return { ok: false as const, error, commitSha: source.commitSha };
+      const repo = source.localPath;
+      async function assertClean(expectedHead: string) {
+        const status = await git([
+          '-C',
+          repo,
+          'status',
+          '--porcelain=v1',
+          '--untracked-files=all',
+          '--ignored=matching',
+        ]);
+        if (status.code !== 0) throw new Error('Impossibile controllare il repository. Verifica lo stato con Git.');
+        if (status.stdout.length > 0) {
+          throw new Error(
+            'Il repository contiene file locali. Salva o sposta il lavoro, inclusi i file ignorati, prima di sincronizzare.',
+          );
+        }
+        if ((await readHeadSha(repo)) !== expectedHead) {
+          throw new Error('Il repository è cambiato durante la sincronizzazione. Verifica lo stato con Git.');
+        }
       }
 
+      let startingHead: string;
       let commitSha: string;
+      try {
+        startingHead = await readHeadSha(repo);
+        await assertClean(startingHead);
+      } catch (error) {
+        return refuse(summarizeError(error, 'Impossibile controllare il repository.'));
+      }
+
+      const fetched = await git(['-C', repo, 'fetch', 'origin']);
+      if (fetched.code !== 0) return refuse('Git fetch failed');
+
+      try {
+        commitSha = await readHeadSha(repo, 'FETCH_HEAD');
+        let ancestry = await git(['-C', repo, 'merge-base', '--is-ancestor', startingHead, commitSha]);
+        if (ancestry.code === 1) {
+          const shallow = await git(['-C', repo, 'rev-parse', '--is-shallow-repository']);
+          if (shallow.code !== 0 || !['true', 'false'].includes(shallow.stdout.trim())) {
+            return refuse('Impossibile verificare la cronologia Git.');
+          }
+          if (shallow.stdout.trim() === 'true') {
+            const history = await git(['-C', repo, 'fetch', '--unshallow', 'origin']);
+            if (history.code !== 0) return refuse('Impossibile completare la cronologia Git.');
+            ancestry = await git(['-C', repo, 'merge-base', '--is-ancestor', startingHead, commitSha]);
+          }
+        }
+        if (ancestry.code !== 0) {
+          return refuse(
+            'Aggiornamento non sicuro: verifica i commit locali e la cronologia con Git prima di sincronizzare.',
+          );
+        }
+        await assertClean(startingHead);
+      } catch (error) {
+        return refuse(summarizeError(error, 'Impossibile verificare il repository.'));
+      }
+
+      const updated = await git([
+        '-C',
+        repo,
+        'merge',
+        '--ff-only',
+        '--no-autostash',
+        '--no-overwrite-ignore',
+        commitSha,
+      ]);
+      if (updated.code !== 0) return refuse('Aggiornamento Git non riuscito. Verifica lo stato del repository.');
+
       let manifest: CatalogManifest;
       try {
-        commitSha = await readHeadSha(source.localPath);
-        manifest = await readManifestFromRepo(source.localPath, reservedNames);
-      } catch (error) {
-        await git(['-C', source.localPath, 'reset', '--hard', source.commitSha]).catch(() => undefined);
-        const message = summarizeError(error, 'Invalid hub-catalog.json manifest');
-        await db.update(moduleSources).set({ syncError: message }).where(eq(moduleSources.id, id));
-        return { ok: false as const, error: message, commitSha: source.commitSha };
+        manifest = await readManifestFromRepo(repo, reservedNames);
+        await assertClean(commitSha);
+      } catch {
+        // A separate Git client is outside Hub's queue; never discard its work to recover.
+        try {
+          await assertClean(commitSha);
+          const restored = await git(['-C', repo, 'reset', '--keep', startingHead]);
+          if (restored.code !== 0) throw new Error('Rollback failed');
+          await assertClean(startingHead);
+        } catch {
+          return refuse('Ripristino Git non riuscito. Verifica il repository prima di sincronizzare di nuovo.');
+        }
+        return refuse('Manifest del catalogo non valido. Versione precedente ripristinata.');
       }
 
       await db
